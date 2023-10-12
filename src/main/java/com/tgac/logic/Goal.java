@@ -1,8 +1,8 @@
 package com.tgac.logic;
 
 import com.tgac.functional.exceptions.Exceptions;
-import com.tgac.logic.MiniKanren.Substitutions;
 import com.tgac.functional.recursion.Recur;
+import com.tgac.logic.MiniKanren.Substitutions;
 import io.vavr.collection.Array;
 import io.vavr.collection.Map;
 import io.vavr.collection.Stream;
@@ -19,10 +19,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.tgac.functional.recursion.Recur.*;
 import static com.tgac.logic.Incomplete.incomplete;
-import static com.tgac.functional.recursion.Recur.done;
-import static com.tgac.functional.recursion.Recur.recur;
-import static com.tgac.functional.recursion.Recur.zip;
 
 /**
  * @author TGa
@@ -174,16 +172,18 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 				.named("separate");
 	}
 
-	static <T> java.util.stream.Stream<Unifiable<T>> runStream(Unifiable<T> x, Goal... goals) {
-		return bind(Stream.of(Substitutions.empty()), goals).get()
-				.map(s -> MiniKanren.reify(s, x).get())
+	default <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out) {
+		return bind(Stream.of(Substitutions.empty()), this).get()
+				.map(s -> MiniKanren.reify(s, out).get())
 				.toJavaStream();
 	}
 
-	static <T> List<Unifiable<T>> run(int i, Unifiable<T> x, Goal... goals) {
-		return runStream(x, goals)
-				.limit(i)
-				.collect(Collectors.toList());
+	default <T> Goal aggregate(Unifiable<T> var,
+			Function<java.util.stream.Stream<Unifiable<T>>, Goal> f) {
+		return s -> f.apply(bind(Stream.of(s), this).get()
+						.map(s1 -> MiniKanren.reify(s1, var).get())
+						.toJavaStream())
+				.apply(s);
 	}
 
 	static <A> Recur<Stream<A>> interleave(Array<Stream<A>> lists) {

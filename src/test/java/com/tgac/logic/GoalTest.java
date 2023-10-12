@@ -15,8 +15,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.Goal.run;
-import static com.tgac.logic.Goal.runStream;
 import static com.tgac.logic.Goal.separate;
 import static com.tgac.logic.Goals.appendo;
 import static com.tgac.logic.Goals.firsto;
@@ -29,6 +27,7 @@ import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@SuppressWarnings("unchecked")
 public class GoalTest {
 
 	public <T> Goal caro(
@@ -51,6 +50,10 @@ public class GoalTest {
 				.collect(Collectors.toList());
 		assertThat(collect)
 				.containsExactly(1, 2, 3, 4);
+	}
+	public static <T> java.util.stream.Stream<Unifiable<T>> runStream(Unifiable<T> x, Goal... goals) {
+		return Goal.success().and(goals)
+				.solve(x);
 	}
 
 	@Test
@@ -184,11 +187,14 @@ public class GoalTest {
 										.boxed()
 										.collect(Collectors.toList()))))
 				.collect(Collectors.toList());
+
 		System.out.println(run);
 		assertThat(run.get(0))
 				.isEqualTo(lval(Stream.range(0, 20)
 						.map(i -> 20 - i - 1)
-						.collect(LList.collector())));
+						.map(LVal::lval)
+						.collect(LList.collector()))
+						.get());
 	}
 
 	@Test
@@ -241,10 +247,9 @@ public class GoalTest {
 	@Test
 	public void shouldWritePalindrome() {
 		Unifiable<LList<Integer>> lst = lvar();
-		List<Unifiable<Integer>> collected = run(1, lst,
+		List<Unifiable<Integer>> collected = runStream(lst,
 				sameLengtho(lst, LList.ofAll(Stream.range(0, 200).collect(Collectors.toList()))),
 				palindromo2(lst))
-				.stream()
 				.findFirst()
 				.get()
 				.get()

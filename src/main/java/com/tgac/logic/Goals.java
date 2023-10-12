@@ -1,23 +1,8 @@
 package com.tgac.logic;
 
+import com.tgac.functional.exceptions.Exceptions;
 import com.tgac.functional.recursion.Recur;
-import io.vavr.Function1;
-import io.vavr.Function2;
-import io.vavr.Function3;
-import io.vavr.Function4;
-import io.vavr.Function5;
-import io.vavr.Function6;
-import io.vavr.Function7;
-import io.vavr.Function8;
-import io.vavr.Tuple;
-import io.vavr.Tuple1;
-import io.vavr.Tuple2;
-import io.vavr.Tuple3;
-import io.vavr.Tuple4;
-import io.vavr.Tuple5;
-import io.vavr.Tuple6;
-import io.vavr.Tuple7;
-import io.vavr.Tuple8;
+import io.vavr.*;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
 import io.vavr.collection.List;
@@ -32,8 +17,8 @@ import java.util.function.Supplier;
 
 import static com.tgac.functional.recursion.Recur.done;
 import static com.tgac.logic.Goal.defer;
+import static com.tgac.logic.Goal.failure;
 import static com.tgac.logic.Incomplete.incomplete;
-import static com.tgac.logic.LVar.lvar;
 @SuppressWarnings("Convert2MethodRef")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Goals {
@@ -41,7 +26,7 @@ public class Goals {
 	public static Goal firsto(Goal... goals) {
 		return s -> Arrays.stream(goals)
 				.map(g -> g.apply(s))
-				.filter(s1 -> Try.<MiniKanren.Substitutions>of(() -> s1.toOption().get()).isSuccess())
+				.filter(s1 -> Try.of(() -> s1.toOption().get()).isSuccess())
 				.findFirst()
 				.orElseGet(Stream::empty);
 	}
@@ -65,8 +50,8 @@ public class Goals {
 	}
 
 	public static <A> Goal membero(Unifiable<A> x, Unifiable<LList<A>> lst) {
-		Unifiable<A> a = lvar();
-		Unifiable<LList<A>> d = lvar();
+		Unifiable<A> a = LVar.lvar();
+		Unifiable<LList<A>> d = LVar.lvar();
 		return lst.unify(LList.of(a, d))
 				.and(a.unify(x).or(defer(() -> membero(x, d))));
 	}
@@ -93,7 +78,9 @@ public class Goals {
 
 	@SafeVarargs
 	public static <A> Goal matche(Unifiable<A> u, Case<A> head, Case<A>... cases) {
-		return Arrays.stream(cases).map(c -> c.apply(u)).reduce(head.apply(u), Goal::or);
+		return Arrays.stream(cases)
+				.map(c -> c.apply(u))
+				.reduce(head.apply(u), Goal::or);
 	}
 
 	public interface Case<A> extends Function<Unifiable<A>, Goal> {
@@ -123,7 +110,7 @@ public class Goals {
 	public static <A> Case<LList<A>> llist(int n, Function2<List<Unifiable<A>>, Unifiable<LList<A>>, Goal> f) {
 		List<Unifiable<A>> elements = List.fill(n, LVar::lvar);
 		return l -> elements.foldLeft(Tuple.of(l, Goal.success()), (lstAndGoal, a) -> {
-			Unifiable<LList<A>> d = lvar();
+			Unifiable<LList<A>> d = LVar.lvar();
 			return Tuple.of(d, lstAndGoal._2.and(lstAndGoal._1.unify(LList.of(a, d))));
 		}).apply((d, g) -> g.and(f.apply(elements, d)));
 	}
@@ -267,15 +254,33 @@ public class Goals {
 						.and(f.apply(t1, t2, t3, t4, t5, t6, t7, t8)));
 	}
 
+	public static <T> Case<T> lvar(Supplier<Goal> sup) {
+		return u -> s -> incomplete(() ->
+				MiniKanren.walkAll(s, u)
+						.map(v -> v.asVar()
+								.map(__ -> sup.get())
+								.getOrElse(() -> failure())
+								.apply(s)));
+	}
+
+	public static <T> Case<T> lval(Function1<T, Goal> f) {
+		return u -> s -> incomplete(() ->
+				MiniKanren.walkAll(s, u)
+						.map(v -> v.asVal()
+								.map(f)
+								.getOrElse(() -> failure())
+								.apply(s)));
+	}
+
 	public static <T1> Goal exist(Function1<Unifiable<T1>, Goal> f) {
-		return f.apply(lvar());
+		return f.apply(LVar.lvar());
 	}
 
 	public static <T1, T2> Goal exist(Function2<
 			Unifiable<T1>,
 			Unifiable<T2>,
 			Goal> f) {
-		return f.apply(lvar(), lvar());
+		return f.apply(LVar.lvar(), LVar.lvar());
 	}
 
 	public static <T1, T2, T3> Goal exist(Function3<
@@ -283,7 +288,7 @@ public class Goals {
 			Unifiable<T2>,
 			Unifiable<T3>,
 			Goal> f) {
-		return f.apply(lvar(), lvar(), lvar());
+		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar());
 	}
 
 	public static <T1, T2, T3, T4> Goal exist(Function4<
@@ -292,7 +297,7 @@ public class Goals {
 			Unifiable<T3>,
 			Unifiable<T4>,
 			Goal> f) {
-		return f.apply(lvar(), lvar(), lvar(), lvar());
+		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
 	}
 
 	public static <T1, T2, T3, T4, T5> Goal exist(Function5<
@@ -302,7 +307,7 @@ public class Goals {
 			Unifiable<T4>,
 			Unifiable<T5>,
 			Goal> f) {
-		return f.apply(lvar(), lvar(), lvar(), lvar(), lvar());
+		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
 	}
 
 	public static <T1, T2, T3, T4, T5, T6> Goal exist(Function6<
@@ -313,7 +318,7 @@ public class Goals {
 			Unifiable<T5>,
 			Unifiable<T6>,
 			Goal> f) {
-		return f.apply(lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
+		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, T7> Goal exist(Function7<
@@ -325,7 +330,7 @@ public class Goals {
 			Unifiable<T6>,
 			Unifiable<T7>,
 			Goal> f) {
-		return f.apply(lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
+		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, T7, T8> Goal exist(Function8<
@@ -338,7 +343,7 @@ public class Goals {
 			Unifiable<T7>,
 			Unifiable<T8>,
 			Goal> f) {
-		return f.apply(lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
+		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
 	}
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
@@ -347,7 +352,7 @@ public class Goals {
 						.map(v -> v.asVal()
 								.map(f)
 								.map(g -> g.apply(s))
-								.getOrElse(Stream::empty)));
+								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Cannot project %s. No value bound.", v))));
 	}
 
 	public static <T1, T2> Goal project(Unifiable<T1> v1, Unifiable<T2> v2, Function2<T1, T2, Goal> f) {

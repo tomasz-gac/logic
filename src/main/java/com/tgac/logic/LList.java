@@ -8,20 +8,11 @@ import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Spliterator;
-import java.util.Spliterators;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.IntFunction;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
+import java.util.stream.*;
 
 import static com.tgac.logic.Goal.defer;
 import static com.tgac.logic.LVal.lval;
@@ -96,14 +87,14 @@ public class LList<A> {
 				.map(Unifiable::get);
 	}
 
-	public static <A> Collector<A, ArrayList<A>, LList<A>> collector() {
-		return Collector.of(
+	public static <A> Collector<Unifiable<A>, ?, Unifiable<LList<A>>> collector() {
+		return Collector.<Unifiable<A>, ArrayList<Unifiable<A>>, Unifiable<LList<A>>> of(
 				ArrayList::new,
 				ArrayList::add,
 				(lhs, rhs) -> {
 					lhs.addAll(rhs);
 					return lhs;
-				}, l -> ofAll(l).get());
+				}, l -> ofAll(l.size(), l::get));
 	}
 
 	public static <A, B> Goal map(

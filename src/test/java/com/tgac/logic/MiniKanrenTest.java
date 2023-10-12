@@ -8,6 +8,7 @@ import io.vavr.collection.List;
 import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import lombok.val;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -15,19 +16,17 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.tgac.logic.Goal.runStream;
+import static com.tgac.logic.GoalTest.runStream;
 import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.LVar.lvar;
-import static com.tgac.logic.MiniKanren.Substitutions;
-import static com.tgac.logic.MiniKanren.reify;
-import static com.tgac.logic.MiniKanren.walk;
-import static com.tgac.logic.MiniKanren.walkAll;
+import static com.tgac.logic.MiniKanren.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author TGa
  */
-class MiniKanrenTest {
+@SuppressWarnings("OptionalGetWithoutIsPresent")
+public class MiniKanrenTest {
 	@Test
 	public void shouldFindX() {
 		Unifiable<Integer> x = lvar();
@@ -402,7 +401,17 @@ class MiniKanrenTest {
 	public void shouldWalkOption() {
 		Substitutions s = Substitutions.empty();
 		Unifiable<Option<Unifiable<Integer>>> u = lvar();
-
+		Unifiable<Option<Unifiable<Integer>>> v = lvar();
+		Unifiable<Integer> val = lvar();
+		Unifiable<Integer> val2 = lvar();
+		Assertions.assertThat(u.unify(Option.of(val2))
+						.and(v.unify(Option.of(val)))
+						.and(u.unify(v))
+						.and(val.unify(123))
+						.solve(val2)
+						.map(Unifiable::get)
+						.collect(Collectors.toList()))
+				.containsExactly(123);
 	}
 
 	private static <T> Optional<T> extractValue(Unifiable<T> variable, Substitutions subs) {

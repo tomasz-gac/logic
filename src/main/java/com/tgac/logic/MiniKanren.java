@@ -6,28 +6,8 @@ import com.tgac.functional.exceptions.Exceptions;
 import com.tgac.functional.recursion.MRecur;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
-import io.vavr.Tuple3;
-import io.vavr.Tuple4;
-import io.vavr.Tuple5;
-import io.vavr.Tuple6;
-import io.vavr.Tuple7;
-import io.vavr.Tuple8;
-import io.vavr.collection.Array;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.HashSet;
-import io.vavr.collection.LinkedHashMap;
-import io.vavr.collection.LinkedHashSet;
-import io.vavr.collection.List;
-import io.vavr.collection.PriorityQueue;
-import io.vavr.collection.Queue;
-import io.vavr.collection.Seq;
-import io.vavr.collection.Stream;
-import io.vavr.collection.Tree;
-import io.vavr.collection.TreeMap;
-import io.vavr.collection.TreeSet;
-import io.vavr.collection.Vector;
+import io.vavr.*;
+import io.vavr.collection.*;
 import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -43,13 +23,10 @@ import java.util.stream.Collector;
 import java.util.stream.StreamSupport;
 
 import static com.tgac.functional.exceptions.Exceptions.throwingBiOp;
-import static com.tgac.logic.LVal.lval;
-import static com.tgac.functional.recursion.MRecur.mdone;
-import static com.tgac.functional.recursion.MRecur.mrecur;
-import static com.tgac.functional.recursion.MRecur.none;
-import static com.tgac.functional.recursion.MRecur.ofRecur;
+import static com.tgac.functional.recursion.MRecur.*;
 import static com.tgac.functional.recursion.Recur.done;
 import static com.tgac.functional.recursion.Recur.recur;
+import static com.tgac.logic.LVal.lval;
 import static io.vavr.Predicates.not;
 
 /**
@@ -228,15 +205,6 @@ public class MiniKanren {
 	private static <T> Option<LList<T>> asLList(Object v) {
 		if (v instanceof LList) {
 			return Option.of((LList<T>) v);
-		} else {
-			return Option.none();
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <T> Option<Option<T>> asOption(Object v) {
-		if (v instanceof Option) {
-			return Option.of((Option<T>) v);
 		} else {
 			return Option.none();
 		}
