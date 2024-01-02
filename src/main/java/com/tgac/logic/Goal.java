@@ -1,8 +1,7 @@
 package com.tgac.logic;
 
-import com.tgac.functional.exceptions.Exceptions;
+import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
-import com.tgac.logic.MiniKanren.Substitutions;
 import io.vavr.collection.Array;
 import io.vavr.collection.Map;
 import io.vavr.collection.Stream;
@@ -19,13 +18,15 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static com.tgac.functional.recursion.Recur.*;
+import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.functional.recursion.Recur.recur;
+import static com.tgac.functional.recursion.Recur.zip;
 import static com.tgac.logic.Incomplete.incomplete;
 
 /**
  * @author TGa
  */
-public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
+public interface Goal extends Function<Package, Stream<Package>> {
 
 	static Goal goal(Goal g) {
 		return g;
@@ -39,6 +40,14 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 		return new Disjunction().or(this).or(goals);
 	}
 
+	static Disjunction conde(Goal... goals) {
+		return new Disjunction().or(goals);
+	}
+
+	static Conjunction all(Goal... goals) {
+		return new Conjunction().and(goals);
+	}
+
 	default Goal named(String name) {
 		return NamedGoal.of(name, this);
 	}
@@ -50,7 +59,7 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 	default Goal debug(String name, Map<String, Unifiable<?>> vars) {
 		return s -> {
 			System.out.println("before " + name + ": " + printVars(s, vars));
-			Stream<Substitutions> ss = apply(s);
+			Stream<Package> ss = apply(s);
 			System.out.println("after " + name + ": " + ss.toJavaStream()
 					.map(s1 -> printVars(s1, vars))
 					.collect(Collectors.joining("\n")));
@@ -77,7 +86,7 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 		}
 
 		@Override
-		public Stream<Substitutions> apply(Substitutions s) {
+		public Stream<Package> apply(Package s) {
 			return incomplete(() -> interleave(
 					clauses.stream()
 							.map(conjunction -> conjunction.apply(s))
@@ -132,13 +141,53 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 		}
 
 		@Override
-		public Stream<Substitutions> apply(Substitutions s) {
-			return incomplete(() -> bind(Stream.of(s), clauses.toArray(new Goal[0])));
+		public Stream<Package> apply(Package s) {
+			return incomplete(() -> bind(Stream.of(s), Array.ofAll(clauses)));
 		}
 
 		@Override
 		public String toString() {
 			return "(" + clauses.stream().map(Objects::toString).collect(Collectors.joining(" && ")) + ")";
+		}
+	}
+
+	static Goal conda(Goal... goals) {
+		return a -> incomplete(() -> ifa(Array.of(goals).map(g -> g.apply(a))));
+	}
+
+	static Recur<Stream<Package>> ifa(Array<Stream<Package>> streams) {
+		if (streams.isEmpty()) {
+			return done(Stream.empty());
+		} else {
+			Stream<Package> a = streams.head();
+			if (a instanceof Incomplete) {
+				return ((Incomplete<Package>) a).getRest()
+						.flatMap(s -> ifa(Array.of(s).appendAll(streams.tail())));
+			} else if (a.isEmpty()) {
+				return recur(() -> ifa(streams.tail()));
+			} else {
+				return done(a);
+			}
+		}
+	}
+
+	static Goal condu(Goal... goals) {
+		return a -> incomplete(() -> ifu(Array.of(goals).map(g -> g.apply(a))));
+	}
+
+	static Recur<Stream<Package>> ifu(Array<Stream<Package>> streams) {
+		if (streams.isEmpty()) {
+			return done(Stream.empty());
+		} else {
+			Stream<Package> a = streams.head();
+			if (a instanceof Incomplete) {
+				return ((Incomplete<Package>) a).getRest()
+						.flatMap(s -> ifu(Array.of(s).appendAll(streams.tail())));
+			} else if (a.isEmpty()) {
+				return recur(() -> ifu(streams.tail()));
+			} else {
+				return done(Stream.of(a.head()));
+			}
 		}
 	}
 
@@ -173,7 +222,7 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 	}
 
 	default <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out) {
-		return bind(Stream.of(Substitutions.empty()), this).get()
+		return bind(Stream.of(Package.empty()), this).get()
 				.map(s -> MiniKanren.reify(s, out).get())
 				.toJavaStream();
 	}
@@ -196,8 +245,7 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 				// TODO : can this be somehow simplified to not require casting?
 				return ((Incomplete<A>) fst).getRest()
 						.flatMap(s -> interleave(rst.prepend(s)));
-			}
-			if (fst.isEmpty()) {
+			} else if (fst.isEmpty()) {
 				return recur(() -> interleave(rst));
 			} else {
 				return done(Stream.cons(fst.head(),
@@ -207,16 +255,16 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 		}
 	}
 
-	static Recur<Stream<Substitutions>> bind(Stream<Substitutions> s, Goal... gs) {
-		return Arrays.stream(gs)
+	static Recur<Stream<Package>> bind(Stream<Package> s, Array<Goal> gs) {
+		return gs.toJavaStream()
 				.reduce(done(s), (subs, g) -> subs.flatMap(s1 -> bind(s1, g)),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	static Recur<Stream<Substitutions>> bind(Stream<Substitutions> s, Goal g) {
+	static Recur<Stream<Package>> bind(Stream<Package> s, Goal g) {
 		if (s instanceof Incomplete) {
 			// TODO : can this be somehow simplified to not require casting?
-			return ((Incomplete<Substitutions>) s).getRest()
+			return ((Incomplete<Package>) s).getRest()
 					.flatMap(s1 -> bind(s1, g));
 		}
 		if (s.isEmpty()) {
@@ -226,7 +274,7 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 		}
 	}
 
-	static String printVars(Substitutions s, Map<String, Unifiable<?>> vars) {
+	static String printVars(Package s, Map<String, Unifiable<?>> vars) {
 		return vars.toJavaStream()
 				.map(v -> v._1 + " : " + MiniKanren.walkAll(s, v._2).get().toString())
 				.collect(Collectors.joining(", "));
@@ -239,8 +287,8 @@ public interface Goal extends Function<Substitutions, Stream<Substitutions>> {
 		Goal goal;
 
 		@Override
-		public Stream<Substitutions> apply(Substitutions substitutions) {
-			return goal.apply(substitutions);
+		public Stream<Package> apply(Package aPackage) {
+			return goal.apply(aPackage);
 		}
 		@Override
 		public String toString() {

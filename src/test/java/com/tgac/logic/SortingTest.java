@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 
 import static com.tgac.logic.Goal.defer;
 import static com.tgac.logic.Goal.failure;
-import static com.tgac.logic.GoalTest.runStream;
 import static com.tgac.logic.Goal.success;
+import static com.tgac.logic.GoalTest.runStream;
 import static com.tgac.logic.Goals.appendo;
 import static com.tgac.logic.Goals.firsto;
 import static com.tgac.logic.Goals.llist;

@@ -1,18 +1,37 @@
 package com.tgac.logic;
 
+import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
 import com.tgac.functional.Streams;
-import com.tgac.functional.exceptions.Exceptions;
 import com.tgac.functional.recursion.MRecur;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
-import io.vavr.*;
-import io.vavr.collection.*;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
+import io.vavr.Tuple3;
+import io.vavr.Tuple4;
+import io.vavr.Tuple5;
+import io.vavr.Tuple6;
+import io.vavr.Tuple7;
+import io.vavr.Tuple8;
+import io.vavr.collection.Array;
+import io.vavr.collection.HashMap;
+import io.vavr.collection.HashSet;
+import io.vavr.collection.LinkedHashMap;
+import io.vavr.collection.LinkedHashSet;
+import io.vavr.collection.List;
+import io.vavr.collection.PriorityQueue;
+import io.vavr.collection.Queue;
+import io.vavr.collection.Seq;
+import io.vavr.collection.Stream;
+import io.vavr.collection.Tree;
+import io.vavr.collection.TreeMap;
+import io.vavr.collection.TreeSet;
+import io.vavr.collection.Vector;
 import io.vavr.control.Option;
+import io.vavr.control.Try;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
 
 import java.util.Arrays;
 import java.util.Spliterators;
@@ -22,8 +41,11 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.StreamSupport;
 
-import static com.tgac.functional.exceptions.Exceptions.throwingBiOp;
-import static com.tgac.functional.recursion.MRecur.*;
+import static com.tgac.functional.Exceptions.throwingBiOp;
+import static com.tgac.functional.recursion.MRecur.mdone;
+import static com.tgac.functional.recursion.MRecur.mrecur;
+import static com.tgac.functional.recursion.MRecur.none;
+import static com.tgac.functional.recursion.MRecur.ofRecur;
 import static com.tgac.functional.recursion.Recur.done;
 import static com.tgac.functional.recursion.Recur.recur;
 import static com.tgac.logic.LVal.lval;
@@ -34,41 +56,6 @@ import static io.vavr.Predicates.not;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MiniKanren {
-	@Value
-	@RequiredArgsConstructor(access = AccessLevel.PRIVATE, staticName = "of")
-	public static class Substitutions {
-		// substitutions
-		HashMap<LVar<?>, Unifiable<?>> s;
-		// constraints
-		List<HashMap<LVar<?>, Unifiable<?>>> c;
-		public static Substitutions empty() {
-			return new Substitutions(HashMap.empty(), List.empty());
-		}
-		public static Substitutions ofS(HashMap<LVar<?>, Unifiable<?>> s) {
-			return new Substitutions(s, List.empty());
-		}
-
-		<T> Substitutions put(LVar<T> key, Unifiable<T> value) {
-			return Substitutions.of(s.put(key, value), c);
-		}
-
-		Substitutions putConstraint(HashMap<LVar<?>, Unifiable<?>> constraint) {
-			return Substitutions.of(s, c.prepend(constraint));
-		}
-
-		@SuppressWarnings("unchecked")
-		<T> Option<Unifiable<T>> get(LVar<T> v) {
-			return s.get(v).map(w -> (Unifiable<T>) w);
-		}
-
-		public long size() {
-			return s.size();
-		}
-
-		public Substitutions withoutConstraints() {
-			return Substitutions.of(s, List.empty());
-		}
-	}
 
 	private static final AtomicReference<Stream<Tuple2<Class<?>, Collector<?, ?, ?>>>> COLLECTORS =
 			new AtomicReference<>(
@@ -100,11 +87,11 @@ public class MiniKanren {
 				.map(c -> (Collector<Object, ?, ?>) c);
 	}
 
-	private static <T> Recur<Substitutions> extendNoCheck(Substitutions s, LVar<T> lhs, Unifiable<T> rhs) {
+	private static <T> Recur<Package> extendNoCheck(Package s, LVar<T> lhs, Unifiable<T> rhs) {
 		return done(s.put(lhs, rhs));
 	}
 
-	public static <T> Recur<Unifiable<T>> walk(Substitutions s, Unifiable<T> v) {
+	public static <T> Recur<Unifiable<T>> walk(Package s, Unifiable<T> v) {
 		return v.asVar()
 				.flatMap(s::get)
 				.map(rhs -> rhs.asVar()
@@ -115,26 +102,26 @@ public class MiniKanren {
 				.getOrElse(() -> done(v));
 	}
 
-	public static <T> Recur<Boolean> occursCheck(Substitutions s, LVar<T> x, Unifiable<T> v) {
+	public static <T> Recur<Boolean> occursCheck(Package s, LVar<T> x, Unifiable<T> v) {
 		return walk(s, v)
 				.map(result -> result.asVar()
 						.map(vv -> vv == x)
 						.getOrElse(false));
 	}
 
-	public static <T> Recur<Substitutions> extend(Substitutions s, LVar<T> lhs, Unifiable<T> rhs) {
+	public static <T> Recur<Package> extend(Package s, LVar<T> lhs, Unifiable<T> rhs) {
 		return occursCheck(s, lhs, rhs)
 				.flatMap(occurs -> occurs ? done(s) :
 						extendNoCheck(s, lhs, rhs));
 	}
 
 	private interface Extender {
-		<T> Recur<Substitutions> apply(Substitutions s, LVar<T> lhs, Unifiable<T> rhs);
+		<T> Recur<Package> apply(Package s, LVar<T> lhs, Unifiable<T> rhs);
 	}
 
-	private static <T> MRecur<Substitutions> unify(
+	private static <T> MRecur<Package> unify(
 			Extender extend,
-			Substitutions s,
+			Package s,
 			Unifiable<T> lhs,
 			Unifiable<T> rhs) {
 		return ofRecur(Recur.zip(walk(s, lhs), walk(s, rhs)))
@@ -164,7 +151,7 @@ public class MiniKanren {
 										.getOrElse(MRecur::none)));
 	}
 
-	private static <T> MRecur<Substitutions> unifyIterable(Extender extender, Substitutions s, Iterable<Object> l, Iterable<Object> r) {
+	private static <T> MRecur<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
 		if (!l.iterator().hasNext() && r.iterator().hasNext()) {
 			return mdone(s);
 		}
@@ -184,7 +171,7 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> Unifiable<T> wrapUnifiable(Object v) {
+	public static <T> Unifiable<T> wrapUnifiable(Object v) {
 		if (v instanceof Unifiable) {
 			return (Unifiable<T>) v;
 		} else {
@@ -193,34 +180,32 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> Option<Iterable<T>> asIterable(Object v) {
-		if (v instanceof Iterable) {
-			return Option.of((Iterable<T>) v);
-		} else {
-			return Option.none();
-		}
+	public static <T> Option<Iterable<T>> asIterable(Object v) {
+		return Try.success(v)
+				.filter(Iterable.class::isInstance)
+				.mapTry(it -> (Iterable<T>) it)
+				.toOption();
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> Option<LList<T>> asLList(Object v) {
-		if (v instanceof LList) {
-			return Option.of((LList<T>) v);
-		} else {
-			return Option.none();
-		}
+	public static <T> Option<LList<T>> asLList(Object v) {
+		return Try.success(v)
+				.filter(LList.class::isInstance)
+				.mapTry(it -> (LList<T>) it)
+				.toOption();
 	}
 
-	public static <T> MRecur<Substitutions> unify(Substitutions s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MRecur<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return unify(MiniKanren::extend, s, lhs, rhs)
 				.flatMap(s1 -> verifyUnify(s1, s));
 	}
 
-	public static <T> MRecur<Substitutions> unifyUnsafe(Substitutions s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MRecur<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return unify(MiniKanren::extendNoCheck, s, lhs, rhs)
 				.flatMap(s1 -> verifyUnify(s1, s));
 	}
 
-	public static <T> Recur<Unifiable<T>> walkAll(Substitutions s, Unifiable<T> u) {
+	public static <T> Recur<Unifiable<T>> walkAll(Package s, Unifiable<T> u) {
 		return walk(s, u)
 				.flatMap(v -> v.asVar()
 						.map(Recur::<Unifiable<T>>done)
@@ -242,7 +227,7 @@ public class MiniKanren {
 						.getOrElse(done(v)));
 	}
 
-	private static <T> Recur<Unifiable<T>> walkIterable(Substitutions s, Iterable<Object> iterable) {
+	private static <T> Recur<Unifiable<T>> walkIterable(Package s, Iterable<Object> iterable) {
 		Collector<Object, ?, ?> collector = MiniKanren.getCollector(iterable)
 				.getOrElseThrow(Exceptions.format(RuntimeException::new,
 						"Unsupported iterable type: %s", iterable));
@@ -259,7 +244,7 @@ public class MiniKanren {
 				.orElseGet(() -> done(wrapUnifiable(iterable)));
 	}
 
-	private static <T> Option<Recur<Unifiable<T>>> walkTuple(Substitutions s, Iterable<Object> tuple) {
+	private static <T> Option<Recur<Unifiable<T>>> walkTuple(Package s, Iterable<Object> tuple) {
 		return toJavaStream(tuple)
 				// walkAll accepts Unifiable,
 				// but some elements may be regular types.
@@ -283,11 +268,11 @@ public class MiniKanren {
 				.orElseGet(Option::none);
 	}
 
-	public static <T> Recur<Unifiable<T>> reify(Substitutions s, Unifiable<T> item) {
+	public static <T> Recur<Unifiable<T>> reify(Package s, Unifiable<T> item) {
 		return Recur.zip(
 						walkAll(s.withoutConstraints(), item),
-						walkAllConstraints(s.getC(), s))
-				.flatMap(vc -> reifyS(Substitutions.empty(), vc._1)
+						walkAllConstraints(s.getSConstraints(), s))
+				.flatMap(vc -> reifyS(Package.empty(), vc._1)
 						.map(vc::append))
 				.map(vcr -> vcr
 						.map1(v -> walkAll(vcr._3, v))
@@ -302,7 +287,7 @@ public class MiniKanren {
 
 	private static Recur<List<HashMap<LVar<?>, Unifiable<?>>>> walkAllConstraints(
 			List<HashMap<LVar<?>, Unifiable<?>>> constraints,
-			Substitutions s) {
+			Package s) {
 		return constraints.toJavaStream()
 				.map(c -> walkAllConstraint(s, c)
 						.map(java.util.stream.Stream::of))
@@ -311,7 +296,7 @@ public class MiniKanren {
 				.orElseGet(() -> done(java.util.stream.Stream.empty()))
 				.map(stream -> stream.collect(List.collector()));
 	}
-	private static Recur<HashMap<LVar<?>, Unifiable<?>>> walkAllConstraint(Substitutions s, HashMap<LVar<?>, Unifiable<?>> c) {
+	private static Recur<HashMap<LVar<?>, Unifiable<?>>> walkAllConstraint(Package s, HashMap<LVar<?>, Unifiable<?>> c) {
 		return c.toJavaStream()
 				.map(valSub -> valSub.map(
 								val -> walkAll(s, val)
@@ -326,7 +311,7 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Recur<Substitutions> reifyS(Substitutions s, Unifiable<?> val) {
+	public static Recur<Package> reifyS(Package s, Unifiable<?> val) {
 		return walkAll(s, val)
 				.flatMap(v -> v.asVar()
 						.map(u -> extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())))
@@ -336,10 +321,10 @@ public class MiniKanren {
 								.map(it -> reifyIterable(s, it)))
 						.orElse(() -> v.asVal()
 								.flatMap(w -> Types.cast(w, LList.class))
-								.map(LList -> reifyLList(s, LList)))
+								.map(llist -> reifyLList(s, llist)))
 						.getOrElse(done(s)));
 	}
-	private static Recur<Substitutions> reifyLList(Substitutions s, LList<?> llist) {
+	private static Recur<Package> reifyLList(Package s, LList<?> llist) {
 		if (llist.isEmpty()) {
 			return done(s);
 		} else {
@@ -348,7 +333,7 @@ public class MiniKanren {
 		}
 	}
 
-	private static Recur<Substitutions> reifyIterable(Substitutions s, Iterable<Object> l) {
+	private static Recur<Package> reifyIterable(Package s, Iterable<Object> l) {
 		return toJavaStream(l)
 				.map(MiniKanren::wrapUnifiable)
 				.reduce(done(s),
@@ -357,40 +342,41 @@ public class MiniKanren {
 						throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	public static <T> MRecur<Substitutions> separate(Substitutions s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MRecur<Package> separate(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return MRecur.of(unify(s.withoutConstraints(), lhs, rhs)
 				.getRecur()
 				.map(s1 -> verifySeparate(s1, s)));
 	}
 
-	private static Option<Substitutions> verifySeparate(Option<Substitutions> s, Substitutions a) {
+	private static Option<Package> verifySeparate(Option<Package> s, Package a) {
 		if (s.isEmpty()) {
 			return Option.of(a);
 		} else {
-			Substitutions result = s.get();
-			if (result.getS() == a.getS()) {
+			Package result = s.get();
+			if (result.getSubstitutions() == a.getSubstitutions()) {
 				return Option.none();
 			} else {
 				return Option.of(
-						a.putConstraint(prefixS(a.getS(), result.getS())));
+						a.putSepConstraint(prefixS(a.getSubstitutions(), result.getSubstitutions())));
 			}
 		}
 	}
 
-	private static HashMap<LVar<?>, Unifiable<?>> prefixS(
+	public static HashMap<LVar<?>, Unifiable<?>> prefixS(
 			HashMap<LVar<?>, Unifiable<?>> s,
 			HashMap<LVar<?>, Unifiable<?>> extendedS) {
 		return extendedS.filter(kv -> !s.keySet().contains(kv._1));
 	}
 
-	private static MRecur<Substitutions> verifyUnify(Substitutions newSubstitutions, Substitutions a) {
+	private static MRecur<Package> verifyUnify(Package newPackage, Package a) {
 		// substitutions haven't changed, so constraints are not violated
-		if (newSubstitutions.getS() == a.getS()) {
+		if (newPackage.getSubstitutions() == a.getSubstitutions()) {
 			return mdone(a);
 		} else {
-			return verifyAndSimplifyConstraints(a.getC(), List.empty(), newSubstitutions.getS())
+			return verifyAndSimplifyConstraints(a.getSConstraints(), List.empty(), newPackage.getSubstitutions())
 					.ifElse(
-							c -> mdone(Substitutions.of(newSubstitutions.getS(), c)),
+							// TODO : verify
+							c -> mdone(Package.of(newPackage.getSubstitutions(), c, a.getDomains(), a.getConstraints())),
 							MRecur::none);
 		}
 	}
@@ -440,14 +426,14 @@ public class MiniKanren {
 				.map(t -> t.map(applyOnBoth(Unifiable::getObjectUnifiable)))
 				.reduce(mdone(s),
 						(acc, lr) -> acc.flatMap(s1 ->
-								unify(Substitutions.ofS(s1), lr._1, lr._2)
-										.map(Substitutions::getS)),
+								unify(Package.empty().extendS(s1), lr._1, lr._2)
+										.map(Package::getSubstitutions)),
 						throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	private static Recur<List<HashMap<LVar<?>, Unifiable<?>>>> purify(
 			List<HashMap<LVar<?>, Unifiable<?>>> c,
-			Substitutions r) {
+			Package r) {
 		return c.toJavaStream()
 				.map(cc -> purifySingle(cc, r)
 						.map(java.util.stream.Stream::of))
@@ -461,7 +447,7 @@ public class MiniKanren {
 
 	private static Recur<HashMap<LVar<?>, Unifiable<?>>> purifySingle(
 			HashMap<LVar<?>, Unifiable<?>> constraints,
-			Substitutions r) {
+			Package r) {
 		if (constraints.isEmpty()) {
 			return done(HashMap.empty());
 		} else {
@@ -478,7 +464,7 @@ public class MiniKanren {
 	/**
 	 * Checks whether any item within v is unbound within r
 	 */
-	private static Recur<Boolean> anyVar(Unifiable<?> v, Substitutions r) {
+	private static Recur<Boolean> anyVar(Unifiable<?> v, Package r) {
 		return v.asVar()
 				.map(lvar -> walk(r, lvar)
 						.map(rv -> rv == lvar))
@@ -547,7 +533,7 @@ public class MiniKanren {
 				.apply(MiniKanren::zip);
 	}
 
-	private static Option<Iterable<Object>> tupleAsIterable(Object tuple) {
+	public static Option<Iterable<Object>> tupleAsIterable(Object tuple) {
 		return asIterable(tuple, Tuple.class, Tuple::toSeq)
 				.orElse(() -> asIterable(tuple, Tuple2.class, Tuple2::toSeq))
 				.orElse(() -> asIterable(tuple, Tuple3.class, Tuple3::toSeq))

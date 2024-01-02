@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 public class LVar<T> implements Unifiable<T> {
 	private final String name;
 
-	private LVar() {
+	LVar() {
 		name = "_." + System.identityHashCode(this);
 	}
 
@@ -23,7 +23,7 @@ public class LVar<T> implements Unifiable<T> {
 	}
 
 	public static <T> Unifiable<T> lvar(String name) {
-		return new LVar<T>(name);
+		return new LVar<>(name);
 	}
 
 	@Override

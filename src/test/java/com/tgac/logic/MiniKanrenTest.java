@@ -19,7 +19,9 @@ import java.util.stream.IntStream;
 import static com.tgac.logic.GoalTest.runStream;
 import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.LVar.lvar;
-import static com.tgac.logic.MiniKanren.*;
+import static com.tgac.logic.MiniKanren.reify;
+import static com.tgac.logic.MiniKanren.walk;
+import static com.tgac.logic.MiniKanren.walkAll;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -30,7 +32,7 @@ public class MiniKanrenTest {
 	@Test
 	public void shouldFindX() {
 		Unifiable<Integer> x = lvar();
-		val subs = MiniKanren.unify(Substitutions.empty(), x, lval(3)).get().get();
+		val subs = MiniKanren.unify(Package.empty(), x, lval(3)).get().get();
 		Optional<Integer> y = extractValue(x, subs);
 		assertThat(y)
 				.hasValue(3);
@@ -40,7 +42,7 @@ public class MiniKanrenTest {
 	public void shouldFindXWhenNotGround() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		val subs = MiniKanren.unify(Substitutions.empty(), x, y).get().get();
+		val subs = MiniKanren.unify(Package.empty(), x, y).get().get();
 		Unifiable<Integer> z = walk(subs, x).get();
 		assertThat(z)
 				.isEqualTo(y);
@@ -50,7 +52,7 @@ public class MiniKanrenTest {
 	public void shouldFindZAfterSubstitution() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> z = lvar();
-		val subs = MiniKanren.unify(Substitutions.empty(), x, lval(3)).get().get();
+		val subs = MiniKanren.unify(Package.empty(), x, lval(3)).get().get();
 		val s2 = MiniKanren.unify(subs, z, x).get().get();
 		Optional<Integer> y = extractValue(z, s2);
 		assertThat(y)
@@ -61,7 +63,7 @@ public class MiniKanrenTest {
 	public void shouldNotExtendRecursion() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Substitutions subst = MiniKanren.unify(Substitutions.empty(), x, y).get().get();
+		Package subst = MiniKanren.unify(Package.empty(), x, y).get().get();
 		assertThat(MiniKanren.unify(subst, y, x).get().get())
 				.isEqualTo(subst);
 	}
@@ -72,11 +74,11 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
 		Unifiable<Integer> q = lvar();
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, x, y).get().get();
 		s = MiniKanren.unify(s, y, z).get().get();
 		s = MiniKanren.unify(s, z, q).get().get();
-		Substitutions seq = MiniKanren.unify(s, q, x).get().get();
+		Package seq = MiniKanren.unify(s, q, x).get().get();
 		assertThat(seq)
 				.isEqualTo(s);
 	}
@@ -87,7 +89,7 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
 		Unifiable<Integer> q = lvar();
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, y, z).get().get();
 		s = MiniKanren.unify(s, z, q).get().get();
 		val t = s;
@@ -102,7 +104,7 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
 
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, z, x).get().get();
 		s = MiniKanren.unify(s, y, x).get().get();
 		s = MiniKanren.unify(s, x, lval(3)).get().get();
@@ -117,7 +119,7 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, x, y).get().get();
 		s = MiniKanren.unify(s, x, z).get().get();
 		s = MiniKanren.unify(s, y, lval(3)).get().get();
@@ -131,10 +133,10 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, x, y).get().get();
 		s = MiniKanren.unify(s, x, z).get().get();
-		Substitutions t = MiniKanren.unify(s, y, z).get().get();
+		Package t = MiniKanren.unify(s, y, z).get().get();
 		assertThat(t)
 				.isEqualTo(s);
 	}
@@ -144,7 +146,7 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, x, y).get().get();
 		s = MiniKanren.unify(s, x, z).get().get();
 		s = MiniKanren.unify(s, y, lval(3)).get().get();
@@ -161,7 +163,7 @@ public class MiniKanrenTest {
 				.boxed()
 				.collect(List.collector());
 
-		Substitutions s = MiniKanren.unify(Substitutions.empty(),
+		Package s = MiniKanren.unify(Package.empty(),
 				lval(xs), lval(ys.map(LVal::lval))).get().get();
 
 		assertThat(xs.toStream()
@@ -188,7 +190,7 @@ public class MiniKanrenTest {
 		java.util.List<Long> times1 = new ArrayList<>();
 		for (int i = 0; i < 5; ++i) {
 			long start = System.nanoTime();
-			Substitutions s = Substitutions.empty();
+			Package s = Package.empty();
 			s = MiniKanren.unify(s, x, y).get().get();
 			s = MiniKanren.unify(s, y, lval(vals)).get().get();
 			s = MiniKanren.unify(s, y, lval(vs)).get().get();
@@ -221,7 +223,7 @@ public class MiniKanrenTest {
 				lval("Anthony"),
 				lvar("female"));
 
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, x, lval(t1)).get().get();
 		s = MiniKanren.unify(s, lval(t1), lval(t2)).get().get();
 
@@ -250,7 +252,7 @@ public class MiniKanrenTest {
 				"v1", Tuple.of(3, lval(1)),
 				"v2", Tuple.of(4, lvar("v2")));
 
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, x, lval(m1)).get().get();
 		s = MiniKanren.unify(s, lval(m1), lval(m2)).get().get();
 
@@ -295,7 +297,7 @@ public class MiniKanrenTest {
 				.map(i -> buildUni(i, 1))
 				.collect(List.collector());
 
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, lval(ints), lval(ints2)).get().get();
 		val listUnifiable = walk(s, lval(ints)).get();
 		assertThat(
@@ -325,7 +327,7 @@ public class MiniKanrenTest {
 				.map(i -> buildUni(i, 1))
 				.collect(List.collector());
 
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, lval(ints), lval(ints2)).get().get();
 		s = MiniKanren.unify(s, x, lval(ints)).get().get();
 
@@ -341,7 +343,7 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
 
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		s = MiniKanren.unify(s, x, y).get().get();
 		s = MiniKanren.unify(s, z, lval(3)).get().get();
 
@@ -368,7 +370,7 @@ public class MiniKanrenTest {
 						.or(x.unify(y), x.unify(3), y.unify(4))
 						.or(x.unify(y), x.unify(3))
 						.or(x.unify(y), x.unify(3), y.unify(3))
-						.apply(Substitutions.empty())
+						.apply(Package.empty())
 						.map(s -> reify(s, lval(Tuple.of(x, y))).get())
 						.collect(Collectors.toList());
 		assertThat(result.get(0).get())
@@ -399,7 +401,7 @@ public class MiniKanrenTest {
 
 	@Test
 	public void shouldWalkOption() {
-		Substitutions s = Substitutions.empty();
+		Package s = Package.empty();
 		Unifiable<Option<Unifiable<Integer>>> u = lvar();
 		Unifiable<Option<Unifiable<Integer>>> v = lvar();
 		Unifiable<Integer> val = lvar();
@@ -414,7 +416,7 @@ public class MiniKanrenTest {
 				.containsExactly(123);
 	}
 
-	private static <T> Optional<T> extractValue(Unifiable<T> variable, Substitutions subs) {
+	private static <T> Optional<T> extractValue(Unifiable<T> variable, Package subs) {
 		return MiniKanren.walk(subs, variable).get()
 				.asVal()
 				.toJavaOptional();

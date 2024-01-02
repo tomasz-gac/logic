@@ -6,6 +6,7 @@ import io.vavr.collection.Stream;
 import io.vavr.control.Either;
 import io.vavr.control.Option;
 import lombok.val;
+import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -549,5 +550,35 @@ public class GoalTest {
 				l.unify(2).or(l.unify(4)),
 				l.unify(3)))
 				.collect(Collectors.toList()));
+	}
+
+	@Test
+	public void shouldReturnFromSingleGoalThatSucceeds() {
+		Unifiable<Integer> x = lvar();
+		List<Integer> results = Goal.conda(
+						x.separate(x),
+						x.unify(1).or(x.unify(2)),
+						x.unify(3))
+				.solve(x)
+				.map(Unifiable::get)
+				.collect(Collectors.toList());
+
+		Assertions.assertThat(results)
+				.containsExactly(1, 2);
+	}
+
+	@Test
+	public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
+		Unifiable<Integer> x = lvar();
+		List<Integer> results = Goal.condu(
+						x.separate(x),
+						x.unify(1).or(x.unify(2)),
+						x.unify(3))
+				.solve(x)
+				.map(Unifiable::get)
+				.collect(Collectors.toList());
+
+		Assertions.assertThat(results)
+				.containsExactly(1);
 	}
 }

@@ -1,0 +1,127 @@
+package com.tgac.logic.cKanren;
+
+import com.tgac.functional.recursion.Recur;
+import com.tgac.logic.Goal;
+import com.tgac.logic.MiniKanren;
+import com.tgac.logic.Package;
+import com.tgac.logic.Unifiable;
+import com.tgac.logic.cKanren.parameters.EnforceConstraints;
+import com.tgac.logic.cKanren.parameters.ProcessPrefix;
+import com.tgac.logic.cKanren.parameters.ReifyConstraints;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
+import io.vavr.collection.List;
+import io.vavr.collection.Stream;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.stream.StreamSupport;
+
+import static com.tgac.functional.recursion.MRecur.mdone;
+import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.functional.recursion.Recur.recur;
+import static com.tgac.logic.Incomplete.incomplete;
+import static com.tgac.logic.MiniKanren.prefixS;
+import static com.tgac.logic.MiniKanren.reifyS;
+import static com.tgac.logic.MiniKanren.walkAll;
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class CKanren {
+
+	public static final AtomicReference<ProcessPrefix> PROCESS_PREFIX = new AtomicReference<>(
+			(prefix, constraints) -> mdone(s -> mdone(s.extendS(prefix))));
+	public static final AtomicReference<EnforceConstraints> ENFORCE_CONSTRAINTS = new AtomicReference<>(x -> Stream::of);
+	public static final AtomicReference<ReifyConstraints> REIFY_CONSTRAINTS = new AtomicReference<>(
+			new ReifyConstraints() {
+				@Override
+				public <A> Function<Package, Unifiable<A>> reify(Unifiable<A> unifiable, Package renameSubstitutions) {
+					return s -> unifiable;
+				}
+			});
+
+	public static Goal constructGoal(PackageOp fm) {
+		return s -> incomplete(() ->
+				fm.apply(s)
+						.map(Stream::of)
+						.resumeWith(Stream::empty));
+	}
+
+	private static <T> PackageOp unifyC(Unifiable<T> u, Unifiable<T> v) {
+		return s -> MiniKanren.unify(s, u, v)
+				.flatMap(s1 -> s == s1 ?
+						mdone(s) :
+						PROCESS_PREFIX.get()
+								.process(prefixS(s.getSubstitutions(), s1.getSubstitutions()), s1.getConstraints())
+								.flatMap(oc -> oc.apply(s.withSubstitutionsFrom(s1))));
+	}
+
+	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
+		return constructGoal(unifyC(u, v));
+	}
+
+	public static Recur<PackageOp> runConstraints(Unifiable<?> u, List<Constraint> c) {
+		if (c.isEmpty()) {
+			return done(PackageOp.identity());
+		} else if (anyRelevantVar(u, c.head())) {
+			return done(remRun(c.head()))
+					.flatMap(remRun -> runConstraints(u, c.tail())
+							.map(rc -> p -> remRun.apply(p).flatMap(rc)));
+		} else {
+			return recur(() -> runConstraints(u, c.tail()));
+		}
+	}
+
+	private static PackageOp remRun(Constraint c) {
+		return p -> p.getConstraints().contains(c) ?
+				c.apply(p.withoutConstraint(c)) :
+				mdone(p);
+	}
+
+	public static <T> Stream<Unifiable<T>> reify(Package s, Unifiable<T> x) {
+		return ENFORCE_CONSTRAINTS.get().enforce(x).apply(s)
+				.flatMap(s1 -> incomplete(() -> calculateSubstitutionAndRenamePackage(x, s1)
+						.flatMap(vr ->
+								vr._2.getSubstitutions().isEmpty() ?
+										done(vr._1) :
+										walkAll(vr._2, vr._1)
+												.map(result ->
+														s1.getConstraints().isEmpty() ?
+																result :
+																reifyConstraints(s1, vr, result)))
+						.map(Stream::of)));
+	}
+
+	private static <T> Unifiable<T> reifyConstraints(Package s1, Tuple2<Unifiable<T>, Package> vr, Unifiable<T> result) {
+		return REIFY_CONSTRAINTS.get()
+				.reify(result, vr._2)
+				.apply(s1);
+	}
+	private static <T> Recur<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {
+		return walkAll(s1, x)
+				.flatMap(v -> reifyS(Package.empty(), v)
+						.map(r -> Tuple.of(v, r)));
+	}
+
+	private static boolean anyRelevantVar(Unifiable<?> u, Constraint c) {
+		return u.asVar()
+				.filter(c.getArgs()::contains)
+				.isDefined()
+				||
+				u.asVal()
+						.flatMap(w -> MiniKanren.asIterable(w)
+								.orElse(() -> MiniKanren.tupleAsIterable(w)))
+						.filter(it -> StreamSupport.stream(it.spliterator(), false)
+								.map(MiniKanren::wrapUnifiable)
+								.anyMatch(c.getArgs()::contains))
+						.isDefined()
+				||
+				u.asVal()
+						.flatMap(MiniKanren::asLList)
+						.filter(l -> l.stream()
+								.anyMatch(e -> e.fold(
+										c.getArgs()::contains,
+										c.getArgs()::contains)))
+						.isDefined();
+	}
+}
