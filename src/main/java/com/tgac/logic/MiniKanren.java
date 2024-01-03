@@ -464,7 +464,7 @@ public class MiniKanren {
 	/**
 	 * Checks whether any item within v is unbound within r
 	 */
-	private static Recur<Boolean> anyVar(Unifiable<?> v, Package r) {
+	public static Recur<Boolean> anyVar(Unifiable<?> v, Package r) {
 		return v.asVar()
 				.map(lvar -> walk(r, lvar)
 						.map(rv -> rv == lvar))

@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.tgac.functional.recursion.Recur.done;
@@ -35,6 +36,10 @@ public class Incomplete<T> implements Stream<T> {
 		return getOrEvaluate().tail();
 	}
 
+	@Override
+	public <U> Stream<U> flatMap(Function<? super T, ? extends Iterable<? extends U>> mapper) {
+		return incomplete(() -> rest.map(rst -> rst.flatMap(mapper)));
+	}
 	private synchronized Stream<T> getOrEvaluate() {
 		if (!rest.isDone()) {
 			rest = done(eval(rest.get()));

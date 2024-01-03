@@ -1,10 +1,10 @@
 package com.tgac.logic;
 import com.tgac.logic.cKanren.Constraint;
 import com.tgac.logic.cKanren.Domain;
-import com.tgac.logic.fd.EnforceConstraintsFD;
 import com.tgac.logic.fd.EnumeratedInterval;
 import com.tgac.logic.fd.FDSupport;
-import com.tgac.logic.fd.ProcessPrefixFd;
+import com.tgac.logic.fd.parameters.EnforceConstraintsFD;
+import com.tgac.logic.fd.parameters.ProcessPrefixFd;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
@@ -49,7 +49,7 @@ public class FiniteDomainTest {
 		when(constraint.getArgs())
 				.thenReturn(Array.of(prefix.get()._1));
 
-		System.out.println(processPrefixFd.process(
+		System.out.println(processPrefixFd.processPrefix(
 						prefix,
 						List.of(constraint))
 				.get()
@@ -60,7 +60,7 @@ public class FiniteDomainTest {
 
 	@Test
 	public void shouldForceAnswer() {
-		Unifiable<Integer> i = lvar();
+		Unifiable<Long> i = lvar();
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(i)
 				.apply(Package.of(HashMap.empty(), List.empty(),
@@ -75,7 +75,7 @@ public class FiniteDomainTest {
 						.map(p -> p.get(i.asVar().get()).get())
 						.map(Unifiable::get)
 						.collect(Collectors.toList()))
-				.containsExactlyInAnyOrder(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
 	}
 
 	@Test

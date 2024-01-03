@@ -1,9 +1,10 @@
 package com.tgac.logic.fd;
+import com.tgac.functional.Streams;
 import com.tgac.logic.Goal;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.CKanren;
-import com.tgac.logic.cKanren.PackageOp;
+import com.tgac.logic.cKanren.PackageAccessor;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
@@ -17,6 +18,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.LVar.lvar;
@@ -218,7 +220,7 @@ public class FiniteDomainTest {
 				solve(lval(Tuple.of(i, j, k)),
 						dom(i, EnumeratedInterval.of(HashSet.range(0L, 10L)))
 								.and(dom(j, EnumeratedInterval.of(HashSet.range(0L, 10L))))
-								.and(dom(k, EnumeratedInterval.of(HashSet.range(0L, 20L))))
+								.and(dom(k, EnumeratedInterval.of(HashSet.range(0L, 10L))))
 								.and(plus(i, j, k)))
 						.map(Unifiable::get)
 						.map(t -> t
@@ -227,7 +229,13 @@ public class FiniteDomainTest {
 								.map3(Unifiable::get))
 						.collect(Collectors.toList());
 
-		System.out.println(result);
+		System.out.println(
+				Streams.zip(
+								result.stream().map(Object::toString),
+								IntStream.range(0, result.size()).boxed(),
+								(t, x) -> x + ": " + t
+						)
+						.collect(Collectors.joining("\n")));
 	}
 
 	@Test
@@ -257,7 +265,7 @@ public class FiniteDomainTest {
 		return CKanren.constructGoal(plusFD(a, b, rhs));
 	}
 
-	static <T extends Number> PackageOp plusFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
+	static <T extends Number> PackageAccessor plusFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
 		return FDSupport.constraintOperation(
 				p -> plusFD(a, b, rhs).apply(p),
 				Array.of(a, b, rhs), (vds, p) ->

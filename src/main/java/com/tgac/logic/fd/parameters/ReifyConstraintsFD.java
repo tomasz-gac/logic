@@ -1,4 +1,4 @@
-package com.tgac.logic.fd;
+package com.tgac.logic.fd.parameters;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.parameters.ReifyConstraints;

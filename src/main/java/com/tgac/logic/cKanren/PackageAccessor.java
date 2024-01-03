@@ -9,24 +9,27 @@ import lombok.Value;
 
 import java.util.function.Function;
 
-public interface PackageOp extends Function<Package, MRecur<Package>> {
+/**
+ * This is the λ_M/f_M from cKanren paper. It is a recursive function from Package ⟶ optional Package
+ */
+public interface PackageAccessor extends Function<Package, MRecur<Package>> {
 
-	static PackageOp of(PackageOp op) {
+	static PackageAccessor of(PackageAccessor op) {
 		return op;
 	}
 
-	static PackageOp identity() {
+	static PackageAccessor identity() {
 		return MRecur::mdone;
 	}
 
-	default ComposedPackageOp compose(PackageOp other) {
-		return new ComposedPackageOp(List.of(other, this));
+	default ComposedPackageAccessor compose(PackageAccessor other) {
+		return new ComposedPackageAccessor(List.of(other, this));
 	}
 
 	@Value
 	@RequiredArgsConstructor
-	class ComposedPackageOp implements PackageOp {
-		List<PackageOp> ops;
+	class ComposedPackageAccessor implements PackageAccessor {
+		List<PackageAccessor> ops;
 
 		@Override
 		public MRecur<Package> apply(Package aPackage) {
@@ -38,15 +41,15 @@ public interface PackageOp extends Function<Package, MRecur<Package>> {
 							Exceptions.throwingBiOp(UnsupportedOperationException::new));
 		}
 
-		public ComposedPackageOp compose(PackageOp other) {
-			return new ComposedPackageOp(ops.prepend(other));
+		public ComposedPackageAccessor compose(PackageAccessor other) {
+			return new ComposedPackageAccessor(ops.prepend(other));
 		}
 	}
 
 	@Value
 	@RequiredArgsConstructor(staticName = "of")
-	class Incomplete implements PackageOp {
-		Recur<PackageOp> rest;
+	class Incomplete implements PackageAccessor {
+		Recur<PackageAccessor> rest;
 
 		@Override
 		public MRecur<Package> apply(Package aPackage) {

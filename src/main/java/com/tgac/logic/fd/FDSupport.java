@@ -9,7 +9,10 @@ import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.CKanren;
 import com.tgac.logic.cKanren.Constraint;
-import com.tgac.logic.cKanren.PackageOp;
+import com.tgac.logic.cKanren.PackageAccessor;
+import com.tgac.logic.fd.parameters.EnforceConstraintsFD;
+import com.tgac.logic.fd.parameters.ProcessPrefixFd;
+import com.tgac.logic.fd.parameters.ReifyConstraintsFD;
 import io.vavr.Tuple;
 import io.vavr.collection.Array;
 import io.vavr.collection.Stream;
@@ -49,15 +52,15 @@ public class FDSupport {
 								.map(Stream::of)));
 	}
 
-	static PackageOp constraintOperation(PackageOp packageOp, Array<Unifiable<?>> us, ConstraintBody f) {
+	static PackageAccessor constraintOperation(PackageAccessor constraintOp, Array<Unifiable<?>> us, ConstraintBody body) {
 		return p -> Tuple.of(letDomain(p, us)
 								.collect(Array.collector()),
-						Package.of(p.getSubstitutions(), p.getSConstraints(), p.getDomains(),
-								p.getConstraints().prepend(Constraint.buildOc(packageOp, us))))
-				.apply((uds, p1) -> uds.toJavaStream()
-						.noneMatch(ud -> ud.getDomain().isEmpty()) ?
-						f.create(uds, p1) :
-						MRecur.mdone(p1));
+						MRecur.ofRecur(p.withConstraint(Constraint.buildOc(constraintOp, us))))
+				.apply((uds, p1) ->
+						uds.toJavaStream()
+								.noneMatch(ud -> ud.getDomain().isEmpty()) ?
+								p1.flatMap(p1v -> body.create(uds, p1v)) :
+								p1);
 	}
 
 	@Value
@@ -75,7 +78,7 @@ public class FDSupport {
 		return CKanren.constructGoal(leqFD(less, more));
 	}
 
-	static <T> PackageOp leqFD(Unifiable<T> less, Unifiable<T> more) {
+	static <T> PackageAccessor leqFD(Unifiable<T> less, Unifiable<T> more) {
 		return constraintOperation(
 				p -> leqFD(less, more).apply(p),
 				Array.of(less, more), (vds, p) ->

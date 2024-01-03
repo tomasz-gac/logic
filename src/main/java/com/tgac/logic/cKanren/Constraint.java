@@ -3,25 +3,21 @@ import com.tgac.functional.recursion.MRecur;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
 import io.vavr.collection.Array;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
-import java.util.stream.Collectors;
-public interface Constraint extends PackageOp {
-	Array<Unifiable<?>> getArgs();
+@Value
+@RequiredArgsConstructor(staticName = "of")
+public class Constraint implements PackageAccessor {
+	PackageAccessor constraintOp;
+	Array<Unifiable<?>> args;
 
-	static Constraint buildOc(PackageOp packageOp, Array<Unifiable<?>> args) {
-		return new Constraint() {
-			@Override
-			public Array<Unifiable<?>> getArgs() {
-				return args;
-			}
-			@Override
-			public MRecur<Package> apply(Package aPackage) {
-				return packageOp.apply(aPackage);
-			}
-			@Override
-			public String toString() {
-				return packageOp.toString() + "(" + args.map(Object::toString).collect(Collectors.joining(",")) + ")";
-			}
-		};
+	@Override
+	public MRecur<Package> apply(Package p) {
+		return constraintOp.apply(p);
+	}
+
+	public static Constraint buildOc(PackageAccessor constraintOp, Array<Unifiable<?>> args) {
+		return Constraint.of(constraintOp, args);
 	}
 }

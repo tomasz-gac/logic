@@ -1,4 +1,5 @@
 package com.tgac.logic;
+import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.cKanren.Constraint;
 import com.tgac.logic.cKanren.Domain;
 import io.vavr.collection.HashMap;
@@ -8,6 +9,8 @@ import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+
+import static com.tgac.logic.MiniKanren.anyVar;
 @Value
 @RequiredArgsConstructor(access = AccessLevel.PUBLIC, staticName = "of")
 public class Package {
@@ -47,6 +50,18 @@ public class Package {
 
 	public Package withoutConstraint(Constraint c) {
 		return Package.of(substitutions, sConstraints, domains, constraints.remove(c));
+	}
+
+	public Recur<Package> withConstraint(Constraint c) {
+		return c.getArgs().toJavaStream()
+				.map(arg -> anyVar(arg, this))
+				.reduce(Recur.done(false), (acc, isBound) ->
+						Recur.zip(acc, isBound)
+								.map(lr -> lr.apply(Boolean::logicalOr)))
+				.map(atLeastOneIsBound ->
+						atLeastOneIsBound ?
+								Package.of(substitutions, sConstraints, domains, constraints.prepend(c)) :
+								this);
 	}
 
 	public Package withoutSubstitutions() {

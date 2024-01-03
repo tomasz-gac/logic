@@ -40,39 +40,42 @@ public class CKanren {
 				}
 			});
 
-	public static Goal constructGoal(PackageOp fm) {
+	public static Goal constructGoal(PackageAccessor accessor) {
 		return s -> incomplete(() ->
-				fm.apply(s)
+				accessor.apply(s)
 						.map(Stream::of)
 						.resumeWith(Stream::empty));
 	}
 
-	private static <T> PackageOp unifyC(Unifiable<T> u, Unifiable<T> v) {
+	private static <T> PackageAccessor unifyC(Unifiable<T> u, Unifiable<T> v) {
 		return s -> MiniKanren.unify(s, u, v)
 				.flatMap(s1 -> s == s1 ?
 						mdone(s) :
 						PROCESS_PREFIX.get()
-								.process(prefixS(s.getSubstitutions(), s1.getSubstitutions()), s1.getConstraints())
-								.flatMap(oc -> oc.apply(s.withSubstitutionsFrom(s1))));
+								.processPrefix(prefixS(
+												s.getSubstitutions(),
+												s1.getSubstitutions()),
+										s.getConstraints())
+								.flatMap(accessor -> accessor.apply(s.withSubstitutionsFrom(s1))));
 	}
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
 		return constructGoal(unifyC(u, v));
 	}
 
-	public static Recur<PackageOp> runConstraints(Unifiable<?> u, List<Constraint> c) {
+	public static Recur<PackageAccessor> runConstraints(Unifiable<?> xs, List<Constraint> c) {
 		if (c.isEmpty()) {
-			return done(PackageOp.identity());
-		} else if (anyRelevantVar(u, c.head())) {
+			return done(PackageAccessor.identity());
+		} else if (anyRelevantVar(xs, c.head())) {
 			return done(remRun(c.head()))
-					.flatMap(remRun -> runConstraints(u, c.tail())
+					.flatMap(remRun -> runConstraints(xs, c.tail())
 							.map(rc -> p -> remRun.apply(p).flatMap(rc)));
 		} else {
-			return recur(() -> runConstraints(u, c.tail()));
+			return recur(() -> runConstraints(xs, c.tail()));
 		}
 	}
 
-	private static PackageOp remRun(Constraint c) {
+	private static PackageAccessor remRun(Constraint c) {
 		return p -> p.getConstraints().contains(c) ?
 				c.apply(p.withoutConstraint(c)) :
 				mdone(p);
@@ -103,12 +106,12 @@ public class CKanren {
 						.map(r -> Tuple.of(v, r)));
 	}
 
-	private static boolean anyRelevantVar(Unifiable<?> u, Constraint c) {
-		return u.asVar()
+	private static boolean anyRelevantVar(Unifiable<?> xs, Constraint c) {
+		return xs.asVar()
 				.filter(c.getArgs()::contains)
 				.isDefined()
 				||
-				u.asVal()
+				xs.asVal()
 						.flatMap(w -> MiniKanren.asIterable(w)
 								.orElse(() -> MiniKanren.tupleAsIterable(w)))
 						.filter(it -> StreamSupport.stream(it.spliterator(), false)
@@ -116,7 +119,7 @@ public class CKanren {
 								.anyMatch(c.getArgs()::contains))
 						.isDefined()
 				||
-				u.asVal()
+				xs.asVal()
 						.flatMap(MiniKanren::asLList)
 						.filter(l -> l.stream()
 								.anyMatch(e -> e.fold(

@@ -1,4 +1,4 @@
-package com.tgac.logic.fd;
+package com.tgac.logic.fd.parameters;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
