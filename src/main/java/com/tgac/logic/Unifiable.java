@@ -2,12 +2,10 @@ package com.tgac.logic;
 
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
-import io.vavr.collection.Stream;
 import io.vavr.control.Option;
 
 import java.util.function.Supplier;
 
-import static com.tgac.logic.Incomplete.incomplete;
 import static com.tgac.logic.LVal.lval;
 
 /**
@@ -45,11 +43,7 @@ public interface Unifiable<T> extends Supplier<T> {
 	}
 
 	default Goal unifyNc(Unifiable<T> rhs) {
-		return Goal.goal(s -> incomplete(() -> MiniKanren.unifyUnsafe(s, this, rhs)
-						.map(s1 -> Option.of(s1)
-								.map(Stream::of)
-								.getOrElse(Stream::empty))
-						.getOrElse(Stream::empty)))
+		return Goal.goal(s -> MiniKanren.unifyUnsafe(s, this, rhs).toStream())
 				.named("unifyNc");
 	}
 

@@ -1,5 +1,6 @@
 package com.tgac.logic.fd.parameters;
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
 import com.tgac.logic.Incomplete;
@@ -31,7 +32,7 @@ public class EnforceConstraintsFD implements EnforceConstraints {
 	}
 
 	public static Goal forceAns(Unifiable<?> x) {
-		return s -> Incomplete.incomplete(() -> MiniKanren.walk(s, x)
+		return s -> Recur.done(MiniKanren.walk(s, x))
 				.map(v -> v.asVar()
 						.flatMap(s::getDomain)
 						.map(d -> unifyWithAllDomainValues(x, d))
@@ -45,7 +46,8 @@ public class EnforceConstraintsFD implements EnforceConstraints {
 								.map(EnforceConstraintsFD::forceAnsLList)
 								.map(g -> g.and(rerunConstraints(v))))
 						.getOrElse(Goal::success))
-				.map(g -> g.apply(s)));
+				.map(g -> g.apply(s))
+				.get();
 	}
 
 	private static Goal rerunConstraints(Unifiable<?> x) {

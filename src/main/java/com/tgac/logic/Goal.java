@@ -204,20 +204,17 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	static <T> Goal unify(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return goal(s -> incomplete(() -> MiniKanren.unify(s, lhs, rhs)
-				.getRecur().map(io.vavr.Value::toStream)))
+		return goal(s -> MiniKanren.unify(s, lhs, rhs).toStream())
 				.named("unify");
 	}
 
 	static <T> Goal unifyNc(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return goal(s -> incomplete(() -> MiniKanren.unifyUnsafe(s, lhs, rhs)
-				.getRecur().map(io.vavr.Value::toStream)))
+		return goal(s -> MiniKanren.unifyUnsafe(s, lhs, rhs).toStream())
 				.named("unifyNc");
 	}
 
 	static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return goal(a -> incomplete(() -> MiniKanren.separate(a, lhs, rhs)
-				.getRecur().map(io.vavr.Value::toStream)))
+		return goal(a -> MiniKanren.separate(a, lhs, rhs).toStream())
 				.named("separate");
 	}
 
@@ -238,20 +235,23 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	static <A> Recur<Stream<A>> interleave(Array<Stream<A>> lists) {
 		if (lists.isEmpty()) {
 			return done(Stream.empty());
+		}
+		Stream<A> fst = lists.head();
+		Array<Stream<A>> rst = lists.tail();
+		if (rst.isEmpty()) {
+			return done(fst);
+		}
+
+		if (fst instanceof Incomplete) {
+			// TODO : can this be somehow simplified to not require casting?
+			return ((Incomplete<A>) fst).getRest()
+					.flatMap(s -> interleave(rst.prepend(s)));
+		} else if (fst.isEmpty()) {
+			return recur(() -> interleave(rst));
 		} else {
-			Stream<A> fst = lists.head();
-			Array<Stream<A>> rst = lists.tail();
-			if (fst instanceof Incomplete) {
-				// TODO : can this be somehow simplified to not require casting?
-				return ((Incomplete<A>) fst).getRest()
-						.flatMap(s -> interleave(rst.prepend(s)));
-			} else if (fst.isEmpty()) {
-				return recur(() -> interleave(rst));
-			} else {
-				return done(Stream.cons(fst.head(),
-						() -> incomplete(() ->
-								interleave(rst.append(fst.tail())))));
-			}
+			return done(Stream.cons(fst.head(),
+					() -> incomplete(() ->
+							interleave(rst.append(fst.tail())))));
 		}
 	}
 

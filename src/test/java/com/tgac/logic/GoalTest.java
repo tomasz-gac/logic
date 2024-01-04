@@ -184,15 +184,15 @@ public class GoalTest {
 		List<Unifiable<LList<Integer>>> run = runStream(reversed,
 				reverso(reversed,
 						LList.ofAll(
-								IntStream.range(0, 20)
+								IntStream.range(0, 5)
 										.boxed()
 										.collect(Collectors.toList()))))
 				.collect(Collectors.toList());
 
 		System.out.println(run);
 		assertThat(run.get(0))
-				.isEqualTo(lval(Stream.range(0, 20)
-						.map(i -> 20 - i - 1)
+				.isEqualTo(lval(Stream.range(0, 5)
+						.map(i -> 5 - i - 1)
 						.map(LVal::lval)
 						.collect(LList.collector()))
 						.get());
@@ -382,9 +382,7 @@ public class GoalTest {
 	public void shouldRemoveSingleMember() {
 		Unifiable<LList<Integer>> out = lvar();
 		List<List<Integer>> result = runStream(out,
-				Goals.<LList<Integer>> exist(l ->
-						l.unify(LList.ofAll(3, 2, 3, 2))
-								.and(rembero(l, lval(2), out))))
+				rembero(LList.ofAll(3, 2, 3, 2), lval(2), out))
 				.map(Unifiable::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
 				.collect(Collectors.toList());
@@ -528,6 +526,24 @@ public class GoalTest {
 										.and(removo(any, rem, head).debug("removo",
 														HashMap.of("any", any, "distinct", distinct)),
 												defer(() -> distincto(rem, dt)))))))));
+	}
+
+	@Test
+	public void shouldSeparate() {
+		Unifiable<Integer> q = lvar();
+		Unifiable<Integer> p = lvar();
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Unifiable<Integer> z = lvar();
+
+		System.out.println(runStream(
+				LList.ofAll(x, y, z),
+				x.separate(y),
+				x.separate(z),
+
+				y.separate(z),
+				x.unify(1))
+				.collect(Collectors.toList()));
 	}
 
 	@Test

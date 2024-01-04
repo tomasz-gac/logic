@@ -27,10 +27,12 @@ public class Incomplete<T> implements Stream<T> {
 	public boolean isEmpty() {
 		return getOrEvaluate().isEmpty();
 	}
+
 	@Override
 	public T head() {
 		return getOrEvaluate().head();
 	}
+
 	@Override
 	public Stream<T> tail() {
 		return getOrEvaluate().tail();

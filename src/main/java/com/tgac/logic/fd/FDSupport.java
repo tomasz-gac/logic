@@ -2,6 +2,7 @@ package com.tgac.logic.fd;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.MRecur;
+import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.Goal;
 import com.tgac.logic.Incomplete;
 import com.tgac.logic.MiniKanren;
@@ -33,14 +34,13 @@ public class FDSupport {
 
 	public static <T extends Comparable<T>> Goal dom(Unifiable<T> u, FiniteDomain d) {
 		return CKanren.constructGoal(a ->
-				MRecur.ofRecur(MiniKanren.walk(a, u))
-						.flatMap(v -> d.processDom(v).apply(a)));
+				d.processDom(MiniKanren.walk(a, u)).apply(a));
 	}
 
 	static Stream<VarWithDomain> letDomain(Package p, Array<Unifiable<?>> us) {
 		return us.toStream()
 				.flatMap(u -> Incomplete.incomplete(() ->
-						MiniKanren.walk(p, u.getObjectUnifiable())
+						Recur.done(MiniKanren.walk(p, u.getObjectUnifiable()))
 								.map(v -> VarWithDomain.of(v, v.asVar()
 										.flatMap(p::getDomain)
 										.map(d -> (FiniteDomain) d)

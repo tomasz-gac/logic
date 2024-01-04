@@ -5,6 +5,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * @author TGa
  */
@@ -12,10 +14,11 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class LVar<T> implements Unifiable<T> {
+	private static final AtomicLong VARIABLE_COUNTER = new AtomicLong(0L);
 	private final String name;
 
 	LVar() {
-		name = "_." + System.identityHashCode(this);
+		name = "_." + VARIABLE_COUNTER.getAndIncrement(); //System.identityHashCode(this);
 	}
 
 	public static <T> Unifiable<T> lvar() {

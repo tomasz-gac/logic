@@ -1,5 +1,6 @@
 package com.tgac.logic.cKanren;
 
+import com.tgac.functional.recursion.MRecur;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.Goal;
 import com.tgac.logic.MiniKanren;
@@ -49,14 +50,15 @@ public class CKanren {
 
 	private static <T> PackageAccessor unifyC(Unifiable<T> u, Unifiable<T> v) {
 		return s -> MiniKanren.unify(s, u, v)
-				.flatMap(s1 -> s == s1 ?
+				.map(s1 -> s == s1 ?
 						mdone(s) :
 						PROCESS_PREFIX.get()
 								.processPrefix(prefixS(
 												s.getSubstitutions(),
 												s1.getSubstitutions()),
 										s.getConstraints())
-								.flatMap(accessor -> accessor.apply(s.withSubstitutionsFrom(s1))));
+								.flatMap(accessor -> accessor.apply(s.withSubstitutionsFrom(s1))))
+				.getOrElse(MRecur::none);
 	}
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {

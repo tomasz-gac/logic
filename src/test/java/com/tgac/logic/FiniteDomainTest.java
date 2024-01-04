@@ -1,6 +1,7 @@
 package com.tgac.logic;
 import com.tgac.logic.cKanren.Constraint;
 import com.tgac.logic.cKanren.Domain;
+import com.tgac.logic.cKanren.PackageAccessor;
 import com.tgac.logic.fd.EnumeratedInterval;
 import com.tgac.logic.fd.FDSupport;
 import com.tgac.logic.fd.parameters.EnforceConstraintsFD;
@@ -23,14 +24,13 @@ import java.util.stream.Collectors;
 
 import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.LVar.lvar;
-import static org.mockito.Mockito.when;
 
 @SuppressWarnings("unchecked")
 @RunWith(MockitoJUnitRunner.class)
 public class FiniteDomainTest {
 
 	@Mock
-	Constraint constraint;
+	PackageAccessor accessor;
 
 	static {
 		FDSupport.useFD();
@@ -46,8 +46,7 @@ public class FiniteDomainTest {
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
 
-		when(constraint.getArgs())
-				.thenReturn(Array.of(prefix.get()._1));
+		Constraint constraint = Constraint.buildOc(accessor, Array.of(prefix.get()._1));
 
 		System.out.println(processPrefixFd.processPrefix(
 						prefix,

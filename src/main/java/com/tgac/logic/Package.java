@@ -55,6 +55,7 @@ public class Package {
 	public Recur<Package> withConstraint(Constraint c) {
 		return c.getArgs().toJavaStream()
 				.map(arg -> anyVar(arg, this))
+				.map(Recur::done)
 				.reduce(Recur.done(false), (acc, isBound) ->
 						Recur.zip(acc, isBound)
 								.map(lr -> lr.apply(Boolean::logicalOr)))

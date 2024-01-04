@@ -3,7 +3,6 @@ package com.tgac.logic;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
 import com.tgac.functional.Streams;
-import com.tgac.functional.recursion.MRecur;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
 import io.vavr.Tuple;
@@ -42,10 +41,6 @@ import java.util.stream.Collector;
 import java.util.stream.StreamSupport;
 
 import static com.tgac.functional.Exceptions.throwingBiOp;
-import static com.tgac.functional.recursion.MRecur.mdone;
-import static com.tgac.functional.recursion.MRecur.mrecur;
-import static com.tgac.functional.recursion.MRecur.none;
-import static com.tgac.functional.recursion.MRecur.ofRecur;
 import static com.tgac.functional.recursion.Recur.done;
 import static com.tgac.functional.recursion.Recur.recur;
 import static com.tgac.logic.LVal.lval;
@@ -87,83 +82,121 @@ public class MiniKanren {
 				.map(c -> (Collector<Object, ?, ?>) c);
 	}
 
-	private static <T> Recur<Package> extendNoCheck(Package s, LVar<T> lhs, Unifiable<T> rhs) {
-		return done(s.put(lhs, rhs));
+	private static <T> Package extendNoCheck(Package s, LVar<T> lhs, Unifiable<T> rhs) {
+		return s.put(lhs, rhs);
 	}
 
-	public static <T> Recur<Unifiable<T>> walk(Package s, Unifiable<T> v) {
-		return v.asVar()
-				.flatMap(s::get)
-				.map(rhs -> rhs.asVar()
-						.map(u -> recur(() -> walk(s, u)))
-						.getOrElse(() -> done(rhs)))
-				// it's important to return the same object
-				// because we test with == to see if var is bound
-				.getOrElse(() -> done(v));
+	public static <T> Unifiable<T> walk(Package s, Unifiable<T> v) {
+		if (v.asVal().isDefined()) {
+			return v;
+		}
+		if (s.get(v.getVar()).isEmpty()) {
+			// it's important to return the same object
+			// because we test with == to see if var is bound
+			return v;
+		}
+		Unifiable<T> result = v;
+		while (s.get(result.getVar()).isDefined()) {
+			result = s.get(result.getVar()).get();
+			if (result.asVal().isDefined()) {
+				break;
+			}
+		}
+		return result;
 	}
 
-	public static <T> Recur<Boolean> occursCheck(Package s, LVar<T> x, Unifiable<T> v) {
-		return walk(s, v)
-				.map(result -> result.asVar()
-						.map(vv -> vv == x)
-						.getOrElse(false));
+	public static <T> Boolean occursCheck(Package s, LVar<T> x, Unifiable<T> v) {
+		return walk(s, v).asVar()
+				.map(vv -> vv == x)
+				.getOrElse(false);
 	}
 
-	public static <T> Recur<Package> extend(Package s, LVar<T> lhs, Unifiable<T> rhs) {
-		return occursCheck(s, lhs, rhs)
-				.flatMap(occurs -> occurs ? done(s) :
-						extendNoCheck(s, lhs, rhs));
+	public static <T> Package extend(Package s, LVar<T> lhs, Unifiable<T> rhs) {
+		return occursCheck(s, lhs, rhs) ?
+				s :
+				extendNoCheck(s, lhs, rhs);
 	}
 
 	private interface Extender {
-		<T> Recur<Package> apply(Package s, LVar<T> lhs, Unifiable<T> rhs);
+		<T> Package apply(Package s, LVar<T> lhs, Unifiable<T> rhs);
 	}
 
-	private static <T> MRecur<Package> unify(
+	private static <T> Option<Package> unify(
 			Extender extend,
 			Package s,
 			Unifiable<T> lhs,
 			Unifiable<T> rhs) {
-		return ofRecur(Recur.zip(walk(s, lhs), walk(s, rhs)))
-				.flatMap(results -> results
-						// it's important to return the same object when l equals r
-						// because we test with == to see if substitution already exists
-						.apply((l, r) -> l.equals(r) ? mdone(s) :
-								l.asVar().map(lVar -> r.asVar()
-												.map(rVar -> extendNoCheck(s, lVar, rVar))
-												.map(MRecur::ofRecur)
-												.getOrElse(() -> ofRecur(extend.apply(s, lVar, r))))
-										.orElse(() -> r.asVar()
-												.map(rVar -> extend.apply(s, rVar, l))
-												.map(MRecur::ofRecur))
-										.orElse(() -> zip(l.asVal(), r.asVal())
-												.flatMap(MiniKanren::toIterable)
-												.map(lr -> unifyIterable(extend, s, lr._1, lr._2)))
-										.orElse(() -> zip(l.asVal().flatMap(MiniKanren::<T>asLList),
-												r.asVal().flatMap(MiniKanren::<T>asLList))
-												.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
-												.map(lr -> mrecur(() -> unify(extend, s, lr._1.getHead(), lr._2.getHead()))
-														.flatMap(s1 -> mrecur(() -> unify(extend, s1,
-																Types.<Unifiable<T>> castAs(
-																		lr._1.getTail(), Unifiable.class).get(),
-																Types.<Unifiable<T>> castAs(
-																		lr._2.getTail(), Unifiable.class).get())))))
-										.getOrElse(MRecur::none)));
+
+		Unifiable<T> l = walk(s, lhs);
+		Unifiable<T> r = walk(s, rhs);
+		if (l.equals(r)) {
+			// it's important to return the same object when l equals r
+			// because we test with == to see if substitution already exists
+			return Option.of(s);
+		}
+
+		return l.asVar().map(lVar -> r.asVar()
+						.map(rVar -> extendNoCheck(s, lVar, rVar))
+						.map(Option::of)
+						.getOrElse(() -> Option.of(extend.apply(s, lVar, r))))
+				.orElse(() -> r.asVar()
+						.map(rVar -> extend.apply(s, rVar, l))
+						.map(Option::of))
+				.orElse(() -> zip(l.asVal(), r.asVal())
+						.flatMap(MiniKanren::toIterable)
+						.map(lr -> unifyIterable(extend, s, lr._1, lr._2)))
+				.orElse(() -> zip(
+						l.asVal().flatMap(MiniKanren::<T>asLList),
+						r.asVal().flatMap(MiniKanren::<T>asLList))
+						.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
+						.map(lr -> unifyLList2(extend, s, lr._1, lr._2)))
+				.getOrElse(Option::none);
 	}
 
-	private static <T> MRecur<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
+	private static <T> Option<Package> unifyLList2(
+			Extender extend,
+			Package s,
+			LList<T> lhs, LList<T> rhs) {
+		Package currentState = s;
+		while (true) {
+			if (lhs.isEmpty() || rhs.isEmpty()) {
+				return unify(extend, currentState, lval(lhs), lval(rhs));
+			}
+			// unify heads
+			Option<Package> tmp = unify(extend, currentState, lhs.getHead(), rhs.getHead());
+			if (tmp.isEmpty()) {
+				return Option.none();
+			}
+			currentState = tmp.get();
+
+			Unifiable<LList<T>> lTail = walk(currentState, lhs.getTail());
+			Unifiable<LList<T>> rTail = walk(currentState, rhs.getTail());
+			if (lTail.asVar().isDefined()) {
+				return unify(extend, currentState, lTail, rTail);
+			}
+
+			if (rTail.asVar().isDefined()) {
+				return unify(extend, currentState, lTail, rTail);
+			}
+
+			lhs = lTail.get();
+			rhs = rTail.get();
+		}
+	}
+
+	private static <T> Option<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
 		if (!l.iterator().hasNext() && r.iterator().hasNext()) {
-			return mdone(s);
+			return Option.of(s);
 		}
 		if (toJavaStream(l).count() != toJavaStream(r).count()) {
-			return none();
+			return Option.none();
 		} else {
 			return Streams.zip(toJavaStream(l), toJavaStream(r), Tuple::of)
 					// Because Tuples are treated as iterable
 					// some of their elements may not be unifiable.
 					// For those, we're wrapping them as Val to process them anyway
 					.map(p -> p.map(applyOnBoth(MiniKanren::<T>wrapUnifiable)))
-					.reduce(mdone(s),
+					.reduce(Option.of(s),
 							(state, unifiedItems) ->
 									state.flatMap(s1 -> unify(extender, s1, unifiedItems._1, unifiedItems._2)),
 							throwingBiOp(UnsupportedOperationException::new));
@@ -181,32 +214,30 @@ public class MiniKanren {
 
 	@SuppressWarnings("unchecked")
 	public static <T> Option<Iterable<T>> asIterable(Object v) {
-		return Try.success(v)
-				.filter(Iterable.class::isInstance)
-				.mapTry(it -> (Iterable<T>) it)
-				.toOption();
+		return v instanceof Iterable ?
+				Try.of(() -> (Iterable<T>) v).toOption() :
+				Option.none();
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> Option<LList<T>> asLList(Object v) {
-		return Try.success(v)
-				.filter(LList.class::isInstance)
-				.mapTry(it -> (LList<T>) it)
-				.toOption();
+		return v instanceof LList ?
+				Try.of(() -> (LList<T>) v).toOption() :
+				Option.none();
 	}
 
-	public static <T> MRecur<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> Option<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return unify(MiniKanren::extend, s, lhs, rhs)
 				.flatMap(s1 -> verifyUnify(s1, s));
 	}
 
-	public static <T> MRecur<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> Option<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return unify(MiniKanren::extendNoCheck, s, lhs, rhs)
 				.flatMap(s1 -> verifyUnify(s1, s));
 	}
 
 	public static <T> Recur<Unifiable<T>> walkAll(Package s, Unifiable<T> u) {
-		return walk(s, u)
+		return done(walk(s, u))
 				.flatMap(v -> v.asVar()
 						.map(Recur::<Unifiable<T>>done)
 						.orElse(() -> v.asVal()
@@ -315,6 +346,7 @@ public class MiniKanren {
 		return walkAll(s, val)
 				.flatMap(v -> v.asVar()
 						.map(u -> extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())))
+						.map(Recur::done)
 						.orElse(() -> v.asVal()
 								.flatMap(w -> asIterable(w)
 										.orElse(() -> tupleAsIterable(w)))
@@ -342,10 +374,10 @@ public class MiniKanren {
 						throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	public static <T> MRecur<Package> separate(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
-		return MRecur.of(unify(s.withoutConstraints(), lhs, rhs)
-				.getRecur()
-				.map(s1 -> verifySeparate(s1, s)));
+	public static <T> Option<Package> separate(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+		return verifySeparate(
+				unify(s.withoutConstraints(), lhs, rhs),
+				s);
 	}
 
 	private static Option<Package> verifySeparate(Option<Package> s, Package a) {
@@ -368,45 +400,56 @@ public class MiniKanren {
 		return extendedS.filter(kv -> !s.keySet().contains(kv._1));
 	}
 
-	private static MRecur<Package> verifyUnify(Package newPackage, Package a) {
+	private static Option<Package> verifyUnify(Package newPackage, Package a) {
 		// substitutions haven't changed, so constraints are not violated
 		if (newPackage.getSubstitutions() == a.getSubstitutions()) {
-			return mdone(a);
+			return Option.of(a);
 		} else {
 			return verifyAndSimplifyConstraints(a.getSConstraints(), List.empty(), newPackage.getSubstitutions())
-					.ifElse(
-							// TODO : verify
-							c -> mdone(Package.of(newPackage.getSubstitutions(), c, a.getDomains(), a.getConstraints())),
-							MRecur::none);
+					// TODO : verify
+					.map(c -> Package.of(newPackage.getSubstitutions(), c, a.getDomains(), a.getConstraints()));
 		}
 	}
 
-	private static MRecur<List<HashMap<LVar<?>, Unifiable<?>>>> verifyAndSimplifyConstraints(
+	private static Option<List<HashMap<LVar<?>, Unifiable<?>>>> verifyAndSimplifyConstraints(
 			List<HashMap<LVar<?>, Unifiable<?>>> constraints,
 			List<HashMap<LVar<?>, Unifiable<?>>> newConstraints,
 			HashMap<LVar<?>, Unifiable<?>> s) {
 		if (constraints.isEmpty()) {
-			return mdone(newConstraints);
+			return Option.of(newConstraints);
 		} else {
-			return unifyConstraints(constraints.head(), s)
-					.ifElse(
-							nextS -> mdone(nextS)
-									// if unification succeeds without extending s
-									// then all simultaneous separateness constraints
-									// are violated, so we fail the substitution
-									.filter(s1 -> s != s1)
-									// if unification succeeds by extending s,
-									// then some simultaneous constraints are not violated,
-									// and we append these constraints to list.
-									// This way, we simplify constraint store on the fly
-									.flatMap(s1 -> verifyAndSimplifyConstraints(
-											constraints.tail(),
-											newConstraints.append(prefixS(s, s1)),
-											s)),
-							// if unification fails, then constraint is redundant
-							// because substitutions already contain bound values
-							// that are consistent with it
-							() -> verifyAndSimplifyConstraints(constraints.tail(), newConstraints, s));
+			return constraints.toJavaStream()
+					.reduce(Option.of(Tuple.of(s, newConstraints)),
+							(acc, c) -> acc.flatMap(stateAndNewConstraints ->
+									verificationStep(stateAndNewConstraints._1, stateAndNewConstraints._2, c)),
+							throwingBiOp(UnsupportedOperationException::new))
+					.map(acc -> acc._2);
+		}
+	}
+
+	private static Option<Tuple2<
+			HashMap<LVar<?>, Unifiable<?>>,
+			List<HashMap<LVar<?>, Unifiable<?>>>>> verificationStep(
+			HashMap<LVar<?>, Unifiable<?>> s,
+			List<HashMap<LVar<?>, Unifiable<?>>> newConstraints,
+			HashMap<LVar<?>, Unifiable<?>> constraint) {
+		Option<HashMap<LVar<?>, Unifiable<?>>> unification = unifyConstraints(constraint, s);
+		if (unification.isDefined()) {
+			return unification
+					// if unification succeeds without extending s
+					// then all simultaneous separateness constraints
+					// are violated, so we fail the substitution
+					.filter(s1 -> s != s1)
+					// if unification succeeds by extending s,
+					// then some simultaneous constraints are not violated,
+					// and we append these constraints to list.
+					// This way, we simplify constraint store on the fly
+					.map(s1 -> Tuple.of(s, newConstraints.append(prefixS(s, s1))));
+		} else {
+			// if unification fails, then constraint is redundant
+			// because substitutions already contain bound values
+			// that are consistent with it
+			return Option.of(Tuple.of(s, newConstraints));
 		}
 	}
 
@@ -419,13 +462,15 @@ public class MiniKanren {
 	 * 		current substitution map
 	 * @return s after unification
 	 */
-	private static MRecur<HashMap<LVar<?>, Unifiable<?>>> unifyConstraints(
+	private static Option<HashMap<LVar<?>, Unifiable<?>>> unifyConstraints(
 			HashMap<LVar<?>, Unifiable<?>> simultaneousConstraints,
 			HashMap<LVar<?>, Unifiable<?>> s) {
 		return simultaneousConstraints.toJavaStream()
 				.map(t -> t.map(applyOnBoth(Unifiable::getObjectUnifiable)))
-				.reduce(mdone(s),
+				.reduce(Option.of(s),
 						(acc, lr) -> acc.flatMap(s1 ->
+								// TODO : investigate whether this unify call can
+								//        recurse deeply via verifyUnify
 								unify(Package.empty().extendS(s1), lr._1, lr._2)
 										.map(Package::getSubstitutions)),
 						throwingBiOp(UnsupportedOperationException::new));
@@ -451,8 +496,8 @@ public class MiniKanren {
 		if (constraints.isEmpty()) {
 			return done(HashMap.empty());
 		} else {
-			return Recur.zip(anyVar(constraints.head()._1, r),
-							anyVar(constraints.head()._2, r))
+			return Recur.zip(done(anyVar(constraints.head()._1, r)),
+							done(anyVar(constraints.head()._2, r)))
 					.map(lr -> lr.apply(Boolean::logicalOr))
 					.flatMap(unbound -> unbound ?
 							purifySingle(constraints.tail(), r) :
@@ -464,25 +509,21 @@ public class MiniKanren {
 	/**
 	 * Checks whether any item within v is unbound within r
 	 */
-	public static Recur<Boolean> anyVar(Unifiable<?> v, Package r) {
+	public static Boolean anyVar(Unifiable<?> v, Package r) {
 		return v.asVar()
-				.map(lvar -> walk(r, lvar)
-						.map(rv -> rv == lvar))
+				.map(lvar -> walk(r, lvar) == lvar)
 				.getOrElse(done(false));
 	}
 
-	private static Recur<Boolean> isConstraintSubsumed(
+	private static Boolean isConstraintSubsumed(
 			HashMap<LVar<?>, Unifiable<?>> constraints,
 			List<HashMap<LVar<?>, Unifiable<?>>> accConstraints) {
 		return accConstraints.toJavaStream()
-				.reduce(done(false),
-						(acc, v) -> acc.flatMap(r -> r ?
-								done(true) :
-								unifyConstraints(v, constraints)
-										// TODO: perhaps == ?
-										.filter(c -> c == constraints)
-										.map(__ -> true)
-										.resumeWith(() -> false)),
+				.reduce(false,
+						(r, v) -> r || unifyConstraints(v, constraints)
+								.filter(c -> c == constraints)
+								.map(__ -> true)
+								.getOrElse(() -> false),
 						throwingBiOp(UnsupportedOperationException::new));
 	}
 
@@ -494,9 +535,9 @@ public class MiniKanren {
 		} else {
 			return Recur.zip(
 							// constraint subsumes another existing constraint
-							isConstraintSubsumed(constraints.head(), constraintAcc),
+							done(isConstraintSubsumed(constraints.head(), constraintAcc)),
 							// constraint subsumed by previously processed
-							isConstraintSubsumed(constraints.head(), constraints.tail()))
+							done(isConstraintSubsumed(constraints.head(), constraints.tail())))
 					.map(lr -> lr.apply(Boolean::logicalOr))
 					.flatMap(isSubsumed -> isSubsumed ?
 							// skip this constraint

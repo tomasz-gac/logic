@@ -16,6 +16,7 @@ public class ProcessPrefixFd implements ProcessPrefix {
 		if (prefix.isEmpty()) {
 			return mdone(PackageAccessor.identity());
 		}
+
 		LVar<?> x = prefix.head()._1;
 		Unifiable<?> v = prefix.head()._2;
 

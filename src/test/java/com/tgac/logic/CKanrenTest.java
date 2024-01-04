@@ -1,4 +1,5 @@
 package com.tgac.logic;
+import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.cKanren.CKanren;
 import io.vavr.collection.Stream;
 import org.assertj.core.api.Assertions;
@@ -17,7 +18,7 @@ public class CKanrenTest {
 		Stream<Package> s = CKanren.unify(u, v)
 				.apply(Package.empty());
 		Assertions.assertThat(
-						s.map(p -> MiniKanren.walk(p, v)
+						s.map(p -> Recur.done(MiniKanren.walk(p, v))
 								.map(v1 -> CKanren.
 										reify(p, v1).get()).get()))
 				.containsExactly(lval(1));
