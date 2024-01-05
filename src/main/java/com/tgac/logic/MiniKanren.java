@@ -469,8 +469,8 @@ public class MiniKanren {
 				.map(t -> t.map(applyOnBoth(Unifiable::getObjectUnifiable)))
 				.reduce(Option.of(s),
 						(acc, lr) -> acc.flatMap(s1 ->
-								// TODO : investigate whether this unify call can
-								//        recurse deeply via verifyUnify
+								// This cannot recurse deeply via verifyUnify
+								// because there are no constraints in the package
 								unify(Package.empty().extendS(s1), lr._1, lr._2)
 										.map(Package::getSubstitutions)),
 						throwingBiOp(UnsupportedOperationException::new));
@@ -586,7 +586,7 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> T tupleFromArray(Object... args) {
+	public static <T> T tupleFromArray(Object... args) {
 		switch (args.length) {
 			case 1:
 				return (T) Tuple.of(args[0]);

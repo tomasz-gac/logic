@@ -152,7 +152,11 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	static Goal conda(Goal... goals) {
-		return a -> incomplete(() -> ifa(Array.of(goals).map(g -> g.apply(a))));
+		return goal(a -> incomplete(() -> ifa(Array.of(goals).map(g -> g.apply(a)))))
+				.named("first(" +
+						Arrays.stream(goals).map(Objects::toString)
+								.collect(Collectors.joining(" ||| ")) +
+						")");
 	}
 
 	static Recur<Stream<Package>> ifa(Array<Stream<Package>> streams) {
@@ -172,7 +176,9 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	static Goal condu(Goal... goals) {
-		return a -> incomplete(() -> ifu(Array.of(goals).map(g -> g.apply(a))));
+		return goal(a -> incomplete(() -> ifu(Array.of(goals).map(g -> g.apply(a)))))
+				.named(Arrays.stream(goals).map(Objects::toString)
+						.collect(Collectors.joining(" ||| ")));
 	}
 
 	static Recur<Stream<Package>> ifu(Array<Stream<Package>> streams) {
@@ -192,30 +198,33 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	static Goal defer(Supplier<Goal> g) {
-		return s -> g.get().apply(s);
+		return goal(s -> g.get().apply(s))
+				.named("recursive call");
 	}
 
 	static Goal success() {
-		return Stream::of;
+		return goal(Stream::of)
+				.named("success");
 	}
 
 	static Goal failure() {
-		return s -> Stream.empty();
+		return goal(s -> Stream.empty())
+				.named("failure");
 	}
 
 	static <T> Goal unify(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return goal(s -> MiniKanren.unify(s, lhs, rhs).toStream())
-				.named("unify");
+				.named(lhs + " ≣ " + rhs);
 	}
 
 	static <T> Goal unifyNc(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return goal(s -> MiniKanren.unifyUnsafe(s, lhs, rhs).toStream())
-				.named("unifyNc");
+				.named(lhs + " ≣-no-check " + rhs);
 	}
 
 	static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return goal(a -> MiniKanren.separate(a, lhs, rhs).toStream())
-				.named("separate");
+				.named(lhs + " ≠ " + rhs);
 	}
 
 	default <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out) {

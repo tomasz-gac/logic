@@ -1,15 +1,18 @@
 package com.tgac.logic.fd;
 import com.tgac.logic.Goal;
+import com.tgac.logic.Goals;
+import com.tgac.logic.LList;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.CKanren;
-import com.tgac.logic.cKanren.PackageAccessor;
+import com.tgac.logic.fd.domains.EnumeratedInterval;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
-import io.vavr.collection.Array;
 import io.vavr.collection.HashSet;
+import lombok.var;
 import org.assertj.core.api.Assertions;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -22,14 +25,16 @@ import java.util.stream.Collectors;
 
 import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.LVar.lvar;
-import static com.tgac.logic.fd.FDSupport.dom;
+import static com.tgac.logic.fd.FDGoals.dom;
+import static com.tgac.logic.fd.FDGoals.leq;
+import static com.tgac.logic.fd.FDGoals.sum;
 
 @SuppressWarnings("unchecked")
 @RunWith(MockitoJUnitRunner.class)
 public class FiniteDomainTest {
 
 	static {
-		FDSupport.useFD();
+		FDGoals.useFD();
 	}
 
 	@Test
@@ -172,9 +177,27 @@ public class FiniteDomainTest {
 		java.util.List<Tuple2<Long, Long>> result =
 				solve(lval(Tuple.of(i, j)),
 						Goal.success()
+								.and(printPackage((FDGoals.leq(i, j))))
+								.and(printPackage(dom(i, EnumeratedInterval.of(HashSet.range(0L, 4L)))))
+								.and(printPackage(dom(j, EnumeratedInterval.of(HashSet.range(0L, 4L))))))
+						.map(Unifiable::get)
+						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
+						.collect(Collectors.toList());
+
+		System.out.println(result);
+	}
+
+	@Test
+	public void shouldConstrainAsLess2() {
+		Unifiable<Long> i = lvar();
+		Unifiable<Long> j = lvar();
+
+		java.util.List<Tuple2<Long, Long>> result =
+				solve(lval(Tuple.of(i, j)),
+						Goal.success()
 								.and(printPackage(dom(i, EnumeratedInterval.of(HashSet.range(0L, 4L)))))
 								.and(printPackage(dom(j, EnumeratedInterval.of(HashSet.range(0L, 4L)))))
-								.and(printPackage((FDSupport.leq(i, j)))))
+								.and(printPackage((FDGoals.leq(i, j)))))
 						.map(Unifiable::get)
 						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
 						.collect(Collectors.toList());
@@ -193,7 +216,7 @@ public class FiniteDomainTest {
 						.and(printPackage(dom(x, EnumeratedInterval.of(HashSet.range(3L, 6L)))))
 						.and(printPackage(dom(z, EnumeratedInterval.of(HashSet.range(3L, 6L)))))
 						.and(printPackage(dom(y, EnumeratedInterval.of(HashSet.range(1L, 5L)))))
-						.and(printPackage(FDSupport.leq(x, lval(5L))))
+						.and(printPackage(FDGoals.leq(x, lval(5L))))
 						.and(printPackage(CKanren.unify(x, y)))
 		)
 				.map(Unifiable::get)
@@ -207,7 +230,8 @@ public class FiniteDomainTest {
 	}
 
 	static Goal printPackage(Goal g) {
-		return extractPackage(g, System.out::println);
+		return extractPackage(g, System.out::println)
+				.named(g.toString());
 	}
 
 	@Test
@@ -218,14 +242,17 @@ public class FiniteDomainTest {
 
 		Instant start = Instant.now();
 
+		Goal.Conjunction goal =
+				sum(i, j, k)
+						.and(dom(i, EnumeratedInterval.of(HashSet.range(0L, 100))))
+						.and(dom(j, EnumeratedInterval.of(HashSet.range(0L, 100))))
+						.and(dom(k, EnumeratedInterval.of(HashSet.range(0L, 100))));
+
+		System.out.println(goal);
+
 		java.util.List<Tuple3<Long, Long, Long>> result =
 				solve(lval(Tuple.of(i, j, k)),
-						dom(i, EnumeratedInterval.of(HashSet.range(0L, 100)))
-								.and(dom(j, EnumeratedInterval.of(HashSet.range(0L, 100))))
-								.and(dom(k, EnumeratedInterval.of(HashSet.range(0L, 100))))
-								.and(plus(i, j, k)
-										.and(i.unify(j)))
-				)
+						goal)
 						.map(Unifiable::get)
 						.map(t -> t
 								.map1(Unifiable::get)
@@ -257,7 +284,7 @@ public class FiniteDomainTest {
 						CKanren.unify(i, lval(3L))
 								.and(dom(k, EnumeratedInterval.of(HashSet.range(0L, 100L))))
 								.and(CKanren.unify(j, lval(2L)))
-								.and(plus(i, j, k)))
+								.and(sum(i, j, k)))
 						.map(Unifiable::get)
 						.map(t -> t
 								.map1(Unifiable::get)
@@ -266,36 +293,78 @@ public class FiniteDomainTest {
 						.collect(Collectors.toList());
 
 		System.out.println(result);
-
 	}
 
-	public static <T extends Number> Goal plus(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return CKanren.constructGoal(plusFD(a, b, rhs));
+	/**
+	 * <pre>
+	 *      S E N D
+	 *    + M O R E
+	 *    ----------
+	 *    M O N E Y
+	 * </pre>
+	 */
+	@Test
+	@Ignore
+	public void shouldSolveSendMoreMoney() {
+		Unifiable<Long> S = lvar("S");
+		Unifiable<Long> E = lvar("E");
+		Unifiable<Long> N = lvar("N");
+		Unifiable<Long> D = lvar("D");
+
+		Unifiable<Long> M = lvar("M");
+		Unifiable<Long> O = lvar("O");
+		Unifiable<Long> R = lvar("R");
+
+		Unifiable<Long> Y = lvar("Y");
+
+		EnumeratedInterval<Long> interval0 = EnumeratedInterval.of(HashSet.range(0L, 10L));
+		EnumeratedInterval<Long> interval1 = EnumeratedInterval.of(HashSet.range(1L, 10L));
+		Goal.Conjunction all = Goal.all(
+				printPackage(dom(S, interval1)),
+				printPackage(dom(E, interval0)),
+				printPackage(dom(N, interval0)),
+				printPackage(dom(D, interval0)),
+				printPackage(dom(M, interval1)),
+				printPackage(dom(O, interval0)),
+				printPackage(dom(R, interval0)),
+				printPackage(dom(Y, interval0)),
+				printPackage(sum(S, M, O)),
+				printPackage(sum(E, O, N)),
+				printPackage(sum(N, R, E)),
+				printPackage(sum(D, E, Y)),
+				printPackage(Goals.distincto(LList.ofAll(S, E, N, D, M, O, R, Y))));
+
+		System.out.println(all);
+		var result =
+				solve(lval(Tuple.of(S, E, N, D, M, O, R, Y)),
+						printPackage(all))
+						.limit(1)
+						.map(Unifiable::get)
+						.collect(Collectors.toList());
+
+		System.out.println(result);
 	}
 
-	static <T extends Number> PackageAccessor plusFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return FDSupport.constraintOperation(
-				p -> plusFD(a, b, rhs).apply(p),
-				Array.of(a, b, rhs), (vds, p) ->
-						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
-								.apply((u, v, w) -> Tuple.of(
-												u.getDomain().min(), v.getDomain().min(), w.getDomain().min(),
-												u.getDomain().max(), v.getDomain().max(), w.getDomain().max())
-										.apply((uMin, vMin, wMin, uMax, vMax, wMax) ->
-												EnumeratedInterval.of(HashSet.range(
-																uMin + vMin,
-																uMax + vMax + 1))
-														.processDom(w.getUnifiable())
-														.compose(EnumeratedInterval.of(HashSet.range(
-																		wMin - uMax,
-																		wMax - uMin + 1))
-																.processDom(v.getUnifiable()))
-														.compose(EnumeratedInterval.of(HashSet.range(
-																		wMin - vMax,
-																		wMax - vMin + 1))
-																.processDom(u.getUnifiable()))
-														.apply(p))
-								));
+	public static Goal addDigitso(Unifiable<Long> augend, Unifiable<Long> addend,
+			Unifiable<Long> carryIn, Unifiable<Long> carryOut, Unifiable<Long> digit) {
+		return Goals.<Long, Long> exist((partialSum, sum) ->
+				dom(partialSum, EnumeratedInterval.range(0L, 19L))
+						.and(dom(sum, EnumeratedInterval.range(0L, 20L)))
+						.and(sum(augend, addend, partialSum))
+						.and(sum(partialSum, carryIn, sum))
+						.and(Goal.conde(
+								leq(lval(9L), sum)
+										.and(sum.separate(9L))
+										.and(carryOut.unify(1L))
+										.and(sum(digit, lval(10L), sum)),
+								leq(sum, lval(9L))
+										.and(carryOut.unify(0L))
+										.and(digit.unify(sum)))));
+	}
+
+	@Test
+	public void shouldSolveSendMoreMoneySolution() {
+
 	}
 
 	static <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out, Goal g) {

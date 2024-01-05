@@ -1,5 +1,4 @@
 package com.tgac.logic;
-import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.cKanren.Constraint;
 import com.tgac.logic.cKanren.Domain;
 import io.vavr.collection.HashMap;
@@ -52,17 +51,13 @@ public class Package {
 		return Package.of(substitutions, sConstraints, domains, constraints.remove(c));
 	}
 
-	public Recur<Package> withConstraint(Constraint c) {
-		return c.getArgs().toJavaStream()
-				.map(arg -> anyVar(arg, this))
-				.map(Recur::done)
-				.reduce(Recur.done(false), (acc, isBound) ->
-						Recur.zip(acc, isBound)
-								.map(lr -> lr.apply(Boolean::logicalOr)))
-				.map(atLeastOneIsBound ->
-						atLeastOneIsBound ?
-								Package.of(substitutions, sConstraints, domains, constraints.prepend(c)) :
-								this);
+	public Package withConstraint(Constraint c) {
+		boolean atLeaseOneIsBound = c.getArgs().toJavaStream()
+				.anyMatch(arg -> anyVar(arg, this));
+
+		return atLeaseOneIsBound ?
+				Package.of(substitutions, sConstraints, domains, constraints.prepend(c)) :
+				this;
 	}
 
 	public Package withoutSubstitutions() {

@@ -3,7 +3,6 @@ import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
-import com.tgac.logic.Incomplete;
 import com.tgac.logic.LList;
 import com.tgac.logic.LVar;
 import com.tgac.logic.MiniKanren;
@@ -51,10 +50,7 @@ public class EnforceConstraintsFD implements EnforceConstraints {
 	}
 
 	private static Goal rerunConstraints(Unifiable<?> x) {
-		return a -> Incomplete.incomplete(() ->
-				CKanren.runConstraints(x, a.getConstraints())
-						.map(CKanren::constructGoal)
-						.map(g -> g.apply(a)));
+		return a -> CKanren.constructGoal(CKanren.runConstraints(x, a.getConstraints())).apply(a);
 	}
 
 	private static Goal unifyWithAllDomainValues(Unifiable<?> x, Domain d) {

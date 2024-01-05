@@ -1,5 +1,5 @@
 package com.tgac.logic.fd;
-import com.tgac.functional.recursion.MRecur;
+import com.tgac.functional.reflection.Types;
 import com.tgac.logic.LVar;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
@@ -16,20 +16,20 @@ import java.util.function.Predicate;
 import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.cKanren.CKanren.runConstraints;
 
-public abstract class FiniteDomain implements Domain {
-	protected abstract long min();
+public abstract class FiniteDomain<T extends Comparable<T>> implements Domain {
+	protected abstract T min();
 
-	protected abstract long max();
+	protected abstract T max();
 
-	protected abstract FiniteDomain dropBefore(Predicate<Long> p);
+	protected abstract FiniteDomain<T> dropBefore(Predicate<T> p);
 
-	protected abstract Domain copyBefore(Predicate<Long> value);
+	protected abstract Domain copyBefore(Predicate<T> value);
 
-	protected abstract boolean contains(Object v);
+	public abstract boolean contains(T v);
 
-	protected abstract FiniteDomain intersect(FiniteDomain other);
+	protected abstract FiniteDomain<T> intersect(FiniteDomain<T> other);
 
-	protected abstract Option<Long> getSingletonElement();
+	protected abstract Option<T> getSingletonElement();
 
 	@Override
 	public PackageAccessor processDom(Unifiable<?> x) {
@@ -37,9 +37,10 @@ public abstract class FiniteDomain implements Domain {
 				.map(this::updateVarDomain)
 				.map(op -> op.apply(a))
 				.orElse(() -> x.asVal()
+						.flatMap(v -> Types.<T> castAs(v, Object.class))
 						.filter(this::contains)
-						.map(v -> MRecur.mdone(a)))
-				.getOrElse(MRecur::none);
+						.map(v -> Option.of(a)))
+				.getOrElse(Option::none);
 	}
 	/**
 	 * <pre>
@@ -53,11 +54,11 @@ public abstract class FiniteDomain implements Domain {
 	 */
 	private PackageAccessor updateVarDomain(LVar<?> x) {
 		return s -> s.getDomain(x)
-				.map(FiniteDomain::asFiniteDomain)
+				.flatMap(this::asFiniteDomain)
 				.map(previousDomain -> Option.of(previousDomain.intersect(this))
 						.filter(Predicates.not(FiniteDomain::isEmpty))
 						.map(i -> i.resolveStorableDom(x).apply(s))
-						.getOrElse(MRecur::none))
+						.getOrElse(Option::none))
 				.getOrElse(() -> this.resolveStorableDom(x).apply(s));
 	}
 
@@ -76,25 +77,26 @@ public abstract class FiniteDomain implements Domain {
 				.map(n -> a.extendS(HashMap.of(x, lval(n))))
 				.map(a1 -> assignDomainValueWithCheck(x, a.getConstraints())
 						.apply(a1))
-				.getOrElse(() -> MRecur.mdone(extendD(x, this, a)));
+				.getOrElse(() -> Option.of(extendD(x, this, a)));
 	}
 
 	private static PackageAccessor assignDomainValueWithCheck(LVar<?> x, List<Constraint> c) {
-		return a -> MRecur.ofRecur(runConstraints(x, c))
-				.flatMap(op -> op.apply(a));
+		return runConstraints(x, c);
 	}
 
-	private static Package extendS(Package a, LVar<?> variableToAssign, long value) {
-		return a.extendS(HashMap.of(variableToAssign, lval(value)));
-	}
-	private static Package extendD(LVar<?> x, FiniteDomain xd, Package a) {
+	private static Package extendD(LVar<?> x, FiniteDomain<?> xd, Package a) {
 		return Package.of(a.getSubstitutions(),
 				a.getSConstraints(),
 				a.getDomains().put(x, xd),
 				a.getConstraints());
 	}
 
-	private static FiniteDomain asFiniteDomain(Domain xd) {
-		return (FiniteDomain) xd;
+	private Option<FiniteDomain<T>> asFiniteDomain(Domain xd) {
+		return Types.castAs(xd, FiniteDomain.class);
+	}
+
+	@Override
+	public String toString() {
+		return "[" + min() + ", " + max() + "]";
 	}
 }

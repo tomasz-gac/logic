@@ -1,7 +1,6 @@
 package com.tgac.logic;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.HashMap;
 import io.vavr.collection.Stream;
 import io.vavr.control.Either;
 import io.vavr.control.Option;
@@ -19,8 +18,6 @@ import static com.tgac.logic.Goal.defer;
 import static com.tgac.logic.Goal.separate;
 import static com.tgac.logic.Goals.appendo;
 import static com.tgac.logic.Goals.firsto;
-import static com.tgac.logic.Goals.llist;
-import static com.tgac.logic.Goals.matche;
 import static com.tgac.logic.Goals.membero;
 import static com.tgac.logic.Goals.rembero;
 import static com.tgac.logic.Goals.sameLengtho;
@@ -81,6 +78,8 @@ public class GoalTest {
 		Unifiable<LList<Integer>> x = lvar();
 		Unifiable<LList<Integer>> lst = lvar();
 		Unifiable<LList<Integer>> res = lvar();
+		System.out.println(appendo(lst, x, res));
+
 		val out = lval(Tuple.of(lst, x, res));
 		val results = runStream(out,
 				appendo(lst, x, res))
@@ -181,6 +180,11 @@ public class GoalTest {
 	@Test
 	public void shouldReverse() {
 		Unifiable<LList<Integer>> reversed = lvar();
+		System.out.println(reverso(reversed,
+				LList.ofAll(
+						IntStream.range(0, 5)
+								.boxed()
+								.collect(Collectors.toList()))));
 		List<Unifiable<LList<Integer>>> run = runStream(reversed,
 				reverso(reversed,
 						LList.ofAll(
@@ -202,6 +206,9 @@ public class GoalTest {
 	public void shouldReverse2() {
 		Unifiable<LList<Integer>> normal = lvar();
 		Unifiable<LList<Integer>> reversed = lvar();
+		System.out.println(reverso(
+				normal,
+				reversed));
 		List<String> result = runStream(lval(Tuple.of(normal, reversed)),
 				reverso(
 						normal,
@@ -268,6 +275,7 @@ public class GoalTest {
 	public void shouldFindMember() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<LList<Integer>> lst = lvar();
+
 		List<Integer> xs = runStream(x,
 				lst.unify(LList.ofAll(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)),
 				membero(x, lst))
@@ -502,8 +510,7 @@ public class GoalTest {
 						rembero(with, item, res)
 								.and(with.unify(res).and(res.unify(without))
 										.or(with.separate(res)
-												.and(defer(() -> removeAllo(res, without, item)))))))
-				.debug("recur", HashMap.of("with", with, "without", without));
+												.and(defer(() -> removeAllo(res, without, item)))))));
 	}
 
 	@Test
@@ -517,20 +524,8 @@ public class GoalTest {
 				.collect(Collectors.toList()));
 	}
 
-	static <A> Goal distincto(Unifiable<LList<A>> any, Unifiable<LList<A>> distinct) {
-		return any.unify(LList.empty())
-				.and(distinct.unify(LList.empty()))
-				.or(matche(any, llist((head, tail) ->
-						matche(distinct, llist((dh, dt) ->
-								Goals.<LList<A>> exist(rem -> dh.unify(head)
-										.and(removo(any, rem, head).debug("removo",
-														HashMap.of("any", any, "distinct", distinct)),
-												defer(() -> distincto(rem, dt)))))))));
-	}
-
 	@Test
 	public void shouldSeparate() {
-		Unifiable<Integer> q = lvar();
 		Unifiable<Integer> p = lvar();
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();

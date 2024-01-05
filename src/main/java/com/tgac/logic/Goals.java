@@ -28,23 +28,29 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static com.tgac.functional.recursion.Recur.done;
 import static com.tgac.logic.Goal.defer;
 import static com.tgac.logic.Goal.failure;
+import static com.tgac.logic.Goal.goal;
 import static com.tgac.logic.Incomplete.incomplete;
 @SuppressWarnings("Convert2MethodRef")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Goals {
 
 	public static Goal firsto(Goal... goals) {
-		return s -> Arrays.stream(goals)
+		return goal(s -> Arrays.stream(goals)
 				.map(g -> g.apply(s))
 				.filter(s1 -> Try.of(() -> s1.toOption().get()).isSuccess())
 				.findFirst()
-				.orElseGet(Stream::empty);
+				.orElseGet(Stream::empty))
+				.named("firsto(" + Arrays.stream(goals)
+						.map(Objects::toString)
+						.collect(Collectors.joining(", ")) + ")");
 	}
 
 	public static <T> Goal appendo(
@@ -55,21 +61,26 @@ public class Goals {
 				.or(matche(first,
 						llist((a, d) -> Goals.<LList<T>> exist(res ->
 								both.unify(LList.of(a, res))
-										.and(defer(() -> appendo(d, second, res)))))));
+										.and(defer(() -> appendo(d, second, res)))))))
+				.named(formatLList(first) + " + " + formatLList(second) + " ≣ " + formatLList(both));
+	}
+	private static <T> String formatLList(Unifiable<LList<T>> first) {
+		return first.asVar().map(v -> "[" + v + "]").getOrElse(() -> first.get().toString());
 	}
 
 	public static <A> Goal sameLengtho(Unifiable<LList<A>> lhs, Unifiable<LList<A>> rhs) {
 		return matche(lhs, llist(() -> rhs.unify(LList.empty())))
 				.or(matche(lhs,
 						llist((_0, lTail) -> matche(rhs, llist((_1, rTail) ->
-								defer(() -> sameLengtho(lTail, rTail)))))));
+								defer(() -> sameLengtho(lTail, rTail)))))))
+				.named("len(" + formatLList(lhs) + ") = len(" + formatLList(rhs) + ")");
 	}
 
 	public static <A> Goal membero(Unifiable<A> x, Unifiable<LList<A>> lst) {
-		Unifiable<A> a = LVar.lvar();
-		Unifiable<LList<A>> d = LVar.lvar();
-		return lst.unify(LList.of(a, d))
-				.and(a.unify(x).or(defer(() -> membero(x, d))));
+		return matche(lst, llist((a, d) ->
+				a.unify(x)
+						.or(defer((() -> membero(x, d))))))
+				.named(x + " ⊂ " + formatLList(lst));
 	}
 
 	public static <T> Goal rembero(Unifiable<LList<T>> ls, Unifiable<T> x, Unifiable<LList<T>> out) {
@@ -80,7 +91,8 @@ public class Goals {
 				.or(matche(ls, llist((a, d) -> Goals.<LList<T>> exist(res ->
 						a.separate(x)
 								.and(out.unify(LList.of(a, res)))
-								.and(defer(() -> rembero(d, x, res)))))));
+								.and(defer(() -> rembero(d, x, res)))))))
+				.named(x + " ⊄ " + formatLList(ls) + " ≣ " + out);
 	}
 
 	public static <A> Goal distincto(Unifiable<LList<A>> distinct) {
@@ -89,7 +101,8 @@ public class Goals {
 				llist(a -> Goal.success()),
 				llist((a, b, d) -> a.separate(b)
 						.and(defer(() -> distincto(LList.of(a, d))))
-						.and(defer(() -> distincto(LList.of(b, d))))));
+						.and(defer(() -> distincto(LList.of(b, d))))))
+				.named("distincto(" + distinct + ")");
 	}
 
 	@SafeVarargs
@@ -367,6 +380,7 @@ public class Goals {
 				MiniKanren.walkAll(s, v1)
 						.map(v -> v.asVal()
 								.map(f)
+								.map(g -> g.named("projected(" + g + ")"))
 								.map(g -> g.apply(s))
 								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Cannot project %s. No value bound.", v))));
 	}
@@ -428,6 +442,7 @@ public class Goals {
 						.map(u -> u.map(Unifiable::getObjectUnifiable)
 								.collect(Array.collector()))
 						.map(f::apply)
+						.map(g -> g.named("projected(" + g + ")"))
 						.map(g -> g.apply(s)));
 	}
 }

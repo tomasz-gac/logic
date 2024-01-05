@@ -1,6 +1,5 @@
 package com.tgac.logic.cKanren;
 
-import com.tgac.functional.recursion.MRecur;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.Goal;
 import com.tgac.logic.MiniKanren;
@@ -13,6 +12,7 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.collection.Stream;
+import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -20,9 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
-import static com.tgac.functional.recursion.MRecur.mdone;
 import static com.tgac.functional.recursion.Recur.done;
-import static com.tgac.functional.recursion.Recur.recur;
 import static com.tgac.logic.Incomplete.incomplete;
 import static com.tgac.logic.MiniKanren.prefixS;
 import static com.tgac.logic.MiniKanren.reifyS;
@@ -31,7 +29,7 @@ import static com.tgac.logic.MiniKanren.walkAll;
 public class CKanren {
 
 	public static final AtomicReference<ProcessPrefix> PROCESS_PREFIX = new AtomicReference<>(
-			(prefix, constraints) -> mdone(s -> mdone(s.extendS(prefix))));
+			(prefix, constraints) -> s -> Option.of(s.extendS(prefix)));
 	public static final AtomicReference<EnforceConstraints> ENFORCE_CONSTRAINTS = new AtomicReference<>(x -> Stream::of);
 	public static final AtomicReference<ReifyConstraints> REIFY_CONSTRAINTS = new AtomicReference<>(
 			new ReifyConstraints() {
@@ -42,45 +40,39 @@ public class CKanren {
 			});
 
 	public static Goal constructGoal(PackageAccessor accessor) {
-		return s -> incomplete(() ->
-				accessor.apply(s)
-						.map(Stream::of)
-						.resumeWith(Stream::empty));
+		return s -> accessor.apply(s).toStream();
 	}
 
 	private static <T> PackageAccessor unifyC(Unifiable<T> u, Unifiable<T> v) {
 		return s -> MiniKanren.unify(s, u, v)
-				.map(s1 -> s == s1 ?
-						mdone(s) :
+				.flatMap(s1 -> s == s1 ?
+						Option.of(s) :
 						PROCESS_PREFIX.get()
 								.processPrefix(prefixS(
 												s.getSubstitutions(),
 												s1.getSubstitutions()),
 										s.getConstraints())
-								.flatMap(accessor -> accessor.apply(s.withSubstitutionsFrom(s1))))
-				.getOrElse(MRecur::none);
+								.apply(s.withSubstitutionsFrom(s1)));
 	}
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
 		return constructGoal(unifyC(u, v));
 	}
 
-	public static Recur<PackageAccessor> runConstraints(Unifiable<?> xs, List<Constraint> c) {
-		if (c.isEmpty()) {
-			return done(PackageAccessor.identity());
-		} else if (anyRelevantVar(xs, c.head())) {
-			return done(remRun(c.head()))
-					.flatMap(remRun -> runConstraints(xs, c.tail())
-							.map(rc -> p -> remRun.apply(p).flatMap(rc)));
-		} else {
-			return recur(() -> runConstraints(xs, c.tail()));
-		}
+	public static PackageAccessor runConstraints(Unifiable<?> xs, List<Constraint> c) {
+		return c.toJavaStream()
+				.flatMap(constraint ->
+						anyRelevantVar(xs, constraint) ?
+								java.util.stream.Stream.of(remRun(constraint)) :
+								java.util.stream.Stream.empty())
+				.reduce(PackageAccessor.identity(),
+						PackageAccessor::compose);
 	}
 
 	private static PackageAccessor remRun(Constraint c) {
 		return p -> p.getConstraints().contains(c) ?
 				c.apply(p.withoutConstraint(c)) :
-				mdone(p);
+				Option.of(p);
 	}
 
 	public static <T> Stream<Unifiable<T>> reify(Package s, Unifiable<T> x) {

@@ -2,8 +2,8 @@ package com.tgac.logic;
 import com.tgac.logic.cKanren.Constraint;
 import com.tgac.logic.cKanren.Domain;
 import com.tgac.logic.cKanren.PackageAccessor;
-import com.tgac.logic.fd.EnumeratedInterval;
-import com.tgac.logic.fd.FDSupport;
+import com.tgac.logic.fd.FDGoals;
+import com.tgac.logic.fd.domains.EnumeratedInterval;
 import com.tgac.logic.fd.parameters.EnforceConstraintsFD;
 import com.tgac.logic.fd.parameters.ProcessPrefixFd;
 import io.vavr.Tuple;
@@ -33,7 +33,7 @@ public class FiniteDomainTest {
 	PackageAccessor accessor;
 
 	static {
-		FDSupport.useFD();
+		FDGoals.useFD();
 	}
 
 	@Test
@@ -51,8 +51,6 @@ public class FiniteDomainTest {
 		System.out.println(processPrefixFd.processPrefix(
 						prefix,
 						List.of(constraint))
-				.get()
-				.get()
 				.apply(Package.of(HashMap.empty(), List.empty(), LinkedHashMap.empty(), List.empty()))
 				.get());
 	}

@@ -1,5 +1,4 @@
 package com.tgac.logic.cKanren.parameters;
-import com.tgac.functional.recursion.MRecur;
 import com.tgac.logic.LVar;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.Constraint;
@@ -24,7 +23,7 @@ public interface ProcessPrefix {
 	 * @param constraints
 	 * 		- current constraints
 	 */
-	MRecur<PackageAccessor> processPrefix(
+	PackageAccessor processPrefix(
 			HashMap<LVar<?>, Unifiable<?>> prefix,
 			List<Constraint> constraints);
 }

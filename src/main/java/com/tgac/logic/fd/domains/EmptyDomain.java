@@ -1,15 +1,16 @@
-package com.tgac.logic.fd;
+package com.tgac.logic.fd.domains;
+import com.tgac.logic.fd.FiniteDomain;
 import io.vavr.control.Option;
 
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-public class EmptyDomain extends FiniteDomain {
+public class EmptyDomain<T extends Comparable<T>> extends FiniteDomain<T> {
 	@Override
-	public FiniteDomain dropBefore(Predicate<Long> p) {
+	public FiniteDomain<T> dropBefore(Predicate<T> p) {
 		return this;
 	}
 	@Override
-	public FiniteDomain copyBefore(Predicate<Long> p) {
+	public FiniteDomain<T> copyBefore(Predicate<T> p) {
 		return this;
 	}
 	@Override
@@ -21,23 +22,28 @@ public class EmptyDomain extends FiniteDomain {
 		return true;
 	}
 	@Override
-	protected long min() {
+	protected T min() {
 		throw new UnsupportedOperationException("Cannot call min on empty domain");
 	}
 	@Override
-	protected long max() {
+	protected T max() {
 		throw new UnsupportedOperationException("Cannot call max on empty domain");
 	}
 	@Override
-	protected boolean contains(Object v) {
+	public boolean contains(T v) {
 		return false;
 	}
 	@Override
-	protected FiniteDomain intersect(FiniteDomain other) {
+	protected FiniteDomain<T> intersect(FiniteDomain<T> other) {
 		return this;
 	}
 	@Override
-	protected Option<Long> getSingletonElement() {
+	protected Option<T> getSingletonElement() {
 		return Option.none();
+	}
+
+	@Override
+	public String toString() {
+		return "{}";
 	}
 }
