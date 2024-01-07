@@ -307,9 +307,10 @@ public class MiniKanren {
 						.map(vc::append))
 				.map(vcr -> vcr
 						.map1(v -> walkAll(vcr._3, v))
-						.map2(c -> purify(c, vcr._3)
-								.flatMap(pc -> removeSubsumed(pc, List.empty()))
-								.flatMap(rc -> walkAllConstraints(rc, vcr._3))))
+						.map2(c -> Tuple.of(purify(c, vcr._3))
+								.map(pc -> removeSubsumed(pc, List.empty())
+										.flatMap(rc -> walkAllConstraints(rc, vcr._3)))
+								._1))
 				.flatMap(vcr -> Recur.zip(vcr._1, vcr._2))
 				.map(vc -> vc._2.isEmpty() ?
 						vc._1 :
@@ -476,43 +477,25 @@ public class MiniKanren {
 						throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	private static Recur<List<HashMap<LVar<?>, Unifiable<?>>>> purify(
+	private static List<HashMap<LVar<?>, Unifiable<?>>> purify(
 			List<HashMap<LVar<?>, Unifiable<?>>> c,
 			Package r) {
 		return c.toJavaStream()
-				.map(cc -> purifySingle(cc, r)
-						.map(java.util.stream.Stream::of))
-				.reduce((acc, pc) -> Recur.zip(acc, pc)
-						.map(lr -> lr.apply(java.util.stream.Stream::concat)))
-				.orElseGet(() -> done(java.util.stream.Stream.empty()))
-				.map(str -> str
-						.filter(not(HashMap::isEmpty))
-						.collect(List.collector()));
+				.map(cc -> purifySingle(cc, r))
+				.map(java.util.stream.Stream::of)
+				.reduce(java.util.stream.Stream::concat)
+				.orElseGet(java.util.stream.Stream::empty)
+				.filter(not(HashMap::isEmpty))
+				.collect(List.collector());
 	}
 
-	private static Recur<HashMap<LVar<?>, Unifiable<?>>> purifySingle(
+	private static HashMap<LVar<?>, Unifiable<?>> purifySingle(
 			HashMap<LVar<?>, Unifiable<?>> constraints,
 			Package r) {
-		if (constraints.isEmpty()) {
-			return done(HashMap.empty());
-		} else {
-			return Recur.zip(done(anyVar(constraints.head()._1, r)),
-							done(anyVar(constraints.head()._2, r)))
-					.map(lr -> lr.apply(Boolean::logicalOr))
-					.flatMap(unbound -> unbound ?
-							purifySingle(constraints.tail(), r) :
-							purifySingle(constraints.tail(), r)
-									.map(c -> constraints.head().apply(c::put)));
-		}
-	}
-
-	/**
-	 * Checks whether any item within v is unbound within r
-	 */
-	public static Boolean anyVar(Unifiable<?> v, Package r) {
-		return v.asVar()
-				.map(lvar -> walk(r, lvar) == lvar)
-				.getOrElse(done(false));
+		return constraints.toJavaStream()
+				.filter(c -> r.isAssociated(c._1) && r.isAssociated(c._2))
+				.reduce(HashMap.empty(), (c, head) -> head.apply(c::put),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	private static Boolean isConstraintSubsumed(

@@ -1,6 +1,8 @@
 package com.tgac.logic;
+import com.tgac.functional.reflection.Types;
 import com.tgac.logic.cKanren.Constraint;
-import com.tgac.logic.cKanren.Domain;
+import com.tgac.logic.fd.domains.FiniteDomain;
+import io.vavr.Predicates;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.List;
@@ -9,7 +11,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
-import static com.tgac.logic.MiniKanren.anyVar;
+import static com.tgac.logic.MiniKanren.walk;
 @Value
 @RequiredArgsConstructor(access = AccessLevel.PUBLIC, staticName = "of")
 public class Package {
@@ -18,7 +20,7 @@ public class Package {
 	// separateness constraints
 	List<HashMap<LVar<?>, Unifiable<?>>> sConstraints;
 	// cKanren domains
-	LinkedHashMap<LVar<?>, Domain> domains;
+	LinkedHashMap<LVar<?>, FiniteDomain<?>> domains;
 	// cKanren constraints
 	List<Constraint> constraints;
 
@@ -39,8 +41,9 @@ public class Package {
 		return substitutions.get(v).map(w -> (Unifiable<T>) w);
 	}
 
-	public Option<Domain> getDomain(LVar<?> v) {
-		return domains.get(v);
+	public <T> Option<FiniteDomain<T>> getDomain(LVar<T> v) {
+		return domains.get(v)
+				.flatMap(Types.castAs(FiniteDomain.class));
 	}
 
 	Package putSepConstraint(HashMap<LVar<?>, Unifiable<?>> constraint) {
@@ -51,17 +54,22 @@ public class Package {
 		return Package.of(substitutions, sConstraints, domains, constraints.remove(c));
 	}
 
+	/**
+	 * Checks whether any item within v is unbound within r Original name: anyVar
+	 */
+	public Boolean isAssociated(Unifiable<?> v) {
+		return v.asVar()
+				.map(lvar -> walk(this, lvar) != lvar)
+				.getOrElse(true);
+	}
+
 	public Package withConstraint(Constraint c) {
 		boolean atLeaseOneIsBound = c.getArgs().toJavaStream()
-				.anyMatch(arg -> anyVar(arg, this));
+				.anyMatch(Predicates.not(this::isAssociated));
 
 		return atLeaseOneIsBound ?
 				Package.of(substitutions, sConstraints, domains, constraints.prepend(c)) :
 				this;
-	}
-
-	public Package withoutSubstitutions() {
-		return Package.of(HashMap.empty(), sConstraints, domains, constraints);
 	}
 
 	public Package withSubstitutionsFrom(Package aPackage) {

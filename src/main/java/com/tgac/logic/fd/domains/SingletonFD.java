@@ -1,5 +1,4 @@
 package com.tgac.logic.fd.domains;
-import com.tgac.logic.fd.FiniteDomain;
 import io.vavr.control.Option;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +10,7 @@ import java.util.stream.Stream;
 @Value
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor
-public class SingletonFD<T extends Comparable<T>> extends FiniteDomain<T> {
+public class SingletonFD<T> extends FiniteDomain<T> {
 	T value;
 
 	@Override
@@ -23,7 +22,7 @@ public class SingletonFD<T extends Comparable<T>> extends FiniteDomain<T> {
 		return p.test(value) ? new EmptyDomain<>() : this;
 	}
 	@Override
-	public Stream<Object> stream() {
+	public Stream<T> stream() {
 		return Stream.of(value);
 	}
 	@Override
@@ -32,12 +31,12 @@ public class SingletonFD<T extends Comparable<T>> extends FiniteDomain<T> {
 	}
 
 	@Override
-	protected T min() {
+	public T min() {
 		return value;
 	}
 
 	@Override
-	protected T max() {
+	public T max() {
 		return value;
 	}
 
@@ -52,13 +51,24 @@ public class SingletonFD<T extends Comparable<T>> extends FiniteDomain<T> {
 				.<FiniteDomain<T>> map(v -> this)
 				.getOrElse(EmptyDomain::new);
 	}
+
 	@Override
 	protected Option<T> getSingletonElement() {
 		return Option.of(value);
 	}
 
 	@Override
-	public String toString() {
-		return "{" + value + "}";
+	public boolean isDisjoint(FiniteDomain<T> other) {
+		return other.intersect(this).isEmpty();
 	}
+	@Override
+	public FiniteDomain<T> difference(FiniteDomain<T> other) {
+		return other.difference(this);
+	}
+
+	@Override
+	public String toString() {
+		return "[" + value + "]";
+	}
+
 }

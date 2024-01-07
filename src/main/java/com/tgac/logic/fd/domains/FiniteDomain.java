@@ -1,43 +1,61 @@
-package com.tgac.logic.fd;
-import com.tgac.functional.reflection.Types;
+package com.tgac.logic.fd.domains;
 import com.tgac.logic.LVar;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
-import com.tgac.logic.cKanren.Constraint;
-import com.tgac.logic.cKanren.Domain;
 import com.tgac.logic.cKanren.PackageAccessor;
 import io.vavr.Predicates;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.List;
 import io.vavr.control.Option;
 
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.cKanren.CKanren.runConstraints;
 
-public abstract class FiniteDomain<T extends Comparable<T>> implements Domain {
-	protected abstract T min();
+public abstract class FiniteDomain<T> {
 
-	protected abstract T max();
+	public abstract boolean contains(T value);
 
-	protected abstract FiniteDomain<T> dropBefore(Predicate<T> p);
+	public abstract Stream<T> stream();
 
-	protected abstract Domain copyBefore(Predicate<T> value);
+	public abstract boolean isEmpty();
 
-	public abstract boolean contains(T v);
+	public abstract T min();
+
+	public abstract T max();
+
+	public abstract FiniteDomain<T> dropBefore(Predicate<T> p);
+
+	public abstract FiniteDomain<T> copyBefore(Predicate<T> value);
 
 	protected abstract FiniteDomain<T> intersect(FiniteDomain<T> other);
 
 	protected abstract Option<T> getSingletonElement();
 
-	@Override
-	public PackageAccessor processDom(Unifiable<?> x) {
+	public abstract boolean isDisjoint(FiniteDomain<T> other);
+
+	public abstract FiniteDomain<T> difference(FiniteDomain<T> other);
+
+	/**
+	 * <pre>
+	 * processδ takes as arguments a value v and a domain δ.
+	 * - 	If v is a domain value in δ, then we return a unchanged.
+	 * - 	If v is a variable, we intersect the two domains:
+	 * 	the one associated with v in d and this domain.
+	 * 	- 	If the intersection is a singleton, we extend the substitution.
+	 * 		Otherwise, we extend the domain with the intersection.
+	 * 	- 	If the two domains are disjoint, then we return false.
+	 *
+	 * 	(At this point, we have wrong information in d, but this is fine,
+	 * 	since we look up variables in d only when they are not in s.)
+	 * </pre>
+	 */
+	public PackageAccessor processDom(Unifiable<T> x) {
 		return a -> x.asVar()
 				.map(this::updateVarDomain)
 				.map(op -> op.apply(a))
 				.orElse(() -> x.asVal()
-						.flatMap(v -> Types.<T> castAs(v, Object.class))
 						.filter(this::contains)
 						.map(v -> Option.of(a)))
 				.getOrElse(Option::none);
@@ -52,13 +70,14 @@ public abstract class FiniteDomain<T extends Comparable<T>> implements Domain {
 	 * 		updated variable, must already been walked
 	 * @return package operator
 	 */
-	private PackageAccessor updateVarDomain(LVar<?> x) {
+	private PackageAccessor updateVarDomain(LVar<T> x) {
 		return s -> s.getDomain(x)
-				.flatMap(this::asFiniteDomain)
 				.map(previousDomain -> Option.of(previousDomain.intersect(this))
-						.filter(Predicates.not(FiniteDomain::isEmpty))
+						.filter(Predicates.not(com.tgac.logic.fd.domains.FiniteDomain::isEmpty))
 						.map(i -> i.resolveStorableDom(x).apply(s))
+						// intersection is empty
 						.getOrElse(Option::none))
+				// x has no domain
 				.getOrElse(() -> this.resolveStorableDom(x).apply(s));
 	}
 
@@ -75,13 +94,9 @@ public abstract class FiniteDomain<T extends Comparable<T>> implements Domain {
 	private PackageAccessor resolveStorableDom(LVar<?> x) {
 		return a -> getSingletonElement()
 				.map(n -> a.extendS(HashMap.of(x, lval(n))))
-				.map(a1 -> assignDomainValueWithCheck(x, a.getConstraints())
+				.map(a1 -> runConstraints(x, a.getConstraints())
 						.apply(a1))
 				.getOrElse(() -> Option.of(extendD(x, this, a)));
-	}
-
-	private static PackageAccessor assignDomainValueWithCheck(LVar<?> x, List<Constraint> c) {
-		return runConstraints(x, c);
 	}
 
 	private static Package extendD(LVar<?> x, FiniteDomain<?> xd, Package a) {
@@ -89,14 +104,5 @@ public abstract class FiniteDomain<T extends Comparable<T>> implements Domain {
 				a.getSConstraints(),
 				a.getDomains().put(x, xd),
 				a.getConstraints());
-	}
-
-	private Option<FiniteDomain<T>> asFiniteDomain(Domain xd) {
-		return Types.castAs(xd, FiniteDomain.class);
-	}
-
-	@Override
-	public String toString() {
-		return "[" + min() + ", " + max() + "]";
 	}
 }

@@ -1,6 +1,5 @@
 package com.tgac.logic.fd.domains;
 import com.tgac.functional.Exceptions;
-import com.tgac.logic.fd.FiniteDomain;
 import io.vavr.Predicates;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Set;
@@ -12,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 import java.util.function.Predicate;
+
+import static com.tgac.logic.MiniKanren.zip;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
@@ -27,9 +28,8 @@ public class EnumeratedInterval<T extends Comparable<T>> extends FiniteDomain<T>
 	}
 
 	@Override
-	public java.util.stream.Stream<Object> stream() {
-		return elements.toJavaStream()
-				.map(Object.class::cast);
+	public java.util.stream.Stream<T> stream() {
+		return elements.toJavaStream();
 	}
 	@Override
 	public boolean isEmpty() {
@@ -45,12 +45,12 @@ public class EnumeratedInterval<T extends Comparable<T>> extends FiniteDomain<T>
 		return EnumeratedInterval.of(elements.filter(e -> !pred.test(e)));
 	}
 	@Override
-	protected T min() {
+	public T min() {
 		return elements.min()
 				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call min on empty domain"));
 	}
 	@Override
-	protected T max() {
+	public T max() {
 		return elements.max()
 				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call min on empty domain"));
 	}
@@ -59,6 +59,28 @@ public class EnumeratedInterval<T extends Comparable<T>> extends FiniteDomain<T>
 		return elements.contains(v);
 	}
 
+	@Override
+	public boolean isDisjoint(FiniteDomain<T> other) {
+		if (isEmpty() || other.isEmpty()) {
+			return true;
+		} else if (zip(getSingletonElement(), other.getSingletonElement()).isDefined()) {
+			return !getSingletonElement().get().equals(other.getSingletonElement().get());
+		} else if (this.max().compareTo(other.min()) < 0 || other.max().compareTo(this.min()) < 0) {
+			return stream().anyMatch(other::contains);
+		} else {
+			return false;
+		}
+	}
+
+	@Override
+	public FiniteDomain<T> difference(FiniteDomain<T> other) {
+		return other.isEmpty() ? this :
+				EnumeratedInterval.of(
+						other.getSingletonElement()
+								.map(elements::remove)
+								.getOrElse(() ->
+										elements.filter(other::contains)));
+	}
 	@Override
 	protected FiniteDomain<T> intersect(FiniteDomain<T> other) {
 		return Option.of(elements.retainAll(((EnumeratedInterval<T>) other).elements))
@@ -77,6 +99,6 @@ public class EnumeratedInterval<T extends Comparable<T>> extends FiniteDomain<T>
 
 	@Override
 	public String toString() {
-		return super.toString();
+		return "[" + min() + " … " + max() + "]";
 	}
 }

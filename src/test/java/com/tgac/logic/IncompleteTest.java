@@ -87,7 +87,7 @@ public class IncompleteTest {
 		Stream<Integer> ones = of(1, 1, 1);
 		Stream<Integer> twos = of(2, 2, 2);
 		Assertions.assertThat(
-						interleave(Array.of(ones, twos)).get()
+						interleave(Array.of(ones, twos))
 								.collect(Collectors.toList()))
 				.containsExactly(1, 2, 1, 2, 1, 2);
 	}
@@ -99,14 +99,14 @@ public class IncompleteTest {
 		Stream<Integer> threes = of(3, 3, 3);
 		Stream<Integer> fours = of(4, 4, 4);
 		Assertions.assertThat(
-						interleave(Array.of(ones, twos, threes, fours)).get()
+						interleave(Array.of(ones, twos, threes, fours))
 								.collect(Collectors.toList()))
 				.containsExactly(1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4);
 	}
 
 	@Test
 	public void shouldInterleaveZero() {
-		Assertions.assertThat(interleave(Array.empty()).get().collect(Collectors.toList()))
+		Assertions.assertThat(interleave(Array.empty()).collect(Collectors.toList()))
 				.isEmpty();
 	}
 
@@ -114,7 +114,6 @@ public class IncompleteTest {
 	public void shouldInterleaveMZeros() {
 		Assertions.assertThat(interleave(
 						Array.of(empty(), empty(), empty()))
-						.get()
 						.collect(Collectors.toList()))
 				.isEmpty();
 	}
@@ -125,7 +124,7 @@ public class IncompleteTest {
 		Stream<Integer> twos = Stream.of(2, 2);
 		Stream<Integer> threes = Stream.of(3, 3, 3);
 		Assertions.assertThat(
-						interleave(Array.of(ones, twos, threes)).get()
+						interleave(Array.of(ones, twos, threes))
 								.collect(Collectors.toList()))
 				.containsExactly(1, 2, 3, 2, 3, 3);
 

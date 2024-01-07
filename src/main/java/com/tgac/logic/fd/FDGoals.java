@@ -9,6 +9,7 @@ import com.tgac.logic.cKanren.CKanren;
 import com.tgac.logic.cKanren.Constraint;
 import com.tgac.logic.cKanren.PackageAccessor;
 import com.tgac.logic.fd.domains.EnumeratedInterval;
+import com.tgac.logic.fd.domains.FiniteDomain;
 import com.tgac.logic.fd.domains.SingletonFD;
 import com.tgac.logic.fd.parameters.EnforceConstraintsFD;
 import com.tgac.logic.fd.parameters.ProcessPrefixFd;
@@ -123,15 +124,25 @@ public class FDGoals {
 								));
 	}
 
-	//	public static Goal separateFD(Unifiable<Long> u, Unifiable<Long> v){
+	//	public static Goal separateFD(Unifiable<Long> u, Unifiable<Long> v) {
 	//		return CKanren.constructGoal(separateFDc(u, v));
 	//	}
 	//	private static PackageAccessor separateFDc(Unifiable<Long> u, Unifiable<Long> v) {
 	//		return a -> MiniKanren.<Tuple2<FiniteDomain<Long>, FiniteDomain<Long>>>
-	//				tupleFromArray(letDomain(a, Array.of(u, v))
-	//				.collect(Collectors.toList()))
+	//						tupleFromArray(letDomain(a, Array.of(u, v))
+	//						.collect(Collectors.toList()))
 	//				.apply((ud, vd) ->
-	//						);
+	//						Option.of(a)
+	//								.filter(__ -> ud.isEmpty() || vd.isEmpty())
+	//								.map(s -> s.withConstraint(
+	//										Constraint.buildOc(
+	//												s1 -> separateFDc(u, v).apply(s1),
+	//												Array.of(u, v))))
+	//								.orElse(() ->
+	//										MiniKanren.zip(ud.getSingletonElement(), vd.getSingletonElement())
+	//												.flatMap(uvs -> uvs.apply((us, vs) ->
+	//														Option.of(a).filter(__ -> us.equals(vs)))))
+	//								.orElse(() -> ));
 	//	}
 
 }

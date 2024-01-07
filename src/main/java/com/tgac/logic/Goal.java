@@ -87,10 +87,10 @@ public interface Goal extends Function<Package, Stream<Package>> {
 
 		@Override
 		public Stream<Package> apply(Package s) {
-			return incomplete(() -> interleave(
+			return interleave(
 					clauses.stream()
 							.map(conjunction -> conjunction.apply(s))
-							.collect(Array.collector())));
+							.collect(Array.collector()));
 		}
 
 		@Override
@@ -142,7 +142,7 @@ public interface Goal extends Function<Package, Stream<Package>> {
 
 		@Override
 		public Stream<Package> apply(Package s) {
-			return incomplete(() -> bind(Stream.of(s), Array.ofAll(clauses)));
+			return incomplete(() -> done(bind(Stream.of(s), Array.ofAll(clauses))));
 		}
 
 		@Override
@@ -228,58 +228,45 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	default <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out) {
-		return bind(Stream.of(Package.empty()), this).get()
+		return bind(Stream.of(Package.empty()), this)
 				.map(s -> MiniKanren.reify(s, out).get())
 				.toJavaStream();
 	}
 
 	default <T> Goal aggregate(Unifiable<T> var,
 			Function<java.util.stream.Stream<Unifiable<T>>, Goal> f) {
-		return s -> f.apply(bind(Stream.of(s), this).get()
+		return s -> f.apply(bind(Stream.of(s), this)
 						.map(s1 -> MiniKanren.reify(s1, var).get())
 						.toJavaStream())
 				.apply(s);
 	}
 
-	static <A> Recur<Stream<A>> interleave(Array<Stream<A>> lists) {
+	static <A> Stream<A> interleave(Array<Stream<A>> lists) {
 		if (lists.isEmpty()) {
-			return done(Stream.empty());
+			return Stream.empty();
 		}
 		Stream<A> fst = lists.head();
 		Array<Stream<A>> rst = lists.tail();
 		if (rst.isEmpty()) {
-			return done(fst);
-		}
-
-		if (fst instanceof Incomplete) {
-			// TODO : can this be somehow simplified to not require casting?
-			return ((Incomplete<A>) fst).getRest()
-					.flatMap(s -> interleave(rst.prepend(s)));
+			return fst;
 		} else if (fst.isEmpty()) {
-			return recur(() -> interleave(rst));
+			return incomplete(() -> done(interleave(rst)));
 		} else {
-			return done(Stream.cons(fst.head(),
-					() -> incomplete(() ->
-							interleave(rst.append(fst.tail())))));
+			return Stream.cons(fst.head(), () -> interleave(rst.append(fst.tail())));
 		}
 	}
 
-	static Recur<Stream<Package>> bind(Stream<Package> s, Array<Goal> gs) {
+	static Stream<Package> bind(Stream<Package> s, Array<Goal> gs) {
 		return gs.toJavaStream()
-				.reduce(done(s), (subs, g) -> subs.flatMap(s1 -> bind(s1, g)),
+				.reduce(s, Goal::bind,
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	static Recur<Stream<Package>> bind(Stream<Package> s, Goal g) {
-		if (s instanceof Incomplete) {
-			// TODO : can this be somehow simplified to not require casting?
-			return ((Incomplete<Package>) s).getRest()
-					.flatMap(s1 -> bind(s1, g));
-		}
+	static Stream<Package> bind(Stream<Package> s, Goal g) {
 		if (s.isEmpty()) {
-			return done(Stream.empty());
+			return Stream.empty();
 		} else {
-			return interleave(Array.of(g.apply(s.head()), incomplete(() -> bind(s.tail(), g))));
+			return interleave(Array.of(g.apply(s.head()), incomplete(() -> done(bind(s.tail(), g)))));
 		}
 	}
 

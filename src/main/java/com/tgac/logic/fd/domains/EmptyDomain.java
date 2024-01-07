@@ -1,10 +1,9 @@
 package com.tgac.logic.fd.domains;
-import com.tgac.logic.fd.FiniteDomain;
 import io.vavr.control.Option;
 
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-public class EmptyDomain<T extends Comparable<T>> extends FiniteDomain<T> {
+public class EmptyDomain<T> extends FiniteDomain<T> {
 	@Override
 	public FiniteDomain<T> dropBefore(Predicate<T> p) {
 		return this;
@@ -14,7 +13,7 @@ public class EmptyDomain<T extends Comparable<T>> extends FiniteDomain<T> {
 		return this;
 	}
 	@Override
-	public Stream<Object> stream() {
+	public Stream<T> stream() {
 		return Stream.empty();
 	}
 	@Override
@@ -22,11 +21,11 @@ public class EmptyDomain<T extends Comparable<T>> extends FiniteDomain<T> {
 		return true;
 	}
 	@Override
-	protected T min() {
+	public T min() {
 		throw new UnsupportedOperationException("Cannot call min on empty domain");
 	}
 	@Override
-	protected T max() {
+	public T max() {
 		throw new UnsupportedOperationException("Cannot call max on empty domain");
 	}
 	@Override
@@ -41,9 +40,17 @@ public class EmptyDomain<T extends Comparable<T>> extends FiniteDomain<T> {
 	protected Option<T> getSingletonElement() {
 		return Option.none();
 	}
+	@Override
+	public boolean isDisjoint(FiniteDomain<T> other) {
+		return true;
+	}
+	@Override
+	public FiniteDomain<T> difference(FiniteDomain<T> other) {
+		return other;
+	}
 
 	@Override
 	public String toString() {
-		return "{}";
+		return "[]";
 	}
 }

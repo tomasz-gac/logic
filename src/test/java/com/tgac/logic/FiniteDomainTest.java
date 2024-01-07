@@ -1,9 +1,9 @@
 package com.tgac.logic;
 import com.tgac.logic.cKanren.Constraint;
-import com.tgac.logic.cKanren.Domain;
 import com.tgac.logic.cKanren.PackageAccessor;
 import com.tgac.logic.fd.FDGoals;
 import com.tgac.logic.fd.domains.EnumeratedInterval;
+import com.tgac.logic.fd.domains.FiniteDomain;
 import com.tgac.logic.fd.parameters.EnforceConstraintsFD;
 import com.tgac.logic.fd.parameters.ProcessPrefixFd;
 import io.vavr.Tuple;
@@ -61,7 +61,7 @@ public class FiniteDomainTest {
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(i)
 				.apply(Package.of(HashMap.empty(), List.empty(),
-						LinkedHashMap.<LVar<?>, Domain> empty()
+						LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
 								.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 10L))),
 						List.empty()))
 				.collect(Collectors.toList());
@@ -82,7 +82,7 @@ public class FiniteDomainTest {
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
 				.apply(Package.of(HashMap.empty(), List.empty(),
-						LinkedHashMap.<LVar<?>, Domain> empty()
+						LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
 								.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L)))
 								.put(j.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L))),
 						List.empty()))

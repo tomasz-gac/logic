@@ -367,6 +367,39 @@ public class FiniteDomainTest {
 
 	}
 
+	public static <T> Goal sizo(Unifiable<Long> size, Unifiable<Long> i, Unifiable<LList<T>> lst) {
+		return Goals.matche(lst,
+				Goals.llist(() -> size.unify(i)),
+				Goals.llist((a, d) ->
+						Goals.<Long> exist(i1 ->
+								sum(i, lval(1L), i1)
+										.and(Goal.defer(() -> sizo(size, i1, d))))));
+	}
+
+	public static <T> Goal sizo(Unifiable<Long> size, Unifiable<LList<T>> lst) {
+		return sizo(size, lval(0L), lst);
+	}
+
+	@Test
+	@Ignore
+	public void shouldCountSize() {
+		Unifiable<Long> c = lvar();
+		System.out.println(solve(c,
+				dom(c, EnumeratedInterval.range(0L, 100L))
+						.and(sizo(c, LList.ofAll(1, 2, 3, 4))))
+				.collect(Collectors.toList()));
+	}
+
+	//	Goal mul(Unifiable<Long> x, Unifiable<Long> y, Unifiable<Long> z) {
+	//		return x.unify(lval(0L)).and(z.unify(lval(0L)))
+	//				.or(y.unify(lval(0L)).and(z.unify(lval(0L))))
+	//				.or(Goals.<Long, Long> exist((x1, z1) ->
+	//						x1.separate(lval(1L))
+	//								.and(sum(x1, lval(1L), x))
+	//								.and(sum(y, y, z1))
+	//								.and(Goal.defer())))
+	//	}
+
 	static <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out, Goal g) {
 		return g.apply(Package.empty())
 				.flatMap(s -> CKanren.reify(s, out))

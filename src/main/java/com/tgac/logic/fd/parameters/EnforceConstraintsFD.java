@@ -9,8 +9,8 @@ import com.tgac.logic.MiniKanren;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.CKanren;
 import com.tgac.logic.cKanren.Constraint;
-import com.tgac.logic.cKanren.Domain;
 import com.tgac.logic.cKanren.parameters.EnforceConstraints;
+import com.tgac.logic.fd.domains.FiniteDomain;
 import io.vavr.Tuple;
 import io.vavr.collection.List;
 
@@ -20,7 +20,7 @@ import static com.tgac.functional.Exceptions.format;
 import static com.tgac.logic.LVal.lval;
 public class EnforceConstraintsFD implements EnforceConstraints {
 	@Override
-	public Goal enforce(Unifiable<?> x) {
+	public <T> Goal enforce(Unifiable<T> x) {
 		return a -> forceAns(x)
 				.and(a1 -> Tuple.of(a1.getDomains().keySet().toList())
 						.apply(xs -> {
@@ -30,7 +30,7 @@ public class EnforceConstraintsFD implements EnforceConstraints {
 				.apply(a);
 	}
 
-	public static Goal forceAns(Unifiable<?> x) {
+	public static <T> Goal forceAns(Unifiable<T> x) {
 		return s -> Recur.done(MiniKanren.walk(s, x))
 				.map(v -> v.asVar()
 						.flatMap(s::getDomain)
@@ -53,7 +53,7 @@ public class EnforceConstraintsFD implements EnforceConstraints {
 		return a -> CKanren.constructGoal(CKanren.runConstraints(x, a.getConstraints())).apply(a);
 	}
 
-	private static Goal unifyWithAllDomainValues(Unifiable<?> x, Domain d) {
+	private static <T> Goal unifyWithAllDomainValues(Unifiable<T> x, FiniteDomain<T> d) {
 		return d.stream()
 				.map(domainValue -> Goal.unify(x.getObjectUnifiable(), lval(domainValue)))
 				.reduce(Goal::or)

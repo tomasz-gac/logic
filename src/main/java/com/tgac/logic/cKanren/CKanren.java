@@ -30,7 +30,14 @@ public class CKanren {
 
 	public static final AtomicReference<ProcessPrefix> PROCESS_PREFIX = new AtomicReference<>(
 			(prefix, constraints) -> s -> Option.of(s.extendS(prefix)));
-	public static final AtomicReference<EnforceConstraints> ENFORCE_CONSTRAINTS = new AtomicReference<>(x -> Stream::of);
+	public static final AtomicReference<EnforceConstraints> ENFORCE_CONSTRAINTS = new AtomicReference<>(
+			new EnforceConstraints() {
+				@Override
+				public <T> Goal enforce(Unifiable<T> x) {
+					return Goal.failure();
+				}
+			}
+	);
 	public static final AtomicReference<ReifyConstraints> REIFY_CONSTRAINTS = new AtomicReference<>(
 			new ReifyConstraints() {
 				@Override
@@ -61,10 +68,9 @@ public class CKanren {
 
 	public static PackageAccessor runConstraints(Unifiable<?> xs, List<Constraint> c) {
 		return c.toJavaStream()
-				.flatMap(constraint ->
-						anyRelevantVar(xs, constraint) ?
-								java.util.stream.Stream.of(remRun(constraint)) :
-								java.util.stream.Stream.empty())
+				.flatMap(constraint -> Option.of(remRun(constraint))
+						.filter(__ -> anyRelevantVar(xs, constraint))
+						.toJavaStream())
 				.reduce(PackageAccessor.identity(),
 						PackageAccessor::compose);
 	}
