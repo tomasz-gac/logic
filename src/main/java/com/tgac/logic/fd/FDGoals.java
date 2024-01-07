@@ -11,9 +11,6 @@ import com.tgac.logic.cKanren.PackageAccessor;
 import com.tgac.logic.fd.domains.EnumeratedInterval;
 import com.tgac.logic.fd.domains.FiniteDomain;
 import com.tgac.logic.fd.domains.SingletonFD;
-import com.tgac.logic.fd.parameters.EnforceConstraintsFD;
-import com.tgac.logic.fd.parameters.ProcessPrefixFd;
-import com.tgac.logic.fd.parameters.ReifyConstraintsFD;
 import io.vavr.Tuple;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashSet;
@@ -26,12 +23,6 @@ import lombok.Value;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class FDGoals {
 
-	public static void useFD() {
-		CKanren.PROCESS_PREFIX.set(new ProcessPrefixFd());
-		CKanren.ENFORCE_CONSTRAINTS.set(new EnforceConstraintsFD());
-		CKanren.REIFY_CONSTRAINTS.set(new ReifyConstraintsFD());
-	}
-
 	public static <T extends Comparable<T>> Goal dom(Unifiable<T> u, FiniteDomain<T> d) {
 		return CKanren.constructGoal(a ->
 						d.processDom(MiniKanren.walk(a, u)).apply(a))
@@ -42,7 +33,7 @@ public class FDGoals {
 		return Option.of(us.toJavaStream()
 						.map(u -> Option.of(MiniKanren.walk(p, u))
 								.flatMap(v -> v.asVar()
-										.flatMap(p::getDomain)
+										.flatMap(vv -> p.get(FiniteDomainConstraints.class).getDomain(vv))
 										.flatMap(Types.<FiniteDomain<T>> castAs(EnumeratedInterval.class))
 										.orElse(() -> v.asVal().map(SingletonFD::new))
 										.map(ds -> VarWithDomain.of(v, ds))))
@@ -52,7 +43,7 @@ public class FDGoals {
 	}
 
 	private static <T extends Comparable<T>> PackageAccessor constraintOperation(PackageAccessor constraintOp, Array<Unifiable<T>> us, ConstraintBody<T> body) {
-		return p -> Tuple.of(p.withConstraint(Constraint.buildOc(constraintOp, us)))
+		return p -> Tuple.of(p.withConstraint(Constraint.buildOc(FiniteDomainConstraints.class, constraintOp, us)))
 				.map(p1 -> letDomain(p, us)
 						.filter(uds -> uds.toJavaStream()
 								.noneMatch(ud -> ud.getDomain().isEmpty()))

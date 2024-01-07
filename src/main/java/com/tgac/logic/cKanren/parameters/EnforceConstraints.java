@@ -15,5 +15,5 @@ public interface EnforceConstraints {
 	 * @param x
 	 * 		- variable to enforce constraints against
 	 */
-	<T> Goal enforce(Unifiable<T> x);
+	<T> Goal enforceConstraints(Unifiable<T> x);
 }

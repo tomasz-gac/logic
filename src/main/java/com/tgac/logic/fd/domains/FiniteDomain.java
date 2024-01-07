@@ -3,6 +3,7 @@ import com.tgac.logic.LVar;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.PackageAccessor;
+import com.tgac.logic.fd.FiniteDomainConstraints;
 import io.vavr.Predicates;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
@@ -12,6 +13,8 @@ import java.util.stream.Stream;
 
 import static com.tgac.logic.LVal.lval;
 import static com.tgac.logic.cKanren.CKanren.runConstraints;
+import static com.tgac.logic.fd.FiniteDomainConstraints.getDom;
+import static com.tgac.logic.fd.FiniteDomainConstraints.getFDStore;
 
 public abstract class FiniteDomain<T> {
 
@@ -71,7 +74,7 @@ public abstract class FiniteDomain<T> {
 	 * @return package operator
 	 */
 	private PackageAccessor updateVarDomain(LVar<T> x) {
-		return s -> s.getDomain(x)
+		return s -> getDom(s, x)
 				.map(previousDomain -> Option.of(previousDomain.intersect(this))
 						.filter(Predicates.not(com.tgac.logic.fd.domains.FiniteDomain::isEmpty))
 						.map(i -> i.resolveStorableDom(x).apply(s))
@@ -94,15 +97,12 @@ public abstract class FiniteDomain<T> {
 	private PackageAccessor resolveStorableDom(LVar<?> x) {
 		return a -> getSingletonElement()
 				.map(n -> a.extendS(HashMap.of(x, lval(n))))
-				.map(a1 -> runConstraints(x, a.getConstraints())
+				.map(a1 -> runConstraints(x, getFDStore(a).getConstraints())
 						.apply(a1))
 				.getOrElse(() -> Option.of(extendD(x, this, a)));
 	}
 
 	private static Package extendD(LVar<?> x, FiniteDomain<?> xd, Package a) {
-		return Package.of(a.getSubstitutions(),
-				a.getSConstraints(),
-				a.getDomains().put(x, xd),
-				a.getConstraints());
+		return a.updateC(FiniteDomainConstraints.class, cs -> cs.withDomain(x, xd));
 	}
 }

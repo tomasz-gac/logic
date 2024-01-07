@@ -1,8 +1,7 @@
 package com.tgac.logic.cKanren.parameters;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
-
-import java.util.function.Function;
+import io.vavr.control.Try;
 public interface ReifyConstraints {
 	/**
 	 * <pre>
@@ -18,7 +17,5 @@ public interface ReifyConstraints {
 	 * @param renameSubstitutions
 	 * 		- substitutions used in variable renaming
 	 */
-	<A> Function<Package, Unifiable<A>> reify(
-			Unifiable<A> unifiable,
-			Package renameSubstitutions);
+	<A> Try<Unifiable<A>> reify(Unifiable<A> unifiable, Package renameSubstitutions, Package p);
 }

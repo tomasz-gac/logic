@@ -23,7 +23,5 @@ public interface ProcessPrefix {
 	 * @param constraints
 	 * 		- current constraints
 	 */
-	PackageAccessor processPrefix(
-			HashMap<LVar<?>, Unifiable<?>> prefix,
-			List<Constraint> constraints);
+	PackageAccessor processPrefix(HashMap<LVar<?>, Unifiable<?>> prefix, List<Constraint> constraints);
 }

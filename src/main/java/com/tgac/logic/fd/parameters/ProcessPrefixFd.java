@@ -3,20 +3,23 @@ import com.tgac.logic.LVar;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.Constraint;
 import com.tgac.logic.cKanren.PackageAccessor;
-import com.tgac.logic.cKanren.parameters.ProcessPrefix;
 import com.tgac.logic.fd.domains.FiniteDomain;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import static com.tgac.logic.cKanren.CKanren.runConstraints;
-public class ProcessPrefixFd implements ProcessPrefix {
+import static com.tgac.logic.fd.FiniteDomainConstraints.getDom;
 
-	@Override
-	public PackageAccessor processPrefix(HashMap<LVar<?>, Unifiable<?>> prefix, List<Constraint> constraints) {
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class ProcessPrefixFd {
+
+	public static PackageAccessor processPrefix(HashMap<LVar<?>, Unifiable<?>> prefix, List<Constraint> constraints) {
 		return prefix.toJavaStream()
 				.<PackageAccessor> map(ht -> ht
 						.apply((x, v) ->
-								s -> s.getDomain(x)
+								s -> getDom(s, x)
 										.map(FiniteDomain.class::cast)
 										.map(dom -> dom.processDom(v))
 										.getOrElse(PackageAccessor::identity)

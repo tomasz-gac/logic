@@ -9,22 +9,27 @@ import com.tgac.logic.MiniKanren;
 import com.tgac.logic.Unifiable;
 import com.tgac.logic.cKanren.CKanren;
 import com.tgac.logic.cKanren.Constraint;
-import com.tgac.logic.cKanren.parameters.EnforceConstraints;
 import com.tgac.logic.fd.domains.FiniteDomain;
 import io.vavr.Tuple;
 import io.vavr.collection.List;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 import java.util.stream.StreamSupport;
 
 import static com.tgac.functional.Exceptions.format;
 import static com.tgac.logic.LVal.lval;
-public class EnforceConstraintsFD implements EnforceConstraints {
-	@Override
-	public <T> Goal enforce(Unifiable<T> x) {
+import static com.tgac.logic.fd.FiniteDomainConstraints.getDom;
+import static com.tgac.logic.fd.FiniteDomainConstraints.getFDStore;
+
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class EnforceConstraintsFD {
+
+	public static <T> Goal enforceConstraints(Unifiable<T> x) {
 		return a -> forceAns(x)
-				.and(a1 -> Tuple.of(a1.getDomains().keySet().toList())
+				.and(a1 -> Tuple.of(getFDStore(a1).getDomains().keySet().toList())
 						.apply(xs -> {
-							verifyAllConstrainedHaveDomain(a1.getConstraints(), xs);
+							verifyAllConstrainedHaveDomain(getFDStore(a1).getConstraints(), xs);
 							return Goal.condu(Goal.defer(() -> forceAns(LList.ofAll(xs))));
 						}).apply(a1))
 				.apply(a);
@@ -33,7 +38,7 @@ public class EnforceConstraintsFD implements EnforceConstraints {
 	public static <T> Goal forceAns(Unifiable<T> x) {
 		return s -> Recur.done(MiniKanren.walk(s, x))
 				.map(v -> v.asVar()
-						.flatMap(s::getDomain)
+						.flatMap(vv -> getDom(s, vv))
 						.map(d -> unifyWithAllDomainValues(x, d))
 						.orElse(() -> v.asVal()
 								.flatMap(w -> MiniKanren.asIterable(w)
@@ -50,7 +55,7 @@ public class EnforceConstraintsFD implements EnforceConstraints {
 	}
 
 	private static Goal rerunConstraints(Unifiable<?> x) {
-		return a -> CKanren.constructGoal(CKanren.runConstraints(x, a.getConstraints())).apply(a);
+		return a -> CKanren.constructGoal(CKanren.runConstraints(x, getFDStore(a).getConstraints())).apply(a);
 	}
 
 	private static <T> Goal unifyWithAllDomainValues(Unifiable<T> x, FiniteDomain<T> d) {

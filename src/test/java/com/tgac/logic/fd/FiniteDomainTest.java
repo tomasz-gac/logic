@@ -34,7 +34,7 @@ import static com.tgac.logic.fd.FDGoals.sum;
 public class FiniteDomainTest {
 
 	static {
-		FDGoals.useFD();
+		FiniteDomainConstraints.use();
 	}
 
 	@Test
@@ -244,6 +244,7 @@ public class FiniteDomainTest {
 
 		Goal.Conjunction goal =
 				sum(i, j, k)
+						.and(leq(i, j))
 						.and(dom(i, EnumeratedInterval.of(HashSet.range(0L, 100))))
 						.and(dom(j, EnumeratedInterval.of(HashSet.range(0L, 100))))
 						.and(dom(k, EnumeratedInterval.of(HashSet.range(0L, 100))));
@@ -260,17 +261,12 @@ public class FiniteDomainTest {
 								.map3(Unifiable::get))
 						.collect(Collectors.toList());
 
+		Assertions.assertThat(result.stream().allMatch(t -> t._1 + t._2 == t._3))
+				.isTrue();
+
 		System.out.println(Duration.between(start, Instant.now()).toMillis() / 1000.);
 
 		System.out.println(result.size());
-
-		//		System.out.println(
-		//				Streams.zip(
-		//								result.stream().map(Object::toString),
-		//								IntStream.range(0, result.size()).boxed(),
-		//								(t, x) -> x + ": " + t
-		//						)
-		//						.collect(Collectors.joining("\n")));
 	}
 
 	@Test

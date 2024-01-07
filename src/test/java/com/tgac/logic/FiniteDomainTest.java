@@ -1,7 +1,7 @@
 package com.tgac.logic;
 import com.tgac.logic.cKanren.Constraint;
 import com.tgac.logic.cKanren.PackageAccessor;
-import com.tgac.logic.fd.FDGoals;
+import com.tgac.logic.fd.FiniteDomainConstraints;
 import com.tgac.logic.fd.domains.EnumeratedInterval;
 import com.tgac.logic.fd.domains.FiniteDomain;
 import com.tgac.logic.fd.parameters.EnforceConstraintsFD;
@@ -33,12 +33,11 @@ public class FiniteDomainTest {
 	PackageAccessor accessor;
 
 	static {
-		FDGoals.useFD();
+		FiniteDomainConstraints.use();
 	}
 
 	@Test
 	public void shouldNotBlowStackWhenProcessingPrefix() {
-		ProcessPrefixFd processPrefixFd = new ProcessPrefixFd();
 		HashMap<LVar<?>, Unifiable<?>> empty = HashMap.empty();
 
 		HashMap<LVar<?>, Unifiable<?>> prefix = Stream.range(0, 100_000)
@@ -46,12 +45,15 @@ public class FiniteDomainTest {
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
 
-		Constraint constraint = Constraint.buildOc(accessor, Array.of(prefix.get()._1));
+		Constraint constraint = Constraint.buildOc(
+				FiniteDomainConstraints.class,
+				accessor, Array.of(prefix.get()._1));
 
-		System.out.println(processPrefixFd.processPrefix(
+		System.out.println(ProcessPrefixFd.processPrefix(
 						prefix,
 						List.of(constraint))
-				.apply(Package.of(HashMap.empty(), List.empty(), LinkedHashMap.empty(), List.empty()))
+				.apply(Package.of(HashMap.empty(), List.empty(),
+						HashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty())))
 				.get());
 	}
 
@@ -61,9 +63,11 @@ public class FiniteDomainTest {
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(i)
 				.apply(Package.of(HashMap.empty(), List.empty(),
-						LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
-								.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 10L))),
-						List.empty()))
+						HashMap.of(FiniteDomainConstraints.class,
+								FiniteDomainConstraints.of(
+										LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
+												.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 10L))),
+										List.empty()))))
 				.collect(Collectors.toList());
 
 		System.out.println(collect);
@@ -82,10 +86,12 @@ public class FiniteDomainTest {
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
 				.apply(Package.of(HashMap.empty(), List.empty(),
-						LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
-								.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L)))
-								.put(j.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L))),
-						List.empty()))
+						HashMap.of(FiniteDomainConstraints.class,
+								FiniteDomainConstraints.of(
+										LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
+												.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L)))
+												.put(j.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L))),
+										List.empty()))))
 				.collect(Collectors.toList());
 
 		System.out.println(collect);

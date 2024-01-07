@@ -9,6 +9,7 @@ import lombok.Value;
 @Value
 @RequiredArgsConstructor(staticName = "of")
 public class Constraint implements PackageAccessor {
+	Class<? extends ConstraintStore> tag;
 	PackageAccessor constraintOp;
 	Array<Unifiable<?>> args;
 
@@ -17,7 +18,7 @@ public class Constraint implements PackageAccessor {
 		return constraintOp.apply(p);
 	}
 
-	public static <T> Constraint buildOc(PackageAccessor constraintOp, Array<Unifiable<T>> args) {
-		return Constraint.of(constraintOp, args.map(Unifiable::getObjectUnifiable));
+	public static <T, S extends ConstraintStore> Constraint buildOc(Class<S> tag, PackageAccessor constraintOp, Array<Unifiable<T>> args) {
+		return Constraint.of(tag, constraintOp, args.map(Unifiable::getObjectUnifiable));
 	}
 }

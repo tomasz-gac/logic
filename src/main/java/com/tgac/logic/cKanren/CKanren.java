@@ -5,9 +5,6 @@ import com.tgac.logic.Goal;
 import com.tgac.logic.MiniKanren;
 import com.tgac.logic.Package;
 import com.tgac.logic.Unifiable;
-import com.tgac.logic.cKanren.parameters.EnforceConstraints;
-import com.tgac.logic.cKanren.parameters.ProcessPrefix;
-import com.tgac.logic.cKanren.parameters.ReifyConstraints;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
@@ -16,8 +13,6 @@ import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
 import static com.tgac.functional.recursion.Recur.done;
@@ -27,25 +22,6 @@ import static com.tgac.logic.MiniKanren.reifyS;
 import static com.tgac.logic.MiniKanren.walkAll;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CKanren {
-
-	public static final AtomicReference<ProcessPrefix> PROCESS_PREFIX = new AtomicReference<>(
-			(prefix, constraints) -> s -> Option.of(s.extendS(prefix)));
-	public static final AtomicReference<EnforceConstraints> ENFORCE_CONSTRAINTS = new AtomicReference<>(
-			new EnforceConstraints() {
-				@Override
-				public <T> Goal enforce(Unifiable<T> x) {
-					return Goal.failure();
-				}
-			}
-	);
-	public static final AtomicReference<ReifyConstraints> REIFY_CONSTRAINTS = new AtomicReference<>(
-			new ReifyConstraints() {
-				@Override
-				public <A> Function<Package, Unifiable<A>> reify(Unifiable<A> unifiable, Package renameSubstitutions) {
-					return s -> unifiable;
-				}
-			});
-
 	public static Goal constructGoal(PackageAccessor accessor) {
 		return s -> accessor.apply(s).toStream();
 	}
@@ -54,11 +30,9 @@ public class CKanren {
 		return s -> MiniKanren.unify(s, u, v)
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
-						PROCESS_PREFIX.get()
-								.processPrefix(prefixS(
-												s.getSubstitutions(),
-												s1.getSubstitutions()),
-										s.getConstraints())
+						s.processPrefix(prefixS(
+										s.getSubstitutions(),
+										s1.getSubstitutions()))
 								.apply(s.withSubstitutionsFrom(s1)));
 	}
 
@@ -76,13 +50,13 @@ public class CKanren {
 	}
 
 	private static PackageAccessor remRun(Constraint c) {
-		return p -> p.getConstraints().contains(c) ?
+		return p -> p.get(c.getTag()).contains(c) ?
 				c.apply(p.withoutConstraint(c)) :
 				Option.of(p);
 	}
 
 	public static <T> Stream<Unifiable<T>> reify(Package s, Unifiable<T> x) {
-		return ENFORCE_CONSTRAINTS.get().enforce(x).apply(s)
+		return s.enforceConstraints(x).apply(s)
 				.flatMap(s1 -> incomplete(() -> calculateSubstitutionAndRenamePackage(x, s1)
 						.flatMap(vr ->
 								vr._2.getSubstitutions().isEmpty() ?
@@ -96,9 +70,7 @@ public class CKanren {
 	}
 
 	private static <T> Unifiable<T> reifyConstraints(Package s1, Tuple2<Unifiable<T>, Package> vr, Unifiable<T> result) {
-		return REIFY_CONSTRAINTS.get()
-				.reify(result, vr._2)
-				.apply(s1);
+		return s1.reify(result, vr._2).get();
 	}
 	private static <T> Recur<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {
 		return walkAll(s1, x)

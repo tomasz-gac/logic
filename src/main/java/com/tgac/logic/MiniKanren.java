@@ -408,7 +408,7 @@ public class MiniKanren {
 		} else {
 			return verifyAndSimplifyConstraints(a.getSConstraints(), List.empty(), newPackage.getSubstitutions())
 					// TODO : verify
-					.map(c -> Package.of(newPackage.getSubstitutions(), c, a.getDomains(), a.getConstraints()));
+					.map(c -> Package.of(newPackage.getSubstitutions(), c, a.getConstraints()));
 		}
 	}
 
