@@ -58,7 +58,7 @@ public class ParametersTest {
 		System.out.println(ProcessPrefixFd.processPrefix(
 						prefix,
 						List.of(constraint))
-				.apply(Package.of(HashMap.empty(), List.empty(),
+				.apply(Package.of(HashMap.empty(),
 						HashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty())))
 				.get());
 	}
@@ -68,7 +68,7 @@ public class ParametersTest {
 		Unifiable<Long> i = lvar();
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(i)
-				.apply(Package.of(HashMap.empty(), List.empty(),
+				.apply(Package.of(HashMap.empty(),
 						HashMap.of(FiniteDomainConstraints.class,
 								FiniteDomainConstraints.of(
 										LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
@@ -91,7 +91,7 @@ public class ParametersTest {
 		Unifiable<Long> j = lvar();
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
-				.apply(Package.of(HashMap.empty(), List.empty(),
+				.apply(Package.of(HashMap.empty(),
 						HashMap.of(FiniteDomainConstraints.class,
 								FiniteDomainConstraints.of(
 										LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()

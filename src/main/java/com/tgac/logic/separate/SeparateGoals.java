@@ -2,12 +2,9 @@ package com.tgac.logic.separate;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.Goal;
-import com.tgac.logic.Incomplete;
-import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.Tuple;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Stream;
@@ -15,10 +12,8 @@ import io.vavr.control.Option;
 
 import static com.tgac.functional.Exceptions.throwingBiOp;
 import static com.tgac.functional.recursion.Recur.done;
-import static com.tgac.logic.separate.SeparatenessConstraints.getConstraints;
 import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
 import static com.tgac.logic.unification.MiniKanren.prefixS;
-import static com.tgac.logic.unification.MiniKanren.reifyS;
 import static com.tgac.logic.unification.MiniKanren.unify;
 import static com.tgac.logic.unification.MiniKanren.walkAll;
 public class SeparateGoals {
@@ -82,7 +77,6 @@ public class SeparateGoals {
 					// TODO : verify
 					.map(c -> Package.of(
 							newPackage.getSubstitutions(),
-							newPackage.getSConstraints(),
 							newPackage.getConstraints()
 									.put(SeparatenessConstraints.class, SeparatenessConstraints.of(c))));
 		}
@@ -142,63 +136,14 @@ public class SeparateGoals {
 						(acc, lr) -> acc.flatMap(s1 ->
 								// This cannot recurse deeply via verifyUnify
 								// because there are no constraints in the package
-								unify(Package.empty().extendS(s1), lr._1, lr._2)
+								unify(Package.empty()
+												.withSubstitutions(s1),
+										lr._1, lr._2)
 										.map(Package::getSubstitutions)),
 						throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	public static <T> Recur<Unifiable<T>> reify(Package s, Unifiable<T> item) {
-		return Recur.zip(
-						walkAll(s.withoutSepConstraints(), item),
-						walkAllConstraints(getConstraints(s), s))
-				.flatMap(vc -> reifyS(Package.empty(), vc._1)
-						.map(vc::append))
-				.map(vcr -> vcr
-						.map1(v -> walkAll(vcr._3, v))
-						.map2(c -> Tuple.of(purify(c, vcr._3))
-								.map(pc -> removeSubsumed(pc, List.empty())
-										.flatMap(rc -> walkAllConstraints(rc, vcr._3)))
-								._1))
-				.flatMap(vcr -> Recur.zip(vcr._1, vcr._2))
-				.map(vc -> vc._2.isEmpty() ?
-						vc._1 :
-						vc.map2(c -> c.map(NeqConstraint::getSeparate))
-								.apply(Constrained::of));
-	}
-
-	public static <T> Recur<Unifiable<T>> reifyOriginal(Package s, Unifiable<T> item) {
-		return walkAll(s, item)
-				.flatMap(v -> reifyS(Package.empty(), v)
-						.flatMap(rp -> walkAll(rp, v)));
-	}
-
-	public static <T> Stream<Unifiable<T>> reify2(Package s, Unifiable<T> item) {
-		return Incomplete.incomplete(() ->
-				CKanren.calculateSubstitutionAndRenamePackage(item, s)
-						.flatMap(vr -> vr.apply((v, renamePackage) ->
-								renamePackage.getSubstitutions().isEmpty() ?
-										done(v) :
-										walkAll(renamePackage, v)
-												.map(result ->
-														s.getConstraints().isEmpty() ?
-																result :
-																reifyConstraints(s, v, renamePackage))))
-						.map(Stream::of));
-	}
-
-	private static <T> Unifiable<T> reifyConstraints(Package s, Unifiable<T> v, Package renamePackage) {
-		return SeparateGoals.walkAllConstraints(getConstraints(s), s)
-				.flatMap(c_star ->
-						removeSubsumed(
-								purify(c_star, renamePackage),
-								List.empty()))
-				.map(c1 -> c1.isEmpty() ?
-						v :
-						Constrained.of(v, c1.map(NeqConstraint::getSeparate)))
-				.get();
-	}
-
-	public static Recur<List<NeqConstraint>> walkAllConstraints(
+	static Recur<List<NeqConstraint>> walkAllConstraints(
 			List<NeqConstraint> constraints,
 			Package s) {
 		return constraints.toJavaStream()

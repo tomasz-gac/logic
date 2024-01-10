@@ -5,7 +5,6 @@ import com.tgac.functional.Reference;
 import com.tgac.functional.Streams;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.separate.Constrained;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
@@ -228,13 +227,11 @@ public class MiniKanren {
 	}
 
 	public static <T> Option<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
-		return unify(MiniKanren::extend, s, lhs, rhs)
-				.flatMap(s1 -> verifyUnify(s1, s));
+		return unify(MiniKanren::extend, s, lhs, rhs);
 	}
 
 	public static <T> Option<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
-		return unify(MiniKanren::extendNoCheck, s, lhs, rhs)
-				.flatMap(s1 -> verifyUnify(s1, s));
+		return unify(MiniKanren::extendNoCheck, s, lhs, rhs);
 	}
 
 	public static <T> Recur<Unifiable<T>> walkAll(Package s, Unifiable<T> u) {
@@ -300,83 +297,10 @@ public class MiniKanren {
 				.orElseGet(Option::none);
 	}
 
-	public static <T> Recur<Unifiable<T>> reifyOriginal(Package s, Unifiable<T> item) {
+	public static <T> Recur<Unifiable<T>> reify(Package s, Unifiable<T> item) {
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Package.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)));
-	}
-
-	public static <T> Recur<Unifiable<T>> reify(Package s, Unifiable<T> x) {
-		return calculateSubstitutionAndRenamePackage(x, s)
-				.flatMap(vr -> vr.apply((v, r) ->
-						r.getSubstitutions().isEmpty() ?
-								done(v) :
-								walkAll(r, v)
-										.map(result ->
-												s.getSConstraints().isEmpty() ?
-														result :
-														reifySeparate(result, vr._2, s))));
-	}
-
-	private static <A> Unifiable<A> reifySeparate(Unifiable<A> unifiable, Package renamePackage, Package s) {
-		return walkAllConstraints(s.getSConstraints(), s)
-				.flatMap(c_star -> removeSubsumed(
-						purify(c_star, renamePackage),
-						List.empty())
-						.flatMap(c1 -> walkAllConstraints(c1, renamePackage)))
-				.map(c1 -> c1.isEmpty() ?
-						unifiable :
-						Constrained.of(unifiable, c1))
-				.get();
-	}
-
-	public static <T> Recur<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {
-		return walkAll(s1, x)
-				.flatMap(v -> reifyS(Package.empty(), v)
-						.map(r -> Tuple.of(v, r)));
-	}
-
-	//	public static <T> Recur<Unifiable<T>> reify(Package s, Unifiable<T> item) {
-	//		return Recur.zip(
-	//						walkAll(s.withoutConstraints(), item),
-	//						walkAllConstraints(s.getSConstraints(), s))
-	//				.flatMap(vc -> reifyS(Package.empty(), vc._1)
-	//						.map(vc::append))
-	//				.map(vcr -> vcr
-	//						.map1(v -> walkAll(vcr._3, v))
-	//						.map2(c -> Tuple.of(purify(c, vcr._3))
-	//								.map(pc -> removeSubsumed(pc, List.empty())
-	//										.flatMap(rc -> walkAllConstraints(rc, vcr._3)))
-	//								._1))
-	//				.flatMap(vcr -> Recur.zip(vcr._1, vcr._2))
-	//				.map(vc -> vc._2.isEmpty() ?
-	//						vc._1 :
-	//						vc.apply(Constrained::of));
-	//	}
-
-	public static Recur<List<HashMap<LVar<?>, Unifiable<?>>>> walkAllConstraints(
-			List<HashMap<LVar<?>, Unifiable<?>>> constraints,
-			Package s) {
-		return constraints.toJavaStream()
-				.map(c -> walkAllConstraint(s, c)
-						.map(java.util.stream.Stream::of))
-				.reduce((l, r) -> Recur.zip(l, r)
-						.map(lr -> lr.apply(java.util.stream.Stream::concat)))
-				.orElseGet(() -> done(java.util.stream.Stream.empty()))
-				.map(stream -> stream.collect(List.collector()));
-	}
-	private static Recur<HashMap<LVar<?>, Unifiable<?>>> walkAllConstraint(Package s, HashMap<LVar<?>, Unifiable<?>> c) {
-		return c.toJavaStream()
-				.map(valSub -> valSub.map(
-								val -> walkAll(s, val)
-										// this should be right since lhs of a substitution is unbound and unique
-										.map(u -> u.asVar().get()),
-								sub -> walkAll(s, sub))
-						.apply(Recur::zip))
-				.reduce(done(HashMap.empty()),
-						(acc, v) -> Recur.zip(acc, v)
-								.map(ms -> ms.apply(HashMap::put)),
-						throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -412,161 +336,10 @@ public class MiniKanren {
 						throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	public static <T> Option<Package> separate(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
-		return verifySeparate(
-				unify(s.withoutSepConstraints(), lhs, rhs),
-				s);
-	}
-
-	private static Option<Package> verifySeparate(Option<Package> s, Package a) {
-		if (s.isEmpty()) {
-			return Option.of(a);
-		} else {
-			Package result = s.get();
-			if (result.getSubstitutions() == a.getSubstitutions()) {
-				return Option.none();
-			} else {
-				return Option.of(
-						a.putSepConstraint(prefixS(a.getSubstitutions(), result.getSubstitutions())));
-			}
-		}
-	}
-
 	public static HashMap<LVar<?>, Unifiable<?>> prefixS(
 			HashMap<LVar<?>, Unifiable<?>> s,
 			HashMap<LVar<?>, Unifiable<?>> extendedS) {
 		return extendedS.filter(kv -> !s.keySet().contains(kv._1));
-	}
-
-	private static Option<Package> verifyUnify(Package newPackage, Package a) {
-		// substitutions haven't changed, so constraints are not violated
-		if (newPackage.getSubstitutions() == a.getSubstitutions()) {
-			return Option.of(a);
-		} else {
-			return verifyAndSimplifyConstraints(a.getSConstraints(), List.empty(), newPackage.getSubstitutions())
-					// TODO : verify
-					.map(c -> Package.of(newPackage.getSubstitutions(), c, a.getConstraints()));
-		}
-	}
-
-	private static Option<List<HashMap<LVar<?>, Unifiable<?>>>> verifyAndSimplifyConstraints(
-			List<HashMap<LVar<?>, Unifiable<?>>> constraints,
-			List<HashMap<LVar<?>, Unifiable<?>>> newConstraints,
-			HashMap<LVar<?>, Unifiable<?>> s) {
-		if (constraints.isEmpty()) {
-			return Option.of(newConstraints);
-		} else {
-			return constraints.toJavaStream()
-					.reduce(Option.of(Tuple.of(s, newConstraints)),
-							(acc, c) -> acc.flatMap(stateAndNewConstraints ->
-									verificationStep(stateAndNewConstraints._1, stateAndNewConstraints._2, c)),
-							throwingBiOp(UnsupportedOperationException::new))
-					.map(acc -> acc._2);
-		}
-	}
-
-	private static Option<Tuple2<
-			HashMap<LVar<?>, Unifiable<?>>,
-			List<HashMap<LVar<?>, Unifiable<?>>>>> verificationStep(
-			HashMap<LVar<?>, Unifiable<?>> s,
-			List<HashMap<LVar<?>, Unifiable<?>>> newConstraints,
-			HashMap<LVar<?>, Unifiable<?>> constraint) {
-		Option<HashMap<LVar<?>, Unifiable<?>>> unification = unifyConstraints(constraint, s);
-		if (unification.isDefined()) {
-			return unification
-					// if unification succeeds without extending s
-					// then all simultaneous separateness constraints
-					// are violated, so we fail the substitution
-					.filter(s1 -> s != s1)
-					// if unification succeeds by extending s,
-					// then some simultaneous constraints are not violated,
-					// and we append these constraints to list.
-					// This way, we simplify constraint store on the fly
-					.map(s1 -> Tuple.of(s, newConstraints.append(prefixS(s, s1))));
-		} else {
-			// if unification fails, then constraint is redundant
-			// because substitutions already contain bound values
-			// that are consistent with it
-			return Option.of(Tuple.of(s, newConstraints));
-		}
-	}
-
-	/**
-	 * Checks whether all constraints unify within s simultaneously.
-	 *
-	 * @param simultaneousConstraints
-	 * 		List of constraints that must be simultaneously true
-	 * @param s
-	 * 		current substitution map
-	 * @return s after unification
-	 */
-	private static Option<HashMap<LVar<?>, Unifiable<?>>> unifyConstraints(
-			HashMap<LVar<?>, Unifiable<?>> simultaneousConstraints,
-			HashMap<LVar<?>, Unifiable<?>> s) {
-		return simultaneousConstraints.toJavaStream()
-				.map(t -> t.map(applyOnBoth(Unifiable::getObjectUnifiable)))
-				.reduce(Option.of(s),
-						(acc, lr) -> acc.flatMap(s1 ->
-								// This cannot recurse deeply via verifyUnify
-								// because there are no constraints in the package
-								unify(Package.empty().extendS(s1), lr._1, lr._2)
-										.map(Package::getSubstitutions)),
-						throwingBiOp(UnsupportedOperationException::new));
-	}
-
-	private static List<HashMap<LVar<?>, Unifiable<?>>> purify(
-			List<HashMap<LVar<?>, Unifiable<?>>> c,
-			Package r) {
-		return c.toJavaStream()
-				.map(cc -> purifySingle(cc, r))
-				.map(java.util.stream.Stream::of)
-				.reduce(java.util.stream.Stream::concat)
-				.orElseGet(java.util.stream.Stream::empty)
-				.filter(not(HashMap::isEmpty))
-				.collect(List.collector());
-	}
-
-	private static HashMap<LVar<?>, Unifiable<?>> purifySingle(
-			HashMap<LVar<?>, Unifiable<?>> constraints,
-			Package r) {
-		return constraints.toJavaStream()
-				.filter(c -> r.isAssociated(c._1) && r.isAssociated(c._2))
-				.reduce(HashMap.empty(), (c, head) -> head.apply(c::put),
-						Exceptions.throwingBiOp(UnsupportedOperationException::new));
-	}
-
-	private static Boolean isConstraintSubsumed(
-			HashMap<LVar<?>, Unifiable<?>> constraints,
-			List<HashMap<LVar<?>, Unifiable<?>>> accConstraints) {
-		return accConstraints.toJavaStream()
-				.reduce(false,
-						(r, v) -> r || unifyConstraints(v, constraints)
-								.filter(c -> c == constraints)
-								.map(__ -> true)
-								.getOrElse(() -> false),
-						throwingBiOp(UnsupportedOperationException::new));
-	}
-
-	private static Recur<List<HashMap<LVar<?>, Unifiable<?>>>> removeSubsumed(
-			List<HashMap<LVar<?>, Unifiable<?>>> constraints,
-			List<HashMap<LVar<?>, Unifiable<?>>> constraintAcc) {
-		if (constraints.isEmpty()) {
-			return done(constraintAcc);
-		} else {
-			return Recur.zip(
-							// constraint subsumes another existing constraint
-							done(isConstraintSubsumed(constraints.head(), constraintAcc)),
-							// constraint subsumed by previously processed
-							done(isConstraintSubsumed(constraints.head(), constraints.tail())))
-					.map(lr -> lr.apply(Boolean::logicalOr))
-					.flatMap(isSubsumed -> isSubsumed ?
-							// skip this constraint
-							removeSubsumed(constraints.tail(), constraintAcc) :
-							// add to result and process next
-							removeSubsumed(
-									constraints.tail(),
-									constraintAcc.prepend(constraints.head())));
-		}
 	}
 
 	public static <A, B> BiFunction<A, A, Tuple2<B, B>> applyOnBoth(Function<A, B> f) {

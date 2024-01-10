@@ -8,7 +8,6 @@ import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.ckanren.parameters.ConstraintStore;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.List;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
 import lombok.AccessLevel;
@@ -34,27 +33,24 @@ public class Package {
 		LoggerFactory.getLogger(Package.class).debug("Stores cleared");
 	}
 
-	// substitutions
 	HashMap<LVar<?>, Unifiable<?>> substitutions;
-	// separateness constraints
-	List<HashMap<LVar<?>, Unifiable<?>>> sConstraints;
 
 	HashMap<Class<? extends ConstraintStore>, ConstraintStore> constraints;
 
 	public static Package empty() {
-		return new Package(HashMap.empty(), List.empty(), EMPTY_STORES);
+		return new Package(HashMap.empty(), EMPTY_STORES);
 	}
 
 	public Package extendS(HashMap<LVar<?>, Unifiable<?>> s) {
-		return new Package(substitutions.merge(s), sConstraints, constraints);
+		return new Package(substitutions.merge(s), constraints);
 	}
 
 	public Package withSubstitutions(HashMap<LVar<?>, Unifiable<?>> s) {
-		return new Package(s, sConstraints, constraints);
+		return new Package(s, constraints);
 	}
 
 	<T> Package put(LVar<T> key, Unifiable<T> value) {
-		return Package.of(substitutions.put(key, value), sConstraints, constraints);
+		return Package.of(substitutions.put(key, value), constraints);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -69,12 +65,8 @@ public class Package {
 				.getOrElseThrow(format(IllegalStateException::new, "No store associated with class %s", cls));
 	}
 
-	Package putSepConstraint(HashMap<LVar<?>, Unifiable<?>> constraint) {
-		return Package.of(substitutions, sConstraints.prepend(constraint), constraints);
-	}
-
 	public Package withoutConstraint(Constraint c) {
-		return Package.of(substitutions, sConstraints, updateConstraints(c.getTag(), cs -> cs.remove(c)));
+		return Package.of(substitutions, updateConstraints(c.getTag(), cs -> cs.remove(c)));
 	}
 
 	/**
@@ -87,29 +79,20 @@ public class Package {
 	}
 
 	public Package withConstraint(Constraint c) {
-		return Package.of(substitutions, sConstraints, updateConstraints(c.getTag(), cs -> cs.prepend(c)));
-	}
-
-	public Package withSubstitutionsFrom(Package aPackage) {
-		return Package.of(aPackage.getSubstitutions(), sConstraints, constraints);
+		return Package.of(substitutions, updateConstraints(c.getTag(), cs -> cs.prepend(c)));
 	}
 
 	public long size() {
 		return substitutions.size();
 	}
 
-	public Package withoutSepConstraints() {
-		return Package.of(substitutions, List.empty(), constraints);
-	}
-
 	public Package withoutConstraints() {
-		return Package.of(substitutions, sConstraints, EMPTY_STORES);
+		return Package.of(substitutions, EMPTY_STORES);
 	}
 
 	public <T extends ConstraintStore> Package updateC(Class<T> cls, UnaryOperator<T> f) {
 		return Package.of(
 				substitutions,
-				sConstraints,
 				updateConstraints(cls, cs ->
 						Types.<T> castAs(cs, ConstraintStore.class)
 								.map(f).get()));

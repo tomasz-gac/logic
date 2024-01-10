@@ -6,7 +6,7 @@ public class TestAccess {
 	}
 
 	public static <T> Package put(Package s, LVar<T> key, Unifiable<T> value) {
-		return Package.of(s.getSubstitutions().put(key, value), s.getSConstraints(), s.getConstraints());
+		return Package.of(s.getSubstitutions().put(key, value), s.getConstraints());
 	}
 
 	@SuppressWarnings("unchecked")
