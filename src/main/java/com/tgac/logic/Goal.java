@@ -2,6 +2,11 @@ package com.tgac.logic;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
+import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.separate.SeparateGoals;
+import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Array;
 import io.vavr.collection.Map;
 import io.vavr.collection.Stream;
@@ -87,10 +92,10 @@ public interface Goal extends Function<Package, Stream<Package>> {
 
 		@Override
 		public Stream<Package> apply(Package s) {
-			return interleave(
+			return incomplete(() -> interleave(
 					clauses.stream()
 							.map(conjunction -> conjunction.apply(s))
-							.collect(Array.collector()));
+							.collect(Array.collector())));
 		}
 
 		@Override
@@ -142,7 +147,7 @@ public interface Goal extends Function<Package, Stream<Package>> {
 
 		@Override
 		public Stream<Package> apply(Package s) {
-			return incomplete(() -> done(bind(Stream.of(s), Array.ofAll(clauses))));
+			return incomplete(() -> bind(Stream.of(s), Array.ofAll(clauses)));
 		}
 
 		@Override
@@ -213,7 +218,7 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	static <T> Goal unify(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return goal(s -> MiniKanren.unify(s, lhs, rhs).toStream())
+		return CKanren.unify(lhs, rhs)
 				.named(lhs + " ≣ " + rhs);
 	}
 
@@ -223,50 +228,63 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return goal(a -> MiniKanren.separate(a, lhs, rhs).toStream())
+		return SeparateGoals.separate(lhs, rhs)
 				.named(lhs + " ≠ " + rhs);
 	}
 
 	default <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out) {
-		return bind(Stream.of(Package.empty()), this)
-				.map(s -> MiniKanren.reify(s, out).get())
+		return bind(Stream.of(Package.empty()), this).get()
+				.flatMap(s -> CKanren.reify(s, out))
 				.toJavaStream();
 	}
 
 	default <T> Goal aggregate(Unifiable<T> var,
 			Function<java.util.stream.Stream<Unifiable<T>>, Goal> f) {
-		return s -> f.apply(bind(Stream.of(s), this)
-						.map(s1 -> MiniKanren.reify(s1, var).get())
+		return s -> f.apply(bind(Stream.of(s), this).get()
+						.flatMap(s1 -> CKanren.reify(s1, var))
 						.toJavaStream())
 				.apply(s);
 	}
 
-	static <A> Stream<A> interleave(Array<Stream<A>> lists) {
+	static <A> Recur<Stream<A>> interleave(Array<Stream<A>> lists) {
 		if (lists.isEmpty()) {
-			return Stream.empty();
+			return done(Stream.empty());
 		}
 		Stream<A> fst = lists.head();
 		Array<Stream<A>> rst = lists.tail();
 		if (rst.isEmpty()) {
-			return fst;
+			return done(fst);
+		}
+
+		if (fst instanceof Incomplete) {
+			// TODO : can this be somehow simplified to not require casting?
+			return ((Incomplete<A>) fst).getRest()
+					.flatMap(s -> interleave(rst.prepend(s)));
 		} else if (fst.isEmpty()) {
-			return incomplete(() -> done(interleave(rst)));
+			return recur(() -> interleave(rst));
 		} else {
-			return Stream.cons(fst.head(), () -> interleave(rst.append(fst.tail())));
+			return done(Stream.cons(fst.head(),
+					() -> incomplete(() ->
+							interleave(rst.append(fst.tail())))));
 		}
 	}
 
-	static Stream<Package> bind(Stream<Package> s, Array<Goal> gs) {
+	static Recur<Stream<Package>> bind(Stream<Package> s, Array<Goal> gs) {
 		return gs.toJavaStream()
-				.reduce(s, Goal::bind,
+				.reduce(done(s), (subs, g) -> subs.flatMap(s1 -> bind(s1, g)),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	static Stream<Package> bind(Stream<Package> s, Goal g) {
+	static Recur<Stream<Package>> bind(Stream<Package> s, Goal g) {
+		if (s instanceof Incomplete) {
+			// TODO : can this be somehow simplified to not require casting?
+			return ((Incomplete<Package>) s).getRest()
+					.flatMap(s1 -> bind(s1, g));
+		}
 		if (s.isEmpty()) {
-			return Stream.empty();
+			return done(Stream.empty());
 		} else {
-			return interleave(Array.of(g.apply(s.head()), incomplete(() -> done(bind(s.tail(), g)))));
+			return interleave(Array.of(g.apply(s.head()), incomplete(() -> bind(s.tail(), g))));
 		}
 	}
 

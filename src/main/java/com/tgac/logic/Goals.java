@@ -2,6 +2,10 @@ package com.tgac.logic;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
+import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Unifiable;
 import io.vavr.Function1;
 import io.vavr.Function2;
 import io.vavr.Function3;

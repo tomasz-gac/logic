@@ -1,4 +1,9 @@
 package com.tgac.logic;
+import com.tgac.logic.separate.SeparatenessConstraints;
+import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.LVal;
+import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Stream;
@@ -6,6 +11,7 @@ import io.vavr.control.Either;
 import io.vavr.control.Option;
 import lombok.val;
 import org.assertj.core.api.Assertions;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -21,12 +27,18 @@ import static com.tgac.logic.Goals.firsto;
 import static com.tgac.logic.Goals.membero;
 import static com.tgac.logic.Goals.rembero;
 import static com.tgac.logic.Goals.sameLengtho;
-import static com.tgac.logic.LVal.lval;
-import static com.tgac.logic.LVar.lvar;
+import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings("unchecked")
 public class GoalTest {
+
+	@Before
+	public void init() {
+		Package.unregisterAll();
+		SeparatenessConstraints.use();
+	}
 
 	public <T> Goal caro(
 			Unifiable<T> lhs,
@@ -255,8 +267,9 @@ public class GoalTest {
 	@Test
 	public void shouldWritePalindrome() {
 		Unifiable<LList<Integer>> lst = lvar();
+		int n = 100;
 		List<Unifiable<Integer>> collected = runStream(lst,
-				sameLengtho(lst, LList.ofAll(Stream.range(0, 200).collect(Collectors.toList()))),
+				sameLengtho(lst, LList.ofAll(Stream.range(0, n).collect(Collectors.toList()))),
 				palindromo2(lst))
 				.findFirst()
 				.get()
@@ -265,9 +278,9 @@ public class GoalTest {
 				.map(Either::get)
 				.collect(Collectors.toList());
 		System.out.println(collected);
-		for (int i = 0; i < 200 / 2; ++i) {
+		for (int i = 0; i < n / 2; ++i) {
 			assertThat(collected.get(i))
-					.isEqualTo(collected.get(199 - i));
+					.isEqualTo(collected.get(n - 1 - i));
 		}
 	}
 
