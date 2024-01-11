@@ -19,20 +19,21 @@ import static com.tgac.logic.separate.SeparateGoals.walkAllConstraints;
 @Value
 @RequiredArgsConstructor(staticName = "of")
 public class SeparatenessConstraints implements ConstraintStore {
+	public static final SeparatenessConstraints EMPTY = SeparatenessConstraints.of(List.empty());
 	List<NeqConstraint> constraints;
 
-	public static void use() {
-		Package.register(SeparatenessConstraints.empty());
-	}
 	private static ConstraintStore empty() {
-		return SeparatenessConstraints.of(List.empty());
+		return EMPTY;
 	}
 
 	public static SeparatenessConstraints get(Package p) {
-		return p.get(SeparatenessConstraints.class);
+		return (SeparatenessConstraints) p.getConstraintStore();
 	}
 	public static List<NeqConstraint> getConstraints(Package p) {
 		return get(p).getConstraints();
+	}
+	public static Package register(Package a) {
+		return a.withConstraintStore(empty());
 	}
 
 	@Override

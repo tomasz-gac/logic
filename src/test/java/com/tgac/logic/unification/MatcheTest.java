@@ -3,7 +3,6 @@ import com.tgac.logic.Goals;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -19,11 +18,6 @@ import static com.tgac.logic.unification.LVar.lvar;
 
 @SuppressWarnings("unchecked")
 public class MatcheTest {
-
-	@Before
-	public void init() {
-		Package.unregisterAll();
-	}
 
 	@Test
 	public void shouldMatchSingleElementList() {

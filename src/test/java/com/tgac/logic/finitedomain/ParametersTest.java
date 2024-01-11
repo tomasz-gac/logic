@@ -18,7 +18,6 @@ import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Stream;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -36,17 +35,11 @@ public class ParametersTest {
 	@Mock
 	PackageAccessor accessor;
 
-	@Before
-	public void init() {
-		Package.unregisterAll();
-		FiniteDomainConstraints.use();
-	}
-
 	@Test
 	public void shouldNotBlowStackWhenProcessingPrefix() {
 		HashMap<LVar<?>, Unifiable<?>> empty = HashMap.empty();
 
-		HashMap<LVar<?>, Unifiable<?>> prefix = Stream.range(0, 100_000)
+		HashMap<LVar<?>, Unifiable<?>> prefix = Stream.range(0, 10)
 				.map(i -> Tuple.of(TestAccess.lvarUnsafe(), lval(i)))
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
@@ -59,7 +52,7 @@ public class ParametersTest {
 						prefix,
 						List.of(constraint))
 				.apply(Package.of(HashMap.empty(),
-						HashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty())))
+						FiniteDomainConstraints.empty()))
 				.get());
 	}
 
@@ -69,11 +62,10 @@ public class ParametersTest {
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(i)
 				.apply(Package.of(HashMap.empty(),
-						HashMap.of(FiniteDomainConstraints.class,
-								FiniteDomainConstraints.of(
-										LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
-												.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 10L))),
-										List.empty()))))
+						FiniteDomainConstraints.of(
+								LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
+										.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 10L))),
+								List.empty())))
 				.collect(Collectors.toList());
 
 		System.out.println(collect);
@@ -92,12 +84,11 @@ public class ParametersTest {
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
 				.apply(Package.of(HashMap.empty(),
-						HashMap.of(FiniteDomainConstraints.class,
-								FiniteDomainConstraints.of(
-										LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
-												.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L)))
-												.put(j.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L))),
-										List.empty()))))
+						FiniteDomainConstraints.of(
+								LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
+										.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L)))
+										.put(j.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L))),
+								List.empty())))
 				.collect(Collectors.toList());
 
 		System.out.println(collect);

@@ -103,6 +103,6 @@ public abstract class FiniteDomain<T> {
 	}
 
 	private static Package extendD(LVar<?> x, FiniteDomain<?> xd, Package a) {
-		return a.updateC(FiniteDomainConstraints.class, cs -> cs.withDomain(x, xd));
+		return a.<FiniteDomainConstraints> updateC(cs -> cs.withDomain(x, xd));
 	}
 }

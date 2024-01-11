@@ -24,8 +24,10 @@ import lombok.Value;
 public class FDGoals {
 
 	public static <T extends Comparable<T>> Goal dom(Unifiable<T> u, FiniteDomain<T> d) {
-		return CKanren.constructGoal(a ->
-						d.processDom(MiniKanren.walk(a, u)).apply(a))
+		return CKanren.constructGoal(s -> {
+					Package a = FiniteDomainConstraints.register(s);
+					return d.processDom(MiniKanren.walk(a, u)).apply(a);
+				})
 				.named(u + " ⊂ " + d);
 	}
 
@@ -48,8 +50,8 @@ public class FDGoals {
 										FiniteDomainConstraints.class,
 										constraintOp,
 										us.map(Unifiable::getObjectUnifiable))
-								.addTo(p))
-				.map(p1 -> letDomain(p, us)
+								.addTo(FiniteDomainConstraints.register(p)))
+				.map(p1 -> letDomain(p1, us)
 						.filter(uds -> uds.toJavaStream()
 								.noneMatch(ud -> ud.getDomain().isEmpty()))
 						.map(uds -> body.create(uds, p1))

@@ -23,8 +23,9 @@ import lombok.Value;
 @RequiredArgsConstructor(staticName = "of")
 public class FiniteDomainConstraints implements ConstraintStore {
 	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints(LinkedHashMap.empty(), List.empty());
-	public static void use() {
-		Package.register(FiniteDomainConstraints.empty());
+
+	public static Package register(Package p) {
+		return p.withConstraintStore(EMPTY);
 	}
 
 	// cKanren domains
@@ -54,7 +55,7 @@ public class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	public static FiniteDomainConstraints getFDStore(Package p) {
-		return p.get(FiniteDomainConstraints.class);
+		return (FiniteDomainConstraints) p.getConstraintStore();
 	}
 
 	public static <T> Option<FiniteDomain<T>> getDom(Package p, LVar<T> x) {

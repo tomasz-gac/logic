@@ -1,12 +1,8 @@
 package com.tgac.logic.unification;
-import com.sun.org.slf4j.internal.LoggerFactory;
-import com.tgac.functional.Exceptions;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.Constraint;
-import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.ckanren.parameters.ConstraintStore;
-import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
@@ -21,24 +17,13 @@ import static com.tgac.logic.unification.MiniKanren.walk;
 @Value
 @RequiredArgsConstructor(access = AccessLevel.PUBLIC, staticName = "of")
 public class Package {
-	private static HashMap<Class<? extends ConstraintStore>, ConstraintStore> EMPTY_STORES = HashMap.empty();
-
-	public static synchronized <T extends ConstraintStore> void register(T emptyStore) {
-		EMPTY_STORES = EMPTY_STORES.put(emptyStore.getClass(), emptyStore);
-		LoggerFactory.getLogger(Package.class).debug(emptyStore + " registered");
-	}
-
-	public static synchronized void unregisterAll() {
-		EMPTY_STORES = HashMap.empty();
-		LoggerFactory.getLogger(Package.class).debug("Stores cleared");
-	}
 
 	HashMap<LVar<?>, Unifiable<?>> substitutions;
 
-	HashMap<Class<? extends ConstraintStore>, ConstraintStore> constraints;
+	ConstraintStore constraints;
 
 	public static Package empty() {
-		return new Package(HashMap.empty(), EMPTY_STORES);
+		return new Package(HashMap.empty(), null);
 	}
 
 	public Package extendS(HashMap<LVar<?>, Unifiable<?>> s) {
@@ -58,15 +43,16 @@ public class Package {
 		return substitutions.get(v).map(w -> (Unifiable<T>) w);
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T extends ConstraintStore> T get(Class<T> cls) {
-		return constraints.get(cls)
-				.map(cs -> (T) cs)
-				.getOrElseThrow(format(IllegalStateException::new, "No store associated with class %s", cls));
+	public ConstraintStore getConstraintStore() {
+		return Option.of(constraints)
+				.getOrElseThrow(format(IllegalStateException::new, "No store associated with package"));
 	}
 
 	public Package withoutConstraint(Constraint c) {
-		return Package.of(substitutions, updateConstraints(c.getTag(), cs -> cs.remove(c)));
+		return Package.of(substitutions,
+				Option.of(constraints)
+						.map(cs -> cs.remove(c))
+						.getOrElse(() -> null));
 	}
 
 	/**
@@ -79,7 +65,10 @@ public class Package {
 	}
 
 	public Package withConstraint(Constraint c) {
-		return Package.of(substitutions, updateConstraints(c.getTag(), cs -> cs.prepend(c)));
+		return Package.of(substitutions,
+				Option.of(constraints)
+						.map(cs -> cs.prepend(c))
+						.getOrElse(() -> null));
 	}
 
 	public long size() {
@@ -87,46 +76,45 @@ public class Package {
 	}
 
 	public Package withoutConstraints() {
-		return Package.of(substitutions, EMPTY_STORES);
+		return Package.of(substitutions, null);
 	}
 
-	public <T extends ConstraintStore> Package updateC(Class<T> cls, UnaryOperator<T> f) {
+	public <T extends ConstraintStore> Package updateC(UnaryOperator<T> f) {
 		return Package.of(
 				substitutions,
-				updateConstraints(cls, cs ->
-						Types.<T> castAs(cs, ConstraintStore.class)
-								.map(f).get()));
-	}
-
-	private HashMap<Class<? extends ConstraintStore>, ConstraintStore> updateConstraints(Class<? extends ConstraintStore> cls, UnaryOperator<ConstraintStore> f) {
-		return constraints.put(
-				cls,
-				f.apply(constraints.get(cls)
-						.getOrElseThrow(format(IllegalStateException::new, "No store associated with class %s", cls))));
+				Option.of(constraints)
+						.flatMap(Types.<T> castAs(ConstraintStore.class))
+						.map(f)
+						.getOrElse(() -> null));
 	}
 
 	public Option<Package> processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
-		return constraints.toJavaStream()
-				.map(Tuple2::_2)
+		return Option.of(constraints)
 				.map(cs -> cs.processPrefix(newSubstitutions))
-				.reduce(PackageAccessor::compose)
-				.orElseGet(() -> s -> Option.of(withSubstitutions(newSubstitutions)))
+				.getOrElse(s -> Option.of(withSubstitutions(newSubstitutions)))
 				.apply(this);
 	}
 
 	public <T> Goal enforceConstraints(Unifiable<T> x) {
-		return constraints.toJavaStream()
-				.map(Tuple2::_2)
+		return Option.of(constraints)
 				.map(cs -> cs.enforceConstraints(x))
-				.reduce(Goal::and)
-				.orElseGet(Goal::success);
+				.getOrElse(Goal::success);
 	}
 
 	public <A> Try<Unifiable<A>> reify(Unifiable<A> unifiable, Package renameSubstitutions) {
-		return constraints.toJavaStream()
-				.map(Tuple2::_2)
-				.reduce(Try.success(unifiable),
-						(acc, cs) -> acc.flatMap(r -> cs.reify(r, renameSubstitutions, this)),
-						Exceptions.throwingBiOp(UnsupportedClassVersionError::new));
+		return Option.of(constraints)
+				.map(cs -> cs.reify(unifiable, renameSubstitutions, this))
+				.getOrElse(() -> Try.success(unifiable));
+	}
+	public Package withConstraintStore(ConstraintStore empty) {
+		if (constraints != null) {
+			if (empty.getClass().isInstance(constraints)) {
+				return this;
+			} else {
+				throw new IllegalStateException("Constraint store already exists: " + constraints);
+			}
+		} else {
+			return Package.of(substitutions, empty);
+		}
 	}
 }

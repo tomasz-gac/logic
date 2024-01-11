@@ -1,8 +1,6 @@
 package com.tgac.logic;
-import com.tgac.logic.separate.SeparatenessConstraints;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
-import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -11,7 +9,6 @@ import io.vavr.control.Either;
 import io.vavr.control.Option;
 import lombok.val;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -33,12 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings("unchecked")
 public class GoalTest {
-
-	@Before
-	public void init() {
-		Package.unregisterAll();
-		SeparatenessConstraints.use();
-	}
 
 	public <T> Goal caro(
 			Unifiable<T> lhs,

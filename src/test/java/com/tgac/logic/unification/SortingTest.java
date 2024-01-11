@@ -4,7 +4,6 @@ import com.tgac.logic.Goals;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -33,11 +32,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings({"unchecked", "ArraysAsListWithZeroOrOneArgument", "unused"})
 public class SortingTest {
-
-	@Before
-	public void init() {
-		Package.unregisterAll();
-	}
 
 	static <T> Goal halfo(
 			Unifiable<LList<T>> lst,

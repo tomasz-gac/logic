@@ -9,7 +9,6 @@ import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import lombok.val;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -30,11 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SuppressWarnings("OptionalGetWithoutIsPresent")
 public class MiniKanrenTest {
-
-	@Before
-	public void init() {
-		Package.unregisterAll();
-	}
 
 	@Test
 	public void shouldFindX() {

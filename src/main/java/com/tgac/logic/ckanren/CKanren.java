@@ -43,7 +43,7 @@ public class CKanren {
 	}
 
 	private static PackageAccessor remRun(RunnableConstraint c) {
-		return p -> p.get(c.getTag()).contains(c) ?
+		return p -> p.getConstraintStore().contains(c) ?
 				c.apply(p.withoutConstraint(c)) :
 				Option.of(p);
 	}
@@ -57,7 +57,7 @@ public class CKanren {
 												done(v) :
 												walkAll(r, v)
 														.map(result ->
-																s1.getConstraints().isEmpty() ?
+																s1.getConstraints() == null ?
 																		result :
 																		s1.reify(result, vr._2).get())))
 								.map(Stream::of)));

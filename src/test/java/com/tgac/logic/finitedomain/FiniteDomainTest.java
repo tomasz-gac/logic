@@ -12,7 +12,6 @@ import io.vavr.Tuple3;
 import io.vavr.collection.HashSet;
 import lombok.var;
 import org.assertj.core.api.Assertions;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,12 +32,6 @@ import static com.tgac.logic.unification.LVar.lvar;
 @SuppressWarnings("unchecked")
 @RunWith(MockitoJUnitRunner.class)
 public class FiniteDomainTest {
-
-	@Before
-	public void init() {
-		Package.unregisterAll();
-		FiniteDomainConstraints.use();
-	}
 
 	@Test
 	public void shouldAssignDomain() {
@@ -188,6 +181,9 @@ public class FiniteDomainTest {
 						.collect(Collectors.toList());
 
 		System.out.println(result);
+
+		Assertions.assertThat(result)
+				.allMatch(t -> t._1 <= t._2);
 	}
 
 	@Test
@@ -206,6 +202,9 @@ public class FiniteDomainTest {
 						.collect(Collectors.toList());
 
 		System.out.println(result);
+
+		Assertions.assertThat(result)
+				.allMatch(t -> t._1 <= t._2);
 	}
 
 	@Test
@@ -214,7 +213,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> y = lvar();
 		Unifiable<Long> z = lvar();
 
-		List<Tuple2<Unifiable<Long>, Unifiable<Long>>> results = solve(lval(Tuple.of(y, z)),
+		List<Tuple2<Long, Long>> results = solve(lval(Tuple.of(y, z)),
 				Goal.success()
 						.and(printPackage(dom(x, EnumeratedInterval.of(HashSet.range(3L, 6L)))))
 						.and(printPackage(dom(z, EnumeratedInterval.of(HashSet.range(3L, 6L)))))
@@ -223,9 +222,13 @@ public class FiniteDomainTest {
 						.and(printPackage(CKanren.unify(x, y)))
 		)
 				.map(Unifiable::get)
+				.map(t -> t.map(Unifiable::get, Unifiable::get))
 				.collect(Collectors.toList());
 
 		System.out.println(results);
+
+		Assertions.assertThat(results)
+				.allMatch(t -> t._1 <= 5 && t._2 <= 5);
 	}
 
 	static Goal extractPackage(Goal g, Consumer<Package> c) {
@@ -293,6 +296,9 @@ public class FiniteDomainTest {
 						.collect(Collectors.toList());
 
 		System.out.println(result);
+
+		Assertions.assertThat(result)
+				.containsExactly(Tuple.of(3L, 2L, 5L));
 	}
 
 	/**

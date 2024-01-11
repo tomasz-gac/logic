@@ -19,7 +19,8 @@ import static com.tgac.logic.unification.MiniKanren.walkAll;
 public class SeparateGoals {
 
 	public static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return s -> {
+		return a -> {
+			Package s = SeparatenessConstraints.register(a);
 			Option<Package> unificationResult = unify(s.withoutConstraints(), lhs, rhs);
 			switch (verifySeparate(unificationResult, s)) {
 				case UNIFIED:
@@ -77,8 +78,7 @@ public class SeparateGoals {
 					// TODO : verify
 					.map(c -> Package.of(
 							newPackage.getSubstitutions(),
-							newPackage.getConstraints()
-									.put(SeparatenessConstraints.class, SeparatenessConstraints.of(c))));
+							SeparatenessConstraints.of(c)));
 		}
 	}
 
