@@ -1,8 +1,8 @@
 package com.tgac.logic.separate;
 import com.tgac.logic.Goal;
-import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.ckanren.parameters.ConstraintStore;
+import com.tgac.logic.unification.Constraint;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -12,22 +12,22 @@ import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
-import static com.tgac.logic.separate.SeparateGoals.purify;
-import static com.tgac.logic.separate.SeparateGoals.removeSubsumed;
-import static com.tgac.logic.separate.SeparateGoals.walkAllConstraints;
+import static com.tgac.logic.separate.NeqGoals.purify;
+import static com.tgac.logic.separate.NeqGoals.removeSubsumed;
+import static com.tgac.logic.separate.NeqGoals.walkAllConstraints;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-public class SeparatenessConstraints implements ConstraintStore {
-	public static final SeparatenessConstraints EMPTY = SeparatenessConstraints.of(List.empty());
+public class NeqConstraints implements ConstraintStore {
+	public static final NeqConstraints EMPTY = NeqConstraints.of(List.empty());
 	List<NeqConstraint> constraints;
 
 	private static ConstraintStore empty() {
 		return EMPTY;
 	}
 
-	public static SeparatenessConstraints get(Package p) {
-		return (SeparatenessConstraints) p.getConstraintStore();
+	public static NeqConstraints get(Package p) {
+		return (NeqConstraints) p.getConstraintStore();
 	}
 	public static List<NeqConstraint> getConstraints(Package p) {
 		return get(p).getConstraints();
@@ -38,11 +38,11 @@ public class SeparatenessConstraints implements ConstraintStore {
 
 	@Override
 	public ConstraintStore remove(Constraint c) {
-		return SeparatenessConstraints.of(constraints.remove((NeqConstraint) c));
+		return NeqConstraints.of(constraints.remove((NeqConstraint) c));
 	}
 	@Override
 	public ConstraintStore prepend(Constraint c) {
-		return SeparatenessConstraints.of(constraints.prepend((NeqConstraint) c));
+		return NeqConstraints.of(constraints.prepend((NeqConstraint) c));
 	}
 	@Override
 	public boolean contains(Constraint c) {
@@ -56,7 +56,7 @@ public class SeparatenessConstraints implements ConstraintStore {
 	@Override
 	public PackageAccessor processPrefix(
 			HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
-		return s -> SeparateGoals.verifyUnify(s.withSubstitutions(newSubstitutions), s);
+		return s -> NeqGoals.verifyUnify(s.withSubstitutions(newSubstitutions), s);
 	}
 
 	@Override

@@ -40,7 +40,6 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.StreamSupport;
 
-import static com.tgac.functional.Exceptions.throwingBiOp;
 import static com.tgac.functional.recursion.Recur.done;
 import static com.tgac.functional.recursion.Recur.recur;
 import static com.tgac.logic.unification.LVal.lval;
@@ -199,7 +198,7 @@ public class MiniKanren {
 					.reduce(Option.of(s),
 							(state, unifiedItems) ->
 									state.flatMap(s1 -> unify(extender, s1, unifiedItems._1, unifiedItems._2)),
-							throwingBiOp(UnsupportedOperationException::new));
+							Exceptions.throwingBiOp(UnsupportedOperationException::new));
 		}
 	}
 
@@ -333,7 +332,7 @@ public class MiniKanren {
 				.reduce(done(s),
 						(state, item) ->
 								state.flatMap(s1 -> reifyS(s1, item)),
-						throwingBiOp(UnsupportedOperationException::new));
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	public static HashMap<LVar<?>, Unifiable<?>> prefixS(
@@ -406,7 +405,7 @@ public class MiniKanren {
 		return Collector.of(
 				Reference::<T>empty,
 				Reference::set,
-				throwingBiOp(IllegalArgumentException::new),
+				Exceptions.throwingBiOp(IllegalArgumentException::new),
 				r -> Option.of(r.get()));
 	}
 

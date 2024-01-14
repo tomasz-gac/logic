@@ -1,4 +1,5 @@
 package com.tgac.logic.finitedomain.domains;
+import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.finitedomain.FiniteDomainConstraints;
 import com.tgac.logic.unification.LVar;
@@ -7,16 +8,17 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Predicates;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
+import lombok.EqualsAndHashCode;
 
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import static com.tgac.logic.ckanren.CKanren.runConstraints;
-import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getDom;
-import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getFDStore;
 import static com.tgac.logic.unification.LVal.lval;
 
-public abstract class FiniteDomain<T> {
+@EqualsAndHashCode
+public abstract class Domain<T> {
+
+	public abstract <R> R accept(DomainVisitor<T, R> v);
 
 	public abstract boolean contains(T value);
 
@@ -24,21 +26,19 @@ public abstract class FiniteDomain<T> {
 
 	public abstract boolean isEmpty();
 
-	public abstract T min();
+	public abstract Arithmetic<T> min();
 
-	public abstract T max();
+	public abstract Arithmetic<T> max();
 
-	public abstract FiniteDomain<T> dropBefore(Predicate<T> p);
+	public abstract Domain<T> dropBefore(Arithmetic<T> value);
 
-	public abstract FiniteDomain<T> copyBefore(Predicate<T> value);
+	public abstract Domain<T> copyBefore(Arithmetic<T> value);
 
-	protected abstract FiniteDomain<T> intersect(FiniteDomain<T> other);
+	protected abstract Domain<T> intersect(Domain<T> other);
 
-	protected abstract Option<T> getSingletonElement();
+	public abstract boolean isDisjoint(Domain<T> other);
 
-	public abstract boolean isDisjoint(FiniteDomain<T> other);
-
-	public abstract FiniteDomain<T> difference(FiniteDomain<T> other);
+	public abstract Domain<T> difference(Domain<T> other);
 
 	/**
 	 * <pre>
@@ -74,9 +74,9 @@ public abstract class FiniteDomain<T> {
 	 * @return package operator
 	 */
 	private PackageAccessor updateVarDomain(LVar<T> x) {
-		return s -> getDom(s, x)
+		return s -> FiniteDomainConstraints.getDom(s, x)
 				.map(previousDomain -> Option.of(previousDomain.intersect(this))
-						.filter(Predicates.not(com.tgac.logic.finitedomain.domains.FiniteDomain::isEmpty))
+						.filter(Predicates.not(Domain::isEmpty))
 						.map(i -> i.resolveStorableDom(x).apply(s))
 						// intersection is empty
 						.getOrElse(Option::none))
@@ -95,14 +95,16 @@ public abstract class FiniteDomain<T> {
 	 * @return package operator
 	 */
 	private PackageAccessor resolveStorableDom(LVar<?> x) {
-		return a -> getSingletonElement()
-				.map(n -> a.extendS(HashMap.of(x, lval(n))))
-				.map(a1 -> runConstraints(x, getFDStore(a).getConstraints())
+		return a -> Option.of(this)
+				.flatMap(Types.<Singleton<T>> castAs(Singleton.class))
+				.map(Singleton::getValue)
+				.map(n -> a.extendS(HashMap.of(x, lval(n.getValue()))))
+				.map(a1 -> runConstraints(x, FiniteDomainConstraints.getFDStore(a).getConstraints())
 						.apply(a1))
 				.getOrElse(() -> Option.of(extendD(x, this, a)));
 	}
 
-	private static Package extendD(LVar<?> x, FiniteDomain<?> xd, Package a) {
+	private static Package extendD(LVar<?> x, Domain<?> xd, Package a) {
 		return a.<FiniteDomainConstraints> updateC(cs -> cs.withDomain(x, xd));
 	}
 }

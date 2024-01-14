@@ -1,6 +1,7 @@
 package com.tgac.logic.unification;
 
 import com.tgac.logic.Goal;
+import com.tgac.logic.ckanren.CKanren;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -36,28 +37,20 @@ public interface Unifiable<T> extends Supplier<T> {
 	}
 
 	default Goal unify(Unifiable<T> rhs) {
-		return Goal.unify(this, rhs);
+		return CKanren.unify(this, rhs);
 	}
 
 	default Goal unify(T value) {
-		return Goal.unify(this, lval(value));
+		return CKanren.unify(this, lval(value));
 	}
 
 	default Goal unifyNc(Unifiable<T> rhs) {
-		return Goal.goal(s -> MiniKanren.unifyUnsafe(s, this, rhs).toStream())
+		return CKanren.unifyNc(this, rhs)
 				.named("unifyNc");
 	}
 
 	default Goal unifyNc(T value) {
 		return unifyNc(lval(value));
-	}
-
-	default Goal separate(Unifiable<T> rhs) {
-		return Goal.separate(this, rhs);
-	}
-
-	default Goal separate(T value) {
-		return separate(lval(value));
 	}
 
 	@SuppressWarnings("unchecked")

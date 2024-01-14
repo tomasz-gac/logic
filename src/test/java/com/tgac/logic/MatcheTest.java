@@ -1,5 +1,8 @@
-package com.tgac.logic.unification;
-import com.tgac.logic.Goals;
+package com.tgac.logic;
+import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import org.assertj.core.api.Assertions;
@@ -10,24 +13,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.tgac.logic.Goals.llist;
-import static com.tgac.logic.Goals.matche;
-import static com.tgac.logic.Goals.tuple;
 import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
 
 @SuppressWarnings("unchecked")
 public class MatcheTest {
 
 	@Test
 	public void shouldMatchSingleElementList() {
-		Unifiable<LList<Integer>> i = lvar();
-		List<List<Integer>> result = matche(
-				LList.ofAll(1),
-				llist(a -> i.unify(LList.of(a))),
-				llist((a, d) -> i.unify(LList.of(a, d))),
-				llist(3, (lst, d) ->
-						i.unify(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
+		Unifiable<LList<Integer>> i = LVar.lvar();
+		List<List<Integer>> result = Matche.matche(
+						LList.ofAll(1),
+						Matche.llist(a -> i.unify(LList.of(a))),
+						Matche.llist((a, d) -> i.unify(LList.of(a, d))),
+						Matche.llist(3, (lst, d) ->
+								i.unify(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
 				.solve(i)
 				.map(Unifiable::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
@@ -42,12 +41,12 @@ public class MatcheTest {
 
 	@Test
 	public void shouldMatchTwoElementList() {
-		Unifiable<LList<Integer>> i = lvar();
-		List<List<Integer>> result = matche(LList.ofAll(1, 2),
-				llist(a -> i.unify(LList.of(a))),
-				llist((a, d) -> i.unify(LList.of(a, d))),
-				llist(3, (lst, d) ->
-						i.unify(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
+		Unifiable<LList<Integer>> i = LVar.lvar();
+		List<List<Integer>> result = Matche.matche(LList.ofAll(1, 2),
+						Matche.llist(a -> i.unify(LList.of(a))),
+						Matche.llist((a, d) -> i.unify(LList.of(a, d))),
+						Matche.llist(3, (lst, d) ->
+								i.unify(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
 				.solve(i)
 				.map(Unifiable::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
@@ -61,12 +60,12 @@ public class MatcheTest {
 
 	@Test
 	public void shouldMatchMany() {
-		Unifiable<LList<Integer>> i = lvar();
-		List<List<Integer>> result = matche(LList.ofAll(1, 2, 3, 4, 5),
-				llist(a -> i.unify(LList.of(a))),
-				llist((a, d) -> i.unify(LList.of(a, d))),
-				llist(3, (lst, d) ->
-						i.unify(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
+		Unifiable<LList<Integer>> i = LVar.lvar();
+		List<List<Integer>> result = Matche.matche(LList.ofAll(1, 2, 3, 4, 5),
+						Matche.llist(a -> i.unify(LList.of(a))),
+						Matche.llist((a, d) -> i.unify(LList.of(a, d))),
+						Matche.llist(3, (lst, d) ->
+								i.unify(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
 				.solve(i)
 				.map(Unifiable::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
@@ -81,9 +80,9 @@ public class MatcheTest {
 
 	@Test
 	public void shouldMatchTuple() {
-		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> i = lvar();
-		List<Tuple2<Integer, Integer>> result = matche(lval(Tuple.of(lval(1), lval(2))),
-				tuple((a, b) -> i.unify(Tuple.of(a, b))))
+		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> i = LVar.lvar();
+		List<Tuple2<Integer, Integer>> result = Matche.matche(lval(Tuple.of(lval(1), lval(2))),
+						Matche.tuple((a, b) -> i.unify(Tuple.of(a, b))))
 				.solve(i)
 				.map(Unifiable::get)
 				.map(t -> t.map(MiniKanren.applyOnBoth(Unifiable::get)))
@@ -95,8 +94,8 @@ public class MatcheTest {
 
 	@Test
 	public void shouldMatchLVar() {
-		Unifiable<Integer> i = lvar();
-		List<Integer> result = matche(i, Goals.lvar(() -> i.unify(123)))
+		Unifiable<Integer> i = LVar.lvar();
+		List<Integer> result = Matche.matche(i, Matche.lvar(() -> i.unify(123)))
 				.solve(i)
 				.map(Unifiable::get)
 				.collect(Collectors.toList());
@@ -107,10 +106,10 @@ public class MatcheTest {
 
 	@Test
 	public void shouldMatchLVarAfterUnification() {
-		Unifiable<Integer> i = lvar();
-		List<Integer> result = Goals.<Integer> exist(j ->
+		Unifiable<Integer> i = LVar.lvar();
+		List<Integer> result = Logic.<Integer> exist(j ->
 						j.unify(i)
-								.and(matche(j, Goals.lvar(() -> j.unify(123)))))
+								.and(Matche.matche(j, Matche.lvar(() -> j.unify(123)))))
 				.solve(i)
 				.map(Unifiable::get)
 				.collect(Collectors.toList());
@@ -121,11 +120,11 @@ public class MatcheTest {
 
 	@Test
 	public void shouldMatchLVarMultipleTimes() {
-		Unifiable<Integer> i = lvar();
-		List<Integer> result = matche(i,
-				Goals.lvar(() -> i.unify(123)),
-				Goals.lvar(() -> i.unify(124)),
-				Goals.lvar(() -> i.unify(125)))
+		Unifiable<Integer> i = LVar.lvar();
+		List<Integer> result = Matche.matche(i,
+						Matche.lvar(() -> i.unify(123)),
+						Matche.lvar(() -> i.unify(124)),
+						Matche.lvar(() -> i.unify(125)))
 				.solve(i)
 				.map(Unifiable::get)
 				.collect(Collectors.toList());
@@ -137,9 +136,9 @@ public class MatcheTest {
 	@Test
 	public void shouldMatchLVal() {
 		Unifiable<Integer> v = lval(123);
-		Unifiable<Integer> i = lvar();
-		List<Integer> result = matche(v,
-				Goals.lval(i::unify))
+		Unifiable<Integer> i = LVar.lvar();
+		List<Integer> result = Matche.matche(v,
+						Matche.lval(i::unify))
 				.solve(i)
 				.map(Unifiable::get)
 				.collect(Collectors.toList());
@@ -150,11 +149,11 @@ public class MatcheTest {
 
 	@Test
 	public void shouldMatchLValAfterUnification() {
-		Unifiable<Integer> v = lvar();
+		Unifiable<Integer> v = LVar.lvar();
 		Unifiable<Integer> v2 = lval(123);
-		Unifiable<Integer> i = lvar();
+		Unifiable<Integer> i = LVar.lvar();
 		List<Integer> result = v2.unify(v).and(
-						matche(v2, Goals.lval(i::unify)))
+						Matche.matche(v2, Matche.lval(i::unify)))
 				.solve(i)
 				.map(Unifiable::get)
 				.collect(Collectors.toList());
@@ -166,12 +165,12 @@ public class MatcheTest {
 	@Test
 	public void shouldMatchLValMultipleTimes() {
 		Unifiable<Integer> v = lval(123);
-		Unifiable<Integer> i = lvar();
+		Unifiable<Integer> i = LVar.lvar();
 		List<Integer> result =
-				matche(v,
-						Goals.lval(i::unify),
-						Goals.lval(val -> i.unify(val + 1)),
-						Goals.lval(val -> i.unify(val + 2)))
+				Matche.matche(v,
+								Matche.lval(i::unify),
+								Matche.lval(val -> i.unify(val + 1)),
+								Matche.lval(val -> i.unify(val + 2)))
 						.solve(i)
 						.map(Unifiable::get)
 						.collect(Collectors.toList());

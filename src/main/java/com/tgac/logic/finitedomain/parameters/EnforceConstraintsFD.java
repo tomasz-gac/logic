@@ -5,7 +5,8 @@ import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.RunnableConstraint;
-import com.tgac.logic.finitedomain.domains.FiniteDomain;
+import com.tgac.logic.finitedomain.FiniteDomainConstraints;
+import com.tgac.logic.finitedomain.domains.Domain;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -17,8 +18,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.stream.StreamSupport;
 
-import static com.tgac.functional.Exceptions.format;
-import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getDom;
 import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getFDStore;
 import static com.tgac.logic.unification.LVal.lval;
 
@@ -38,7 +37,7 @@ public class EnforceConstraintsFD {
 	public static <T> Goal forceAns(Unifiable<T> x) {
 		return s -> Recur.done(MiniKanren.walk(s, x))
 				.map(v -> v.asVar()
-						.flatMap(vv -> getDom(s, vv))
+						.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv))
 						.map(d -> unifyWithAllDomainValues(x, d))
 						.orElse(() -> v.asVal()
 								.flatMap(w -> MiniKanren.asIterable(w)
@@ -55,10 +54,12 @@ public class EnforceConstraintsFD {
 	}
 
 	private static Goal rerunConstraints(Unifiable<?> x) {
-		return a -> CKanren.constructGoal(CKanren.runConstraints(x, getFDStore(a).getConstraints())).apply(a);
+		return a -> CKanren.constructGoal(CKanren.runConstraints(x,
+						getFDStore(a).getConstraints()))
+				.apply(a);
 	}
 
-	private static <T> Goal unifyWithAllDomainValues(Unifiable<T> x, FiniteDomain<T> d) {
+	private static <T> Goal unifyWithAllDomainValues(Unifiable<T> x, Domain<T> d) {
 		return d.stream()
 				.map(domainValue -> CKanren.constructGoal(s -> MiniKanren.unify(s, x.getObjectUnifiable(), lval(domainValue))))
 				.reduce(Goal::or)
@@ -89,6 +90,6 @@ public class EnforceConstraintsFD {
 						.filter(v -> !boundVariables.contains(v))
 						.isDefined())
 				.findAny()
-				.ifPresent(Exceptions.throwingConsumer(format(IllegalStateException::new, "Unbound variable")));
+				.ifPresent(Exceptions.throwingConsumer(Exceptions.format(IllegalStateException::new, "Unbound variable")));
 	}
 }

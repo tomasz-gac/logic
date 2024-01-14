@@ -2,6 +2,8 @@ package com.tgac.logic.ckanren;
 
 import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.Goal;
+import com.tgac.logic.Incomplete;
+import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -14,11 +16,6 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.util.stream.StreamSupport;
-
-import static com.tgac.functional.recursion.Recur.done;
-import static com.tgac.logic.Incomplete.incomplete;
-import static com.tgac.logic.unification.MiniKanren.reifyS;
-import static com.tgac.logic.unification.MiniKanren.walkAll;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CKanren {
 	public static Goal constructGoal(PackageAccessor accessor) {
@@ -31,6 +28,22 @@ public class CKanren {
 						Option.of(s) :
 						s.processPrefix(s1.getSubstitutions()))
 				.toStream();
+	}
+
+	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
+		return s -> MiniKanren.unifyUnsafe(s, u, v)
+				.flatMap(s1 -> s == s1 ?
+						Option.of(s) :
+						s.processPrefix(s1.getSubstitutions()))
+				.toStream();
+	}
+
+	public static <T> Goal unify(Unifiable<T> u, T v) {
+		return unify(u, LVal.lval(v));
+	}
+
+	public static <T> Goal unifyNc(Unifiable<T> u, T v) {
+		return unifyNc(u, LVal.lval(v));
 	}
 
 	public static PackageAccessor runConstraints(Unifiable<?> xs, List<RunnableConstraint> c) {
@@ -50,12 +63,12 @@ public class CKanren {
 
 	public static <T> Stream<Unifiable<T>> reify(Package s, Unifiable<T> x) {
 		return s.enforceConstraints(x).apply(s)
-				.flatMap(s1 -> incomplete(() ->
+				.flatMap(s1 -> Incomplete.incomplete(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->
 										r.getSubstitutions().isEmpty() ?
-												done(v) :
-												walkAll(r, v)
+												Recur.done(v) :
+												MiniKanren.walkAll(r, v)
 														.map(result ->
 																s1.getConstraints() == null ?
 																		result :
@@ -64,8 +77,8 @@ public class CKanren {
 	}
 
 	public static <T> Recur<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {
-		return walkAll(s1, x)
-				.flatMap(v -> reifyS(Package.empty(), v)
+		return MiniKanren.walkAll(s1, x)
+				.flatMap(v -> MiniKanren.reifyS(Package.empty(), v)
 						.map(r -> Tuple.of(v, r)));
 	}
 

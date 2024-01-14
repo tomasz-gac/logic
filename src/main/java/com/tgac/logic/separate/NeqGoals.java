@@ -2,6 +2,10 @@ package com.tgac.logic.separate;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.Goal;
+import com.tgac.logic.Logic;
+import com.tgac.logic.Matche;
+import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -10,17 +14,18 @@ import io.vavr.collection.List;
 import io.vavr.collection.Stream;
 import io.vavr.control.Option;
 
-import static com.tgac.functional.Exceptions.throwingBiOp;
 import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.logic.ckanren.CKanren.unify;
 import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
 import static com.tgac.logic.unification.MiniKanren.prefixS;
 import static com.tgac.logic.unification.MiniKanren.unify;
 import static com.tgac.logic.unification.MiniKanren.walkAll;
-public class SeparateGoals {
+
+public class NeqGoals {
 
 	public static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return a -> {
-			Package s = SeparatenessConstraints.register(a);
+			Package s = NeqConstraints.register(a);
 			Option<Package> unificationResult = unify(s.withoutConstraints(), lhs, rhs);
 			switch (verifySeparate(unificationResult, s)) {
 				case UNIFIED:
@@ -37,6 +42,32 @@ public class SeparateGoals {
 					throw new UnsupportedOperationException();
 			}
 		};
+	}
+
+	public static <T> Goal separate(Unifiable<T> lhs, T rhs) {
+		return separate(lhs, LVal.lval(rhs));
+	}
+
+	public static <T> Goal rembero(Unifiable<LList<T>> ls, Unifiable<T> x, Unifiable<LList<T>> out) {
+		return Matche.matche(ls, Matche.llist(() -> unify(out, LList.empty())))
+				.or(Matche.matche(ls, Matche.llist((a, d) ->
+						unify(x, a)
+								.and(unify(out, d)))))
+				.or(Matche.matche(ls, Matche.llist((a, d) -> Logic.<LList<T>> exist(res ->
+						separate(a, x)
+								.and(unify(out, LList.of(a, res)))
+								.and(Goal.defer(() -> rembero(d, x, res)))))))
+				.named(x + " ⊄ " + Logic.formatLList(ls) + " ≣ " + out);
+	}
+
+	public static <A> Goal distincto(Unifiable<LList<A>> distinct) {
+		return Matche.matche(distinct,
+						Matche.llist(() -> Goal.success()),
+						Matche.llist(a -> Goal.success()),
+						Matche.llist((a, b, d) -> separate(a, b)
+								.and(Goal.defer(() -> distincto(LList.of(a, d))))
+								.and(Goal.defer(() -> distincto(LList.of(b, d))))))
+				.named("distincto(" + distinct + ")");
 	}
 
 	private enum VerificationResult {
@@ -71,14 +102,14 @@ public class SeparateGoals {
 			return Option.of(a);
 		} else {
 			return verifyAndSimplifyConstraints(
-					SeparatenessConstraints.get(a)
+					NeqConstraints.get(a)
 							.getConstraints(),
 					List.empty(),
 					newPackage.getSubstitutions())
 					// TODO : verify
 					.map(c -> Package.of(
 							newPackage.getSubstitutions(),
-							SeparatenessConstraints.of(c)));
+							NeqConstraints.of(c)));
 		}
 	}
 
@@ -90,7 +121,7 @@ public class SeparateGoals {
 				.reduce(Option.of(newConstraints),
 						(acc, c) -> acc.flatMap(currentConstraints ->
 								verificationStep(s, currentConstraints, c)),
-						throwingBiOp(UnsupportedOperationException::new));
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	private static Option<List<NeqConstraint>> verificationStep(
@@ -140,7 +171,7 @@ public class SeparateGoals {
 												.withSubstitutions(s1),
 										lr._1, lr._2)
 										.map(Package::getSubstitutions)),
-						throwingBiOp(UnsupportedOperationException::new));
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	static Recur<List<NeqConstraint>> walkAllConstraints(
@@ -167,7 +198,7 @@ public class SeparateGoals {
 				.reduce(done(HashMap.empty()),
 						(acc, v) -> Recur.zip(acc, v)
 								.map(ms -> ms.apply(HashMap::put)),
-						throwingBiOp(UnsupportedOperationException::new));
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	static List<NeqConstraint> purify(List<NeqConstraint> c, Package r) {
@@ -199,7 +230,7 @@ public class SeparateGoals {
 								.filter(c -> c == constraints.getSeparate())
 								.map(__ -> true)
 								.getOrElse(() -> false),
-						throwingBiOp(UnsupportedOperationException::new));
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	static Recur<List<NeqConstraint>> removeSubsumed(

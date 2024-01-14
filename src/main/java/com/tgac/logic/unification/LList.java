@@ -1,7 +1,7 @@
 package com.tgac.logic.unification;
 
 import com.tgac.logic.Goal;
-import com.tgac.logic.Goals;
+import com.tgac.logic.Logic;
 import io.vavr.Predicates;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
@@ -25,8 +25,7 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.ckanren.CKanren.unify;
 
 /**
  * @author TGa
@@ -56,11 +55,11 @@ public class LList<A> {
 	}
 
 	public static <A> Unifiable<LList<A>> ofAll(IndexedSeq<A> items) {
-		return ofAll(items.size(), i -> lval(items.get(i)));
+		return ofAll(items.size(), i -> LVal.lval(items.get(i)));
 	}
 
 	public static <A> Unifiable<LList<A>> ofAll(List<A> items) {
-		return ofAll(items.size(), i -> lval(items.get(i)));
+		return ofAll(items.size(), i -> LVal.lval(items.get(i)));
 	}
 
 	@SafeVarargs
@@ -74,7 +73,7 @@ public class LList<A> {
 				.mapToObj(getter)
 				.map(LList::of)
 				.map(Unifiable::get)
-				.reduce((acc, v) -> LList.of(v.head, lval(acc)).get())
+				.reduce((acc, v) -> LList.of(v.head, LVal.lval(acc)).get())
 				.map(LVal::lval)
 				.orElseGet(LList::empty);
 	}
@@ -83,7 +82,7 @@ public class LList<A> {
 	}
 
 	public Unifiable<LList<A>> asVal() {
-		return lval(this);
+		return LVal.lval(this);
 	}
 
 	public Stream<Either<LVar<LList<A>>, Unifiable<A>>> stream() {
@@ -120,14 +119,14 @@ public class LList<A> {
 			Unifiable<LList<B>> rhs,
 			BiFunction<Unifiable<A>, Unifiable<B>, Goal> zip,
 			BinaryOperator<Goal> reduce) {
-		return lhs.unify(LList.empty()).and(rhs.unify(LList.empty()))
-				.or(Goals.<A, LList<A>, B, LList<B>> exist(
+		return unify(lhs, LList.empty()).and(unify(rhs, LList.empty()))
+				.or(Logic.<A, LList<A>, B, LList<B>> exist(
 						(lhsHead, lhsTail, rhsHead, rhsTail) ->
-								lhs.unify(LList.of(lhsHead, lhsTail))
-										.and(rhs.unify(LList.of(rhsHead, rhsTail)))
+								unify(lhs, LList.of(lhsHead, lhsTail))
+										.and(unify(rhs, LList.of(rhsHead, rhsTail)))
 										.and(reduce.apply(
 												zip.apply(lhsHead, rhsHead),
-												defer(() -> zipReduce(lhsTail, rhsTail, zip, reduce))))));
+												Goal.defer(() -> zipReduce(lhsTail, rhsTail, zip, reduce))))));
 	}
 
 	@Override

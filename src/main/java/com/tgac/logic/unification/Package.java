@@ -1,7 +1,7 @@
 package com.tgac.logic.unification;
+import com.tgac.functional.Exceptions;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
-import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.parameters.ConstraintStore;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
@@ -11,9 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 import java.util.function.UnaryOperator;
-
-import static com.tgac.functional.Exceptions.format;
-import static com.tgac.logic.unification.MiniKanren.walk;
 @Value
 @RequiredArgsConstructor(access = AccessLevel.PUBLIC, staticName = "of")
 public class Package {
@@ -45,7 +42,7 @@ public class Package {
 
 	public ConstraintStore getConstraintStore() {
 		return Option.of(constraints)
-				.getOrElseThrow(format(IllegalStateException::new, "No store associated with package"));
+				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "No store associated with package"));
 	}
 
 	public Package withoutConstraint(Constraint c) {
@@ -60,7 +57,7 @@ public class Package {
 	 */
 	public Boolean isAssociated(Unifiable<?> v) {
 		return v.asVar()
-				.map(lvar -> walk(this, lvar) != lvar)
+				.map(lvar -> MiniKanren.walk(this, lvar) != lvar)
 				.getOrElse(true);
 	}
 

@@ -1,13 +1,13 @@
 package com.tgac.logic.finitedomain;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
-import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.ckanren.RunnableConstraint;
 import com.tgac.logic.ckanren.parameters.ConstraintStore;
-import com.tgac.logic.finitedomain.domains.FiniteDomain;
+import com.tgac.logic.finitedomain.domains.Domain;
 import com.tgac.logic.finitedomain.parameters.EnforceConstraintsFD;
 import com.tgac.logic.finitedomain.parameters.ProcessPrefixFd;
+import com.tgac.logic.unification.Constraint;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -29,7 +29,7 @@ public class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	// cKanren domains
-	LinkedHashMap<LVar<?>, FiniteDomain<?>> domains;
+	LinkedHashMap<LVar<?>, Domain<?>> domains;
 
 	// cKanren constraints
 	List<RunnableConstraint> constraints;
@@ -58,7 +58,7 @@ public class FiniteDomainConstraints implements ConstraintStore {
 		return (FiniteDomainConstraints) p.getConstraintStore();
 	}
 
-	public static <T> Option<FiniteDomain<T>> getDom(Package p, LVar<T> x) {
+	public static <T> Option<Domain<T>> getDom(Package p, LVar<T> x) {
 		return getFDStore(p).getDomain(x);
 	}
 
@@ -80,12 +80,12 @@ public class FiniteDomainConstraints implements ConstraintStore {
 				.getOrElse(() -> Try.success(unifiable));
 	}
 
-	public <T> Option<FiniteDomain<T>> getDomain(LVar<T> v) {
+	public <T> Option<Domain<T>> getDomain(LVar<T> v) {
 		return domains.get(v)
-				.flatMap(Types.castAs(FiniteDomain.class));
+				.flatMap(Types.castAs(Domain.class));
 	}
 
-	public FiniteDomainConstraints withDomain(LVar<?> x, FiniteDomain<?> xd) {
+	public FiniteDomainConstraints withDomain(LVar<?> x, Domain<?> xd) {
 		return FiniteDomainConstraints.of(domains.put(x, xd), constraints);
 	}
 }

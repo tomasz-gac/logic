@@ -1,8 +1,8 @@
 package com.tgac.logic.finitedomain;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.ckanren.RunnableConstraint;
+import com.tgac.logic.finitedomain.domains.Domain;
 import com.tgac.logic.finitedomain.domains.EnumeratedInterval;
-import com.tgac.logic.finitedomain.domains.FiniteDomain;
 import com.tgac.logic.finitedomain.parameters.EnforceConstraintsFD;
 import com.tgac.logic.finitedomain.parameters.ProcessPrefixFd;
 import com.tgac.logic.unification.LVar;
@@ -13,7 +13,6 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Stream;
@@ -26,7 +25,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.stream.Collectors;
 
 import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
 
 @SuppressWarnings("unchecked")
 @RunWith(MockitoJUnitRunner.class)
@@ -45,7 +43,6 @@ public class ParametersTest {
 						(m, t) -> m.put(t._1, t._2));
 
 		RunnableConstraint constraint = RunnableConstraint.of(
-				FiniteDomainConstraints.class,
 				accessor, Array.of(prefix.get()._1));
 
 		System.out.println(ProcessPrefixFd.processPrefix(
@@ -58,13 +55,13 @@ public class ParametersTest {
 
 	@Test
 	public void shouldForceAnswer() {
-		Unifiable<Long> i = lvar();
+		Unifiable<Long> i = LVar.lvar();
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(i)
 				.apply(Package.of(HashMap.empty(),
 						FiniteDomainConstraints.of(
-								LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
-										.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 10L))),
+								LinkedHashMap.<LVar<?>, Domain<?>> empty()
+										.put(i.asVar().get(), EnumeratedInterval.range(0L, 10L)),
 								List.empty())))
 				.collect(Collectors.toList());
 
@@ -79,15 +76,15 @@ public class ParametersTest {
 
 	@Test
 	public void shouldForceAnswerComposite() {
-		Unifiable<Long> i = lvar();
-		Unifiable<Long> j = lvar();
+		Unifiable<Long> i = LVar.lvar();
+		Unifiable<Long> j = LVar.lvar();
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
 				.apply(Package.of(HashMap.empty(),
 						FiniteDomainConstraints.of(
-								LinkedHashMap.<LVar<?>, FiniteDomain<?>> empty()
-										.put(i.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L)))
-										.put(j.asVar().get(), EnumeratedInterval.of(HashSet.range(0L, 3L))),
+								LinkedHashMap.<LVar<?>, Domain<?>> empty()
+										.put(i.asVar().get(), EnumeratedInterval.range(0L, 3L))
+										.put(j.asVar().get(), EnumeratedInterval.range(0L, 3L)),
 								List.empty())))
 				.collect(Collectors.toList());
 

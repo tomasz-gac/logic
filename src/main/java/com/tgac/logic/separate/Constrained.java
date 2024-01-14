@@ -1,5 +1,4 @@
 package com.tgac.logic.separate;
-import com.tgac.logic.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
@@ -34,22 +33,7 @@ public class Constrained<T> implements Unifiable<T> {
 	public LVar<T> getVar() {
 		return that.getVar();
 	}
-	@Override
-	public Goal unify(Unifiable<T> rhs) {
-		return that.unify(rhs);
-	}
-	@Override
-	public Goal unify(T value) {
-		return that.unify(value);
-	}
-	@Override
-	public Goal unifyNc(Unifiable<T> rhs) {
-		return that.unifyNc(rhs);
-	}
-	@Override
-	public Goal unifyNc(T value) {
-		return that.unifyNc(value);
-	}
+
 	@Override
 	public Unifiable<Object> getObjectUnifiable() {
 		return that.getObjectUnifiable();

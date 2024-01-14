@@ -1,104 +1,132 @@
 package com.tgac.logic.finitedomain.domains;
 import com.tgac.functional.Exceptions;
-import io.vavr.Predicates;
-import io.vavr.collection.HashSet;
-import io.vavr.collection.Set;
-import io.vavr.collection.Traversable;
+import io.vavr.collection.Array;
+import io.vavr.collection.Iterator;
 import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
-import java.util.function.Predicate;
-
-import static com.tgac.logic.unification.MiniKanren.zip;
+import java.math.BigInteger;
+import java.util.Collections;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class EnumeratedInterval<T extends Comparable<T>> extends FiniteDomain<T> {
-	Set<T> elements;
+public class EnumeratedInterval<T> extends Domain<T> {
+	Array<Arithmetic<T>> elements;
 
-	public static <T extends Comparable<T>> EnumeratedInterval<T> of(Set<T> e) {
-		return new EnumeratedInterval<>(e);
+	public static <T> EnumeratedInterval<T> of(Iterable<Arithmetic<T>> e) {
+		return new EnumeratedInterval<>(Array.ofAll(e));
 	}
+
 	public static EnumeratedInterval<Long> range(Long start, Long endExclusive) {
-		return new EnumeratedInterval<>(HashSet.range(start, endExclusive));
+		return new EnumeratedInterval<>(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
+	}
+
+	public static EnumeratedInterval<Integer> range(int start, int endExclusive) {
+		return new EnumeratedInterval<>(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
+	}
+
+	public static EnumeratedInterval<BigInteger> range(BigInteger start, BigInteger endExclusive) {
+		return new EnumeratedInterval<>(
+				Iterator.iterate(start, i -> i.add(BigInteger.ONE))
+						.takeWhile(v -> v.compareTo(endExclusive) < 0)
+						.map(Arithmetic::of)
+						.collect(Array.collector()));
 	}
 
 	@Override
 	public java.util.stream.Stream<T> stream() {
-		return elements.toJavaStream();
+		return elements.map(Arithmetic::getValue).toJavaStream();
 	}
+
 	@Override
 	public boolean isEmpty() {
 		return elements.isEmpty();
 	}
 
 	@Override
-	public FiniteDomain<T> dropBefore(Predicate<T> pred) {
-		return EnumeratedInterval.of(elements.filter(pred));
+	public Domain<T> dropBefore(Arithmetic<T> e) {
+		int index = Collections.binarySearch(elements
+				.toJavaList(), e, Arithmetic::compareTo);
+		if (index >= 0) {
+			Array<Arithmetic<T>> result = elements.subSequence(index, elements.size());
+			return result.isEmpty() ? Empty.instance() :
+					result.size() == 1 ? Singleton.of(result.get(0)) :
+							EnumeratedInterval.of(result);
+		}
+		return this;
+	}
+
+	@Override
+	public Domain<T> copyBefore(Arithmetic<T> e) {
+		int index = Collections.binarySearch(elements.toJavaList(), e, Arithmetic::compareTo);
+		if (index >= 0) {
+			Array<Arithmetic<T>> result = elements.subSequence(0, index + 1);
+			return result.isEmpty() ? Empty.instance() :
+					result.size() == 1 ? Singleton.of(result.get(0)) :
+							EnumeratedInterval.of(result);
+		}
+		return this;
 	}
 	@Override
-	public FiniteDomain<T> copyBefore(Predicate<T> pred) {
-		return EnumeratedInterval.of(elements.filter(e -> !pred.test(e)));
-	}
-	@Override
-	public T min() {
-		return elements.min()
+	public Arithmetic<T> min() {
+		return Option.of(elements)
+				.filter(e -> !e.isEmpty())
+				.map(e -> e.get(0))
 				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call min on empty domain"));
 	}
 	@Override
-	public T max() {
-		return elements.max()
+	public Arithmetic<T> max() {
+		return Option.of(elements)
+				.filter(e -> !e.isEmpty())
+				.map(e -> e.get(e.size() - 1))
 				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call min on empty domain"));
 	}
 	@Override
 	public boolean contains(T v) {
-		return elements.contains(v);
+		return elements.toJavaStream()
+				.map(Arithmetic::getValue)
+				.anyMatch(v::equals);
 	}
 
 	@Override
-	public boolean isDisjoint(FiniteDomain<T> other) {
-		if (isEmpty() || other.isEmpty()) {
-			return true;
-		} else if (zip(getSingletonElement(), other.getSingletonElement()).isDefined()) {
-			return !getSingletonElement().get().equals(other.getSingletonElement().get());
-		} else if (this.max().compareTo(other.min()) < 0 || other.max().compareTo(this.min()) < 0) {
-			return stream().anyMatch(other::contains);
-		} else {
-			return false;
-		}
+	public boolean isDisjoint(Domain<T> other) {
+		return elements.toJavaStream()
+				.map(Arithmetic::getValue)
+				.noneMatch(other::contains);
 	}
 
 	@Override
-	public FiniteDomain<T> difference(FiniteDomain<T> other) {
-		return other.isEmpty() ? this :
-				EnumeratedInterval.of(
-						other.getSingletonElement()
-								.map(elements::remove)
-								.getOrElse(() ->
-										elements.filter(other::contains)));
+	public Domain<T> difference(Domain<T> other) {
+		Array<Arithmetic<T>> result = elements.toJavaStream()
+				.filter(v -> !other.contains(v.getValue()))
+				.collect(Array.collector());
+		return result.isEmpty() ? Empty.instance() :
+				result.size() == 1 ? Singleton.of(result.get(0)) :
+						EnumeratedInterval.of(result);
 	}
+
 	@Override
-	protected FiniteDomain<T> intersect(FiniteDomain<T> other) {
-		return Option.of(elements.retainAll(((EnumeratedInterval<T>) other).elements))
-				.filter(Predicates.not(Set::isEmpty))
-				.map(s -> s.size() == 1 ?
-						new SingletonFD<>(s.get()) :
-						EnumeratedInterval.of(s))
-				.getOrElse(EmptyDomain::new);
+	protected Domain<T> intersect(Domain<T> other) {
+		Array<Arithmetic<T>> result = elements.toJavaStream()
+				.filter(v -> other.contains(v.getValue()))
+				.collect(Array.collector());
+
+		return result.isEmpty() ? Empty.instance() :
+				result.size() == 1 ? Singleton.of(result.get(0)) :
+						EnumeratedInterval.of(result);
 	}
+
 	@Override
-	protected Option<T> getSingletonElement() {
-		return Option.of(elements)
-				.filter(s -> s.size() == 1)
-				.map(Traversable::get);
+	public <R> R accept(DomainVisitor<T, R> v) {
+		return v.visit(this);
 	}
 
 	@Override
 	public String toString() {
-		return "[" + min() + " … " + max() + "]";
+		return "[" + min().getValue() + " … " + max().getValue() + "]";
 	}
 }
