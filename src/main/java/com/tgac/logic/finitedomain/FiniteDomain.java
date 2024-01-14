@@ -22,6 +22,8 @@ import lombok.Value;
 
 import java.util.Objects;
 
+import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
+
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class FiniteDomain {
 
@@ -158,7 +160,7 @@ public class FiniteDomain {
 							if (ld.getDomain().isDisjoint(rd.getDomain())) {
 								return Option.of(s);
 							}
-							Package a = s.withConstraint(
+							Package a = withConstraint(s,
 									Constraint.of(
 											p -> separateFDC(l, r).apply(p),
 											Array.of(l, r)));
@@ -175,7 +177,7 @@ public class FiniteDomain {
 							}
 						}
 				))
-				.getOrElse(() -> Option.of(s.withConstraint(
+				.getOrElse(() -> Option.of(withConstraint(s,
 						Constraint.of(
 								p -> separateFDC(l, r).apply(p),
 								Array.of(l, r)))));

@@ -16,6 +16,11 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 import java.util.stream.StreamSupport;
+
+import static com.tgac.logic.ckanren.StoreSupport.enforceConstraints;
+import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
+import static com.tgac.logic.ckanren.StoreSupport.processPrefix;
+import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CKanren {
 	public static Goal constructGoal(PackageAccessor accessor) {
@@ -26,7 +31,7 @@ public class CKanren {
 		return s -> MiniKanren.unify(s, u, v)
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
-						s.processPrefix(s1.getSubstitutions()))
+						processPrefix(s, s1.getSubstitutions()))
 				.toStream();
 	}
 
@@ -34,7 +39,7 @@ public class CKanren {
 		return s -> MiniKanren.unifyUnsafe(s, u, v)
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
-						s.processPrefix(s1.getSubstitutions()))
+						processPrefix(s, s1.getSubstitutions()))
 				.toStream();
 	}
 
@@ -56,13 +61,13 @@ public class CKanren {
 	}
 
 	private static PackageAccessor remRun(Constraint c) {
-		return p -> p.getConstraintStore().contains(c) ?
-				c.apply(p.withoutConstraint(c)) :
+		return p -> getConstraintStore(p).contains(c) ?
+				c.apply(withoutConstraint(p, c)) :
 				Option.of(p);
 	}
 
 	public static <T> Stream<Unifiable<T>> reify(Package s, Unifiable<T> x) {
-		return s.enforceConstraints(x).apply(s)
+		return enforceConstraints(s, x).apply(s)
 				.flatMap(s1 -> Incomplete.incomplete(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->
@@ -72,7 +77,7 @@ public class CKanren {
 														.map(result ->
 																s1.getConstraints() == null ?
 																		result :
-																		s1.reify(result, vr._2).get())))
+																		StoreSupport.reify(s1, result, vr._2).get())))
 								.map(Stream::of)));
 	}
 

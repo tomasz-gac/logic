@@ -3,11 +3,13 @@ package com.tgac.logic.ckanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.Predicates;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+
+import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
+import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
@@ -22,8 +24,8 @@ public class Constraint implements Stored, PackageAccessor {
 
 	public Package addTo(Package p) {
 		boolean atLeaseOneIsBound = args.toJavaStream()
-				.anyMatch(Predicates.not(p::isAssociated));
+				.anyMatch(c -> !isAssociated(p, c));
 
-		return atLeaseOneIsBound ? p.withConstraint(this) : p;
+		return atLeaseOneIsBound ? withConstraint(p, this) : p;
 	}
 }

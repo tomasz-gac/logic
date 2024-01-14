@@ -16,6 +16,9 @@ import io.vavr.control.Option;
 
 import static com.tgac.functional.recursion.Recur.done;
 import static com.tgac.logic.ckanren.CKanren.unify;
+import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
+import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
+import static com.tgac.logic.ckanren.StoreSupport.withoutConstraints;
 import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
 import static com.tgac.logic.unification.MiniKanren.prefixS;
 import static com.tgac.logic.unification.MiniKanren.unify;
@@ -26,14 +29,14 @@ public class Disequality {
 	public static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return a -> {
 			Package s = NeqConstraints.register(a);
-			Option<Package> unificationResult = unify(s.withoutConstraints(), lhs, rhs);
+			Option<Package> unificationResult = unify(withoutConstraints(s), lhs, rhs);
 			switch (verifySeparate(unificationResult, s)) {
 				case UNIFIED:
 					return Stream.empty();
 				case ALREADY_SEPARATE:
 					return Stream.of(s);
 				case SEPARATE_FOR_NOW:
-					return Stream.of(s.withConstraint(
+					return Stream.of(withConstraint(s,
 							NeqConstraint.of(
 									prefixS(
 											s.getSubstitutions(),
@@ -216,7 +219,7 @@ public class Disequality {
 			Package r) {
 		return NeqConstraint.of(
 				constraints.getSeparate().toJavaStream()
-						.filter(c -> r.isAssociated(c._1) && r.isAssociated(c._2))
+						.filter(c -> isAssociated(r, c._1) && isAssociated(r, c._2))
 						.reduce(HashMap.empty(), (c, head) -> head.apply(c::put),
 								Exceptions.throwingBiOp(UnsupportedOperationException::new)));
 	}

@@ -1,7 +1,7 @@
 package com.tgac.logic.separate;
 import com.tgac.logic.Goal;
+import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.PackageAccessor;
-import com.tgac.logic.ckanren.parameters.Store;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Stored;
@@ -12,36 +12,37 @@ import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
+import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class NeqConstraints implements Store {
+class NeqConstraints implements ConstraintStore {
 	public static final NeqConstraints EMPTY = NeqConstraints.of(List.empty());
 	List<NeqConstraint> constraints;
 
-	private static Store empty() {
+	private static ConstraintStore empty() {
 		return EMPTY;
 	}
 
 	public static NeqConstraints get(Package p) {
-		return (NeqConstraints) p.getConstraintStore();
+		return (NeqConstraints) getConstraintStore(p);
 	}
 	public static List<NeqConstraint> getConstraints(Package p) {
 		return get(p).getConstraints();
 	}
 	public static Package register(Package a) {
-		return a.withConstraintStore(empty());
+		return a.withStore(empty());
 	}
 
 	@Override
-	public Store remove(Stored c) {
+	public ConstraintStore remove(Stored c) {
 		return NeqConstraints.of(constraints.remove((NeqConstraint) c));
 	}
 	@Override
-	public Store prepend(Stored c) {
+	public ConstraintStore prepend(Stored c) {
 		return NeqConstraints.of(constraints.prepend((NeqConstraint) c));
 	}
 	@Override

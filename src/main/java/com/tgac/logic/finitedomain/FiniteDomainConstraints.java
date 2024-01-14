@@ -2,8 +2,8 @@ package com.tgac.logic.finitedomain;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.Constraint;
+import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.PackageAccessor;
-import com.tgac.logic.ckanren.parameters.Store;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
@@ -18,14 +18,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 import static com.tgac.logic.ckanren.CKanren.runConstraints;
+import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class FiniteDomainConstraints implements Store {
+class FiniteDomainConstraints implements ConstraintStore {
 	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints(LinkedHashMap.empty(), List.empty());
 
 	public static Package register(Package p) {
-		return p.withConstraintStore(EMPTY);
+		return p.withStore(EMPTY);
 	}
 
 	// cKanren domains
@@ -39,12 +40,12 @@ class FiniteDomainConstraints implements Store {
 	}
 
 	@Override
-	public Store remove(Stored c) {
+	public ConstraintStore remove(Stored c) {
 		return FiniteDomainConstraints.of(domains, constraints.remove((Constraint) c));
 	}
 
 	@Override
-	public Store prepend(Stored c) {
+	public ConstraintStore prepend(Stored c) {
 		return FiniteDomainConstraints.of(domains, constraints.prepend((Constraint) c));
 	}
 
@@ -55,7 +56,7 @@ class FiniteDomainConstraints implements Store {
 	}
 
 	public static FiniteDomainConstraints getFDStore(Package p) {
-		return (FiniteDomainConstraints) p.getConstraintStore();
+		return (FiniteDomainConstraints) getConstraintStore(p);
 	}
 
 	public static <T> Option<Domain<T>> getDom(Package p, LVar<T> x) {

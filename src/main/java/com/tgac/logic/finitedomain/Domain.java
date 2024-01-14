@@ -1,6 +1,7 @@
 package com.tgac.logic.finitedomain;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.PackageAccessor;
+import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;
 import com.tgac.logic.finitedomain.domains.Singleton;
@@ -107,6 +108,6 @@ public abstract class Domain<T> {
 	}
 
 	private static Package extendD(LVar<?> x, Domain<?> xd, Package a) {
-		return a.<FiniteDomainConstraints> updateC(cs -> cs.withDomain(x, xd));
+		return StoreSupport.<FiniteDomainConstraints> updateC(a, cs -> cs.withDomain(x, xd));
 	}
 }
