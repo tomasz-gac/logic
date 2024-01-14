@@ -51,7 +51,7 @@ public class SortingTest {
 								lst.unify(LList.ofAll(1, 2, 3, 4, 5))
 										.and(Matche.matche(res,
 												Matche.tuple((l, r) -> halfo(lst, l, r)
-														.and(res.unify(Tuple.of(l, r))))))))
+														.and(res.unify(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
 		System.out.println(result);
@@ -71,7 +71,7 @@ public class SortingTest {
 								lst.unify(LList.ofAll(1, 2, 3, 4))
 										.and(Matche.matche(res,
 												Matche.tuple((l, r) -> halfo(lst, l, r)
-														.and(res.unify(Tuple.of(l, r))))))))
+														.and(res.unify(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
 		System.out.println(result);
@@ -91,7 +91,7 @@ public class SortingTest {
 								lst.unify(LList.ofAll(1))
 										.and(Matche.matche(res,
 												Matche.tuple((l, r) -> halfo(lst, l, r)
-														.and(res.unify(Tuple.of(l, r))))))))
+														.and(res.unify(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
 		System.out.println(result);
