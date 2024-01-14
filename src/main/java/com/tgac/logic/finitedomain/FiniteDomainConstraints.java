@@ -1,15 +1,13 @@
 package com.tgac.logic.finitedomain;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
+import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
-import com.tgac.logic.ckanren.RunnableConstraint;
-import com.tgac.logic.ckanren.parameters.ConstraintStore;
-import com.tgac.logic.finitedomain.domains.Domain;
-import com.tgac.logic.finitedomain.parameters.EnforceConstraintsFD;
-import com.tgac.logic.finitedomain.parameters.ProcessPrefixFd;
-import com.tgac.logic.unification.Constraint;
+import com.tgac.logic.ckanren.parameters.Store;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
@@ -19,9 +17,11 @@ import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
+import static com.tgac.logic.ckanren.CKanren.runConstraints;
+
 @Value
 @RequiredArgsConstructor(staticName = "of")
-public class FiniteDomainConstraints implements ConstraintStore {
+class FiniteDomainConstraints implements Store {
 	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints(LinkedHashMap.empty(), List.empty());
 
 	public static Package register(Package p) {
@@ -32,26 +32,26 @@ public class FiniteDomainConstraints implements ConstraintStore {
 	LinkedHashMap<LVar<?>, Domain<?>> domains;
 
 	// cKanren constraints
-	List<RunnableConstraint> constraints;
+	List<Constraint> constraints;
 
 	public static FiniteDomainConstraints empty() {
 		return EMPTY;
 	}
 
 	@Override
-	public ConstraintStore remove(Constraint c) {
-		return FiniteDomainConstraints.of(domains, constraints.remove((RunnableConstraint) c));
+	public Store remove(Stored c) {
+		return FiniteDomainConstraints.of(domains, constraints.remove((Constraint) c));
 	}
 
 	@Override
-	public ConstraintStore prepend(Constraint c) {
-		return FiniteDomainConstraints.of(domains, constraints.prepend((RunnableConstraint) c));
+	public Store prepend(Stored c) {
+		return FiniteDomainConstraints.of(domains, constraints.prepend((Constraint) c));
 	}
 
 	@Override
-	public boolean contains(Constraint c) {
-		return c instanceof RunnableConstraint &&
-				constraints.contains((RunnableConstraint) c);
+	public boolean contains(Stored c) {
+		return c instanceof Constraint &&
+				constraints.contains((Constraint) c);
 	}
 
 	public static FiniteDomainConstraints getFDStore(Package p) {
@@ -66,10 +66,23 @@ public class FiniteDomainConstraints implements ConstraintStore {
 	public <T> Goal enforceConstraints(Unifiable<T> x) {
 		return EnforceConstraintsFD.enforceConstraints(x);
 	}
+
 	@Override
+	@SuppressWarnings("unchecked")
 	public PackageAccessor processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
-		return ProcessPrefixFd.processPrefix(newSubstitutions, constraints);
+		return s -> MiniKanren.prefixS(s.getSubstitutions(), newSubstitutions)
+				.toJavaStream()
+				.<PackageAccessor> map(ht -> ht
+						.apply((x, v) ->
+								FiniteDomainConstraints.getDom(s, x)
+										.map(Domain.class::cast)
+										.map(dom -> dom.processDom(v))
+										.getOrElse(PackageAccessor.identity())
+										.compose(runConstraints(x, constraints))))
+				.reduce(PackageAccessor.identity(), PackageAccessor::compose)
+				.apply(s.withSubstitutions(newSubstitutions));
 	}
+
 	@Override
 	public <A> Try<Unifiable<A>> reify(Unifiable<A> unifiable, Package renameSubstitutions, Package p) {
 		return unifiable.asVar()

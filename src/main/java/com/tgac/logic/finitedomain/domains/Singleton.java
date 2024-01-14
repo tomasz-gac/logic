@@ -1,4 +1,5 @@
 package com.tgac.logic.finitedomain.domains;
+import com.tgac.logic.finitedomain.Domain;
 import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
@@ -65,7 +66,7 @@ public class Singleton<T> extends Domain<T> {
 		return value.getValue().equals(v);
 	}
 	@Override
-	protected Domain<T> intersect(Domain<T> other) {
+	public Domain<T> intersect(Domain<T> other) {
 		return Option.of(value.getValue())
 				.filter(other::contains)
 				.<Domain<T>> map(v -> this)

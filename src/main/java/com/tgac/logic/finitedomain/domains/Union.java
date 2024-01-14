@@ -1,4 +1,5 @@
 package com.tgac.logic.finitedomain.domains;
+import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Array;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -10,32 +11,32 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.tgac.logic.finitedomain.domains.SimpleInterval.maxValue;
+import static com.tgac.logic.finitedomain.domains.Interval.maxValue;
 import static io.vavr.Predicates.not;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
-public class MultiInterval<T> extends Domain<T> {
+public class Union<T> extends Domain<T> {
 	Array<Domain<T>> intervals;
 
-	private MultiInterval(Array<Domain<T>> intervals) {
+	private Union(Array<Domain<T>> intervals) {
 		this.intervals = mergeOverlappingIntervals(intervals);
 	}
 
 	@SafeVarargs
-	public static <T> MultiInterval<T> of(Domain<T>... intervals) {
-		return new MultiInterval<>(Array.of(intervals));
+	public static <T> Union<T> of(Domain<T>... intervals) {
+		return new Union<>(Array.of(intervals));
 	}
 
-	public static <T> MultiInterval<T> of(Array<Domain<T>> intervals) {
-		return new MultiInterval<>(intervals);
+	public static <T> Union<T> of(Array<Domain<T>> intervals) {
+		return new Union<>(intervals);
 	}
 
 	public static <T> Array<Domain<T>> mergeOverlappingIntervals(Array<Domain<T>> intervals) {
 		intervals = intervals
 				.filter(not(Empty.class::isInstance))
-				.flatMap(fd -> (fd instanceof MultiInterval) ?
-						((MultiInterval<T>) fd).intervals :
+				.flatMap(fd -> (fd instanceof Union) ?
+						((Union<T>) fd).intervals :
 						Array.of(fd))
 				.sortBy(Arithmetic::compareTo, Domain::min);
 
@@ -49,7 +50,7 @@ public class MultiInterval<T> extends Domain<T> {
 		for (int i = 1; i < intervals.size(); i++) {
 			Domain<T> processedInterval = intervals.get(i);
 			if (currentInterval.max().next().compareTo(processedInterval.min()) >= 0) {
-				currentInterval = SimpleInterval.of(
+				currentInterval = Interval.of(
 						currentInterval.min(),
 						maxValue(currentInterval.max(), processedInterval.max()));
 
@@ -60,7 +61,7 @@ public class MultiInterval<T> extends Domain<T> {
 		}
 		mergedIntervals.add(currentInterval);
 		mergedIntervals = mergedIntervals.stream()
-				.map(d -> d instanceof SimpleInterval ?
+				.map(d -> d instanceof Interval ?
 						d.max().equals(d.min()) ?
 								Singleton.of(d.min()) :
 								d :
@@ -102,7 +103,7 @@ public class MultiInterval<T> extends Domain<T> {
 		return onEachInterval(i -> i.copyBefore(value));
 	}
 	@Override
-	protected Domain<T> intersect(Domain<T> other) {
+	public Domain<T> intersect(Domain<T> other) {
 		return onEachInterval(i -> i.intersect(other));
 	}
 
@@ -122,8 +123,8 @@ public class MultiInterval<T> extends Domain<T> {
 		return v.visit(this);
 	}
 
-	private MultiInterval<T> onEachInterval(UnaryOperator<Domain<T>> op) {
-		return new MultiInterval<>(
+	private Union<T> onEachInterval(UnaryOperator<Domain<T>> op) {
+		return new Union<>(
 				intervals.toJavaStream()
 						.map(op)
 						.collect(Array.collector()));

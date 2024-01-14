@@ -1,10 +1,10 @@
 package com.tgac.logic.separate;
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.PackageAccessor;
-import com.tgac.logic.ckanren.parameters.ConstraintStore;
-import com.tgac.logic.unification.Constraint;
+import com.tgac.logic.ckanren.parameters.Store;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
@@ -12,17 +12,17 @@ import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
-import static com.tgac.logic.separate.NeqGoals.purify;
-import static com.tgac.logic.separate.NeqGoals.removeSubsumed;
-import static com.tgac.logic.separate.NeqGoals.walkAllConstraints;
+import static com.tgac.logic.separate.Disequality.purify;
+import static com.tgac.logic.separate.Disequality.removeSubsumed;
+import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-public class NeqConstraints implements ConstraintStore {
+class NeqConstraints implements Store {
 	public static final NeqConstraints EMPTY = NeqConstraints.of(List.empty());
 	List<NeqConstraint> constraints;
 
-	private static ConstraintStore empty() {
+	private static Store empty() {
 		return EMPTY;
 	}
 
@@ -37,15 +37,15 @@ public class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public ConstraintStore remove(Constraint c) {
+	public Store remove(Stored c) {
 		return NeqConstraints.of(constraints.remove((NeqConstraint) c));
 	}
 	@Override
-	public ConstraintStore prepend(Constraint c) {
+	public Store prepend(Stored c) {
 		return NeqConstraints.of(constraints.prepend((NeqConstraint) c));
 	}
 	@Override
-	public boolean contains(Constraint c) {
+	public boolean contains(Stored c) {
 		return c instanceof NeqConstraint
 				&& constraints.contains((NeqConstraint) c);
 	}
@@ -56,7 +56,7 @@ public class NeqConstraints implements ConstraintStore {
 	@Override
 	public PackageAccessor processPrefix(
 			HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
-		return s -> NeqGoals.verifyUnify(s.withSubstitutions(newSubstitutions), s);
+		return s -> Disequality.verifyUnify(s.withSubstitutions(newSubstitutions), s);
 	}
 
 	@Override

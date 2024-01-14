@@ -1,4 +1,5 @@
 package com.tgac.logic.finitedomain.domains;
+import com.tgac.logic.finitedomain.Domain;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -50,7 +51,7 @@ public class Empty<T> extends Domain<T> {
 		return false;
 	}
 	@Override
-	protected Domain<T> intersect(Domain<T> other) {
+	public Domain<T> intersect(Domain<T> other) {
 		return this;
 	}
 

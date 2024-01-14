@@ -2,7 +2,7 @@ package com.tgac.logic.unification;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
-import com.tgac.logic.ckanren.parameters.ConstraintStore;
+import com.tgac.logic.ckanren.parameters.Store;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
@@ -17,7 +17,7 @@ public class Package {
 
 	HashMap<LVar<?>, Unifiable<?>> substitutions;
 
-	ConstraintStore constraints;
+	Store constraints;
 
 	public static Package empty() {
 		return new Package(HashMap.empty(), null);
@@ -40,12 +40,12 @@ public class Package {
 		return substitutions.get(v).map(w -> (Unifiable<T>) w);
 	}
 
-	public ConstraintStore getConstraintStore() {
+	public Store getConstraintStore() {
 		return Option.of(constraints)
 				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "No store associated with package"));
 	}
 
-	public Package withoutConstraint(Constraint c) {
+	public Package withoutConstraint(Stored c) {
 		return Package.of(substitutions,
 				Option.of(constraints)
 						.map(cs -> cs.remove(c))
@@ -61,7 +61,7 @@ public class Package {
 				.getOrElse(true);
 	}
 
-	public Package withConstraint(Constraint c) {
+	public Package withConstraint(Stored c) {
 		return Package.of(substitutions,
 				Option.of(constraints)
 						.map(cs -> cs.prepend(c))
@@ -76,11 +76,11 @@ public class Package {
 		return Package.of(substitutions, null);
 	}
 
-	public <T extends ConstraintStore> Package updateC(UnaryOperator<T> f) {
+	public <T extends Store> Package updateC(UnaryOperator<T> f) {
 		return Package.of(
 				substitutions,
 				Option.of(constraints)
-						.flatMap(Types.<T> castAs(ConstraintStore.class))
+						.flatMap(Types.<T> castAs(Store.class))
 						.map(f)
 						.getOrElse(() -> null));
 	}
@@ -103,7 +103,7 @@ public class Package {
 				.map(cs -> cs.reify(unifiable, renameSubstitutions, this))
 				.getOrElse(() -> Try.success(unifiable));
 	}
-	public Package withConstraintStore(ConstraintStore empty) {
+	public Package withConstraintStore(Store empty) {
 		if (constraints != null) {
 			if (empty.getClass().isInstance(constraints)) {
 				return this;

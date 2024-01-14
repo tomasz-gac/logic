@@ -1,10 +1,7 @@
 package com.tgac.logic.finitedomain;
+import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
-import com.tgac.logic.ckanren.RunnableConstraint;
-import com.tgac.logic.finitedomain.domains.Domain;
-import com.tgac.logic.finitedomain.domains.EnumeratedInterval;
-import com.tgac.logic.finitedomain.parameters.EnforceConstraintsFD;
-import com.tgac.logic.finitedomain.parameters.ProcessPrefixFd;
+import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.TestAccess;
@@ -42,12 +39,12 @@ public class ParametersTest {
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
 
-		RunnableConstraint constraint = RunnableConstraint.of(
+		Constraint constraint = Constraint.of(
 				accessor, Array.of(prefix.get()._1));
 
-		System.out.println(ProcessPrefixFd.processPrefix(
-						prefix,
-						List.of(constraint))
+		System.out.println(FiniteDomainConstraints.empty()
+				.prepend(constraint)
+				.processPrefix(prefix)
 				.apply(Package.of(HashMap.empty(),
 						FiniteDomainConstraints.empty()))
 				.get());
@@ -61,7 +58,7 @@ public class ParametersTest {
 				.apply(Package.of(HashMap.empty(),
 						FiniteDomainConstraints.of(
 								LinkedHashMap.<LVar<?>, Domain<?>> empty()
-										.put(i.asVar().get(), EnumeratedInterval.range(0L, 10L)),
+										.put(i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
 								List.empty())))
 				.collect(Collectors.toList());
 
@@ -83,8 +80,8 @@ public class ParametersTest {
 				.apply(Package.of(HashMap.empty(),
 						FiniteDomainConstraints.of(
 								LinkedHashMap.<LVar<?>, Domain<?>> empty()
-										.put(i.asVar().get(), EnumeratedInterval.range(0L, 3L))
-										.put(j.asVar().get(), EnumeratedInterval.range(0L, 3L)),
+										.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
+										.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
 								List.empty())))
 				.collect(Collectors.toList());
 

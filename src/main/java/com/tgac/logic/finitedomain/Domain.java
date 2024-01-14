@@ -1,7 +1,9 @@
-package com.tgac.logic.finitedomain.domains;
+package com.tgac.logic.finitedomain;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.PackageAccessor;
-import com.tgac.logic.finitedomain.FiniteDomainConstraints;
+import com.tgac.logic.finitedomain.domains.Arithmetic;
+import com.tgac.logic.finitedomain.domains.DomainVisitor;
+import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -34,7 +36,7 @@ public abstract class Domain<T> {
 
 	public abstract Domain<T> copyBefore(Arithmetic<T> value);
 
-	protected abstract Domain<T> intersect(Domain<T> other);
+	public abstract Domain<T> intersect(Domain<T> other);
 
 	public abstract boolean isDisjoint(Domain<T> other);
 

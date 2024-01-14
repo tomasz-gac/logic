@@ -46,7 +46,7 @@ public class CKanren {
 		return unifyNc(u, LVal.lval(v));
 	}
 
-	public static PackageAccessor runConstraints(Unifiable<?> xs, List<RunnableConstraint> c) {
+	public static PackageAccessor runConstraints(Unifiable<?> xs, List<Constraint> c) {
 		return c.toJavaStream()
 				.flatMap(constraint -> Option.of(remRun(constraint))
 						.filter(__ -> anyRelevantVar(xs, constraint))
@@ -55,7 +55,7 @@ public class CKanren {
 						PackageAccessor::compose);
 	}
 
-	private static PackageAccessor remRun(RunnableConstraint c) {
+	private static PackageAccessor remRun(Constraint c) {
 		return p -> p.getConstraintStore().contains(c) ?
 				c.apply(p.withoutConstraint(c)) :
 				Option.of(p);
@@ -82,7 +82,7 @@ public class CKanren {
 						.map(r -> Tuple.of(v, r)));
 	}
 
-	private static boolean anyRelevantVar(Unifiable<?> xs, RunnableConstraint c) {
+	private static boolean anyRelevantVar(Unifiable<?> xs, Constraint c) {
 		return xs.asVar()
 				.filter(c.getArgs()::contains)
 				.isDefined()

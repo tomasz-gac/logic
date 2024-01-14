@@ -21,7 +21,7 @@ import static com.tgac.logic.unification.MiniKanren.prefixS;
 import static com.tgac.logic.unification.MiniKanren.unify;
 import static com.tgac.logic.unification.MiniKanren.walkAll;
 
-public class NeqGoals {
+public class Disequality {
 
 	public static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return a -> {

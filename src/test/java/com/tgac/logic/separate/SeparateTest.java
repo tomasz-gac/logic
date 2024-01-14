@@ -19,14 +19,14 @@ import java.util.stream.Collectors;
 import static com.tgac.logic.Goal.defer;
 import static com.tgac.logic.Logic.firsto;
 import static com.tgac.logic.LogicTest.runStream;
-import static com.tgac.logic.separate.NeqGoals.rembero;
-import static com.tgac.logic.separate.NeqGoals.separate;
+import static com.tgac.logic.separate.Disequality.rembero;
+import static com.tgac.logic.separate.Disequality.separate;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SuppressWarnings("unchecked")
-@ExtensionMethod(NeqGoals.class)
+@ExtensionMethod(Disequality.class)
 public class SeparateTest {
 
 	@Test
@@ -254,7 +254,6 @@ public class SeparateTest {
 
 	@Test
 	public void shouldSeparate() {
-		Unifiable<Integer> p = lvar();
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
@@ -275,7 +274,7 @@ public class SeparateTest {
 		System.out.println(LogicTest.runStream(r,
 						Logic.<LList<Integer>> exist(l ->
 								l.unify(LList.ofAll(1, 2))
-										.and(NeqGoals.distincto(r))))
+										.and(Disequality.distincto(r))))
 				.limit(5)
 				.map(Objects::toString)
 				.collect(Collectors.joining("\n")));

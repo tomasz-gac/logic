@@ -1,3 +1,3 @@
 package com.tgac.logic.unification;
-public interface Constraint {
+public interface Stored {
 }

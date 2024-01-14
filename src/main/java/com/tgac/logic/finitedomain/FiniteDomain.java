@@ -3,11 +3,10 @@ package com.tgac.logic.finitedomain;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
-import com.tgac.logic.ckanren.RunnableConstraint;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.Domain;
-import com.tgac.logic.finitedomain.domains.SimpleInterval;
+import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
@@ -24,7 +23,7 @@ import lombok.Value;
 import java.util.Objects;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class FDGoals {
+public class FiniteDomain {
 
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
 		return CKanren.constructGoal(s -> {
@@ -50,7 +49,7 @@ public class FDGoals {
 
 	private static <T> PackageAccessor constraintOperation(PackageAccessor constraintOp, Array<Unifiable<T>> us, ConstraintBody<T> body) {
 		return p -> Tuple.of(
-						RunnableConstraint.of(constraintOp, us.map(Unifiable::getObjectUnifiable))
+						Constraint.of(constraintOp, us.map(Unifiable::getObjectUnifiable))
 								.addTo(FiniteDomainConstraints.register(p)))
 				.map(p1 -> letDomain(p1, us)
 						.filter(uds -> uds.toJavaStream()
@@ -76,9 +75,26 @@ public class FDGoals {
 		Option<Package> create(Array<VarWithDomain<T>> vds, Package p);
 	}
 
-	public static Goal leq(Unifiable<Long> less, Unifiable<Long> more) {
+	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
 		return CKanren.constructGoal(leqFD(less, more))
-				.named(less + " <= " + more);
+				.named(less + " ≤ " + more);
+	}
+
+	public static <T> Goal lss(Unifiable<T> less, Unifiable<T> more) {
+		return CKanren.constructGoal(leqFD(less, more))
+				.and(separate(less, more))
+				.named(less + " < " + more);
+	}
+
+	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
+		return CKanren.constructGoal(leqFD(more, less))
+				.and(separate(more, less))
+				.named(more + " > " + less);
+	}
+
+	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
+		return CKanren.constructGoal(leqFD(more, less))
+				.named(more + " ≥ " + less);
 	}
 
 	private static <T> PackageAccessor leqFD(Unifiable<T> less, Unifiable<T> more) {
@@ -94,7 +110,7 @@ public class FDGoals {
 								.apply(p));
 	}
 
-	public static Goal sum(Unifiable<Long> a, Unifiable<Long> b, Unifiable<Long> c) {
+	public static <T> Goal sum(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return CKanren.constructGoal(sumFD(a, b, c))
 				.named(a + " + " + b + " = " + c);
 	}
@@ -108,15 +124,15 @@ public class FDGoals {
 												u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
 												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max())
 										.apply((uMin, vMin, wMin, uMax, vMax, wMax) ->
-												SimpleInterval.of(
+												Interval.of(
 																uMin.add(vMin),
 																uMax.add(vMax.next()))
 														.processDom(w.getUnifiable())
-														.compose(SimpleInterval.of(
+														.compose(Interval.of(
 																		wMin.subtract(uMax),
 																		wMax.subtract(uMin).next())
 																.processDom(v.getUnifiable()))
-														.compose(SimpleInterval.of(
+														.compose(Interval.of(
 																		wMin.subtract(vMax),
 																		wMax.subtract(vMin).next())
 																.processDom(u.getUnifiable()))
@@ -124,7 +140,7 @@ public class FDGoals {
 								));
 	}
 
-	public static Goal separateFD(Unifiable<Long> l, Unifiable<Long> r) {
+	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {
 		return CKanren.constructGoal(separateFDC(l, r))
 				.named(l + " ≠_fd " + r);
 	}
@@ -143,7 +159,7 @@ public class FDGoals {
 								return Option.of(s);
 							}
 							Package a = s.withConstraint(
-									RunnableConstraint.of(
+									Constraint.of(
 											p -> separateFDC(l, r).apply(p),
 											Array.of(l, r)));
 							if (ld.getDomain() instanceof Singleton) {
@@ -160,7 +176,7 @@ public class FDGoals {
 						}
 				))
 				.getOrElse(() -> Option.of(s.withConstraint(
-						RunnableConstraint.of(
+						Constraint.of(
 								p -> separateFDC(l, r).apply(p),
 								Array.of(l, r)))));
 	}

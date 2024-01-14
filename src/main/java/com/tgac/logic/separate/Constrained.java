@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-public class Constrained<T> implements Unifiable<T> {
+class Constrained<T> implements Unifiable<T> {
 	Unifiable<T> that;
 	@Getter
 	List<HashMap<LVar<?>, Unifiable<?>>> constraints;

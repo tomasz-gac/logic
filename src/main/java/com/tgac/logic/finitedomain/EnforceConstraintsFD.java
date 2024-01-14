@@ -1,12 +1,10 @@
-package com.tgac.logic.finitedomain.parameters;
+package com.tgac.logic.finitedomain;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.CKanren;
-import com.tgac.logic.ckanren.RunnableConstraint;
-import com.tgac.logic.finitedomain.FiniteDomainConstraints;
-import com.tgac.logic.finitedomain.domains.Domain;
+import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -22,7 +20,7 @@ import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getFDStore;
 import static com.tgac.logic.unification.LVal.lval;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class EnforceConstraintsFD {
+class EnforceConstraintsFD {
 
 	public static <T> Goal enforceConstraints(Unifiable<T> x) {
 		return a -> forceAns(x)
@@ -82,7 +80,7 @@ public class EnforceConstraintsFD {
 		}
 	}
 
-	private static void verifyAllConstrainedHaveDomain(List<RunnableConstraint> constraints, List<LVar<?>> boundVariables) {
+	private static void verifyAllConstrainedHaveDomain(List<Constraint> constraints, List<LVar<?>> boundVariables) {
 		constraints.toJavaStream()
 				.flatMap(c -> c.getArgs().toJavaStream())
 				.filter(u -> u.asVal().isDefined())

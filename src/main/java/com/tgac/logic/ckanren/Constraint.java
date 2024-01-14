@@ -1,7 +1,7 @@
 package com.tgac.logic.ckanren;
 
-import com.tgac.logic.unification.Constraint;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Predicates;
 import io.vavr.collection.Array;
@@ -11,7 +11,7 @@ import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-public class RunnableConstraint implements Constraint, PackageAccessor {
+public class Constraint implements Stored, PackageAccessor {
 	PackageAccessor constraintOp;
 	Array<Unifiable<?>> args;
 

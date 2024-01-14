@@ -1,12 +1,12 @@
 package com.tgac.logic.finitedomain.domains;
 public interface DomainVisitor<T, R> {
-	R visit(Empty<T> instance);
+	R visit(Empty<T> domain);
 
-	R visit(Singleton<T> instance);
+	R visit(Singleton<T> domain);
 
-	R visit(SimpleInterval<T> instance);
+	R visit(Interval<T> domain);
 
-	R visit(MultiInterval<T> instance);
+	R visit(Union<T> domain);
 
-	R visit(EnumeratedInterval<T> instance);
+	R visit(EnumeratedDomain<T> domain);
 }

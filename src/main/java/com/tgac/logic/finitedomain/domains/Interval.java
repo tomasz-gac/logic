@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain.domains;
 import com.tgac.functional.Exceptions;
+import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Iterator;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
@@ -13,26 +14,26 @@ import java.util.stream.StreamSupport;
 @Value
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class SimpleInterval<T> extends Domain<T> {
+public class Interval<T> extends Domain<T> {
 	Arithmetic<T> min;
 	Arithmetic<T> max;
 
-	public static <T> SimpleInterval<T> of(
+	public static <T> Interval<T> of(
 			Arithmetic<T> min,
 			Arithmetic<T> max) {
 		assert min.compareTo(max) <= 0;
-		return new SimpleInterval<>(min, max);
+		return new Interval<>(min, max);
 	}
 
-	public static SimpleInterval<Integer> of(int min, int max) {
+	public static Interval<Integer> of(int min, int max) {
 		return of(Arithmetic.of(min), Arithmetic.of(max));
 	}
 
-	public static SimpleInterval<Long> of(long min, long max) {
+	public static Interval<Long> of(long min, long max) {
 		return of(Arithmetic.of(min), Arithmetic.of(max));
 	}
 
-	public static SimpleInterval<BigInteger> of(BigInteger min, BigInteger max) {
+	public static Interval<BigInteger> of(BigInteger min, BigInteger max) {
 		return of(Arithmetic.of(min), Arithmetic.of(max));
 	}
 
@@ -65,7 +66,7 @@ public class SimpleInterval<T> extends Domain<T> {
 		return e.equals(max) ?
 				Singleton.of(e) :
 				e.compareTo(max) < 0 ?
-						SimpleInterval.of(maxValue(e, min), max) :
+						Interval.of(maxValue(e, min), max) :
 						Empty.instance();
 
 	}
@@ -74,43 +75,43 @@ public class SimpleInterval<T> extends Domain<T> {
 		return e.equals(min) ?
 				Empty.instance() :
 				e.compareTo(min) > 0 ?
-						SimpleInterval.of(min, minValue(e.prev(), max)) :
+						Interval.of(min, minValue(e.prev(), max)) :
 						Empty.instance();
 	}
 
 	@Override
-	protected Domain<T> intersect(Domain<T> other) {
-		SimpleInterval<T> that = this;
+	public Domain<T> intersect(Domain<T> other) {
+		Interval<T> that = this;
 		return other.accept(new DomainVisitor<T, Domain<T>>() {
 			@Override
-			public Domain<T> visit(Empty<T> instance) {
+			public Domain<T> visit(Empty<T> domain) {
 				return that;
 			}
 			@Override
-			public Domain<T> visit(Singleton<T> instance) {
-				return contains(instance.getValue().getValue()) ?
-						instance :
+			public Domain<T> visit(Singleton<T> domain) {
+				return contains(domain.getValue().getValue()) ?
+						domain :
 						Empty.instance();
 			}
 			@Override
-			public Domain<T> visit(SimpleInterval<T> instance) {
+			public Domain<T> visit(Interval<T> domain) {
 				Arithmetic<T> min = maxValue(min(), other.min());
 				Arithmetic<T> max = minValue(max(), other.max());
 				if (min.compareTo(max) == 0) {
 					return Singleton.of(min);
 				} else if (min.compareTo(max) <= 0) {
-					return new SimpleInterval<>(min, max);
+					return new Interval<>(min, max);
 				} else {
 					return Empty.instance();
 				}
 			}
 			@Override
-			public Domain<T> visit(MultiInterval<T> instance) {
-				return instance.intersect(that);
+			public Domain<T> visit(Union<T> domain) {
+				return domain.intersect(that);
 			}
 			@Override
-			public Domain<T> visit(EnumeratedInterval<T> instance) {
-				return instance.intersect(that);
+			public Domain<T> visit(EnumeratedDomain<T> domain) {
+				return domain.intersect(that);
 			}
 		});
 	}
@@ -119,25 +120,25 @@ public class SimpleInterval<T> extends Domain<T> {
 	public boolean isDisjoint(Domain<T> other) {
 		return other.accept(new DomainVisitor<T, Boolean>() {
 			@Override
-			public Boolean visit(Empty<T> instance) {
+			public Boolean visit(Empty<T> domain) {
 				return true;
 			}
 			@Override
-			public Boolean visit(Singleton<T> instance) {
-				return !contains(instance.getValue().getValue());
+			public Boolean visit(Singleton<T> domain) {
+				return !contains(domain.getValue().getValue());
 			}
 			@Override
-			public Boolean visit(SimpleInterval<T> instance) {
+			public Boolean visit(Interval<T> domain) {
 				return max.compareTo(other.min()) < 0 || min.compareTo(other.max()) > 0;
 			}
 			@Override
-			public Boolean visit(MultiInterval<T> instance) {
-				return instance.getIntervals().toJavaStream()
+			public Boolean visit(Union<T> domain) {
+				return domain.getIntervals().toJavaStream()
 						.allMatch(v -> isDisjoint(v));
 			}
 			@Override
-			public Boolean visit(EnumeratedInterval<T> instance) {
-				return instance.getElements().toJavaStream()
+			public Boolean visit(EnumeratedDomain<T> domain) {
+				return domain.getElements().toJavaStream()
 						.map(Arithmetic::getValue)
 						.noneMatch(v -> contains(v));
 			}
@@ -146,54 +147,53 @@ public class SimpleInterval<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> difference(Domain<T> other) {
-		SimpleInterval<T> that = this;
+		Interval<T> that = this;
 		return other.accept(new DomainVisitor<T, Domain<T>>() {
 			@Override
-			public Domain<T> visit(Empty<T> instance) {
+			public Domain<T> visit(Empty<T> domain) {
 				return that;
 			}
 			@Override
-			public Domain<T> visit(Singleton<T> instance) {
-				if (that.contains(instance.getValue().getValue())) {
-					return MultiInterval.of(
-							SimpleInterval.of(min, instance.getValue().prev()),
-							SimpleInterval.of(instance.getValue().next(), max));
+			public Domain<T> visit(Singleton<T> domain) {
+				if (that.contains(domain.getValue().getValue())) {
+					return Union.of(
+							Interval.of(min, domain.getValue().prev()),
+							Interval.of(domain.getValue().next(), max));
 				} else {
 					return that;
 				}
 			}
 			@Override
-			public Domain<T> visit(SimpleInterval<T> instance) {
+			public Domain<T> visit(Interval<T> domain) {
 				if (other.max().compareTo(that.min()) < 0 || other.min().compareTo(max()) > 0) {
 					// No overlap, so the whole current interval is the difference
 					return that;
 				} else if (other.min().compareTo(min) > 0 && other.max().compareTo(max) < 0) {
 					// Other interval is inside the current interval
-					return MultiInterval.of(
-							SimpleInterval.of(that.min(), other.min().prev()),
-							SimpleInterval.of(other.max().next(), that.max()));
+					return Union.of(
+							Interval.of(that.min(), other.min().prev()),
+							Interval.of(other.max().next(), that.max()));
 				} else if (other.min().compareTo(min) <= 0 && other.max().compareTo(max) >= 0) {
 					// Other interval contains the current interval, so the difference is empty
 					return Empty.instance();
 				} else if (other.min().compareTo(min) <= 0) {
 					// Other interval starts before the current interval and ends somewhere in the middle
-					return SimpleInterval.of(other.max().next(), that.max());
+					return Interval.of(other.max().next(), that.max());
 				} else {
 					// Other interval starts somewhere in the middle of the current interval and ends after it
-					return SimpleInterval.of(that.min(), other.min().prev());
+					return Interval.of(that.min(), other.min().prev());
 				}
 			}
 			@Override
-			public Domain<T> visit(MultiInterval<T> instance) {
-				return ((MultiInterval<T>) other).getIntervals().toJavaStream()
+			public Domain<T> visit(Union<T> domain) {
+				return ((Union<T>) other).getIntervals().toJavaStream()
 						.map(that::difference)
-						.peek(System.out::println)
 						.reduce(Domain::intersect)
 						.orElseGet(Empty::instance);
 			}
 			@Override
-			public Domain<T> visit(EnumeratedInterval<T> instance) {
-				return instance.stream()
+			public Domain<T> visit(EnumeratedDomain<T> domain) {
+				return domain.stream()
 						.map(v -> Singleton.of(Arithmetic.ofCasted(v)))
 						.<Domain<T>> reduce(that,
 								Domain::difference,

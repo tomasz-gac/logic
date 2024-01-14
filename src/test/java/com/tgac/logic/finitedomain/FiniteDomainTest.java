@@ -3,8 +3,8 @@ import com.tgac.logic.Goal;
 import com.tgac.logic.Logic;
 import com.tgac.logic.Matche;
 import com.tgac.logic.ckanren.CKanren;
-import com.tgac.logic.finitedomain.domains.EnumeratedInterval;
-import com.tgac.logic.finitedomain.domains.SimpleInterval;
+import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -29,13 +29,13 @@ import static com.tgac.logic.unification.LVar.lvar;
 
 @SuppressWarnings("unchecked")
 @RunWith(MockitoJUnitRunner.class)
-public class DomainTest {
+public class FiniteDomainTest {
 
 	@Test
 	public void shouldAssignDomain() {
 		Unifiable<Long> i = lvar();
 		java.util.List<Long> result =
-				solve(i, FDGoals.dom(i, EnumeratedInterval.range(0L, 10L)))
+				solve(i, FiniteDomain.dom(i, EnumeratedDomain.range(0L, 10L)))
 						.map(Unifiable::get)
 						.collect(Collectors.toList());
 
@@ -50,8 +50,8 @@ public class DomainTest {
 		Unifiable<Long> i = lvar();
 
 		java.util.List<Long> result =
-				solve(i, FDGoals.dom(i, EnumeratedInterval.range(0L, 10L))
-						.and(FDGoals.dom(i, EnumeratedInterval.range(5L, 15L))))
+				solve(i, FiniteDomain.dom(i, EnumeratedDomain.range(0L, 10L))
+						.and(FiniteDomain.dom(i, EnumeratedDomain.range(5L, 15L))))
 						.map(Unifiable::get)
 						.collect(Collectors.toList());
 
@@ -67,7 +67,7 @@ public class DomainTest {
 		Unifiable<Long> j = lvar();
 
 		java.util.List<Long> result =
-				solve(j, FDGoals.dom(i, EnumeratedInterval.range(0L, 10L))
+				solve(j, FiniteDomain.dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(CKanren.unify(i, j)))
 						.map(Unifiable::get)
 						.collect(Collectors.toList());
@@ -84,7 +84,7 @@ public class DomainTest {
 		Unifiable<Long> j = lvar();
 
 		java.util.List<Long> result =
-				solve(j, FDGoals.dom(i, EnumeratedInterval.range(0L, 10L))
+				solve(j, FiniteDomain.dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(CKanren.unify(j, i)))
 						.map(Unifiable::get)
 						.collect(Collectors.toList());
@@ -102,7 +102,7 @@ public class DomainTest {
 		Unifiable<Long> k = lvar();
 
 		java.util.List<Long> result =
-				solve(k, FDGoals.dom(i, EnumeratedInterval.range(0L, 10L))
+				solve(k, FiniteDomain.dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(k.unify(j))
 						.and(CKanren.unify(k, i)))
 						.map(Unifiable::get)
@@ -121,10 +121,10 @@ public class DomainTest {
 		Unifiable<Long> k = lvar();
 
 		java.util.List<Long> result =
-				solve(k, FDGoals.dom(i, EnumeratedInterval.range(0L, 10L))
+				solve(k, FiniteDomain.dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(k.unify(j))
 						.and(CKanren.unify(k, i))
-						.and(FDGoals.dom(k, EnumeratedInterval.range(5L, 20L))))
+						.and(FiniteDomain.dom(k, EnumeratedDomain.range(5L, 20L))))
 						.map(Unifiable::get)
 						.collect(Collectors.toList());
 
@@ -141,8 +141,8 @@ public class DomainTest {
 
 		java.util.List<Tuple2<Long, Long>> results =
 				solve(lval(Tuple.of(i, j)),
-						FDGoals.dom(i, EnumeratedInterval.range(0L, 3L))
-								.and(FDGoals.dom(j, EnumeratedInterval.range(0L, 3L))))
+						FiniteDomain.dom(i, EnumeratedDomain.range(0L, 3L))
+								.and(FiniteDomain.dom(j, EnumeratedDomain.range(0L, 3L))))
 						.map(Unifiable::get)
 						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
 						.collect(Collectors.toList());
@@ -171,9 +171,9 @@ public class DomainTest {
 		java.util.List<Tuple2<Long, Long>> result =
 				solve(lval(Tuple.of(i, j)),
 						Goal.success()
-								.and(printPackage((FDGoals.leq(i, j))))
-								.and(printPackage(FDGoals.dom(i, EnumeratedInterval.range(0L, 4L))))
-								.and(printPackage(FDGoals.dom(j, EnumeratedInterval.range(0L, 4L)))))
+								.and(printPackage((FiniteDomain.leq(i, j))))
+								.and(printPackage(FiniteDomain.dom(i, EnumeratedDomain.range(0L, 4L))))
+								.and(printPackage(FiniteDomain.dom(j, EnumeratedDomain.range(0L, 4L)))))
 						.map(Unifiable::get)
 						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
 						.collect(Collectors.toList());
@@ -192,9 +192,9 @@ public class DomainTest {
 		java.util.List<Tuple2<Long, Long>> result =
 				solve(lval(Tuple.of(i, j)),
 						Goal.success()
-								.and(printPackage(FDGoals.dom(i, EnumeratedInterval.range(0L, 4L))))
-								.and(printPackage(FDGoals.dom(j, EnumeratedInterval.range(0L, 4L))))
-								.and(printPackage((FDGoals.leq(i, j)))))
+								.and(printPackage(FiniteDomain.dom(i, EnumeratedDomain.range(0L, 4L))))
+								.and(printPackage(FiniteDomain.dom(j, EnumeratedDomain.range(0L, 4L))))
+								.and(printPackage((FiniteDomain.leq(i, j)))))
 						.map(Unifiable::get)
 						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
 						.collect(Collectors.toList());
@@ -213,10 +213,10 @@ public class DomainTest {
 
 		List<Tuple2<Long, Long>> results = solve(lval(Tuple.of(y, z)),
 				Goal.success()
-						.and(printPackage(FDGoals.dom(x, EnumeratedInterval.range(3L, 6L))))
-						.and(printPackage(FDGoals.dom(z, EnumeratedInterval.range(3L, 6L))))
-						.and(printPackage(FDGoals.dom(y, EnumeratedInterval.range(1L, 5L))))
-						.and(printPackage(FDGoals.leq(x, lval(5L))))
+						.and(printPackage(FiniteDomain.dom(x, EnumeratedDomain.range(3L, 6L))))
+						.and(printPackage(FiniteDomain.dom(z, EnumeratedDomain.range(3L, 6L))))
+						.and(printPackage(FiniteDomain.dom(y, EnumeratedDomain.range(1L, 5L))))
+						.and(printPackage(FiniteDomain.leq(x, lval(5L))))
 						.and(printPackage(CKanren.unify(x, y)))
 		)
 				.map(Unifiable::get)
@@ -247,11 +247,11 @@ public class DomainTest {
 		Instant start = Instant.now();
 
 		Goal.Conjunction goal =
-				FDGoals.sum(i, j, k)
-						.and(FDGoals.separateFD(i, j))
-						.and(FDGoals.dom(i, SimpleInterval.of(0L, 100L)))
-						.and(FDGoals.dom(j, SimpleInterval.of(0L, 100L)))
-						.and(FDGoals.dom(k, SimpleInterval.of(0L, 100L)));
+				FiniteDomain.sum(i, j, k)
+						.and(FiniteDomain.separate(i, j))
+						.and(FiniteDomain.dom(i, Interval.of(0L, 100L)))
+						.and(FiniteDomain.dom(j, Interval.of(0L, 100L)))
+						.and(FiniteDomain.dom(k, Interval.of(0L, 100L)));
 
 		System.out.println(goal);
 
@@ -283,9 +283,9 @@ public class DomainTest {
 		java.util.List<Tuple3<Long, Long, Long>> result =
 				solve(lval(Tuple.of(i, j, k)),
 						CKanren.unify(i, lval(3L))
-								.and(FDGoals.dom(k, EnumeratedInterval.range(0L, 100L)))
+								.and(FiniteDomain.dom(k, EnumeratedDomain.range(0L, 100L)))
 								.and(CKanren.unify(j, lval(2L)))
-								.and(FDGoals.sum(i, j, k)))
+								.and(FiniteDomain.sum(i, j, k)))
 						.map(Unifiable::get)
 						.map(t -> t
 								.map1(Unifiable::get)
@@ -304,7 +304,7 @@ public class DomainTest {
 				Matche.llist(() -> size.unify(i)),
 				Matche.llist((a, d) ->
 						Logic.<Long> exist(i1 ->
-								FDGoals.sum(i, lval(1L), i1)
+								FiniteDomain.sum(i, lval(1L), i1)
 										.and(Goal.defer(() -> sizo(size, i1, d))))));
 	}
 
@@ -315,8 +315,8 @@ public class DomainTest {
 	@Test
 	public void shouldDiffIntervalWithNumber() {
 		Unifiable<Long> i = lvar();
-		Goal goal = FDGoals.dom(i, SimpleInterval.of(0L, 10L))
-				.and(FDGoals.separateFD(i, lval(5L)));
+		Goal goal = FiniteDomain.dom(i, Interval.of(0L, 10L))
+				.and(FiniteDomain.separate(i, lval(5L)));
 
 		System.out.println(goal);
 
@@ -333,7 +333,7 @@ public class DomainTest {
 	public void shouldCountSize() {
 		Unifiable<Long> c = lvar();
 		System.out.println(solve(c,
-				FDGoals.dom(c, EnumeratedInterval.range(0L, 100L))
+				FiniteDomain.dom(c, EnumeratedDomain.range(0L, 100L))
 						.and(sizo(c, LList.ofAll(1, 2, 3, 4))))
 				.collect(Collectors.toList()));
 	}

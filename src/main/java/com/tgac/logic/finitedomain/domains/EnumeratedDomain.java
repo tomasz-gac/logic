@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain.domains;
 import com.tgac.functional.Exceptions;
+import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Array;
 import io.vavr.collection.Iterator;
 import io.vavr.control.Option;
@@ -14,23 +15,23 @@ import java.util.Collections;
 @Value
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class EnumeratedInterval<T> extends Domain<T> {
+public class EnumeratedDomain<T> extends Domain<T> {
 	Array<Arithmetic<T>> elements;
 
-	public static <T> EnumeratedInterval<T> of(Iterable<Arithmetic<T>> e) {
-		return new EnumeratedInterval<>(Array.ofAll(e));
+	public static <T> EnumeratedDomain<T> of(Iterable<Arithmetic<T>> e) {
+		return new EnumeratedDomain<>(Array.ofAll(e));
 	}
 
-	public static EnumeratedInterval<Long> range(Long start, Long endExclusive) {
-		return new EnumeratedInterval<>(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
+	public static EnumeratedDomain<Long> range(Long start, Long endExclusive) {
+		return new EnumeratedDomain<>(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
 	}
 
-	public static EnumeratedInterval<Integer> range(int start, int endExclusive) {
-		return new EnumeratedInterval<>(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
+	public static EnumeratedDomain<Integer> range(int start, int endExclusive) {
+		return new EnumeratedDomain<>(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
 	}
 
-	public static EnumeratedInterval<BigInteger> range(BigInteger start, BigInteger endExclusive) {
-		return new EnumeratedInterval<>(
+	public static EnumeratedDomain<BigInteger> range(BigInteger start, BigInteger endExclusive) {
+		return new EnumeratedDomain<>(
 				Iterator.iterate(start, i -> i.add(BigInteger.ONE))
 						.takeWhile(v -> v.compareTo(endExclusive) < 0)
 						.map(Arithmetic::of)
@@ -55,7 +56,7 @@ public class EnumeratedInterval<T> extends Domain<T> {
 			Array<Arithmetic<T>> result = elements.subSequence(index, elements.size());
 			return result.isEmpty() ? Empty.instance() :
 					result.size() == 1 ? Singleton.of(result.get(0)) :
-							EnumeratedInterval.of(result);
+							EnumeratedDomain.of(result);
 		}
 		return this;
 	}
@@ -67,7 +68,7 @@ public class EnumeratedInterval<T> extends Domain<T> {
 			Array<Arithmetic<T>> result = elements.subSequence(0, index + 1);
 			return result.isEmpty() ? Empty.instance() :
 					result.size() == 1 ? Singleton.of(result.get(0)) :
-							EnumeratedInterval.of(result);
+							EnumeratedDomain.of(result);
 		}
 		return this;
 	}
@@ -106,18 +107,18 @@ public class EnumeratedInterval<T> extends Domain<T> {
 				.collect(Array.collector());
 		return result.isEmpty() ? Empty.instance() :
 				result.size() == 1 ? Singleton.of(result.get(0)) :
-						EnumeratedInterval.of(result);
+						EnumeratedDomain.of(result);
 	}
 
 	@Override
-	protected Domain<T> intersect(Domain<T> other) {
+	public Domain<T> intersect(Domain<T> other) {
 		Array<Arithmetic<T>> result = elements.toJavaStream()
 				.filter(v -> other.contains(v.getValue()))
 				.collect(Array.collector());
 
 		return result.isEmpty() ? Empty.instance() :
 				result.size() == 1 ? Singleton.of(result.get(0)) :
-						EnumeratedInterval.of(result);
+						EnumeratedDomain.of(result);
 	}
 
 	@Override
