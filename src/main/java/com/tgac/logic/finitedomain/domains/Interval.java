@@ -25,6 +25,10 @@ public class Interval<T> extends Domain<T> {
 		return new Interval<>(min, max);
 	}
 
+	public static <T> Interval<T> normalized(Arithmetic<T> a, Arithmetic<T> b) {
+		return new Interval<>(minValue(a, b), maxValue(a, b));
+	}
+
 	public static Interval<Integer> of(int min, int max) {
 		return of(Arithmetic.of(min), Arithmetic.of(max));
 	}
@@ -155,10 +159,17 @@ public class Interval<T> extends Domain<T> {
 			}
 			@Override
 			public Domain<T> visit(Singleton<T> domain) {
-				if (that.contains(domain.getValue().getValue())) {
-					return Union.of(
-							Interval.of(min, domain.getValue().prev()),
-							Interval.of(domain.getValue().next(), max));
+				Arithmetic<T> value = domain.getValue();
+				if (that.contains(value.getValue())) {
+					if (value.compareTo(min) == 0) {
+						return Interval.of(value.next(), max);
+					} else if (value.compareTo(max) == 0) {
+						return Interval.of(min, value.prev());
+					} else {
+						return Union.of(
+								Interval.of(min, value.prev()),
+								Interval.of(value.next(), max));
+					}
 				} else {
 					return that;
 				}

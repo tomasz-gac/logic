@@ -1,20 +1,20 @@
 package com.tgac.logic.ckanren;
 
 import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.step.Step;
 import com.tgac.logic.Goal;
-import com.tgac.logic.Incomplete;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.List;
-import io.vavr.collection.Stream;
 import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.var;
 
+import java.util.Collection;
 import java.util.stream.StreamSupport;
 
 import static com.tgac.logic.ckanren.StoreSupport.enforceConstraints;
@@ -23,24 +23,19 @@ import static com.tgac.logic.ckanren.StoreSupport.processPrefix;
 import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CKanren {
-	public static Goal constructGoal(PackageAccessor accessor) {
-		return s -> accessor.apply(s).toStream();
-	}
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
-		return s -> MiniKanren.unify(s, u, v)
+		return s -> Step.of(MiniKanren.unify(s, u, v)
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
-						processPrefix(s, s1.getSubstitutions()))
-				.toStream();
+						processPrefix(s, s1.getSubstitutions())));
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
-		return s -> MiniKanren.unifyUnsafe(s, u, v)
+		return s -> Step.of(MiniKanren.unifyUnsafe(s, u, v)
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
-						processPrefix(s, s1.getSubstitutions()))
-				.toStream();
+						processPrefix(s, s1.getSubstitutions())));
 	}
 
 	public static <T> Goal unify(Unifiable<T> u, T v) {
@@ -51,11 +46,11 @@ public class CKanren {
 		return unifyNc(u, LVal.lval(v));
 	}
 
-	public static PackageAccessor runConstraints(Unifiable<?> xs, List<Constraint> c) {
-		return c.toJavaStream()
-				.flatMap(constraint -> Option.of(remRun(constraint))
-						.filter(__ -> anyRelevantVar(xs, constraint))
-						.toJavaStream())
+	public static PackageAccessor runConstraints(Unifiable<?> xs, Iterable<Constraint> c) {
+		return StreamSupport.stream(c.spliterator(), false)
+				.map(constraint -> anyRelevantVar(xs, constraint.getArgs()) ?
+						remRun(constraint) :
+						PackageAccessor.identity())
 				.reduce(PackageAccessor.identity(),
 						PackageAccessor::compose);
 	}
@@ -66,9 +61,9 @@ public class CKanren {
 				Option.of(p);
 	}
 
-	public static <T> Stream<Unifiable<T>> reify(Package s, Unifiable<T> x) {
+	public static <T> Step<Unifiable<T>> reify(Package s, Unifiable<T> x) {
 		return enforceConstraints(s, x).apply(s)
-				.flatMap(s1 -> Incomplete.incomplete(() ->
+				.flatMap(s1 -> Step.incomplete(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->
 										r.getSubstitutions().isEmpty() ?
@@ -77,8 +72,8 @@ public class CKanren {
 														.map(result ->
 																s1.getConstraints() == null ?
 																		result :
-																		StoreSupport.reify(s1, result, vr._2).get())))
-								.map(Stream::of)));
+																		StoreSupport.reify(s1, result, vr._2))))
+								.map(Step::single)));
 	}
 
 	public static <T> Recur<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {
@@ -87,25 +82,58 @@ public class CKanren {
 						.map(r -> Tuple.of(v, r)));
 	}
 
-	private static boolean anyRelevantVar(Unifiable<?> xs, Constraint c) {
-		return xs.asVar()
-				.filter(c.getArgs()::contains)
-				.isDefined()
-				||
-				xs.asVal()
-						.flatMap(w -> MiniKanren.asIterable(w)
-								.orElse(() -> MiniKanren.tupleAsIterable(w)))
-						.filter(it -> StreamSupport.stream(it.spliterator(), false)
-								.map(MiniKanren::wrapUnifiable)
-								.anyMatch(c.getArgs()::contains))
-						.isDefined()
-				||
-				xs.asVal()
-						.flatMap(MiniKanren::asLList)
+	private static boolean anyRelevantVar(Unifiable<?> xs, Collection<? extends Unifiable<?>> vars) {
+		return isVarRelevant(xs, vars)
+				|| isAnyItemRelevantCollection(xs, vars)
+				|| isAnyItemRelevantLList(xs, vars);
+	}
+
+	private static boolean isAnyItemRelevantLList(Unifiable<?> xs, Collection<? extends Unifiable<?>> vars) {
+		return xs.isVal() &&
+				MiniKanren.asLList(xs)
 						.filter(l -> l.stream()
 								.anyMatch(e -> e.fold(
-										c.getArgs()::contains,
-										c.getArgs()::contains)))
+										vars::contains,
+										vars::contains)))
 						.isDefined();
+	}
+
+	private static Option<Iterable<Object>> asIterable(Object w) {
+		return MiniKanren.asIterable(w)
+				.orElse(() -> MiniKanren.tupleAsIterable(w));
+	}
+
+	private static boolean isAnyItemRelevantCollection(Unifiable<?> xs, Collection<? extends Unifiable<?>> vars) {
+		if (!xs.isVal()) {
+			return false;
+		}
+		Object w = xs.get();
+
+		if (w instanceof Collection) {
+			return processCollection((Collection<?>) w, vars);
+		} else {
+			return processIterable(w, vars);
+		}
+	}
+	private static boolean processIterable(Object w, Collection<? extends Unifiable<?>> vars) {
+		return asIterable(w)
+				.filter(it -> StreamSupport.stream(it.spliterator(), false)
+						.map(MiniKanren::wrapUnifiable)
+						.anyMatch(vars::contains))
+				.isDefined();
+	}
+	private static boolean processCollection(Collection<?> collection, Collection<? extends Unifiable<?>> vars) {
+		for (var arg : vars) {
+			if (collection.contains(arg)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean isVarRelevant(Unifiable<?> xs, Collection<? extends Unifiable<?>> vars) {
+		return xs.asVar()
+				.filter(vars::contains)
+				.isDefined();
 	}
 }

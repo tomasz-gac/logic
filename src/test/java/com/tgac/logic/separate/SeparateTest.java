@@ -17,7 +17,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.Logic.firsto;
 import static com.tgac.logic.LogicTest.runStream;
 import static com.tgac.logic.separate.Disequality.rembero;
 import static com.tgac.logic.separate.Disequality.separate;
@@ -278,16 +277,6 @@ public class SeparateTest {
 				.limit(5)
 				.map(Objects::toString)
 				.collect(Collectors.joining("\n")));
-	}
-
-	@Test
-	public void shouldApplyFirst() {
-		Unifiable<Integer> l = lvar();
-		System.out.println(runStream(l, firsto(
-				l.unify(1).and(l.separate(1)),
-				l.unify(2).or(l.unify(4)),
-				l.unify(3)))
-				.collect(Collectors.toList()));
 	}
 
 	@Test

@@ -1,4 +1,5 @@
 package com.tgac.logic;
+import com.tgac.functional.step.Step;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
@@ -16,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -30,6 +32,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SuppressWarnings({"unchecked", "ArraysAsListWithZeroOrOneArgument", "unused"})
 @ExtensionMethod(CKanren.class)
 public class SortingTest {
+
+	public static Goal firsto(Goal... goals) {
+		return Goal.goal(s -> Arrays.stream(goals)
+						.map(g -> g.apply(s))
+						.filter(s1 -> !s1.isEmpty())
+						.findFirst()
+						.orElseGet(Step::empty))
+				.named("firsto(" + Arrays.stream(goals)
+						.map(Objects::toString)
+						.collect(Collectors.joining(", ")) + ")");
+	}
 
 	static <T> Goal halfo(
 			Unifiable<LList<T>> lst,
@@ -159,7 +172,7 @@ public class SortingTest {
 			BiFunction<Unifiable<A>, Unifiable<A>, Goal> cmpLess) {
 		return matche(lst,
 				Matche.llist(() -> less.unify(LList.empty()).and(more.unify(LList.empty()))),
-				Matche.llist((a, rest) -> Logic.firsto(
+				Matche.llist((a, rest) -> firsto(
 						cmpLess.apply(a, mid)
 								.and(Matche.matche(less,
 										Matche.llist((l, d) -> l.unify(a)
@@ -346,7 +359,7 @@ public class SortingTest {
 	static <A> Goal filter(Unifiable<LList<A>> with, Unifiable<LList<A>> without, Function<Unifiable<A>, Goal> pred) {
 		return matche(with,
 				Matche.llist(() -> without.unify(LList.empty())),
-				Matche.llist((a, d) -> Logic.firsto(
+				Matche.llist((a, d) -> firsto(
 						Goal.defer(() -> pred.apply(a)
 								.and(Matche.matche(without,
 										Matche.llist((b, e) -> b.unifyNc(a)

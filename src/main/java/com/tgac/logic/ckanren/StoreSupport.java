@@ -10,7 +10,6 @@ import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
-import io.vavr.control.Try;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -75,10 +74,10 @@ public class StoreSupport {
 				.getOrElse(Goal::success);
 	}
 
-	public static <A> Try<Unifiable<A>> reify(Package p, Unifiable<A> unifiable, Package renameSubstitutions) {
+	public static <A> Unifiable<A> reify(Package p, Unifiable<A> unifiable, Package renameSubstitutions) {
 		return Option.of(p.getConstraints())
 				.map(ConstraintStore.class::cast)
 				.map(cs -> cs.reify(unifiable, renameSubstitutions, p))
-				.getOrElse(() -> Try.success(unifiable));
+				.getOrElse(() -> unifiable);
 	}
 }

@@ -2,6 +2,7 @@ package com.tgac.logic;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.step.Step;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -18,36 +19,18 @@ import io.vavr.Tuple;
 import io.vavr.Tuple3;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
-import io.vavr.collection.Stream;
-import io.vavr.control.Try;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-import java.util.Arrays;
-import java.util.Objects;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static com.tgac.logic.Goal.defer;
 import static com.tgac.logic.Matche.llist;
 import static com.tgac.logic.Matche.matche;
 import static com.tgac.logic.ckanren.CKanren.unify;
 
-@SuppressWarnings("Convert2MethodRef")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Logic {
-
-	public static Goal firsto(Goal... goals) {
-		return Goal.goal(s -> Arrays.stream(goals)
-						.map(g -> g.apply(s))
-						.filter(s1 -> Try.of(() -> s1.toOption().get()).isSuccess())
-						.findFirst()
-						.orElseGet(Stream::empty))
-				.named("firsto(" + Arrays.stream(goals)
-						.map(Objects::toString)
-						.collect(Collectors.joining(", ")) + ")");
-	}
-
 	public static <T> Goal appendo(
 			Unifiable<LList<T>> first,
 			Unifiable<LList<T>> second,
@@ -90,7 +73,10 @@ public class Logic {
 				.reduce(Goal::or);
 	}
 
-	public static Goal ando(Unifiable<Boolean> l, Unifiable<Boolean> r, Unifiable<Boolean> out) {
+	/**
+	 * Logical conjunction -> AND
+	 */
+	public static Goal conjo(Unifiable<Boolean> l, Unifiable<Boolean> r, Unifiable<Boolean> out) {
 		return booleanGoal(
 				l, r, out,
 				Array.of(
@@ -100,7 +86,10 @@ public class Logic {
 						Tuple.of(false, false, false)));
 	}
 
-	public static Goal oro(Unifiable<Boolean> l, Unifiable<Boolean> r, Unifiable<Boolean> out) {
+	/**
+	 * Logical disjunction -> OR
+	 */
+	public static Goal disjo(Unifiable<Boolean> l, Unifiable<Boolean> r, Unifiable<Boolean> out) {
 		return booleanGoal(
 				l, r, out,
 				Array.of(
@@ -110,17 +99,12 @@ public class Logic {
 						Tuple.of(false, false, false)));
 	}
 
-	public static Goal noto(Unifiable<Boolean> l, Unifiable<Boolean> r) {
+	/**
+	 * Logical negation
+	 */
+	public static Goal nego(Unifiable<Boolean> l, Unifiable<Boolean> r) {
 		return l.unify(true).and(r.unifyNc(false))
 				.or(l.unify(false).and(r.unify(true)));
-	}
-
-	public static <A> Goal allEqo(Unifiable<LList<A>> lst, Unifiable<A> item) {
-		return matche(lst,
-				llist(() -> Goal.failure()),
-				llist(a -> a.unify(item)),
-				llist((a, d) -> a.unify(item)
-						.and(defer(() -> allEqo(d, item)))));
 	}
 
 	public static Goal anyo(Unifiable<LList<Boolean>> lst, Unifiable<Boolean> out) {
@@ -128,7 +112,7 @@ public class Logic {
 				llist(() -> out.unify(false)),
 				llist(a -> a.unify(out)),
 				llist((a, b, d) -> Logic.<Boolean> exist(c ->
-						oro(a, b, c)
+						disjo(a, b, c)
 								.and(defer(() -> anyo(LList.of(c, d), out))))));
 	}
 
@@ -137,7 +121,7 @@ public class Logic {
 				llist(() -> out.unify(true)),
 				llist(a -> a.unify(out)),
 				llist((a, b, d) -> Logic.<Boolean> exist(c ->
-						ando(a, b, c)
+						conjo(a, b, c)
 								.and(defer(() -> allo(LList.of(c, d), out))))));
 	}
 
@@ -216,7 +200,7 @@ public class Logic {
 	}
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
-		return s -> Incomplete.incomplete(() ->
+		return s -> Step.incomplete(() ->
 				MiniKanren.walkAll(s, v1)
 						.map(v -> v.asVal()
 								.map(f)
@@ -272,7 +256,7 @@ public class Logic {
 	}
 
 	public static Goal project(IndexedSeq<Unifiable<?>> goals, Function<IndexedSeq<Unifiable<Object>>, Goal> f) {
-		return s -> Incomplete.incomplete(() ->
+		return s -> Step.incomplete(() ->
 				goals.toJavaStream()
 						.map(v -> MiniKanren.walkAll(s, v)
 								.map(java.util.stream.Stream::of))

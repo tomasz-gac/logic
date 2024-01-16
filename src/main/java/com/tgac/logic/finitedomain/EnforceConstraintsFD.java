@@ -10,10 +10,12 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
-import io.vavr.collection.List;
+import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
+import java.util.Collection;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getFDStore;
@@ -24,11 +26,15 @@ class EnforceConstraintsFD {
 
 	public static <T> Goal enforceConstraints(Unifiable<T> x) {
 		return a -> forceAns(x)
-				.and(a1 -> Tuple.of(getFDStore(a1).getDomains().keySet().toList())
+				.and(a1 -> Tuple.of(getFDStore(a1).getDomains()
+								.keySet()
+								.toJavaStream()
+								.collect(Collectors.toSet()))
 						.apply(xs -> {
 							verifyAllConstrainedHaveDomain(getFDStore(a1).getConstraints(), xs);
-							return Goal.condu(Goal.defer(() -> forceAns(LList.ofAll(xs))));
-						}).apply(a1))
+							return Goal.condu(Goal.defer(() -> forceAns(lval(xs))));
+						})
+						.apply(a1))
 				.apply(a);
 	}
 
@@ -37,32 +43,46 @@ class EnforceConstraintsFD {
 				.map(v -> v.asVar()
 						.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv))
 						.map(d -> unifyWithAllDomainValues(x, d))
-						.orElse(() -> v.asVal()
-								.flatMap(w -> MiniKanren.asIterable(w)
-										.orElse(() -> MiniKanren.tupleAsIterable(w)))
-								.map(EnforceConstraintsFD::forceAnsIterable)
-								.map(g -> g.and(rerunConstraints(v))))
-						.orElse(() -> v.asVal()
-								.flatMap(w -> Types.cast(w, LList.class))
-								.map(EnforceConstraintsFD::forceAnsLList)
-								.map(g -> g.and(rerunConstraints(v))))
+						.orElse(() -> forceAnsAndRerunConstraintsIterable(v))
+						.orElse(() -> forceAnsAndRerunConstraintsLList(v))
 						.getOrElse(Goal::success))
 				.map(g -> g.apply(s))
 				.get();
 	}
 
+	private static <T> Option<Goal> forceAnsAndRerunConstraintsLList(Unifiable<T> v) {
+		return v.asVal()
+				.flatMap(w -> Types.cast(w, LList.class))
+				.map(EnforceConstraintsFD::forceAnsLList)
+				.map(g -> g.and(rerunConstraints(v)));
+	}
+
+	private static <T> Option<Goal> forceAnsAndRerunConstraintsIterable(Unifiable<T> v) {
+		return v.asVal()
+				.flatMap(w -> MiniKanren.asIterable(w)
+						.orElse(() -> MiniKanren.tupleAsIterable(w)))
+				.map(EnforceConstraintsFD::forceAnsIterable)
+				.map(goal -> goal.and(rerunConstraints(v)));
+	}
+
 	private static Goal rerunConstraints(Unifiable<?> x) {
-		return a -> CKanren.constructGoal(CKanren.runConstraints(x,
-						getFDStore(a).getConstraints()))
+		return a -> CKanren.runConstraints(x, getFDStore(a).getConstraints())
+				.asGoal()
 				.apply(a);
 	}
 
 	private static <T> Goal unifyWithAllDomainValues(Unifiable<T> x, Domain<T> d) {
 		return d.stream()
-				.map(domainValue -> CKanren.constructGoal(s -> MiniKanren.unify(s, x.getObjectUnifiable(), lval(domainValue))))
+				.map(domainValue -> unifyUnifiables(x.getObjectUnifiable(), lval(domainValue)))
 				.reduce(Goal::or)
 				.orElseGet(Goal::failure);
 	}
+
+	// because of ambiguity in CKanren
+	private static <T> Goal unifyUnifiables(Unifiable<T> u, Unifiable<T> v) {
+		return CKanren.unify(u, v);
+	}
+
 	private static Goal forceAnsIterable(Iterable<Object> iterable) {
 		return StreamSupport.stream(iterable.spliterator(), false)
 				.map(MiniKanren::wrapUnifiable)
@@ -75,14 +95,15 @@ class EnforceConstraintsFD {
 		if (llist.isEmpty()) {
 			return Goal.success();
 		} else {
+			// since we're building goals - this will not recurse
 			return forceAns(llist.getHead())
-					.or(Goal.defer(() -> forceAns(llist.getTail())));
+					.and(Goal.defer(() -> forceAns(llist.getTail())));
 		}
 	}
 
-	private static void verifyAllConstrainedHaveDomain(List<Constraint> constraints, List<LVar<?>> boundVariables) {
-		constraints.toJavaStream()
-				.flatMap(c -> c.getArgs().toJavaStream())
+	private static void verifyAllConstrainedHaveDomain(Iterable<Constraint> constraints, Collection<LVar<?>> boundVariables) {
+		StreamSupport.stream(constraints.spliterator(), false)
+				.flatMap(c -> c.getArgs().stream())
 				.filter(u -> u.asVal().isDefined())
 				.filter(x -> x.asVar()
 						.filter(v -> !boundVariables.contains(v))

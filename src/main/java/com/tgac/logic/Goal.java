@@ -2,13 +2,17 @@ package com.tgac.logic;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.step.Cons;
+import com.tgac.functional.step.Empty;
+import com.tgac.functional.step.Incomplete;
+import com.tgac.functional.step.Single;
+import com.tgac.functional.step.Step;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Array;
 import io.vavr.collection.Map;
-import io.vavr.collection.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -22,16 +26,18 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static com.tgac.functional.recursion.Recur.done;
+
 /**
  * @author TGa
  */
-public interface Goal extends Function<Package, Stream<Package>> {
+public interface Goal extends Function<Package, Step<Package>> {
 
 	static Goal goal(Goal g) {
 		return g;
 	}
 
-	default Conjunction and(Goal... goals) {
+	default Goal and(Goal... goals) {
 		return new Conjunction().and(this).and(goals);
 	}
 
@@ -39,11 +45,11 @@ public interface Goal extends Function<Package, Stream<Package>> {
 		return new Disjunction().or(this).or(goals);
 	}
 
-	static Disjunction conde(Goal... goals) {
+	static Goal conde(Goal... goals) {
 		return new Disjunction().or(goals);
 	}
 
-	static Conjunction all(Goal... goals) {
+	static Goal all(Goal... goals) {
 		return new Conjunction().and(goals);
 	}
 
@@ -52,14 +58,14 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	default Recur<Goal> optimize() {
-		return Recur.done(this);
+		return done(this);
 	}
 
 	default Goal debug(String name, Map<String, Unifiable<?>> vars) {
 		return s -> {
 			System.out.println("before " + name + ": " + printVars(s, vars));
-			Stream<Package> ss = apply(s);
-			System.out.println("after " + name + ": " + ss.toJavaStream()
+			Step<Package> ss = apply(s);
+			System.out.println("after " + name + ": " + ss.stream()
 					.map(s1 -> printVars(s1, vars))
 					.collect(Collectors.joining("\n")));
 			return ss;
@@ -85,8 +91,8 @@ public interface Goal extends Function<Package, Stream<Package>> {
 		}
 
 		@Override
-		public Stream<Package> apply(Package s) {
-			return Incomplete.incomplete(() -> interleave(
+		public Step<Package> apply(Package s) {
+			return Incomplete.of(() -> interleave(
 					clauses.stream()
 							.map(conjunction ->
 									conjunction.apply(s))
@@ -101,7 +107,7 @@ public interface Goal extends Function<Package, Stream<Package>> {
 							g instanceof Disjunction ?
 									((Disjunction) g).clauses.stream() :
 									java.util.stream.Stream.of(g)))
-					.reduce(Recur.done(new Disjunction()),
+					.reduce(done(new Disjunction()),
 							(l, r) -> Recur.zip(l, r).map(t -> t._1
 									.or(t._2.toArray(Goal[]::new))),
 							Exceptions.throwingBiOp(UnsupportedOperationException::new));
@@ -137,12 +143,12 @@ public interface Goal extends Function<Package, Stream<Package>> {
 					.map(r -> r.map(s -> s.toArray(Goal[]::new))
 							.map(new Conjunction()::and)
 							.map(Goal.class::cast))
-					.orElseGet(() -> Recur.done(success()));
+					.orElseGet(() -> done(success()));
 		}
 
 		@Override
-		public Stream<Package> apply(Package s) {
-			return Incomplete.incomplete(() -> bind(Stream.of(s), Array.ofAll(clauses)));
+		public Step<Package> apply(Package s) {
+			return Incomplete.of(() -> bind(Single.of(s), Array.ofAll(clauses)));
 		}
 
 		@Override
@@ -152,48 +158,70 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	static Goal conda(Goal... goals) {
-		return goal(a -> Incomplete.incomplete(() -> ifa(Array.of(goals).map(g -> g.apply(a)))))
+		return goal(a -> Incomplete.of(() -> ifa(Array.of(goals).map(g -> g.apply(a)))))
 				.named("first(" +
 						Arrays.stream(goals).map(Objects::toString)
 								.collect(Collectors.joining(" ||| ")) +
 						")");
 	}
 
-	static Recur<Stream<Package>> ifa(Array<Stream<Package>> streams) {
+	static Recur<Step<Package>> ifa(Array<Step<Package>> streams) {
 		if (streams.isEmpty()) {
-			return Recur.done(Stream.empty());
+			return done(Empty.instance());
 		} else {
-			Stream<Package> a = streams.head();
-			if (a instanceof Incomplete) {
-				return ((Incomplete<Package>) a).getRest()
-						.flatMap(s -> ifa(Array.of(s).appendAll(streams.tail())));
-			} else if (a.isEmpty()) {
-				return Recur.recur(() -> ifa(streams.tail()));
-			} else {
-				return Recur.done(a);
-			}
+			Step<Package> a = streams.head();
+			return streams.head()
+					.accept(new Step.Visitor<Package, Recur<Step<Package>>>() {
+						@Override
+						public Recur<Step<Package>> visit(Empty<Package> empty) {
+							return Recur.recur(() -> ifa(streams.tail()));
+						}
+						@Override
+						public Recur<Step<Package>> visit(Incomplete<Package> inc) {
+							return inc.getRest()
+									.flatMap(s -> ifa(Array.of(s).appendAll(streams.tail())));
+						}
+						@Override
+						public Recur<Step<Package>> visit(Single<Package> single) {
+							return done(single);
+						}
+						@Override
+						public Recur<Step<Package>> visit(Cons<Package> cons) {
+							return done(cons);
+						}
+					});
 		}
 	}
 
 	static Goal condu(Goal... goals) {
-		return goal(a -> Incomplete.incomplete(() -> ifu(Array.of(goals).map(g -> g.apply(a)))))
+		return goal(a -> Step.incomplete(() -> ifu(Array.of(goals).map(g -> g.apply(a)))))
 				.named(Arrays.stream(goals).map(Objects::toString)
 						.collect(Collectors.joining(" ||| ")));
 	}
 
-	static Recur<Stream<Package>> ifu(Array<Stream<Package>> streams) {
+	static Recur<Step<Package>> ifu(Array<Step<Package>> streams) {
 		if (streams.isEmpty()) {
-			return Recur.done(Stream.empty());
+			return done(Empty.instance());
 		} else {
-			Stream<Package> a = streams.head();
-			if (a instanceof Incomplete) {
-				return ((Incomplete<Package>) a).getRest()
-						.flatMap(s -> ifu(Array.of(s).appendAll(streams.tail())));
-			} else if (a.isEmpty()) {
-				return Recur.recur(() -> ifu(streams.tail()));
-			} else {
-				return Recur.done(Stream.of(a.head()));
-			}
+			return streams.head().accept(new Step.Visitor<Package, Recur<Step<Package>>>() {
+				@Override
+				public Recur<Step<Package>> visit(Empty<Package> empty) {
+					return Recur.recur(() -> ifu(streams.tail()));
+				}
+				@Override
+				public Recur<Step<Package>> visit(Incomplete<Package> inc) {
+					return inc.getRest()
+							.flatMap(s -> ifu(Array.of(s).appendAll(streams.tail())));
+				}
+				@Override
+				public Recur<Step<Package>> visit(Single<Package> single) {
+					return done(single);
+				}
+				@Override
+				public Recur<Step<Package>> visit(Cons<Package> cons) {
+					return done(Single.of(cons.getHead()));
+				}
+			});
 		}
 	}
 
@@ -209,84 +237,41 @@ public interface Goal extends Function<Package, Stream<Package>> {
 	}
 
 	static Goal success() {
-		return goal(Stream::of)
+		return goal(Single::of)
 				.named("success");
 	}
 
 	static Goal failure() {
-		return goal(s -> Stream.empty())
+		return goal(s -> Empty.instance())
 				.named("failure");
 	}
 
-	//	static <T> Goal unify(Unifiable<T> lhs, Unifiable<T> rhs) {
-	//		return CKanren.unify(lhs, rhs)
-	//				.named(lhs + " ≣ " + rhs);
-	//	}
-	//
-	//	static <T> Goal unifyNc(Unifiable<T> lhs, Unifiable<T> rhs) {
-	//		return goal(s -> MiniKanren.unifyUnsafe(s, lhs, rhs).toStream())
-	//				.named(lhs + " ≣-no-check " + rhs);
-	//	}
-	//
-	//	static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
-	//		return NeqGoals.separate(lhs, rhs)
-	//				.named(lhs + " ≠ " + rhs);
-	//	}
-
 	default <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out) {
-		return bind(Stream.of(Package.empty()), this).get()
+		return apply(Package.empty())
 				.flatMap(s -> CKanren.reify(s, out))
-				.toJavaStream();
+				.stream();
 	}
 
 	default <T> Goal aggregate(Unifiable<T> var,
 			Function<java.util.stream.Stream<Unifiable<T>>, Goal> f) {
-		return s -> f.apply(bind(Stream.of(s), this).get()
+		return s -> f.apply(this.apply(Package.empty())
 						.flatMap(s1 -> CKanren.reify(s1, var))
-						.toJavaStream())
+						.stream())
 				.apply(s);
 	}
 
-	static <A> Recur<Stream<A>> interleave(Array<Stream<A>> lists) {
+	static <A> Recur<Step<A>> interleave(Array<Step<A>> lists) {
 		if (lists.isEmpty()) {
-			return Recur.done(Stream.empty());
-		}
-		Stream<A> fst = lists.head();
-		Array<Stream<A>> rst = lists.tail();
-		if (rst.isEmpty()) {
-			return Recur.done(fst);
-		}
-
-		if (fst instanceof Incomplete) {
-			// TODO : can this be somehow simplified to not require casting?
-			return ((Incomplete<A>) fst).getRest()
-					.flatMap(s -> interleave(rst.prepend(s)));
-		} else if (fst.isEmpty()) {
-			return Recur.recur(() -> interleave(rst));
+			return done(Empty.instance());
 		} else {
-			return Recur.done(Stream.cons(fst.head(),
-					() -> Incomplete.incomplete(() ->
-							interleave(rst.append(fst.tail())))));
+			return lists.head().interleave(lists.tail());
 		}
 	}
 
-	static Recur<Stream<Package>> bind(Stream<Package> s, Array<Goal> gs) {
+	static Recur<Step<Package>> bind(Step<Package> s, Array<Goal> gs) {
 		return gs.toJavaStream()
-				.reduce(Recur.done(s), (subs, g) -> subs.flatMap(s1 -> bind(s1, g)),
+				.reduce(done(s), (subs, g) -> subs.flatMap(s1 -> s1.bind(g)),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
-	}
-
-	static Recur<Stream<Package>> bind(Stream<Package> s, Goal g) {
-		if (s instanceof Incomplete) {
-			// TODO : can this be somehow simplified to not require casting?
-			return ((Incomplete<Package>) s).getRest()
-					.flatMap(s1 -> bind(s1, g));
-		}
-		if (s.isEmpty()) {
-			return Recur.done(Stream.empty());
-		} else {
-			return interleave(Array.of(g.apply(s.head()), Incomplete.incomplete(() -> bind(s.tail(), g))));
-		}
 	}
 
 	static String printVars(Package s, Map<String, Unifiable<?>> vars) {
@@ -302,7 +287,7 @@ public interface Goal extends Function<Package, Stream<Package>> {
 		Goal goal;
 
 		@Override
-		public Stream<Package> apply(Package aPackage) {
+		public Step<Package> apply(Package aPackage) {
 			return goal.apply(aPackage);
 		}
 		@Override

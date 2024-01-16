@@ -1,6 +1,7 @@
 package com.tgac.logic.separate;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.step.Step;
 import com.tgac.logic.Goal;
 import com.tgac.logic.Logic;
 import com.tgac.logic.Matche;
@@ -11,7 +12,6 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
-import io.vavr.collection.Stream;
 import io.vavr.control.Option;
 
 import static com.tgac.functional.recursion.Recur.done;
@@ -32,11 +32,11 @@ public class Disequality {
 			Option<Package> unificationResult = unify(withoutConstraints(s), lhs, rhs);
 			switch (verifySeparate(unificationResult, s)) {
 				case UNIFIED:
-					return Stream.empty();
+					return Step.empty();
 				case ALREADY_SEPARATE:
-					return Stream.of(s);
+					return Step.single(s);
 				case SEPARATE_FOR_NOW:
-					return Stream.of(withConstraint(s,
+					return Step.single(withConstraint(s,
 							NeqConstraint.of(
 									prefixS(
 											s.getSubstitutions(),

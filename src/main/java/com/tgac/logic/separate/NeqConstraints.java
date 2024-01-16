@@ -8,7 +8,6 @@ import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
-import io.vavr.control.Try;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
@@ -61,7 +60,7 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <A> Try<Unifiable<A>> reify(Unifiable<A> unifiable, Package renamePackage, Package s) {
+	public <A> Unifiable<A> reify(Unifiable<A> unifiable, Package renamePackage, Package s) {
 		return walkAllConstraints(getConstraints(s), s)
 				.flatMap(c_star -> removeSubsumed(
 						purify(c_star, renamePackage),
@@ -70,7 +69,6 @@ class NeqConstraints implements ConstraintStore {
 				.map(c1 -> c1.isEmpty() ?
 						unifiable :
 						Constrained.of(unifiable, c1.map(NeqConstraint::getSeparate)))
-				.map(Try::success)
 				.get();
 	}
 }

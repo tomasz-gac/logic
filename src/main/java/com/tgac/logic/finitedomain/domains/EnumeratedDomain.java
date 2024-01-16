@@ -50,8 +50,10 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> dropBefore(Arithmetic<T> e) {
-		int index = Collections.binarySearch(elements
-				.toJavaList(), e, Arithmetic::compareTo);
+		if (e.compareTo(max()) > 0) {
+			return Empty.instance();
+		}
+		int index = Collections.binarySearch(elements.toJavaList(), e, Arithmetic::compareTo);
 		if (index >= 0) {
 			Array<Arithmetic<T>> result = elements.subSequence(index, elements.size());
 			return result.isEmpty() ? Empty.instance() :
@@ -63,11 +65,15 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> copyBefore(Arithmetic<T> e) {
+		if (e.compareTo(min()) <= 0) {
+			return Empty.instance();
+		}
 		int index = Collections.binarySearch(elements.toJavaList(), e, Arithmetic::compareTo);
 		if (index >= 0) {
-			Array<Arithmetic<T>> result = elements.subSequence(0, index + 1);
+			Array<Arithmetic<T>> result = elements.subSequence(0, index);
 			return result.isEmpty() ? Empty.instance() :
-					result.size() == 1 ? Singleton.of(result.get(0)) :
+					result.size() == 1 ?
+							Singleton.of(result.get(0)) :
 							EnumeratedDomain.of(result);
 		}
 		return this;

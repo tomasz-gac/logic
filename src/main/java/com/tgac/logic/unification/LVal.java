@@ -28,4 +28,9 @@ public class LVal<T> implements Unifiable<T> {
 	public Option<T> asVal() {
 		return Option.of(value);
 	}
+
+	@Override
+	public boolean isVal() {
+		return true;
+	}
 }

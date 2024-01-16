@@ -18,27 +18,62 @@ public interface Arithmetic<T> extends Comparable<Arithmetic<T>> {
 
 	Arithmetic<T> subtract(Arithmetic<T> other);
 
+	Arithmetic<T> mul(Arithmetic<T> other);
+
+	Arithmetic<T> div(Arithmetic<T> other);
+
+	boolean isZero();
+
 	int compareToValue(T other);
+
+	static <T> Arithmetic<T> min(Arithmetic<T> u, Arithmetic<T> v) {
+		return u.compareTo(v) < 0 ? u : v;
+	}
+
+	static <T> Arithmetic<T> max(Arithmetic<T> u, Arithmetic<T> v) {
+		return u.compareTo(v) > 0 ? u : v;
+	}
 
 	static <T> Arithmetic<T> of(
 			T value,
 			T unit,
+			T zero,
 			Comparator<T> cmp,
 			BinaryOperator<T> add,
-			BinaryOperator<T> sub) {
-		return Value.of(value, unit, cmp, add, sub);
+			BinaryOperator<T> sub,
+			BinaryOperator<T> mul,
+			BinaryOperator<T> div) {
+		return Value.of(value, unit, zero, cmp, add, sub, mul, div);
 	}
 
 	static Arithmetic<Integer> of(int v) {
-		return of(v, 1, Integer::compareTo, Integer::sum, (i, j) -> i - j);
+		return of(v,
+				1, 0,
+				Integer::compareTo,
+				Integer::sum,
+				(i, j) -> i - j,
+				(i, j) -> i * j,
+				(i, j) -> i / j);
 	}
 
 	static Arithmetic<Long> of(long v) {
-		return of(v, 1L, Long::compareTo, Long::sum, (i, j) -> i - j);
+		return of(v,
+				1L, 0L,
+				Long::compareTo,
+				Long::sum,
+				(i, j) -> i - j,
+				(i, j) -> i * j,
+				(i, j) -> i / j);
 	}
 
 	static Arithmetic<BigInteger> of(BigInteger v) {
-		return of(v, BigInteger.ONE, BigInteger::compareTo, BigInteger::add, BigInteger::subtract);
+		return of(v,
+				BigInteger.ONE, BigInteger.ZERO,
+				BigInteger::compareTo,
+				BigInteger::add,
+				BigInteger::subtract,
+				BigInteger::multiply,
+				BigInteger::divide);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -60,12 +95,15 @@ public interface Arithmetic<T> extends Comparable<Arithmetic<T>> {
 	class Value<T> implements Arithmetic<T> {
 		T value;
 		T unit;
+		T zero;
 		Comparator<T> cmp;
 		BinaryOperator<T> add;
 		BinaryOperator<T> sub;
+		BinaryOperator<T> mul;
+		BinaryOperator<T> div;
 
 		public Value<T> map(UnaryOperator<T> m) {
-			return Value.of(m.apply(value), unit, cmp, add, sub);
+			return Value.of(m.apply(value), unit, zero, cmp, add, sub, mul, div);
 		}
 
 		@Override
@@ -84,6 +122,20 @@ public interface Arithmetic<T> extends Comparable<Arithmetic<T>> {
 		@Override
 		public Arithmetic<T> subtract(Arithmetic<T> other) {
 			return map(v -> sub.apply(v, other.getValue()));
+		}
+
+		@Override
+		public Arithmetic<T> mul(Arithmetic<T> other) {
+			return map(v -> mul.apply(v, other.getValue()));
+		}
+
+		@Override
+		public Arithmetic<T> div(Arithmetic<T> other) {
+			return map(v -> div.apply(v, other.getValue()));
+		}
+		@Override
+		public boolean isZero() {
+			return cmp.compare(value, zero) == 0;
 		}
 
 		@Override

@@ -6,6 +6,7 @@ import com.tgac.functional.Streams;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
 import io.vavr.Tuple;
+import io.vavr.Tuple1;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
 import io.vavr.Tuple4;
@@ -21,8 +22,6 @@ import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
 import io.vavr.collection.PriorityQueue;
 import io.vavr.collection.Queue;
-import io.vavr.collection.Seq;
-import io.vavr.collection.Stream;
 import io.vavr.collection.Tree;
 import io.vavr.collection.TreeMap;
 import io.vavr.collection.TreeSet;
@@ -32,7 +31,10 @@ import io.vavr.control.Try;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Set;
 import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -51,14 +53,14 @@ import static io.vavr.Predicates.not;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MiniKanren {
 
-	private static final AtomicReference<Stream<Tuple2<Class<?>, Collector<?, ?, ?>>>> COLLECTORS =
+	private static final AtomicReference<List<Tuple2<Class<?>, Collector<?, ?, ?>>>> COLLECTORS =
 			new AtomicReference<>(
-					Stream.of(
+					List.of(
 							Tuple.of(Array.class, Array.collector()),
 							Tuple.of(List.class, List.collector()),
 							Tuple.of(PriorityQueue.class, PriorityQueue.collector()),
 							Tuple.of(Queue.class, Queue.collector()),
-							Tuple.of(Stream.class, Stream.collector()),
+							Tuple.of(io.vavr.collection.Stream.class, io.vavr.collection.Stream.collector()),
 							Tuple.of(Vector.class, Vector.collector()),
 							Tuple.of(HashSet.class, HashSet.collector()),
 							Tuple.of(LinkedHashSet.class, LinkedHashSet.collector()),
@@ -86,22 +88,7 @@ public class MiniKanren {
 	}
 
 	public static <T> Unifiable<T> walk(Package s, Unifiable<T> v) {
-		if (v.asVal().isDefined()) {
-			return v;
-		}
-		if (s.get(v.getVar()).isEmpty()) {
-			// it's important to return the same object
-			// because we test with == to see if var is bound
-			return v;
-		}
-		Unifiable<T> result = v;
-		while (s.get(result.getVar()).isDefined()) {
-			result = s.get(result.getVar()).get();
-			if (result.asVal().isDefined()) {
-				break;
-			}
-		}
-		return result;
+		return s.walk(v);
 	}
 
 	public static <T> Boolean occursCheck(Package s, LVar<T> x, Unifiable<T> v) {
@@ -148,11 +135,11 @@ public class MiniKanren {
 						l.asVal().flatMap(MiniKanren::<T>asLList),
 						r.asVal().flatMap(MiniKanren::<T>asLList))
 						.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
-						.map(lr -> unifyLList2(extend, s, lr._1, lr._2)))
+						.map(lr -> unifyLList(extend, s, lr._1, lr._2)))
 				.getOrElse(Option::none);
 	}
 
-	private static <T> Option<Package> unifyLList2(
+	private static <T> Option<Package> unifyLList(
 			Extender extend,
 			Package s,
 			LList<T> lhs, LList<T> rhs) {
@@ -219,6 +206,13 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
+	public static <T> Option<Set<T>> asSet(Object v) {
+		return v instanceof Set ?
+				Try.of(() -> (Set<T>) v).toOption() :
+				Option.none();
+	}
+
+	@SuppressWarnings("unchecked")
 	public static <T> Option<LList<T>> asLList(Object v) {
 		return v instanceof LList ?
 				Try.of(() -> (LList<T>) v).toOption() :
@@ -251,7 +245,7 @@ public class MiniKanren {
 										.map(LVal::lval)))
 						.orElse(() -> v.asVal()
 								.flatMap(MiniKanren::tupleAsIterable)
-								.flatMap(t -> walkTuple(s, t)))
+								.map(t -> walkTuple(s, t)))
 						.getOrElse(done(v)));
 	}
 
@@ -263,16 +257,20 @@ public class MiniKanren {
 		return toJavaStream(iterable)
 				.map(u -> walkAll(s, wrapUnifiable(u))
 						.map(w -> (u instanceof Unifiable) ?
-								w : w.asVal().get())
-						.map(Stream::of))
-				.reduce((acc, item) -> Recur.zip(acc, item.map(Stream::head))
-						.map(lr -> lr.apply(Stream::append)))
-				.map(r -> r.map(str -> str.collect(collector))
-						.map(MiniKanren::<T>wrapUnifiable))
-				.orElseGet(() -> done(wrapUnifiable(iterable)));
+								w : w.asVal().get()))
+				.reduce(done(new ArrayList<>()),
+						(Recur<ArrayList<Object>> acc, Recur<Object> item) -> Recur.zip(acc, item)
+								.map(lr -> {
+									lr._1.add(lr._2);
+									return lr._1;
+								}),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new))
+				.map(r -> r.stream().collect(collector))
+				.map(MiniKanren::<T>wrapUnifiable);
+		//				.orElseGet(() -> done(wrapUnifiable(iterable)));
 	}
 
-	private static <T> Option<Recur<Unifiable<T>>> walkTuple(Package s, Iterable<Object> tuple) {
+	private static <T> Recur<Unifiable<T>> walkTuple(Package s, Iterable<Object> tuple) {
 		return toJavaStream(tuple)
 				// walkAll accepts Unifiable,
 				// but some elements may be regular types.
@@ -282,18 +280,19 @@ public class MiniKanren {
 						// if the original type was not Unifiable
 						// so that we can reconstruct the original tuple
 						.map(u -> e instanceof Unifiable ?
-								u : u.asVal().get())
-						.map(Stream::of))
-				.reduce((acc, item) -> Recur.zip(acc, item.map(Stream::head))
-						.map(lr -> lr.apply(Stream::append)))
-				.map(r -> r.map(stream -> stream
-								.collect(Array.collector())
-								.toJavaArray())
-						.map(MiniKanren::tupleFromArray)
-						.map(LVal::lval)
-						.map(MiniKanren::<T>castUnifiable))
-				.map(Option::of)
-				.orElseGet(Option::none);
+								u : u.asVal().get()))
+				.reduce(
+						done(new ArrayList<>()),
+						(acc, item) -> Recur.zip(acc, item)
+								.map(lr -> {
+									lr._1.add(lr._2);
+									return lr._1;
+								}),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new))
+				.map(ArrayList::toArray)
+				.map(MiniKanren::tupleFromArray)
+				.map(LVal::lval)
+				.map(MiniKanren::castUnifiable);
 	}
 
 	public static <T> Recur<Unifiable<T>> reify(Package s, Unifiable<T> item) {
@@ -338,7 +337,7 @@ public class MiniKanren {
 	public static HashMap<LVar<?>, Unifiable<?>> prefixS(
 			HashMap<LVar<?>, Unifiable<?>> s,
 			HashMap<LVar<?>, Unifiable<?>> extendedS) {
-		return extendedS.filter(kv -> !s.keySet().contains(kv._1));
+		return extendedS.removeAll(s.keysIterator());
 	}
 
 	public static <A, B> BiFunction<A, A, Tuple2<B, B>> applyOnBoth(Function<A, B> f) {
@@ -367,14 +366,40 @@ public class MiniKanren {
 	}
 
 	public static Option<Iterable<Object>> tupleAsIterable(Object tuple) {
-		return asIterable(tuple, Tuple.class, Tuple::toSeq)
-				.orElse(() -> asIterable(tuple, Tuple2.class, Tuple2::toSeq))
-				.orElse(() -> asIterable(tuple, Tuple3.class, Tuple3::toSeq))
-				.orElse(() -> asIterable(tuple, Tuple4.class, Tuple4::toSeq))
-				.orElse(() -> asIterable(tuple, Tuple5.class, Tuple5::toSeq))
-				.orElse(() -> asIterable(tuple, Tuple6.class, Tuple6::toSeq))
-				.orElse(() -> asIterable(tuple, Tuple7.class, Tuple7::toSeq))
-				.orElse(() -> asIterable(tuple, Tuple8.class, Tuple8::toSeq));
+		Iterable<Object> result = asIterable(tuple, Tuple1.class, t -> Collections.singletonList(t._1));
+		if (result != null) {
+			return Option.of(result);
+		}
+		result = asIterable(tuple, Tuple2.class, t -> Arrays.asList(t._1, t._2));
+		if (result != null) {
+			return Option.of(result);
+		}
+		result = asIterable(tuple, Tuple3.class, t -> Arrays.asList(t._1, t._2, t._3));
+		if (result != null) {
+			return Option.of(result);
+		}
+		result = asIterable(tuple, Tuple4.class, t -> Arrays.asList(t._1, t._2, t._3, t._4));
+		if (result != null) {
+			return Option.of(result);
+		}
+		result = asIterable(tuple, Tuple5.class, t -> Arrays.asList(t._1, t._2, t._3, t._4, t._5));
+		if (result != null) {
+			return Option.of(result);
+		}
+		result = asIterable(tuple, Tuple6.class, t -> Arrays.asList(t._1, t._2, t._3, t._4, t._5, t._6));
+		if (result != null) {
+			return Option.of(result);
+		}
+		result = asIterable(tuple, Tuple7.class, t -> Arrays.asList(t._1, t._2, t._3, t._4, t._5, t._6, t._7));
+		if (result != null) {
+			return Option.of(result);
+		}
+		result = asIterable(tuple, Tuple8.class, t -> Arrays.asList(t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8));
+		if (result != null) {
+			return Option.of(result);
+		} else {
+			return Option.none();
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -419,9 +444,9 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> Option<Iterable<Object>> asIterable(Object item, Class<T> cls, Function<T, Seq<?>> sequencer) {
-		return Types.cast(item, cls)
-				.map(sequencer)
-				.map(v -> (Iterable<Object>) v);
+	private static <T> Iterable<Object> asIterable(Object item, Class<T> cls, Function<T, Iterable<?>> sequencer) {
+		return cls.isInstance(item) ?
+				(Iterable<Object>) sequencer.apply((T) item) :
+				null;
 	}
 }
