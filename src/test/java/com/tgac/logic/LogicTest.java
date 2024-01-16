@@ -303,7 +303,7 @@ public class LogicTest {
 	public void shouldComputeAnd() {
 		Unifiable<Tuple3<Unifiable<Boolean>, Unifiable<Boolean>, Unifiable<Boolean>>> out = lvar();
 		var result = Matche.matche(out,
-						Matche.tuple(Logic::ando))
+						Matche.tuple(Logic::conjo))
 				.solve(out)
 				.map(Unifiable::get)
 				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
@@ -317,7 +317,7 @@ public class LogicTest {
 	public void shouldComputeOr() {
 		Unifiable<Tuple3<Unifiable<Boolean>, Unifiable<Boolean>, Unifiable<Boolean>>> out = lvar();
 		var result = Matche.matche(out,
-						Matche.tuple(Logic::oro))
+						Matche.tuple(Logic::disjo))
 				.solve(out)
 				.map(Unifiable::get)
 				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))

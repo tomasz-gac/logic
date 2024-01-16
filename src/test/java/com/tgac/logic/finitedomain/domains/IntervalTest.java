@@ -275,4 +275,11 @@ public class IntervalTest {
 				.isTrue();
 	}
 
+	@Test
+	public void shouldDiffWithSingleton(){
+		Assertions.assertThat(
+				Interval.of(9, 19).difference(Singleton.of(9)))
+				.isEqualTo(Interval.of(10, 19));
+	}
+
 }

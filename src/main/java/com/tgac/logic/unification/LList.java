@@ -2,7 +2,6 @@ package com.tgac.logic.unification;
 
 import com.tgac.logic.Goal;
 import com.tgac.logic.Logic;
-import io.vavr.Predicates;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
 import io.vavr.control.Either;
@@ -26,6 +25,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static com.tgac.logic.ckanren.CKanren.unify;
+import static io.vavr.Predicates.not;
 
 /**
  * @author TGa
@@ -142,7 +142,7 @@ public class LList<A> {
 		return String.format("(%s%s)",
 				delimitedItems,
 				Option.of(items)
-						.filter(Predicates.not(List::isEmpty))
+						.filter(not(List::isEmpty))
 						.map(i -> i.get(items.size() - 1))
 						.map(tail -> tail.fold(l -> " . " + l,
 								r -> (delimitedItems.isEmpty() ?

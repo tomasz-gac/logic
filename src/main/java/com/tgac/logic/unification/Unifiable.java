@@ -19,6 +19,10 @@ public interface Unifiable<T> extends Supplier<T> {
 		return Option.none();
 	}
 
+	default boolean isVal() {
+		return false;
+	}
+
 	default Option<LVar<T>> asVar() {
 		return Option.none();
 	}
@@ -29,11 +33,11 @@ public interface Unifiable<T> extends Supplier<T> {
 
 	@Override
 	default T get() {
-		return asVal().get();
+		return ((LVal<T>) this).getValue();
 	}
 
 	default LVar<T> getVar() {
-		return asVar().get();
+		return (LVar<T>) this;
 	}
 
 	default Goal unify(Unifiable<T> rhs) {
@@ -55,9 +59,6 @@ public interface Unifiable<T> extends Supplier<T> {
 
 	@SuppressWarnings("unchecked")
 	default Unifiable<Object> getObjectUnifiable() {
-		return asVal()
-				.map(LVal::<Object>lval)
-				.orElse(() -> asVar().map(v -> (Unifiable<Object>) v))
-				.get();
+		return (Unifiable<Object>) this;
 	}
 }

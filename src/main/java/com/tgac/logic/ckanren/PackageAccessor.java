@@ -1,12 +1,13 @@
 package com.tgac.logic.ckanren;
-import com.tgac.functional.Exceptions;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.logic.Goal;
+import com.tgac.logic.step.Step;
 import com.tgac.logic.unification.Package;
-import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import lombok.var;
 
+import java.util.ArrayList;
 import java.util.function.Function;
 
 /**
@@ -26,38 +27,40 @@ public interface PackageAccessor extends Function<Package, Option<Package>> {
 		return __ -> Option.of(p);
 	}
 
+	static PackageAccessor failure() {
+		return s -> Option.none();
+	}
+
 	default ComposedPackageAccessor compose(PackageAccessor other) {
-		return new ComposedPackageAccessor(List.of(other, this));
+		return new ComposedPackageAccessor()
+				.compose(this)
+				.compose(other);
+	}
+
+	default Goal asGoal() {
+		return s -> Step.of(apply(s));
 	}
 
 	@Value
 	@RequiredArgsConstructor
 	class ComposedPackageAccessor implements PackageAccessor {
-		List<PackageAccessor> ops;
+		ArrayList<PackageAccessor> ops = new ArrayList<>();
 
 		@Override
 		public Option<Package> apply(Package aPackage) {
-			return ops
-					.reverse()
-					.toJavaStream()
-					.reduce(Option.of(aPackage),
-							Option::flatMap,
-							Exceptions.throwingBiOp(UnsupportedOperationException::new));
+			Option<Package> result = Option.of(aPackage);
+			for (var op : ops) {
+				result = op.apply(result.get());
+				if (result.isEmpty()) {
+					return result;
+				}
+			}
+			return result;
 		}
 
 		public ComposedPackageAccessor compose(PackageAccessor other) {
-			return new ComposedPackageAccessor(ops.prepend(other));
-		}
-	}
-
-	@Value
-	@RequiredArgsConstructor(staticName = "of")
-	class Incomplete implements PackageAccessor {
-		Recur<PackageAccessor> rest;
-
-		@Override
-		public Option<Package> apply(Package aPackage) {
-			return rest.get().apply(aPackage);
+			ops.add(other);
+			return this;
 		}
 	}
 }

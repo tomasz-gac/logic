@@ -2,12 +2,13 @@ package com.tgac.logic.finitedomain;
 
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
-import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
+import com.tgac.logic.step.Step;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -20,7 +21,9 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 
@@ -28,37 +31,40 @@ import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 public class FiniteDomain {
 
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
-		return CKanren.constructGoal(s -> {
-					Package a = FiniteDomainConstraints.register(s);
-					return d.processDom(MiniKanren.walk(a, u)).apply(a);
-				})
+		return fdGoal()
+				.and(PackageAccessor.of(s -> d.processDom(MiniKanren.walk(s, u)).apply(s)).asGoal())
 				.named(u + " ⊂ " + d);
 	}
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<Unifiable<T>> us) {
 		return Option.of(us.toJavaStream()
-						.map(u -> Option.of(MiniKanren.walk(p, u))
-								.flatMap(v -> v.asVar()
-										.flatMap(vv -> FiniteDomainConstraints.getDom(p, vv))
-										.orElse(() -> v.asVal()
-												.map(Arithmetic::ofCasted)
-												.map(Singleton::of))
-										.map(ds -> VarWithDomain.of(v, ds))))
-						.flatMap(Option::toJavaStream)
+						.flatMap(u -> {
+							Unifiable<T> v = MiniKanren.walk(p, u);
+							if (v.isVal()) {
+								return Stream.of(VarWithDomain.of(v, Singleton.of(Arithmetic.ofCasted(v.get()))));
+							} else {
+								return FiniteDomainConstraints.getDom(p, (LVar<T>) v)
+										.map(d -> VarWithDomain.of(v, d))
+										.toJavaStream();
+							}
+						})
 						.collect(Array.collector()))
 				.filter(uds -> uds.size() == us.size());
 	}
 
 	private static <T> PackageAccessor constraintOperation(PackageAccessor constraintOp, Array<Unifiable<T>> us, ConstraintBody<T> body) {
-		return p -> Tuple.of(
-						Constraint.of(constraintOp, us.map(Unifiable::getObjectUnifiable))
-								.addTo(FiniteDomainConstraints.register(p)))
-				.map(p1 -> letDomain(p1, us)
-						.filter(uds -> uds.toJavaStream()
-								.noneMatch(ud -> ud.getDomain().isEmpty()))
-						.map(uds -> body.create(uds, p1))
-						.getOrElse(Option.of(p1)))
-				._1;
+		return p -> {
+			Package p1 = Constraint.of(constraintOp,
+							us.map(u -> MiniKanren.walk(p, u))
+									.map(Unifiable::getObjectUnifiable)
+									.toJavaList())
+					.addTo(FiniteDomainConstraints.register(p));
+			return letDomain(p1, us)
+					.filter(uds -> uds.toJavaStream()
+							.noneMatch(ud -> ud.getDomain().isEmpty()))
+					.map(uds -> body.create(uds, p1))
+					.getOrElse(Option.of(p1));
+		};
 	}
 
 	@Value
@@ -78,24 +84,28 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
-		return CKanren.constructGoal(leqFD(less, more))
+		return fdGoal()
+				.and(leqFD(less, more).asGoal())
 				.named(less + " ≤ " + more);
 	}
 
 	public static <T> Goal lss(Unifiable<T> less, Unifiable<T> more) {
-		return CKanren.constructGoal(leqFD(less, more))
+		return fdGoal()
+				.and(leqFD(less, more).asGoal())
 				.and(separate(less, more))
 				.named(less + " < " + more);
 	}
 
 	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
-		return CKanren.constructGoal(leqFD(more, less))
+		return fdGoal()
+				.and(leqFD(more, less).asGoal())
 				.and(separate(more, less))
 				.named(more + " > " + less);
 	}
 
 	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
-		return CKanren.constructGoal(leqFD(more, less))
+		return fdGoal()
+				.and(leqFD(more, less).asGoal())
 				.named(more + " ≥ " + less);
 	}
 
@@ -113,7 +123,8 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal sum(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return CKanren.constructGoal(sumFD(a, b, c))
+		return fdGoal()
+				.and(sumFD(a, b, c).asGoal())
 				.named(a + " + " + b + " = " + c);
 	}
 
@@ -143,7 +154,8 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {
-		return CKanren.constructGoal(separateFDC(l, r))
+		return fdGoal()
+				.and(separateFDC(l, r).asGoal())
 				.named(l + " ≠_fd " + r);
 	}
 
@@ -163,7 +175,7 @@ public class FiniteDomain {
 							Package a = withConstraint(s,
 									Constraint.of(
 											p -> separateFDC(l, r).apply(p),
-											Array.of(l, r)));
+											Arrays.asList(l, r)));
 							if (ld.getDomain() instanceof Singleton) {
 								return rd.<T> getDomain().difference(ld.getDomain())
 										.processDom(r)
@@ -176,17 +188,22 @@ public class FiniteDomain {
 								return Option.of(a);
 							}
 						}
-				))
-				.getOrElse(() -> Option.of(withConstraint(s,
-						Constraint.of(
-								p -> separateFDC(l, r).apply(p),
-								Array.of(l, r)))));
+				)).getOrElse(() -> Tuple.of(s.walk(l), s.walk(r))
+						.apply((lv, rv) ->
+								Option.of(withConstraint(s,
+										Constraint.of(p ->
+														separateFDC(lv, rv).apply(p),
+												Arrays.asList(lv, rv))))));
 	}
 
 	private static <T> Option<Arithmetic<T>> getSingleElement(Domain<T> dom) {
 		return Option.of(dom)
 				.flatMap(Types.<Singleton<T>> castAs(Singleton.class))
 				.map(Singleton::getValue);
+	}
+
+	private static Goal fdGoal() {
+		return s -> Step.single(FiniteDomainConstraints.register(s));
 	}
 
 }

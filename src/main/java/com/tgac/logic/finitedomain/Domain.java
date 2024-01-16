@@ -1,5 +1,4 @@
 package com.tgac.logic.finitedomain;
-import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
@@ -8,7 +7,6 @@ import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.Predicates;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 import lombok.EqualsAndHashCode;
@@ -17,6 +15,7 @@ import java.util.stream.Stream;
 
 import static com.tgac.logic.ckanren.CKanren.runConstraints;
 import static com.tgac.logic.unification.LVal.lval;
+import static io.vavr.Predicates.not;
 
 @EqualsAndHashCode
 public abstract class Domain<T> {
@@ -58,13 +57,14 @@ public abstract class Domain<T> {
 	 * </pre>
 	 */
 	public PackageAccessor processDom(Unifiable<T> x) {
-		return a -> x.asVar()
-				.map(this::updateVarDomain)
-				.map(op -> op.apply(a))
-				.orElse(() -> x.asVal()
-						.filter(this::contains)
-						.map(v -> Option.of(a)))
-				.getOrElse(Option::none);
+		return a -> {
+			if (x.isVal()) {
+				return Option.of(a)
+						.filter(s -> this.contains(x.get()));
+			} else {
+				return updateVarDomain((LVar<T>) x).apply(a);
+			}
+		};
 	}
 	/**
 	 * <pre>
@@ -79,7 +79,7 @@ public abstract class Domain<T> {
 	private PackageAccessor updateVarDomain(LVar<T> x) {
 		return s -> FiniteDomainConstraints.getDom(s, x)
 				.map(previousDomain -> Option.of(previousDomain.intersect(this))
-						.filter(Predicates.not(Domain::isEmpty))
+						.filter(not(Domain::isEmpty))
 						.map(i -> i.resolveStorableDom(x).apply(s))
 						// intersection is empty
 						.getOrElse(Option::none))
@@ -98,13 +98,16 @@ public abstract class Domain<T> {
 	 * @return package operator
 	 */
 	private PackageAccessor resolveStorableDom(LVar<?> x) {
-		return a -> Option.of(this)
-				.flatMap(Types.<Singleton<T>> castAs(Singleton.class))
-				.map(Singleton::getValue)
-				.map(n -> a.extendS(HashMap.of(x, lval(n.getValue()))))
-				.map(a1 -> runConstraints(x, FiniteDomainConstraints.getFDStore(a).getConstraints())
-						.apply(a1))
-				.getOrElse(() -> Option.of(extendD(x, this, a)));
+		return a -> {
+			if (this instanceof Singleton) {
+				T v = ((Singleton<T>) this).getValue().getValue();
+				return runConstraints(x,
+						FiniteDomainConstraints.getFDStore(a).getConstraints())
+						.apply(a.extendS(HashMap.of(x, lval(v))));
+			} else {
+				return Option.of(extendD(x, this, a));
+			}
+		};
 	}
 
 	private static Package extendD(LVar<?> x, Domain<?> xd, Package a) {

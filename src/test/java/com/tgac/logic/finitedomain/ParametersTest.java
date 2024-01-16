@@ -8,10 +8,9 @@ import com.tgac.logic.unification.TestAccess;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
+import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
-import io.vavr.collection.List;
 import io.vavr.collection.Stream;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
@@ -19,6 +18,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import static com.tgac.logic.unification.LVal.lval;
@@ -40,7 +40,7 @@ public class ParametersTest {
 						(m, t) -> m.put(t._1, t._2));
 
 		Constraint constraint = Constraint.of(
-				accessor, Array.of(prefix.get()._1));
+				accessor, Arrays.asList(prefix.get()._1));
 
 		System.out.println(FiniteDomainConstraints.empty()
 				.prepend(constraint)
@@ -59,7 +59,8 @@ public class ParametersTest {
 						FiniteDomainConstraints.of(
 								LinkedHashMap.<LVar<?>, Domain<?>> empty()
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
-								List.empty())))
+								HashSet.empty())))
+				.stream()
 				.collect(Collectors.toList());
 
 		System.out.println(collect);
@@ -82,7 +83,8 @@ public class ParametersTest {
 								LinkedHashMap.<LVar<?>, Domain<?>> empty()
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
 										.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
-								List.empty())))
+								HashSet.empty())))
+				.stream()
 				.collect(Collectors.toList());
 
 		System.out.println(collect);

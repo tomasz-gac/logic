@@ -5,7 +5,6 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
-import io.vavr.control.Try;
 
 public interface ConstraintStore extends Store {
 	/**
@@ -53,6 +52,6 @@ public interface ConstraintStore extends Store {
 	 * @param renameSubstitutions
 	 * 		- substitutions used in variable renaming
 	 */
-	<A> Try<Unifiable<A>> reify(Unifiable<A> unifiable, Package renameSubstitutions, Package p);
+	<A> Unifiable<A> reify(Unifiable<A> unifiable, Package renameSubstitutions, Package p);
 
 }

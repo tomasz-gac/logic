@@ -155,10 +155,17 @@ public class Interval<T> extends Domain<T> {
 			}
 			@Override
 			public Domain<T> visit(Singleton<T> domain) {
-				if (that.contains(domain.getValue().getValue())) {
-					return Union.of(
-							Interval.of(min, domain.getValue().prev()),
-							Interval.of(domain.getValue().next(), max));
+				Arithmetic<T> value = domain.getValue();
+				if (that.contains(value.getValue())) {
+					if (value.compareTo(min) == 0) {
+						return Interval.of(value.next(), max);
+					} else if (value.compareTo(max) == 0) {
+						return Interval.of(min, value.prev());
+					} else {
+						return Union.of(
+								Interval.of(min, value.prev()),
+								Interval.of(value.next(), max));
+					}
 				} else {
 					return that;
 				}
