@@ -1,5 +1,7 @@
 package com.tgac.logic.separate;
+
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
@@ -10,4 +12,9 @@ import lombok.Value;
 @RequiredArgsConstructor(staticName = "of")
 class NeqConstraint implements Stored {
 	HashMap<LVar<?>, Unifiable<?>> separate;
+
+	@Override
+	public Class<? extends Store> getStoreClass() {
+		return NeqConstraints.class;
+	}
 }

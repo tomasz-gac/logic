@@ -1,13 +1,18 @@
 package com.tgac.logic.finitedomain;
+
+import static com.tgac.logic.finitedomain.FiniteDomain.addo;
+import static com.tgac.logic.finitedomain.FiniteDomain.dom;
+import static com.tgac.logic.finitedomain.FiniteDomain.leq;
+import static com.tgac.logic.finitedomain.FiniteDomain.lss;
+import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.unification.LVar.lvar;
+
 import com.tgac.logic.Goal;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
-import org.assertj.core.api.Assertions;
-import org.junit.Test;
-
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
@@ -15,12 +20,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.assertj.core.api.Assertions;
+import org.junit.Test;
 
-import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.leq;
-import static com.tgac.logic.finitedomain.FiniteDomain.lss;
-import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
 public class SummationTest {
 
 	@Test
@@ -32,7 +34,7 @@ public class SummationTest {
 		Instant start = Instant.now();
 
 		Goal goal =
-				FiniteDomain.addo(i, j, k)
+				addo(i, j, k)
 						.and(FiniteDomain.separate(i, j))
 						.and(dom(i, Interval.of(0L, 100)))
 						.and(dom(j, Interval.of(0L, 100L)))
@@ -68,12 +70,12 @@ public class SummationTest {
 		Unifiable<Integer> sum = lvar();
 		return dom(partialSum, Interval.of(0, 18))
 				.and(dom(sum, Interval.of(0, 19)))
-				.and(FiniteDomain.addo(augend, addend, partialSum))
-				.and(FiniteDomain.addo(partialSum, carryIn, sum))
+				.and(addo(augend, addend, partialSum))
+				.and(addo(partialSum, carryIn, sum))
 				.and(Goal.failure()
 						.or(lss(lval(9), sum)
 								.and(carryOut.unify(1))
-								.and(FiniteDomain.addo(digit, lval(10), sum)))
+								.and(addo(digit, lval(10), sum)))
 						.or(leq(sum, lval(9))
 								.and(carryOut.unify(0))
 								.and(digit.unify(sum))));
@@ -156,5 +158,18 @@ public class SummationTest {
 						pow * digits.get(i)))
 				.reduce(Integer::sum)
 				.orElse(0);
+	}
+
+	@Test(expected = RuntimeException.class)
+	public void shouldNotSumWhenMissingDomain() {
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		Unifiable<Integer> c = lvar();
+		System.out.println(addo(a, b, c)
+				.and(dom(a, Interval.of(0, 100)))
+				.and(dom(c, Interval.of(0, 100)))
+				.solve(lval(Tuple.of(a, b, c)))
+				.map(Unifiable::get)
+				.collect(Collectors.toList()));
 	}
 }

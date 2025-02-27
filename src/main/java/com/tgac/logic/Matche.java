@@ -1,4 +1,7 @@
 package com.tgac.logic;
+
+import static com.tgac.logic.ckanren.CKanren.unify;
+
 import com.tgac.functional.step.Step;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
@@ -22,14 +25,11 @@ import io.vavr.Tuple6;
 import io.vavr.Tuple7;
 import io.vavr.Tuple8;
 import io.vavr.collection.List;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-
 import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Supplier;
-
-import static com.tgac.logic.ckanren.CKanren.unify;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Matche {
@@ -60,6 +60,7 @@ public class Matche {
 		return l -> Logic.<A, A, LList<A>> exist((a, b, d) -> unify(l, LList.of(a, LList.of(b, d)))
 				.and(f.apply(a, b, d)));
 	}
+
 	public static <A> Case<LList<A>> llist(Function4<Unifiable<A>, Unifiable<A>, Unifiable<A>, Unifiable<LList<A>>, Goal> f) {
 		return l -> Logic.<A, A, A, LList<A>> exist((a, b, c, d) -> unify(l, LList.of(a, LList.of(b, LList.of(c, d))))
 				.and(f.apply(a, b, c, d)));
@@ -212,7 +213,7 @@ public class Matche {
 						.and(f.apply(t1, t2, t3, t4, t5, t6, t7, t8)));
 	}
 
-	public static <T> Case<T> lvar(Supplier<Goal> sup) {
+	public static <T> Case<T> variable(Supplier<Goal> sup) {
 		return u -> s -> Step.incomplete(() ->
 				MiniKanren.walkAll(s, u)
 						.map(v -> v.asVar()
@@ -221,7 +222,7 @@ public class Matche {
 								.apply(s)));
 	}
 
-	public static <T> Case<T> lval(Function1<T, Goal> f) {
+	public static <T> Case<T> value(Function1<T, Goal> f) {
 		return u -> s -> Step.incomplete(() ->
 				MiniKanren.walkAll(s, u)
 						.map(v -> v.asVal()

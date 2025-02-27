@@ -1,4 +1,15 @@
 package com.tgac.logic.separate;
+
+import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.logic.ckanren.CKanren.unify;
+import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
+import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
+import static com.tgac.logic.ckanren.StoreSupport.withoutConstraints;
+import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
+import static com.tgac.logic.unification.MiniKanren.prefixS;
+import static com.tgac.logic.unification.MiniKanren.unify;
+import static com.tgac.logic.unification.MiniKanren.walkAll;
+
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.step.Step;
@@ -13,16 +24,6 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
-
-import static com.tgac.functional.recursion.Recur.done;
-import static com.tgac.logic.ckanren.CKanren.unify;
-import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
-import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
-import static com.tgac.logic.ckanren.StoreSupport.withoutConstraints;
-import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
-import static com.tgac.logic.unification.MiniKanren.prefixS;
-import static com.tgac.logic.unification.MiniKanren.unify;
-import static com.tgac.logic.unification.MiniKanren.walkAll;
 
 public class Disequality {
 
@@ -112,7 +113,7 @@ public class Disequality {
 					// TODO : verify
 					.map(c -> Package.of(
 							newPackage.getSubstitutions(),
-							NeqConstraints.of(c)));
+							newPackage.getConstraints().put(NeqConstraints.class, NeqConstraints.of(c))));
 		}
 	}
 
@@ -190,6 +191,7 @@ public class Disequality {
 						.map(NeqConstraint::of)
 						.collect(List.collector()));
 	}
+
 	private static Recur<HashMap<LVar<?>, Unifiable<?>>> walkAllConstraint(Package s, HashMap<LVar<?>, Unifiable<?>> c) {
 		return c.toJavaStream()
 				.map(valSub -> valSub.map(

@@ -1,5 +1,10 @@
 package com.tgac.logic;
 
+import static com.tgac.logic.Goal.defer;
+import static com.tgac.logic.Matche.llist;
+import static com.tgac.logic.Matche.matche;
+import static com.tgac.logic.ckanren.CKanren.unify;
+
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.step.Step;
@@ -19,15 +24,9 @@ import io.vavr.Tuple;
 import io.vavr.Tuple3;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
+import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-
-import java.util.function.Function;
-
-import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.Matche.llist;
-import static com.tgac.logic.Matche.matche;
-import static com.tgac.logic.ckanren.CKanren.unify;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Logic {
@@ -42,6 +41,7 @@ public class Logic {
 										.and(defer(() -> appendo(d, second, res)))))))
 				.named(formatLList(first) + " ++ " + formatLList(second) + " ≣ " + formatLList(both));
 	}
+
 	public static <T> String formatLList(Unifiable<LList<T>> first) {
 		return first.asVar()
 				.map(v -> "[" + v + "]")

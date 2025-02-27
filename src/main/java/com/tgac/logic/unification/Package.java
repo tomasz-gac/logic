@@ -1,23 +1,24 @@
 package com.tgac.logic.unification;
+
 import com.tgac.logic.ckanren.ConstraintStore;
 import io.vavr.collection.HashMap;
+import java.util.Map;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
-import java.util.Map;
 @Value
 @RequiredArgsConstructor(access = AccessLevel.PUBLIC, staticName = "of")
 public class Package {
 
 	HashMap<LVar<?>, Unifiable<?>> substitutions;
 
-	Store constraints;
+	HashMap<Class<? extends Store>, Store> constraints;
 
 	Map<Unifiable<?>, Unifiable<?>> walkCache = new java.util.HashMap<>();
 
 	public static Package empty() {
-		return new Package(HashMap.empty(), null);
+		return new Package(HashMap.empty(), HashMap.empty());
 	}
 
 	public Package extendS(HashMap<LVar<?>, Unifiable<?>> s) {
@@ -67,14 +68,10 @@ public class Package {
 	}
 
 	public Package withStore(ConstraintStore empty) {
-		if (constraints != null) {
-			if (empty.getClass().isInstance(constraints)) {
-				return this;
-			} else {
-				throw new IllegalStateException("Constraint store already exists: " + constraints);
-			}
+		if (constraints.get(empty.getClass()).isDefined()) {
+			return this;
 		} else {
-			return Package.of(substitutions, empty);
+			return Package.of(substitutions, constraints.put(empty.getClass(), empty));
 		}
 	}
 }

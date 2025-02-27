@@ -1,4 +1,8 @@
 package com.tgac.logic.finitedomain;
+
+import static com.tgac.logic.ckanren.CKanren.runConstraints;
+import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
+
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.Constraint;
@@ -9,18 +13,17 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Predicates;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
-
-import java.util.stream.StreamSupport;
-
-import static com.tgac.logic.ckanren.CKanren.runConstraints;
-import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
@@ -58,7 +61,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	public static FiniteDomainConstraints getFDStore(Package p) {
-		return (FiniteDomainConstraints) getConstraintStore(p);
+		return (FiniteDomainConstraints) getConstraintStore(p, FiniteDomainConstraints.class);
 	}
 
 	public static <T> Option<Domain<T>> getDom(Package p, LVar<T> x) {
@@ -87,22 +90,21 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	@Override
 	public <A> Unifiable<A> reify(Unifiable<A> unifiable, Package renameSubstitutions, Package p) {
-		Unifiable<A> v = MiniKanren.walkAll(p, unifiable)
-				.get();
-		Boolean constrains = v.asVar()
-				.map(this::constrains)
-				.getOrElse(() ->
-						MiniKanren.asIterable(v.get())
-								.orElse(() -> MiniKanren.tupleAsIterable(v.get()))
-								.map(it -> StreamSupport.stream(it.spliterator(), false)
-										.map(MiniKanren::wrapUnifiable)
-										.anyMatch(this::constrains))
-								.orElse(() -> MiniKanren.asLList(v.get())
-										.map(ll -> ll.stream()
-												.anyMatch(e -> e.fold(this::constrains, this::constrains))))
-								.getOrElseThrow(UnsupportedOperationException::new));
-		if (constrains) {
-			throw new IllegalStateException("Variables with no domain detected");
+		Set<LVar<?>> varsWithDomains = domains.keySet().toJavaStream()
+				.map(p::walk)
+				.flatMap(u -> u.asVar().toJavaStream())
+				.collect(Collectors.toSet());
+
+		Set<LVar<?>> constrainedVarsWithoutDomains = constraints.toJavaStream()
+				.map(Constraint::getArgs)
+				.flatMap(List::stream)
+				.map(p::walk)
+				.flatMap(u -> u.asVar().toJavaStream())
+				.filter(Predicates.not(varsWithDomains::contains))
+				.collect(Collectors.toSet());
+
+		if (!constrainedVarsWithoutDomains.isEmpty()) {
+			throw new IllegalStateException("Variables without domain detected: " + constrainedVarsWithoutDomains);
 		} else {
 			return unifiable;
 		}

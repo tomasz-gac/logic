@@ -1,4 +1,10 @@
 package com.tgac.logic.separate;
+
+import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
+import static com.tgac.logic.separate.Disequality.purify;
+import static com.tgac.logic.separate.Disequality.removeSubsumed;
+import static com.tgac.logic.separate.Disequality.walkAllConstraints;
+
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.PackageAccessor;
@@ -11,11 +17,6 @@ import io.vavr.collection.List;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
-import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
-import static com.tgac.logic.separate.Disequality.purify;
-import static com.tgac.logic.separate.Disequality.removeSubsumed;
-import static com.tgac.logic.separate.Disequality.walkAllConstraints;
-
 @Value
 @RequiredArgsConstructor(staticName = "of")
 class NeqConstraints implements ConstraintStore {
@@ -27,11 +28,13 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	public static NeqConstraints get(Package p) {
-		return (NeqConstraints) getConstraintStore(p);
+		return (NeqConstraints) getConstraintStore(p, NeqConstraints.class);
 	}
+
 	public static List<NeqConstraint> getConstraints(Package p) {
 		return get(p).getConstraints();
 	}
+
 	public static Package register(Package a) {
 		return a.withStore(empty());
 	}
@@ -40,19 +43,23 @@ class NeqConstraints implements ConstraintStore {
 	public ConstraintStore remove(Stored c) {
 		return NeqConstraints.of(constraints.remove((NeqConstraint) c));
 	}
+
 	@Override
 	public ConstraintStore prepend(Stored c) {
 		return NeqConstraints.of(constraints.prepend((NeqConstraint) c));
 	}
+
 	@Override
 	public boolean contains(Stored c) {
 		return c instanceof NeqConstraint
 				&& constraints.contains((NeqConstraint) c);
 	}
+
 	@Override
 	public <T> Goal enforceConstraints(Unifiable<T> x) {
 		return Goal.success();
 	}
+
 	@Override
 	public PackageAccessor processPrefix(
 			HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
@@ -61,7 +68,7 @@ class NeqConstraints implements ConstraintStore {
 
 	@Override
 	public <A> Unifiable<A> reify(Unifiable<A> unifiable, Package renamePackage, Package s) {
-		return walkAllConstraints(getConstraints(s), s)
+		Unifiable<A> result = walkAllConstraints(getConstraints(s), s)
 				.flatMap(c_star -> removeSubsumed(
 						purify(c_star, renamePackage),
 						List.empty())
@@ -70,5 +77,6 @@ class NeqConstraints implements ConstraintStore {
 						unifiable :
 						Constrained.of(unifiable, c1.map(NeqConstraint::getSeparate)))
 				.get();
+		return result;
 	}
 }

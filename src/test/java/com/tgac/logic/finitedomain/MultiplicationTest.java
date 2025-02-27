@@ -1,29 +1,25 @@
 package com.tgac.logic.finitedomain;
-import com.tgac.logic.Goal;
-import com.tgac.logic.finitedomain.domains.Interval;
-import com.tgac.logic.finitedomain.domains.Singleton;
-import com.tgac.logic.unification.LList;
-import com.tgac.logic.unification.Unifiable;
-import io.vavr.Tuple;
-import io.vavr.Tuple3;
-import lombok.var;
-import org.assertj.core.api.Assertions;
-import org.junit.Ignore;
-import org.junit.Test;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static com.tgac.logic.Matche.llist;
-import static com.tgac.logic.Matche.matche;
 import static com.tgac.logic.finitedomain.FiniteDomain.addo;
 import static com.tgac.logic.finitedomain.FiniteDomain.copyDomain;
 import static com.tgac.logic.finitedomain.FiniteDomain.divo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.separate;
-import static com.tgac.logic.finitedomain.FiniteDomain.subtracto;
+import static com.tgac.logic.finitedomain.FiniteDomain.multo;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
+
+import com.tgac.logic.Goal;
+import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.finitedomain.domains.Singleton;
+import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
+import io.vavr.Tuple3;
+import java.util.List;
+import java.util.stream.Collectors;
+import lombok.var;
+import org.assertj.core.api.Assertions;
+import org.junit.Test;
+
 @SuppressWarnings("unchecked")
 public class MultiplicationTest {
 
@@ -259,36 +255,20 @@ public class MultiplicationTest {
 				);
 	}
 
-	public static <U> Goal lengtho(Unifiable<Integer> count, Unifiable<LList<String>> lst) {
-		Unifiable<Integer> tmp = lvar("tmp");
-		return matche(lst,
-				llist(() -> count.unify(0)),
-				llist((a, d) ->
-						//						Goal.success()
-						separate(count, lval(0))
-								.and(subtracto(count, lval(1), tmp))
-								.and(Goal.defer(() -> lengtho(tmp, d)))));
-	}
+	@Test(expected = IllegalStateException.class)
+	public void shouldNotMultiplyWithoutDomain() {
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		Unifiable<Integer> c = lvar();
+		var results = multo(a, b, c)
+				.and(dom(a, Interval.of(0, 1000)))
+				.and(dom(b, Interval.of(0, 1000)))
+				.solve(lval(Tuple.of(a, b, c)))
+				.map(Unifiable::get)
+				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
+				.collect(Collectors.toList());
 
-	@Test
-	@Ignore
-	public void tst() {
-		Unifiable<LList<String>> lst = lvar("lst");
-		Unifiable<Integer> count = lvar("count");
-		System.out.println(
-				dom(count, Interval.of(0, 3))
-						.and(lengtho(count, lst))
-						.solve(lst)
-						//						.limit(4)
-						.map(Unifiable::get)
-						.collect(Collectors.toList()));
+		Assertions.assertThat(results)
+				.allMatch(t -> t._1 * t._2 == t._3);
 	}
-
-	//	public static <T> Goal mulo(Unifiable<T> lhs, Unifiable<T> rhs, Unifiable<T> result){
-	//		Unifiable<T> tmp = lvar();
-	//		Unifiable<T> tmp1 = lvar();
-	//		return copyDomain(lhs, tmp)
-	//				.and(copyDomain())
-	//				.and()
-	//	}
 }

@@ -1,4 +1,9 @@
 package com.tgac.logic.finitedomain;
+
+import static com.tgac.logic.ckanren.CKanren.runConstraints;
+import static com.tgac.logic.unification.LVal.lval;
+import static io.vavr.Predicates.not;
+
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
@@ -9,13 +14,8 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
-import lombok.EqualsAndHashCode;
-
 import java.util.stream.Stream;
-
-import static com.tgac.logic.ckanren.CKanren.runConstraints;
-import static com.tgac.logic.unification.LVal.lval;
-import static io.vavr.Predicates.not;
+import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode
 public abstract class Domain<T> {
@@ -66,6 +66,7 @@ public abstract class Domain<T> {
 			}
 		};
 	}
+
 	/**
 	 * <pre>
 	 *    Updates variable's domain by computing the intersection between this domain, and it's previously assigned domain.
@@ -111,6 +112,6 @@ public abstract class Domain<T> {
 	}
 
 	private static Package extendD(LVar<?> x, Domain<?> xd, Package a) {
-		return StoreSupport.<FiniteDomainConstraints> updateC(a, cs -> cs.withDomain(x, xd));
+		return StoreSupport.updateC(a, FiniteDomainConstraints.class, cs -> cs.withDomain(x, xd));
 	}
 }

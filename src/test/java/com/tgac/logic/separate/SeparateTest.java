@@ -282,7 +282,7 @@ public class SeparateTest {
 	@Test
 	public void shouldReturnFromSingleGoalThatSucceeds() {
 		Unifiable<Integer> x = lvar();
-		List<Integer> results = Goal.conda(
+		List<Integer> results = Goal.condu(
 						x.separate(x),
 						x.unify(1).or(x.unify(2)),
 						x.unify(3))
@@ -297,7 +297,7 @@ public class SeparateTest {
 	@Test
 	public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
 		Unifiable<Integer> x = lvar();
-		List<Integer> results = Goal.condu(
+		List<Integer> results = Goal.conda(
 						x.separate(x),
 						x.unify(1).or(x.unify(2)),
 						x.unify(3))

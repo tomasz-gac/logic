@@ -1,5 +1,7 @@
 package com.tgac.logic;
 
+import static com.tgac.functional.recursion.Recur.done;
+
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.step.Cons;
@@ -13,11 +15,6 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Array;
 import io.vavr.collection.Map;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,8 +22,10 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import static com.tgac.functional.recursion.Recur.done;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
 /**
  * @author TGa
@@ -46,7 +45,9 @@ public interface Goal extends Function<Package, Step<Package>> {
 	}
 
 	static Goal conde(Goal... goals) {
-		return new Disjunction().or(goals);
+		return Arrays.stream(goals)
+				.reduce(Goal::or)
+				.orElseGet(Goal::failure);
 	}
 
 	static Goal all(Goal... goals) {
@@ -65,9 +66,9 @@ public interface Goal extends Function<Package, Step<Package>> {
 		return s -> {
 			System.out.println("before " + name + ": " + printVars(s, vars));
 			Step<Package> ss = apply(s);
-			System.out.println("after " + name + ": " + ss.stream()
-					.map(s1 -> printVars(s1, vars))
-					.collect(Collectors.joining("\n")));
+			System.out.println("after " + name + ":" + ss.stream()
+					.map(s1 -> "\n- " + printVars(s1, vars))
+					.collect(Collectors.joining("")));
 			return ss;
 		};
 	}
@@ -169,25 +170,27 @@ public interface Goal extends Function<Package, Step<Package>> {
 		if (streams.isEmpty()) {
 			return done(Empty.instance());
 		} else {
-			Step<Package> a = streams.head();
 			return streams.head()
 					.accept(new Step.Visitor<Package, Recur<Step<Package>>>() {
 						@Override
 						public Recur<Step<Package>> visit(Empty<Package> empty) {
 							return Recur.recur(() -> ifa(streams.tail()));
 						}
+
 						@Override
 						public Recur<Step<Package>> visit(Incomplete<Package> inc) {
 							return inc.getRest()
 									.flatMap(s -> ifa(Array.of(s).appendAll(streams.tail())));
 						}
+
 						@Override
 						public Recur<Step<Package>> visit(Single<Package> single) {
 							return done(single);
 						}
+
 						@Override
 						public Recur<Step<Package>> visit(Cons<Package> cons) {
-							return done(cons);
+							return done(Single.of(cons.getHead()));
 						}
 					});
 		}
@@ -208,18 +211,21 @@ public interface Goal extends Function<Package, Step<Package>> {
 				public Recur<Step<Package>> visit(Empty<Package> empty) {
 					return Recur.recur(() -> ifu(streams.tail()));
 				}
+
 				@Override
 				public Recur<Step<Package>> visit(Incomplete<Package> inc) {
 					return inc.getRest()
 							.flatMap(s -> ifu(Array.of(s).appendAll(streams.tail())));
 				}
+
 				@Override
 				public Recur<Step<Package>> visit(Single<Package> single) {
 					return done(single);
 				}
+
 				@Override
 				public Recur<Step<Package>> visit(Cons<Package> cons) {
-					return done(Single.of(cons.getHead()));
+					return done(cons);
 				}
 			});
 		}
@@ -290,6 +296,7 @@ public interface Goal extends Function<Package, Step<Package>> {
 		public Step<Package> apply(Package aPackage) {
 			return goal.apply(aPackage);
 		}
+
 		@Override
 		public String toString() {
 			return name;

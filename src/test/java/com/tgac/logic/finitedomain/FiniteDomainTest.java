@@ -1,32 +1,35 @@
 package com.tgac.logic.finitedomain;
+
+import static com.tgac.logic.Goal.defer;
+import static com.tgac.logic.Matche.llist;
+import static com.tgac.logic.Matche.matche;
+import static com.tgac.logic.finitedomain.FiniteDomain.addo;
+import static com.tgac.logic.finitedomain.FiniteDomain.dom;
+import static com.tgac.logic.finitedomain.FiniteDomain.separate;
+import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.unification.LVar.lvar;
+
 import com.tgac.logic.Goal;
 import com.tgac.logic.Logic;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import java.util.HashSet;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.var;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.Matche.llist;
-import static com.tgac.logic.Matche.matche;
-import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.separate;
-import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
 
 @SuppressWarnings("unchecked")
 @RunWith(MockitoJUnitRunner.class)
@@ -254,13 +257,32 @@ public class FiniteDomainTest {
 								!l.get(1).equals(l.get(4)) &&
 								!l.get(2).equals(l.get(3)) &&
 								!l.get(2).equals(l.get(4)) &&
-								!l.get(3).equals(l.get(4)));
+								!l.get(3).equals(l.get(4))
+				);
 	}
 
 	static <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out, Goal g) {
 		return g.apply(Package.empty())
 				.flatMap(s -> CKanren.reify(s, out))
 				.stream();
+	}
+
+	@Test
+	public void shouldMixMultipleConstraintSystems() {
+		Unifiable<String> str = lvar();
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		Unifiable<Integer> c = lvar();
+
+		System.out.println(addo(a, b, c)
+				.and(dom(a, Interval.of(0, 5)))
+				.and(dom(b, Interval.of(0, 5)))
+				.and(dom(c, Interval.of(-5, 10)))
+				.and(Disequality.separate(str, lval("123")))
+				.solve(lval(Tuple.of(a, b, c, str)))
+				.map(Unifiable::get)
+				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get, Function.identity()))
+				.collect(Collectors.toList()));
 	}
 
 }

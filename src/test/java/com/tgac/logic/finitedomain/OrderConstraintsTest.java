@@ -1,4 +1,13 @@
 package com.tgac.logic.finitedomain;
+
+import static com.tgac.logic.Goal.defer;
+import static com.tgac.logic.Goal.success;
+import static com.tgac.logic.Matche.llist;
+import static com.tgac.logic.finitedomain.FiniteDomain.dom;
+import static com.tgac.logic.finitedomain.FiniteDomain.lss;
+import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.unification.LVar.lvar;
+
 import com.tgac.functional.Streams;
 import com.tgac.logic.Goal;
 import com.tgac.logic.Matche;
@@ -9,21 +18,13 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.var;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.Goal.success;
-import static com.tgac.logic.Matche.llist;
-import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.lss;
-import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
 public class OrderConstraintsTest {
 
 	@Test
@@ -129,8 +130,7 @@ public class OrderConstraintsTest {
 				llist(() -> success()),
 				llist((a) -> success()),
 				llist((a, b, d) ->
-						lss(a, b)
-								.and(defer(() -> allLesso(LList.of(b, d))))));
+						lss(a, b).and(defer(() -> allLesso(LList.of(b, d))))));
 	}
 
 }

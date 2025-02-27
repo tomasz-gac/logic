@@ -1,14 +1,14 @@
 package com.tgac.logic.unification;
 
+import static com.tgac.logic.ckanren.CKanren.unify;
+import static io.vavr.Predicates.not;
+
 import com.tgac.logic.Goal;
 import com.tgac.logic.Logic;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
 import io.vavr.control.Either;
 import io.vavr.control.Option;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -23,9 +23,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-
-import static com.tgac.logic.ckanren.CKanren.unify;
-import static io.vavr.Predicates.not;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
 /**
  * @author TGa
@@ -77,6 +76,7 @@ public class LList<A> {
 				.map(LVal::lval)
 				.orElseGet(LList::empty);
 	}
+
 	public boolean isEmpty() {
 		return Objects.isNull(head) && Objects.isNull(tail);
 	}
@@ -154,12 +154,14 @@ public class LList<A> {
 		Unifiable<LList<A>> that = this.asVal();
 		return new Iterator<Either<LVar<LList<A>>, Unifiable<A>>>() {
 			private Unifiable<LList<A>> tail = that;
+
 			@Override
 			public boolean hasNext() {
 				return Objects.nonNull(tail) &&
 						(tail.asVar().isDefined() ||
 								!tail.asVal().filter(LList::isEmpty).isDefined());
 			}
+
 			@Override
 			public Either<LVar<LList<A>>, Unifiable<A>> next() {
 				Either<LVar<LList<A>>, Unifiable<A>> item =

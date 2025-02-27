@@ -1,6 +1,7 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.functional.Exceptions;
+import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
+
 import com.tgac.functional.reflection.Types;
 import com.tgac.functional.step.Step;
 import com.tgac.logic.Goal;
@@ -9,7 +10,6 @@ import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -17,18 +17,14 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.function.BinaryOperator;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
-
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.function.BinaryOperator;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
-
-import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class FiniteDomain {
@@ -41,16 +37,13 @@ public class FiniteDomain {
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<Unifiable<T>> us) {
 		return Option.of(us.toJavaStream()
-						.flatMap(u -> {
-							Unifiable<T> v = MiniKanren.walk(p, u);
-							if (v.isVal()) {
-								return Stream.of(VarWithDomain.of(v, Singleton.of(Arithmetic.ofCasted(v.get()))));
-							} else {
-								return FiniteDomainConstraints.getDom(p, (LVar<T>) v)
+						.map(u -> MiniKanren.walk(p, u))
+						.flatMap(v -> v.asVal()
+								.map(val -> VarWithDomain.of(v, Singleton.of(Arithmetic.ofCasted(v.get()))))
+								.map(Stream::of)
+								.getOrElse(() -> FiniteDomainConstraints.getDom(p, v.getVar())
 										.map(d -> VarWithDomain.of(v, d))
-										.toJavaStream();
-							}
-						})
+										.toJavaStream()))
 						.collect(Array.collector()))
 				.filter(uds -> uds.size() == us.size());
 	}
@@ -58,6 +51,7 @@ public class FiniteDomain {
 	private static <T> PackageAccessor constraintOperation(PackageAccessor constraintOp, Array<Unifiable<T>> us, ConstraintBody<T> body) {
 		return p -> {
 			Package p1 = Constraint.of(constraintOp,
+							FiniteDomainConstraints.class,
 							us.map(u -> MiniKanren.walk(p, u))
 									.map(Unifiable::getObjectUnifiable)
 									.toJavaList())
@@ -269,6 +263,7 @@ public class FiniteDomain {
 							Package a = withConstraint(s,
 									Constraint.of(
 											p -> separateFDC(l, r).apply(p),
+											FiniteDomainConstraints.class,
 											Arrays.asList(l, r)));
 							if (ld.getDomain() instanceof Singleton) {
 								return rd.<T> getDomain().difference(ld.getDomain())
@@ -285,8 +280,8 @@ public class FiniteDomain {
 				)).getOrElse(() -> Tuple.of(s.walk(l), s.walk(r))
 						.apply((lv, rv) ->
 								Option.of(withConstraint(s,
-										Constraint.of(p ->
-														separateFDC(lv, rv).apply(p),
+										Constraint.of(p -> separateFDC(lv, rv).apply(p),
+												FiniteDomainConstraints.class,
 												Arrays.asList(lv, rv))))));
 	}
 
@@ -306,6 +301,7 @@ public class FiniteDomain {
 				.min(T::compareTo)
 				.orElseThrow(IllegalStateException::new);
 	}
+
 	private static <T extends Comparable<T>> T maxResult(BinaryOperator<T> f, Array<Tuple2<T, T>> args) {
 		return args.toJavaStream()
 				.map(t -> t.apply(f))
@@ -314,9 +310,8 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal copyDomain(Unifiable<T> from, Unifiable<T> to) {
-		Supplier<IllegalArgumentException> noDomain =
-				Exceptions.format(IllegalArgumentException::new, "%s has no domain", from);
-		return Goal.goal(s -> from.asVar()
+		return fdGoal()
+				.and(s -> from.asVar()
 						.flatMap(l -> FiniteDomainConstraints.getDom(s, l))
 						.orElse(() -> s.walk(from).asVal()
 								.map(Arithmetic::ofCasted)

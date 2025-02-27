@@ -1,4 +1,7 @@
 package com.tgac.logic.finitedomain;
+
+import static com.tgac.logic.unification.LVal.lval;
+
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -12,16 +15,13 @@ import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.Stream;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
-import static com.tgac.logic.unification.LVal.lval;
 
 @SuppressWarnings("unchecked")
 @RunWith(MockitoJUnitRunner.class)
@@ -40,13 +40,16 @@ public class ParametersTest {
 						(m, t) -> m.put(t._1, t._2));
 
 		Constraint constraint = Constraint.of(
-				accessor, Arrays.asList(prefix.get()._1));
+				accessor,
+				FiniteDomainConstraints.class,
+				Arrays.asList(prefix.get()._1));
 
 		System.out.println(FiniteDomainConstraints.empty()
 				.prepend(constraint)
 				.processPrefix(prefix)
 				.apply(Package.of(HashMap.empty(),
-						FiniteDomainConstraints.empty()))
+						HashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty())
+				))
 				.get());
 	}
 
@@ -55,7 +58,7 @@ public class ParametersTest {
 		Unifiable<Long> i = LVar.lvar();
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(i)
-				.apply(Package.of(HashMap.empty(),
+				.apply(Package.empty().withStore(
 						FiniteDomainConstraints.of(
 								LinkedHashMap.<LVar<?>, Domain<?>> empty()
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
@@ -78,12 +81,11 @@ public class ParametersTest {
 		Unifiable<Long> j = LVar.lvar();
 
 		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
-				.apply(Package.of(HashMap.empty(),
-						FiniteDomainConstraints.of(
-								LinkedHashMap.<LVar<?>, Domain<?>> empty()
-										.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
-										.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
-								HashSet.empty())))
+				.apply(Package.empty().withStore(FiniteDomainConstraints.of(
+						LinkedHashMap.<LVar<?>, Domain<?>> empty()
+								.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
+								.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
+						HashSet.empty())))
 				.stream()
 				.collect(Collectors.toList());
 
