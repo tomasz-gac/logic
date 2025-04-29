@@ -267,7 +267,6 @@ public class MiniKanren {
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))
 				.map(r -> r.stream().collect(collector))
 				.map(MiniKanren::<T>wrapUnifiable);
-		//				.orElseGet(() -> done(wrapUnifiable(iterable)));
 	}
 
 	private static <T> Recur<Unifiable<T>> walkTuple(Package s, Iterable<Object> tuple) {
