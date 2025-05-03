@@ -3,12 +3,15 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.Goal.defer;
 import static com.tgac.logic.Matche.llist;
 import static com.tgac.logic.Matche.matche;
+import static com.tgac.logic.Utils.collect;
 import static com.tgac.logic.finitedomain.FiniteDomain.addo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.separate;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
+import com.tgac.functional.category.Monad;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.Goal;
 import com.tgac.logic.Logic;
 import com.tgac.logic.ckanren.CKanren;
@@ -20,6 +23,7 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;
@@ -188,9 +192,8 @@ public class FiniteDomainTest {
 
 		System.out.println(goal);
 
-		var result = goal.solve(i)
-				.map(Unifiable::get)
-				.collect(Collectors.toList());
+		var result = collect(goal.solve(i)
+				.map(Unifiable::get));
 
 		Assertions.assertThat(result)
 				.allMatch(t -> t != 5L);
@@ -231,7 +234,7 @@ public class FiniteDomainTest {
 		int n = 5;
 
 		Unifiable<LList<Integer>> lst = LList.ofAll(v0, v1, v2, v3, v4);
-		var result = distinctoFd(lst)
+		var result = collect(distinctoFd(lst)
 				.and(dom(v0, Interval.of(0, n)))
 				.and(dom(v1, Interval.of(0, n)))
 				.and(dom(v2, Interval.of(0, n)))
@@ -240,8 +243,7 @@ public class FiniteDomainTest {
 				.solve(lst)
 				.map(Unifiable::get)
 				.map(LList::toValueStream)
-				.map(s -> s.collect(Collectors.toList()))
-				.collect(Collectors.toList());
+				.map(s -> s.collect(Collectors.toList())));
 
 		System.out.println(result);
 		HashSet<List<Integer>> unique = new HashSet<>(result);
@@ -262,8 +264,8 @@ public class FiniteDomainTest {
 	}
 
 	static <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out, Goal g) {
-		return g.apply(Package.empty())
-				.flatMap(s -> CKanren.reify(s, out))
+		return collect(g.apply(Package.empty())
+				.flatMap(s -> CKanren.reify(s, out)))
 				.stream();
 	}
 
@@ -274,15 +276,15 @@ public class FiniteDomainTest {
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();
 
-		System.out.println(addo(a, b, c)
-				.and(dom(a, Interval.of(0, 5)))
-				.and(dom(b, Interval.of(0, 5)))
-				.and(dom(c, Interval.of(-5, 10)))
-				.and(Disequality.separate(str, lval("123")))
-				.solve(lval(Tuple.of(a, b, c, str)))
-				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get, Function.identity()))
-				.collect(Collectors.toList()));
+		System.out.println(collect(
+				addo(a, b, c)
+						.and(dom(a, Interval.of(0, 5)))
+						.and(dom(b, Interval.of(0, 5)))
+						.and(dom(c, Interval.of(-5, 10)))
+						.and(Disequality.separate(str, lval("123")))
+						.solve(lval(Tuple.of(a, b, c, str)))
+						.map(Unifiable::get)
+						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get, Function.identity()))
+		));
 	}
-
 }

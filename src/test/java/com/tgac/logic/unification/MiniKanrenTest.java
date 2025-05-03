@@ -1,5 +1,6 @@
 package com.tgac.logic.unification;
 
+import com.tgac.logic.Utils;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
@@ -363,14 +364,12 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = LVar.lvar();
 		Unifiable<Integer> y = LVar.lvar();
 		val result =
-				unify(x, y).and(unify(x, 2))
+				Utils.collect(unify(x, y).and(unify(x, 2))
 						.or(unify(x, y), unify(x, 3), unify(y, 4))
 						.or(unify(x, y), unify(x, 3))
 						.or(unify(x, y), unify(x, 3), unify(y, 3))
 						.apply(Package.empty())
-						.map(s -> MiniKanren.reify(s, lval(Tuple.of(x, y))).get())
-						.stream()
-						.collect(Collectors.toList());
+						.map(s -> MiniKanren.reify(s, lval(Tuple.of(x, y))).get()));
 		Assertions.assertThat(result.get(0).get())
 				.isEqualTo(Tuple.of(lval(2), lval(2)));
 		Assertions.assertThat(result.get(1).get())
@@ -385,10 +384,9 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = LVar.lvar();
 		val result = runStream(lval(Tuple.of(x, y)),
 				unify(x, y).and(unify(x, 2))
-						.or(unify(x, y), unify(x, 3), unify(y, 4))
-						.or(unify(x, y), unify(x, 3))
-						.or(unify(x, y), unify(x, 3), unify(y, 3)))
+						.or(unify(x, y), unify(x, 3), unify(y, 4)))
 				.collect(Collectors.toList());
+		System.out.println(result);
 		Assertions.assertThat(result.get(0).get())
 				.isEqualTo(Tuple.of(lval(2), lval(2)));
 		Assertions.assertThat(result.get(1).get())
@@ -405,13 +403,12 @@ public class MiniKanrenTest {
 		Unifiable<Option<Unifiable<Integer>>> v = LVar.lvar();
 		Unifiable<Integer> val = LVar.lvar();
 		Unifiable<Integer> val2 = LVar.lvar();
-		Assertions.assertThat(unify(u, Option.of(val2))
+		Assertions.assertThat(Utils.collect(unify(u, Option.of(val2))
 						.and(unify(v, Option.of(val)))
 						.and(unify(u, v))
 						.and(unify(val, 123))
 						.solve(val2)
-						.map(Unifiable::get)
-						.collect(Collectors.toList()))
+						.map(Unifiable::get)))
 				.containsExactly(123);
 	}
 

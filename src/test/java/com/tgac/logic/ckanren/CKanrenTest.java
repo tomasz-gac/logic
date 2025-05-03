@@ -1,6 +1,8 @@
 package com.tgac.logic.ckanren;
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.step.Step;
+import com.tgac.logic.Utils;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
@@ -20,19 +22,16 @@ public class CKanrenTest {
 	public void shouldUnify() {
 		Unifiable<Integer> u = LVar.lvar();
 		Unifiable<Integer> v = lval(1);
-		Step<Package> s = CKanren.unify(u, v)
+		Cont<Package, Void> s = CKanren.unify(u, v)
 				.apply(Package.empty());
-		List<Integer> map = s
+		List<Integer> map = Utils.collect(s
 				.map(p -> Recur.done(MiniKanren.walk(p, v))
-						.map(v1 -> CKanren.
-								reify(p, v1)
+						.map(v1 -> Utils.collect(CKanren.
+										reify(p, v1))
 								.stream()
 								.collect(Collectors.toList()).get(0).get())
-						.get())
-				.stream()
-				.collect(Collectors.toList());
+						.get()));
 		Assertions.assertThat(map)
 				.containsExactly(1);
 	}
-
 }

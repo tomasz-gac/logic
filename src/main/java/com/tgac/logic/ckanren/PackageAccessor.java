@@ -1,14 +1,14 @@
 package com.tgac.logic.ckanren;
-import com.tgac.functional.step.Step;
+
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.Goal;
 import com.tgac.logic.unification.Package;
 import io.vavr.control.Option;
+import java.util.ArrayList;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.var;
-
-import java.util.ArrayList;
-import java.util.function.Function;
 
 /**
  * This is the λ_M/f_M from cKanren paper. It is a recursive function from Package ⟶ optional Package
@@ -38,7 +38,9 @@ public interface PackageAccessor extends Function<Package, Option<Package>> {
 	}
 
 	default Goal asGoal() {
-		return s -> Step.of(apply(s));
+		return s -> apply(s)
+				.map(Cont::<Package, Void>just)
+				.getOrElse(Cont::empty);
 	}
 
 	@Value

@@ -2,6 +2,7 @@ package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.unification.LVal.lval;
 
+import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -57,14 +58,12 @@ public class ParametersTest {
 	public void shouldForceAnswer() {
 		Unifiable<Long> i = LVar.lvar();
 
-		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(i)
+		java.util.List<Package> collect = Utils.collect(EnforceConstraintsFD.forceAns(i)
 				.apply(Package.empty().withStore(
 						FiniteDomainConstraints.of(
 								LinkedHashMap.<LVar<?>, Domain<?>> empty()
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
-								HashSet.empty())))
-				.stream()
-				.collect(Collectors.toList());
+								HashSet.empty()))));
 
 		System.out.println(collect);
 
@@ -80,14 +79,13 @@ public class ParametersTest {
 		Unifiable<Long> i = LVar.lvar();
 		Unifiable<Long> j = LVar.lvar();
 
-		java.util.List<Package> collect = EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
-				.apply(Package.empty().withStore(FiniteDomainConstraints.of(
-						LinkedHashMap.<LVar<?>, Domain<?>> empty()
-								.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
-								.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
-						HashSet.empty())))
-				.stream()
-				.collect(Collectors.toList());
+		java.util.List<Package> collect = Utils.collect(
+				EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
+						.apply(Package.empty().withStore(FiniteDomainConstraints.of(
+								LinkedHashMap.<LVar<?>, Domain<?>> empty()
+										.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
+										.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
+								HashSet.empty()))));
 
 		System.out.println(collect);
 

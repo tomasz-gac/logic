@@ -11,6 +11,7 @@ import static com.tgac.logic.unification.MiniKanren.unify;
 import static com.tgac.logic.unification.MiniKanren.walkAll;
 
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.step.Step;
 import com.tgac.logic.Goal;
@@ -33,11 +34,11 @@ public class Disequality {
 			Option<Package> unificationResult = unify(withoutConstraints(s), lhs, rhs);
 			switch (verifySeparate(unificationResult, s)) {
 				case UNIFIED:
-					return Step.empty();
+					return Cont.empty();
 				case ALREADY_SEPARATE:
-					return Step.single(s);
+					return Cont.just(s);
 				case SEPARATE_FOR_NOW:
-					return Step.single(withConstraint(s,
+					return Cont.just(withConstraint(s,
 							NeqConstraint.of(
 									prefixS(
 											s.getSubstitutions(),

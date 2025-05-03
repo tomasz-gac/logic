@@ -2,6 +2,7 @@ package com.tgac.logic;
 
 import static com.tgac.logic.ckanren.CKanren.unify;
 
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.step.Step;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
@@ -214,7 +215,7 @@ public class Matche {
 	}
 
 	public static <T> Case<T> variable(Supplier<Goal> sup) {
-		return u -> s -> Step.incomplete(() ->
+		return u -> s -> Cont.defer(() ->
 				MiniKanren.walkAll(s, u)
 						.map(v -> v.asVar()
 								.map(__ -> sup.get())
@@ -223,7 +224,7 @@ public class Matche {
 	}
 
 	public static <T> Case<T> value(Function1<T, Goal> f) {
-		return u -> s -> Step.incomplete(() ->
+		return u -> s -> Cont.defer(() ->
 				MiniKanren.walkAll(s, u)
 						.map(v -> v.asVal()
 								.map(f)

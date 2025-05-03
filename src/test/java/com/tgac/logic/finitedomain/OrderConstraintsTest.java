@@ -11,6 +11,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import com.tgac.functional.Streams;
 import com.tgac.logic.Goal;
 import com.tgac.logic.Matche;
+import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
@@ -33,14 +34,13 @@ public class OrderConstraintsTest {
 		Unifiable<Long> j = lvar();
 
 		java.util.List<Tuple2<Long, Long>> result =
-				Goal.success()
+				Utils.collect(Goal.success()
 						.and((FiniteDomain.leq(i, j)))
 						.and(dom(i, EnumeratedDomain.range(0L, 4L)))
 						.and(dom(j, EnumeratedDomain.range(0L, 4L)))
 						.solve(lval(Tuple.of(i, j)))
 						.map(Unifiable::get)
-						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
-						.collect(Collectors.toList());
+						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get)));
 
 		System.out.println(result);
 
@@ -54,14 +54,13 @@ public class OrderConstraintsTest {
 		Unifiable<Long> j = lvar();
 
 		java.util.List<Tuple2<Long, Long>> result =
-				Goal.success()
+				Utils.collect(Goal.success()
 						.and(dom(i, EnumeratedDomain.range(0L, 4L)))
 						.and(dom(j, EnumeratedDomain.range(0L, 4L)))
 						.and((FiniteDomain.leq(i, j)))
 						.solve(lval(Tuple.of(i, j)))
 						.map(Unifiable::get)
-						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
-						.collect(Collectors.toList());
+						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get)));
 
 		System.out.println(result);
 
@@ -75,7 +74,7 @@ public class OrderConstraintsTest {
 		Unifiable<Long> y = lvar();
 		Unifiable<Long> z = lvar();
 
-		List<Tuple2<Long, Long>> results = Goal.success()
+		List<Tuple2<Long, Long>> results = Utils.collect(Goal.success()
 				.and(dom(x, EnumeratedDomain.range(3L, 6L)))
 				.and(dom(z, EnumeratedDomain.range(3L, 6L)))
 				.and(dom(y, EnumeratedDomain.range(1L, 5L)))
@@ -83,8 +82,7 @@ public class OrderConstraintsTest {
 				.and(CKanren.unify(x, y))
 				.solve(lval(Tuple.of(y, z)))
 				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get))
-				.collect(Collectors.toList());
+				.map(t -> t.map(Unifiable::get, Unifiable::get)));
 
 		System.out.println(results);
 
@@ -103,7 +101,7 @@ public class OrderConstraintsTest {
 		int n = 6;
 
 		Unifiable<LList<Integer>> lst = LList.ofAll(v0, v1, v2, v3, v4, v5);
-		var result = allLesso(lst)
+		var result = Utils.collect(allLesso(lst)
 				.and(dom(v0, Interval.of(0, n)))
 				.and(dom(v1, Interval.of(0, n)))
 				.and(dom(v2, Interval.of(0, n)))
@@ -113,8 +111,7 @@ public class OrderConstraintsTest {
 				.solve(lst)
 				.map(Unifiable::get)
 				.map(LList::toValueStream)
-				.map(s -> s.collect(Collectors.toList()))
-				.collect(Collectors.toList());
+				.map(s -> s.collect(Collectors.toList())));
 
 		System.out.println(result);
 		HashSet<List<Integer>> unique = new HashSet<>(result);

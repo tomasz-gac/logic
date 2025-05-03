@@ -5,8 +5,8 @@ import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.ckanren.StoreSupport.processPrefix;
 import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
 
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
-import com.tgac.functional.step.Step;
 import com.tgac.logic.Goal;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
@@ -25,18 +25,22 @@ import lombok.var;
 public class CKanren {
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> Step.of(MiniKanren.unify(s, u, v)
+		Goal goal = s -> MiniKanren.unify(s, u, v)
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
-						processPrefix(s, s1.getSubstitutions())));
+						processPrefix(s, s1.getSubstitutions()))
+				.map(Cont::<Package, Void>just)
+				.getOrElse(Cont::empty);
 		return goal.named(u + " ≣ " + v);
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> Step.of(MiniKanren.unifyUnsafe(s, u, v)
+		Goal goal = s -> MiniKanren.unifyUnsafe(s, u, v)
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
-						processPrefix(s, s1.getSubstitutions())));
+						processPrefix(s, s1.getSubstitutions()))
+				.map(Cont::<Package, Void>just)
+				.getOrElse(Cont::empty);
 		return goal.named(u + " ≣_nc " + v);
 	}
 
@@ -63,9 +67,9 @@ public class CKanren {
 				Option.of(p);
 	}
 
-	public static <T> Step<Unifiable<T>> reify(Package s, Unifiable<T> x) {
+	public static <T> Cont<Unifiable<T>, Void> reify(Package s, Unifiable<T> x) {
 		return enforceConstraints(s, x).apply(s)
-				.flatMap(s1 -> Step.incomplete(() ->
+				.flatMap(s1 -> Cont.defer(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->
 										r.getSubstitutions().isEmpty() ?
@@ -75,7 +79,7 @@ public class CKanren {
 																s1.getConstraints() == null ?
 																		result :
 																		StoreSupport.reify(s1, result, vr._2))))
-								.map(Step::single)));
+								.map(Cont::just)));
 	}
 
 	public static <T> Recur<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {

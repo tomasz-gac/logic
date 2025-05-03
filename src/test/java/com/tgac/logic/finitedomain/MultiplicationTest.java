@@ -9,13 +9,13 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.logic.Goal;
+import com.tgac.logic.Utils;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.var;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
@@ -30,14 +30,14 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				FiniteDomain.multo(a, b, c)
+				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(c.unify(-4))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
 						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-						.collect(Collectors.toList());
+				);
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(Tuple.of(-2, 2, -4), Tuple.of(2, -2, -4));
@@ -50,14 +50,13 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				FiniteDomain.multo(a, b, c)
+				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(a.unify(-2))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-						.collect(Collectors.toList());
+						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -75,14 +74,13 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				FiniteDomain.multo(a, b, c)
+				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(b.unify(-2))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-						.collect(Collectors.toList());
+						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -100,14 +98,13 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				FiniteDomain.multo(a, b, c)
+				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(a.unify(0))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-						.collect(Collectors.toList());
+						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -125,14 +122,13 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				FiniteDomain.multo(a, b, c)
+				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(b.unify(0))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-						.collect(Collectors.toList());
+						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -150,14 +146,13 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				FiniteDomain.multo(a, b, c)
+				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(c.unify(0))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-						.collect(Collectors.toList());
+						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -179,14 +174,13 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				FiniteDomain.multo(a, b, c)
+				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-						.collect(Collectors.toList());
+						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		System.out.println(collect);
 
@@ -233,7 +227,7 @@ public class MultiplicationTest {
 		Unifiable<Integer> divisor = lvar();
 		Unifiable<Integer> rest = lvar();
 		Unifiable<Integer> result = lvar();
-		var results = Goal.success()
+		var results = Utils.collect(Goal.success()
 				.and(dom(divided, Interval.of(-15, 15)))
 				.and(dom(divisor, Singleton.of(3)))
 				.and(dom(result, Singleton.of(-3)))
@@ -241,8 +235,7 @@ public class MultiplicationTest {
 				.and(divoWithRest(divided, divisor, rest, result))
 				.solve(lval(Tuple.of(divided, divisor, rest, result)))
 				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get, Unifiable::get))
-				.collect(Collectors.toList());
+				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		System.out.println(results);
 		Assertions.assertThat(results)
@@ -260,13 +253,12 @@ public class MultiplicationTest {
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();
-		var results = multo(a, b, c)
+		var results = Utils.collect(multo(a, b, c)
 				.and(dom(a, Interval.of(0, 1000)))
 				.and(dom(b, Interval.of(0, 1000)))
 				.solve(lval(Tuple.of(a, b, c)))
 				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-				.collect(Collectors.toList());
+				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		Assertions.assertThat(results)
 				.allMatch(t -> t._1 * t._2 == t._3);

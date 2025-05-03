@@ -6,6 +6,7 @@ import static com.tgac.logic.Matche.matche;
 import static com.tgac.logic.ckanren.CKanren.unify;
 
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.step.Step;
 import com.tgac.logic.unification.LList;
@@ -200,7 +201,7 @@ public class Logic {
 	}
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
-		return s -> Step.incomplete(() ->
+		return s -> Cont.defer(() ->
 				MiniKanren.walkAll(s, v1)
 						.map(v -> v.asVal()
 								.map(f)
@@ -256,7 +257,7 @@ public class Logic {
 	}
 
 	public static Goal project(IndexedSeq<Unifiable<?>> goals, Function<IndexedSeq<Unifiable<Object>>, Goal> f) {
-		return s -> Step.incomplete(() ->
+		return s -> Cont.defer(() ->
 				goals.toJavaStream()
 						.map(v -> MiniKanren.walkAll(s, v)
 								.map(java.util.stream.Stream::of))

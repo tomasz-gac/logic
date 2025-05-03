@@ -2,6 +2,7 @@ package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.functional.step.Step;
 import com.tgac.logic.Goal;
@@ -292,7 +293,7 @@ public class FiniteDomain {
 	}
 
 	private static Goal fdGoal() {
-		return s -> Step.single(FiniteDomainConstraints.register(s));
+		return s -> Cont.just(FiniteDomainConstraints.register(s));
 	}
 
 	private static <T extends Comparable<T>> T minResult(BinaryOperator<T> f, Array<Tuple2<T, T>> args) {
@@ -318,7 +319,7 @@ public class FiniteDomain {
 								.map(Singleton::of))
 						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get())))
 						.processDom(to)
-						.andThen(Step::of)
+						.andThen(p -> p.map(Cont::<Package, Void>just).getOrElse(Cont::empty))
 						.apply(s))
 				.named(String.format("copyDom(%s, %s)", from, to));
 	}

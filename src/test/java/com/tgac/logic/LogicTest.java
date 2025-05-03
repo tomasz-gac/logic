@@ -1,4 +1,9 @@
 package com.tgac.logic;
+
+import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.Unifiable;
@@ -7,19 +12,14 @@ import io.vavr.Tuple3;
 import io.vavr.collection.Stream;
 import io.vavr.control.Either;
 import io.vavr.control.Option;
-import lombok.val;
-import lombok.var;
-import org.assertj.core.api.Assertions;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
-import static org.assertj.core.api.Assertions.assertThat;
+import lombok.val;
+import lombok.var;
+import org.assertj.core.api.Assertions;
+import org.junit.Test;
 
 public class LogicTest {
 
@@ -27,6 +27,14 @@ public class LogicTest {
 			Unifiable<T> lhs,
 			Unifiable<LList<T>> cons) {
 		return cons.unify(LList.of(lhs, lvar()));
+	}
+
+	@Test
+	public void shouldConde(){
+		Unifiable<Integer> x = lvar();
+		System.out.println(
+				Utils.collect(x.unify(1).or(x.unify(2)).or(x.unify(3))
+						.solve(x)));
 	}
 
 	@Test
@@ -44,6 +52,7 @@ public class LogicTest {
 		assertThat(collect)
 				.containsExactly(1, 2, 3, 4);
 	}
+
 	public static <T> java.util.stream.Stream<Unifiable<T>> runStream(Unifiable<T> x, Goal... goals) {
 		return Goal.success().and(goals)
 				.solve(x);
@@ -302,12 +311,11 @@ public class LogicTest {
 	@Test
 	public void shouldComputeAnd() {
 		Unifiable<Tuple3<Unifiable<Boolean>, Unifiable<Boolean>, Unifiable<Boolean>>> out = lvar();
-		var result = Matche.matche(out,
+		var result = Utils.collect(Matche.matche(out,
 						Matche.tuple(Logic::conjo))
 				.solve(out)
 				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-				.collect(Collectors.toList());
+				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		Assertions.assertThat(result)
 				.allMatch(t -> (t._1 && t._2) == t._3);
@@ -316,12 +324,11 @@ public class LogicTest {
 	@Test
 	public void shouldComputeOr() {
 		Unifiable<Tuple3<Unifiable<Boolean>, Unifiable<Boolean>, Unifiable<Boolean>>> out = lvar();
-		var result = Matche.matche(out,
+		var result = Utils.collect(Matche.matche(out,
 						Matche.tuple(Logic::disjo))
 				.solve(out)
 				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
-				.collect(Collectors.toList());
+				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
 
 		Assertions.assertThat(result)
 				.allMatch(t -> (t._1 || t._2) == t._3);
@@ -331,12 +338,11 @@ public class LogicTest {
 	public void shouldComputeAnyo() {
 		Unifiable<LList<Boolean>> out = lvar();
 
-		var result = Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
+		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.anyo(out, lval(true)))
 				.solve(out)
 				.map(Unifiable::get)
-				.map(l -> l.toValueStream().collect(Collectors.toList()))
-				.collect(Collectors.toList());
+				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
 
@@ -348,12 +354,11 @@ public class LogicTest {
 	@Test
 	public void shouldComputeAnyoForFailingLists() {
 		Unifiable<LList<Boolean>> out = lvar();
-		var result = Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
+		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.anyo(out, lval(false)))
 				.solve(out)
 				.map(Unifiable::get)
-				.map(l -> l.toValueStream().collect(Collectors.toList()))
-				.collect(Collectors.toList());
+				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
 
@@ -364,12 +369,11 @@ public class LogicTest {
 	@Test
 	public void shouldComputeAlloForFail() {
 		Unifiable<LList<Boolean>> out = lvar();
-		var result = Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
+		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.allo(out, lval(false)))
 				.solve(out)
 				.map(Unifiable::get)
-				.map(l -> l.toValueStream().collect(Collectors.toList()))
-				.collect(Collectors.toList());
+				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
 
@@ -381,12 +385,11 @@ public class LogicTest {
 	@Test
 	public void shouldComputeAlloForSuccessList() {
 		Unifiable<LList<Boolean>> out = lvar();
-		var result = Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
+		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.allo(out, lval(true)))
 				.solve(out)
 				.map(Unifiable::get)
-				.map(l -> l.toValueStream().collect(Collectors.toList()))
-				.collect(Collectors.toList());
+				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
 
