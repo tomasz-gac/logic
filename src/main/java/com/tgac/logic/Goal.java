@@ -1,9 +1,11 @@
 package com.tgac.logic;
 
+import static com.tgac.functional.category.Unit.unit;
 import static com.tgac.functional.monad.Cont.suspend;
 import static com.tgac.functional.recursion.Recur.done;
 
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.category.Unit;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Engine;
 import com.tgac.functional.recursion.Recur;
@@ -40,7 +42,7 @@ import lombok.Value;
 /**
  * @author TGa
  */
-public interface Goal extends Function<Package, Cont<Package, Void>> {
+public interface Goal extends Function<Package, Cont<Package, Unit>> {
 
 	static Goal goal(Goal g) {
 		return g;
@@ -75,11 +77,11 @@ public interface Goal extends Function<Package, Cont<Package, Void>> {
 	default Goal debug(String name, Map<String, Unifiable<?>> vars) {
 		return s -> {
 			System.out.println("before " + name + ": " + printVars(s, vars));
-			Cont<Package, Void> ss = apply(s);
+			Cont<Package, Unit> ss = apply(s);
 			List<Package> items = new ArrayList<>();
 			ss.run(p -> {
 				items.add(p);
-				return null;
+				return unit();
 			}).get();
 			System.out.println("after " + name + ":" + items.stream()
 					.map(s1 -> "\n- " + printVars(s1, vars))
@@ -107,12 +109,13 @@ public interface Goal extends Function<Package, Cont<Package, Void>> {
 		}
 
 		@Override
-		public Cont<Package, Void> apply(Package s) {
+		public Cont<Package, Unit> apply(Package s) {
 			return k -> Recur.interleave(
 					clauses.stream()
 							.map(g -> g.apply(s).apply(k))
 							.collect(Collectors.toList()),
-					__ -> {});
+					__ -> {
+					});
 		}
 
 		@Override
@@ -163,7 +166,7 @@ public interface Goal extends Function<Package, Cont<Package, Void>> {
 		}
 
 		@Override
-		public Cont<Package, Void> apply(Package s) {
+		public Cont<Package, Unit> apply(Package s) {
 			return clauses.stream()
 					.reduce(suspend(k -> k.apply(s)),
 							Cont::flatMap,
@@ -179,20 +182,27 @@ public interface Goal extends Function<Package, Cont<Package, Void>> {
 	static Goal condu(Goal... goals) {
 		return s -> Cont.callCC(exit -> Cont.suspend(k -> {
 			AtomicBoolean committed = new AtomicBoolean(false);
-
-			for (Goal g : goals) {
-				g.apply(s).runRec(v -> {
-					if (committed.compareAndSet(false, true)) {
-						Cont<Package, Void> with = exit.with(v);
-						return with.runRec(k);
-					}
-					return Recur.done(null);
-				});
-				if (committed.get())
-					break;
-			}
-
-			return Recur.done(null);
+			return Arrays.stream(goals)
+					.reduce(Recur.done(unit()),
+							(acc, g) -> acc.flatMap(__ -> {
+								List<Package> results = new ArrayList<>();
+								Recur<Unit> collection = g.apply(s).run(s1 -> {
+									results.add(s1);
+									return unit();
+								});
+								return collection.flatMap(_1 -> {
+									if (committed.get() || results.isEmpty()) {
+										return done(unit());
+									}
+									committed.set(true);
+									return results.stream()
+											.map(exit::<Package>with)
+											.map(c -> c.runRec(k))
+											.reduce(done(unit()),
+													(l, r) -> l.flatMap(_2 -> r));
+								});
+							}),
+							Exceptions.throwingBiOp(UnsupportedOperationException::new));
 		}));
 	}
 
@@ -242,41 +252,42 @@ public interface Goal extends Function<Package, Cont<Package, Void>> {
 	}
 
 	static Goal failure() {
-		return goal(s -> k -> k.apply(null))
+		return goal(s -> k -> done(unit()))
 				.named("failure");
 	}
 
-//	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
-//		Deque<Unifiable<T>> results = new ArrayDeque<>();
-//		return apply(Package.empty())
-//				.flatMap(s -> CKanren.reify(s, out))
-//				.run(v -> {
-//					results.push(v);
-//					return null;
-//				}).toEngine()
-//				.stream()
-//				.peek(System.out::println)
-//				.map(__ -> results.pollFirst());
-//	}
+	//	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
+	//		Deque<Unifiable<T>> results = new ArrayDeque<>();
+	//		return apply(Package.empty())
+	//				.flatMap(s -> CKanren.reify(s, out))
+	//				.run(v -> {
+	//					results.push(v);
+	//					return null;
+	//				}).toEngine()
+	//				.stream()
+	//				.peek(System.out::println)
+	//				.map(__ -> results.pollFirst());
+	//	}
 
 	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
 		Deque<Unifiable<T>> results = new ArrayDeque<>();
 
-		Recur<Void> recur = apply(Package.empty())
+		Recur<Unit> recur = apply(Package.empty())
 				.flatMap(s -> CKanren.reify(s, out))
 				.run(v -> {
 					results.add(v);      // Push result to queue
-					return null;         // Void signal
+					return unit();         // Unit signal
 				});
 
-		Engine<Void> engine = recur.toEngine();
+		Engine<Unit> engine = recur.toEngine();
 
 		Spliterator<Unifiable<T>> spliterator = new Spliterator<Unifiable<T>>() {
 			@Override
 			public boolean tryAdvance(Consumer<? super Unifiable<T>> action) {
 				while (results.isEmpty()) {
-					if (engine.run(64, v -> {})) {
-						if(!results.isEmpty()){
+					if (engine.run(64, v -> {
+					})) {
+						while (!results.isEmpty()) {
 							action.accept(results.poll());
 						}
 						return false; // Engine completed
@@ -286,9 +297,18 @@ public interface Goal extends Function<Package, Cont<Package, Void>> {
 				return true;
 			}
 
-			@Override public Spliterator<Unifiable<T>> trySplit() { return null; }
-			@Override public long estimateSize() { return Long.MAX_VALUE; }
-			@Override public int characteristics() {
+			@Override
+			public Spliterator<Unifiable<T>> trySplit() {
+				return null;
+			}
+
+			@Override
+			public long estimateSize() {
+				return Long.MAX_VALUE;
+			}
+
+			@Override
+			public int characteristics() {
 				return Spliterator.ORDERED | Spliterator.NONNULL;
 			}
 		};
@@ -309,7 +329,7 @@ public interface Goal extends Function<Package, Cont<Package, Void>> {
 		Goal goal;
 
 		@Override
-		public Cont<Package, Void> apply(Package aPackage) {
+		public Cont<Package, Unit> apply(Package aPackage) {
 			return goal.apply(aPackage);
 		}
 

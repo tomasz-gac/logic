@@ -1,4 +1,13 @@
 package com.tgac.logic.separate;
+
+import static com.tgac.logic.Goal.defer;
+import static com.tgac.logic.LogicTest.runStream;
+import static com.tgac.logic.separate.Disequality.rembero;
+import static com.tgac.logic.separate.Disequality.separate;
+import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.tgac.logic.Goal;
 import com.tgac.logic.Logic;
 import com.tgac.logic.LogicTest;
@@ -8,22 +17,13 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import lombok.experimental.ExtensionMethod;
-import org.assertj.core.api.Assertions;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.LogicTest.runStream;
-import static com.tgac.logic.separate.Disequality.rembero;
-import static com.tgac.logic.separate.Disequality.separate;
-import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
-import static org.assertj.core.api.Assertions.assertThat;
+import lombok.experimental.ExtensionMethod;
+import org.assertj.core.api.Assertions;
+import org.junit.Test;
 
 @SuppressWarnings("unchecked")
 @ExtensionMethod(Disequality.class)
@@ -284,28 +284,44 @@ public class SeparateTest {
 	public void shouldReturnFromSingleGoalThatSucceeds() {
 		Unifiable<Integer> x = lvar();
 		List<Integer> results = Utils.collect(Goal.condu(
-								x.separate(x),
-								x.unify(1).or(x.unify(2)),
-								x.unify(3))
-						.solve(x)
-						.map(Unifiable::get));
+						x.separate(x),
+						x.unify(1).or(x.unify(2)),
+						x.unify(3))
+				.solve(x)
+				.map(Unifiable::get));
 
 		Assertions.assertThat(results)
 				.containsExactly(1, 2);
 	}
 
-//	@Test
-//	public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
-//		Unifiable<Integer> x = lvar();
-//		List<Integer> results = Goal.conda(
-//						x.separate(x),
-//						x.unify(1).or(x.unify(2)),
-//						x.unify(3))
-//				.solve(x)
-//				.map(Unifiable::get)
-//				.collect(Collectors.toList());
-//
-//		Assertions.assertThat(results)
-//				.containsExactly(1);
-//	}
+	@Test
+	public void shouldReturnFromSingleBranch() {
+		Unifiable<Integer> x = lvar();
+		List<Integer> results =
+				Goal.condu(
+								x.unify(2).or(x.unify(3)),
+								x.unify(1),
+								x.unify(3))
+						.solve(x)
+						.map(Unifiable::get)
+						.collect(Collectors.toList());
+
+		Assertions.assertThat(results)
+				.containsExactly(2, 3);
+	}
+
+	//	@Test
+	//	public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
+	//		Unifiable<Integer> x = lvar();
+	//		List<Integer> results = Goal.conda(
+	//						x.separate(x),
+	//						x.unify(1).or(x.unify(2)),
+	//						x.unify(3))
+	//				.solve(x)
+	//				.map(Unifiable::get)
+	//				.collect(Collectors.toList());
+	//
+	//		Assertions.assertThat(results)
+	//				.containsExactly(1);
+	//	}
 }

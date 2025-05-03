@@ -2,9 +2,9 @@ package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 
+import com.tgac.functional.category.Unit;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
-import com.tgac.functional.step.Step;
 import com.tgac.logic.Goal;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
@@ -319,7 +319,7 @@ public class FiniteDomain {
 								.map(Singleton::of))
 						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get())))
 						.processDom(to)
-						.andThen(p -> p.map(Cont::<Package, Void>just).getOrElse(Cont::empty))
+						.andThen(p -> p.map(Cont::<Package, Unit>just).getOrElse(Cont.complete(Unit.unit())))
 						.apply(s))
 				.named(String.format("copyDom(%s, %s)", from, to));
 	}

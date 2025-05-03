@@ -264,9 +264,7 @@ public class FiniteDomainTest {
 	}
 
 	static <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out, Goal g) {
-		return collect(g.apply(Package.empty())
-				.flatMap(s -> CKanren.reify(s, out)))
-				.stream();
+		return g.solve(out);
 	}
 
 	@Test

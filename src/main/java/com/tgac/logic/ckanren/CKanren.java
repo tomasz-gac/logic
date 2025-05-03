@@ -1,10 +1,12 @@
 package com.tgac.logic.ckanren;
 
+import static com.tgac.functional.category.Unit.*;
 import static com.tgac.logic.ckanren.StoreSupport.enforceConstraints;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.ckanren.StoreSupport.processPrefix;
 import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
 
+import com.tgac.functional.category.Unit;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.Goal;
@@ -29,8 +31,8 @@ public class CKanren {
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
 						processPrefix(s, s1.getSubstitutions()))
-				.map(Cont::<Package, Void>just)
-				.getOrElse(Cont::empty);
+				.map(Cont::<Package, Unit>just)
+				.getOrElse(() -> Cont.complete(unit()));
 		return goal.named(u + " ≣ " + v);
 	}
 
@@ -39,8 +41,8 @@ public class CKanren {
 				.flatMap(s1 -> s == s1 ?
 						Option.of(s) :
 						processPrefix(s, s1.getSubstitutions()))
-				.map(Cont::<Package, Void>just)
-				.getOrElse(Cont::empty);
+				.map(Cont::<Package, Unit>just)
+				.getOrElse(() -> Cont.complete(unit()));
 		return goal.named(u + " ≣_nc " + v);
 	}
 
@@ -67,7 +69,7 @@ public class CKanren {
 				Option.of(p);
 	}
 
-	public static <T> Cont<Unifiable<T>, Void> reify(Package s, Unifiable<T> x) {
+	public static <T> Cont<Unifiable<T>, Unit> reify(Package s, Unifiable<T> x) {
 		return enforceConstraints(s, x).apply(s)
 				.flatMap(s1 -> Cont.defer(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)

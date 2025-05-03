@@ -1,4 +1,5 @@
 package com.tgac.logic.ckanren;
+import com.tgac.functional.category.Unit;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.step.Step;
@@ -22,7 +23,7 @@ public class CKanrenTest {
 	public void shouldUnify() {
 		Unifiable<Integer> u = LVar.lvar();
 		Unifiable<Integer> v = lval(1);
-		Cont<Package, Void> s = CKanren.unify(u, v)
+		Cont<Package, Unit> s = CKanren.unify(u, v)
 				.apply(Package.empty());
 		List<Integer> map = Utils.collect(s
 				.map(p -> Recur.done(MiniKanren.walk(p, v))

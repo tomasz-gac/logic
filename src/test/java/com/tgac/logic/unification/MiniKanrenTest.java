@@ -384,7 +384,9 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = LVar.lvar();
 		val result = runStream(lval(Tuple.of(x, y)),
 				unify(x, y).and(unify(x, 2))
-						.or(unify(x, y), unify(x, 3), unify(y, 4)))
+						.or(unify(x, y), unify(x, 3), unify(y, 4))
+						.or(unify(x, y), unify(x, 3))
+						.or(unify(x, y), unify(x, 3), unify(y, 3)))
 				.collect(Collectors.toList());
 		System.out.println(result);
 		Assertions.assertThat(result.get(0).get())
