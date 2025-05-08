@@ -8,7 +8,6 @@ import static com.tgac.logic.ckanren.CKanren.unify;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
-import com.tgac.functional.step.Step;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;

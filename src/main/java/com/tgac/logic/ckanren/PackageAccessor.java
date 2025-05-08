@@ -1,8 +1,8 @@
 package com.tgac.logic.ckanren;
 
-import static com.tgac.functional.category.Unit.unit;
+import static com.tgac.functional.category.Nothing.nothing;
 
-import com.tgac.functional.category.Unit;
+import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.Goal;
 import com.tgac.logic.unification.Package;
@@ -42,8 +42,8 @@ public interface PackageAccessor extends Function<Package, Option<Package>> {
 
 	default Goal asGoal() {
 		return s -> apply(s)
-				.map(Cont::<Package, Unit>just)
-				.getOrElse(() -> Cont.complete(unit()));
+				.map(Cont::<Package, Nothing>just)
+				.getOrElse(() -> Cont.complete(nothing()));
 	}
 
 	@Value

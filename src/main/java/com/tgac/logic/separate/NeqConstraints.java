@@ -68,7 +68,7 @@ class NeqConstraints implements ConstraintStore {
 
 	@Override
 	public <A> Unifiable<A> reify(Unifiable<A> unifiable, Package renamePackage, Package s) {
-		Unifiable<A> result = walkAllConstraints(getConstraints(s), s)
+		return walkAllConstraints(getConstraints(s), s)
 				.flatMap(c_star -> removeSubsumed(
 						purify(c_star, renamePackage),
 						List.empty())
@@ -77,6 +77,5 @@ class NeqConstraints implements ConstraintStore {
 						unifiable :
 						Constrained.of(unifiable, c1.map(NeqConstraint::getSeparate)))
 				.get();
-		return result;
 	}
 }

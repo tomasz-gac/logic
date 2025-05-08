@@ -310,18 +310,18 @@ public class SeparateTest {
 				.containsExactly(2, 3);
 	}
 
-	//	@Test
-	//	public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
-	//		Unifiable<Integer> x = lvar();
-	//		List<Integer> results = Goal.conda(
-	//						x.separate(x),
-	//						x.unify(1).or(x.unify(2)),
-	//						x.unify(3))
-	//				.solve(x)
-	//				.map(Unifiable::get)
-	//				.collect(Collectors.toList());
-	//
-	//		Assertions.assertThat(results)
-	//				.containsExactly(1);
-	//	}
+		@Test
+		public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
+			Unifiable<Integer> x = lvar();
+			List<Integer> results = Goal.conda(
+							x.separate(x),
+							x.unify(1).or(x.unify(2)),
+							x.unify(3))
+					.solve(x)
+					.map(Unifiable::get)
+					.collect(Collectors.toList());
+
+			Assertions.assertThat(results)
+					.containsExactly(1);
+		}
 }

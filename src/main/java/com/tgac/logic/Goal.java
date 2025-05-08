@@ -1,24 +1,18 @@
 package com.tgac.logic;
 
-import static com.tgac.functional.category.Unit.unit;
+import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.monad.Cont.suspend;
 import static com.tgac.functional.recursion.Recur.done;
 
 import com.tgac.functional.Exceptions;
-import com.tgac.functional.category.Unit;
+import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Engine;
 import com.tgac.functional.recursion.Recur;
-import com.tgac.functional.step.Cons;
-import com.tgac.functional.step.Empty;
-import com.tgac.functional.step.Incomplete;
-import com.tgac.functional.step.Single;
-import com.tgac.functional.step.Step;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.collection.Array;
 import io.vavr.collection.Map;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -42,7 +36,7 @@ import lombok.Value;
 /**
  * @author TGa
  */
-public interface Goal extends Function<Package, Cont<Package, Unit>> {
+public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 
 	static Goal goal(Goal g) {
 		return g;
@@ -77,11 +71,11 @@ public interface Goal extends Function<Package, Cont<Package, Unit>> {
 	default Goal debug(String name, Map<String, Unifiable<?>> vars) {
 		return s -> {
 			System.out.println("before " + name + ": " + printVars(s, vars));
-			Cont<Package, Unit> ss = apply(s);
+			Cont<Package, Nothing> ss = apply(s);
 			List<Package> items = new ArrayList<>();
 			ss.run(p -> {
 				items.add(p);
-				return unit();
+				return nothing();
 			}).get();
 			System.out.println("after " + name + ":" + items.stream()
 					.map(s1 -> "\n- " + printVars(s1, vars))
@@ -109,12 +103,12 @@ public interface Goal extends Function<Package, Cont<Package, Unit>> {
 		}
 
 		@Override
-		public Cont<Package, Unit> apply(Package s) {
-			return k -> Recur.interleave(
+		public Cont<Package, Nothing> apply(Package s) {
+			return k -> Recur.forEach(
 					clauses.stream()
 							.map(g -> g.apply(s).apply(k))
 							.collect(Collectors.toList()),
-					__ -> {
+					_0 -> {
 					});
 		}
 
@@ -166,7 +160,7 @@ public interface Goal extends Function<Package, Cont<Package, Unit>> {
 		}
 
 		@Override
-		public Cont<Package, Unit> apply(Package s) {
+		public Cont<Package, Nothing> apply(Package s) {
 			return clauses.stream()
 					.reduce(suspend(k -> k.apply(s)),
 							Cont::flatMap,
@@ -182,57 +176,46 @@ public interface Goal extends Function<Package, Cont<Package, Unit>> {
 	static Goal condu(Goal... goals) {
 		return s -> Cont.callCC(exit -> Cont.suspend(k -> {
 			AtomicBoolean committed = new AtomicBoolean(false);
+			List<Package> results = new ArrayList<>();
 			return Arrays.stream(goals)
-					.reduce(Recur.done(unit()),
-							(acc, g) -> acc.flatMap(__ -> {
-								List<Package> results = new ArrayList<>();
-								Recur<Unit> collection = g.apply(s).run(s1 -> {
-									results.add(s1);
-									return unit();
-								});
-								return collection.flatMap(_1 -> {
-									if (committed.get() || results.isEmpty()) {
-										return done(unit());
-									}
-									committed.set(true);
-									return results.stream()
-											.map(exit::<Package>with)
-											.map(c -> c.runRec(k))
-											.reduce(done(unit()),
-													(l, r) -> l.flatMap(_2 -> r));
-								});
-							}),
+					.reduce(Recur.done(nothing()),
+							(acc, g) -> acc.flatMap(_0 ->
+									g.apply(s).run(s1 -> {
+										results.add(s1);
+										return nothing();
+									}).flatMap(_1 -> {
+										if (committed.get() || results.isEmpty()) {
+											return done(nothing());
+										}
+										committed.set(true);
+										return results.stream()
+												.map(exit::<Package>with)
+												.map(c -> c.runRec(k))
+												.reduce(done(nothing()),
+														(l, r) -> l.flatMap(_2 -> r));
+									})),
 							Exceptions.throwingBiOp(UnsupportedOperationException::new));
 		}));
 	}
 
-	static Recur<Step<Package>> ifu(Array<Step<Package>> streams) {
-		if (streams.isEmpty()) {
-			return done(Empty.instance());
-		} else {
-			return streams.head().accept(new Step.Visitor<Package, Recur<Step<Package>>>() {
-				@Override
-				public Recur<Step<Package>> visit(Empty<Package> empty) {
-					return Recur.recur(() -> ifu(streams.tail()));
-				}
-
-				@Override
-				public Recur<Step<Package>> visit(Incomplete<Package> inc) {
-					return inc.getRest()
-							.flatMap(s -> ifu(Array.of(s).appendAll(streams.tail())));
-				}
-
-				@Override
-				public Recur<Step<Package>> visit(Single<Package> single) {
-					return done(single);
-				}
-
-				@Override
-				public Recur<Step<Package>> visit(Cons<Package> cons) {
-					return done(cons);
-				}
-			});
-		}
+	static Goal conda(Goal... goals) {
+		return s -> Cont.callCC(exit -> Cont.suspend(k -> {
+			AtomicBoolean committed = new AtomicBoolean(false);
+			return Arrays.stream(goals)
+					.reduce(
+							Recur.<Nothing> done(Nothing.nothing()),
+							(acc, g) -> acc.flatMap(__ -> {
+								Recur<Nothing> collected = g.apply(s).runRec(s1 -> {
+									if (committed.compareAndSet(false, true)) {
+										return exit.<Package> with(s1).runRec(k);
+									}
+									return Recur.done(Nothing.nothing()); // ignore subsequent solutions
+								});
+								return collected.map(___ -> Nothing.nothing()); // don’t emit past this point
+							}),
+							(a, b) -> a.flatMap(__ -> b) // never called, but required
+					);
+		}));
 	}
 
 	static Goal defer(Supplier<Goal> g) {
@@ -252,34 +235,21 @@ public interface Goal extends Function<Package, Cont<Package, Unit>> {
 	}
 
 	static Goal failure() {
-		return goal(s -> k -> done(unit()))
+		return goal(s -> k -> done(nothing()))
 				.named("failure");
 	}
-
-	//	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
-	//		Deque<Unifiable<T>> results = new ArrayDeque<>();
-	//		return apply(Package.empty())
-	//				.flatMap(s -> CKanren.reify(s, out))
-	//				.run(v -> {
-	//					results.push(v);
-	//					return null;
-	//				}).toEngine()
-	//				.stream()
-	//				.peek(System.out::println)
-	//				.map(__ -> results.pollFirst());
-	//	}
 
 	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
 		Deque<Unifiable<T>> results = new ArrayDeque<>();
 
-		Recur<Unit> recur = apply(Package.empty())
+		Recur<Nothing> recur = apply(Package.empty())
 				.flatMap(s -> CKanren.reify(s, out))
 				.run(v -> {
 					results.add(v);      // Push result to queue
-					return unit();         // Unit signal
+					return nothing();         // Unit signal
 				});
 
-		Engine<Unit> engine = recur.toEngine();
+		Engine<Nothing> engine = recur.toEngine();
 
 		Spliterator<Unifiable<T>> spliterator = new Spliterator<Unifiable<T>>() {
 			@Override
@@ -329,7 +299,7 @@ public interface Goal extends Function<Package, Cont<Package, Unit>> {
 		Goal goal;
 
 		@Override
-		public Cont<Package, Unit> apply(Package aPackage) {
+		public Cont<Package, Nothing> apply(Package aPackage) {
 			return goal.apply(aPackage);
 		}
 
