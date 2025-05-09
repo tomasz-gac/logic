@@ -10,7 +10,6 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.BFSEngine;
 import com.tgac.functional.recursion.Engine;
 import com.tgac.functional.recursion.ExecutorServiceEngine;
-import com.tgac.functional.recursion.MapBFSEngine;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.MiniKanren;
@@ -295,7 +294,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 					try {
 						engine.close();
 					} catch (Exception e) {
-						e.printStackTrace(System.err);
+						throw new RuntimeException(e);
 					}
 				});
 	}

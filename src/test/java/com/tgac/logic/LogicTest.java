@@ -4,6 +4,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.recursion.SimpleEngine;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.Unifiable;
@@ -296,7 +297,7 @@ public class LogicTest {
 		Unifiable<LList<Integer>> lst = lvar();
 		int n = 100;
 		try (
-				var solved =
+				val solved =
 						Logic.sameLengtho(lst, LList.ofAll(Stream.range(0, n).collect(Collectors.toList())))
 								.and(palindromo2(lst))
 								.solve(lst)
