@@ -30,7 +30,7 @@ public class LogicTest {
 	}
 
 	@Test
-	public void shouldConde(){
+	public void shouldConde() {
 		Unifiable<Integer> x = lvar();
 		System.out.println(
 				Utils.collect(x.unify(1).or(x.unify(2)).or(x.unify(3))
@@ -167,6 +167,35 @@ public class LogicTest {
 						.isEqualTo(t.get()._2.get().stream().count()));
 	}
 
+	public <A> Goal reversoAcc(
+			Unifiable<LList<A>> list,
+			Unifiable<LList<A>> accumulator,
+			Unifiable<LList<A>> result) {
+
+		Unifiable<A> head = lvar("H"); // Using named lvars for clarity
+		Unifiable<LList<A>> tail = lvar("T");
+		Unifiable<LList<A>> newAccumulator = lvar("NewAcc");
+
+		// Base case: list is empty, the accumulator is the result
+		Goal baseCase = list.unify(LList.empty())
+				.and(accumulator.unify(result));
+
+		// Recursive case:
+		// list = [head | tail]
+		// newAccumulator = [head | accumulator]
+		// recurse with reversoAcc(tail, newAccumulator, result)
+		Goal recursiveCase = list.unify(LList.of(head, tail))
+				.and(newAccumulator.unify(LList.of(head, accumulator))) // Prepend head to accumulator
+				.and(Goal.defer(() -> reversoAcc(tail, newAccumulator, result)));
+
+		return baseCase.or(recursiveCase);
+	}
+
+	public <A> Goal efficientReverso(Unifiable<LList<A>> list, Unifiable<LList<A>> reversedList) {
+		// Initial call with an empty accumulator
+		return reversoAcc(list, LList.empty(), reversedList);
+	}
+
 	public <A> Goal reversoUnsafe(Unifiable<LList<A>> lhs, Unifiable<LList<A>> rhs) {
 		Unifiable<A> rHead = lvar();
 		Unifiable<LList<A>> rTail = lvar();
@@ -258,23 +287,32 @@ public class LogicTest {
 		return reverso(palindrome, palindrome);
 	}
 
+	public <A> Goal palindromo3(Unifiable<LList<A>> palindrome) {
+		return efficientReverso(palindrome, palindrome);
+	}
+
 	@Test
 	public void shouldWritePalindrome() {
 		Unifiable<LList<Integer>> lst = lvar();
 		int n = 100;
-		val collected = runStream(lst,
-				Logic.sameLengtho(lst, LList.ofAll(Stream.range(0, n).collect(Collectors.toList()))),
-				palindromo2(lst))
-				.findFirst()
-				.get()
-				.get()
-				.stream()
-				.map(Either::get)
-				.collect(Collectors.toList());
-		System.out.println(collected);
-		for (int i = 0; i < n / 2; ++i) {
-			assertThat(collected.get(i))
-					.isEqualTo(collected.get(n - 1 - i));
+		try (
+				var solved =
+						Logic.sameLengtho(lst, LList.ofAll(Stream.range(0, n).collect(Collectors.toList())))
+								.and(palindromo2(lst))
+								.solve(lst)
+		) {
+			val collected = solved
+					.findFirst()
+					.get()
+					.get()
+					.stream()
+					.map(Either::get)
+					.collect(Collectors.toList());
+			System.out.println(collected);
+			for (int i = 0; i < n / 2; ++i) {
+				assertThat(collected.get(i))
+						.isEqualTo(collected.get(n - 1 - i));
+			}
 		}
 	}
 

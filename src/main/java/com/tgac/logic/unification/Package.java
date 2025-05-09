@@ -39,10 +39,10 @@ public class Package {
 	}
 
 	public <T> Unifiable<T> walk(Unifiable<T> v) {
-		Unifiable<?> result = walkCache.get(v);
-		if (result != null) {
-			return (Unifiable<T>) result;
-		}
+//		Unifiable<?> result = walkCache.get(v);
+//		if (result != null) {
+//			return (Unifiable<T>) result;
+//		}
 		if (v.asVal().isDefined()) {
 			return v;
 		}
@@ -51,7 +51,7 @@ public class Package {
 			// because we test with == to see if var is bound
 			return v;
 		}
-		result = v;
+		Unifiable<?> result = v;
 		Unifiable<?> tmp;
 		while ((tmp = get(result.getVar())) != null) {
 			result = tmp;

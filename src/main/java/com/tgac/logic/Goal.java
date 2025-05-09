@@ -7,20 +7,25 @@ import static com.tgac.functional.recursion.Recur.done;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.functional.recursion.BFSEngine;
 import com.tgac.functional.recursion.Engine;
+import com.tgac.functional.recursion.ExecutorServiceEngine;
+import com.tgac.functional.recursion.MapBFSEngine;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Map;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.Spliterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -37,6 +42,7 @@ import lombok.Value;
  * @author TGa
  */
 public interface Goal extends Function<Package, Cont<Package, Nothing>> {
+	ExecutorService THREAD_POOL = new ForkJoinPool();
 
 	static Goal goal(Goal g) {
 		return g;
@@ -239,8 +245,10 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 				.named("failure");
 	}
 
-	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
-		Deque<Unifiable<T>> results = new ArrayDeque<>();
+	default <T> Stream<Unifiable<T>> solve(
+			Unifiable<T> out,
+			Function<Recur<Nothing>, Engine<Nothing>> factory) {
+		Deque<Unifiable<T>> results = new LinkedBlockingDeque<>();
 
 		Recur<Nothing> recur = apply(Package.empty())
 				.flatMap(s -> CKanren.reify(s, out))
@@ -248,8 +256,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 					results.add(v);      // Push result to queue
 					return nothing();         // Unit signal
 				});
-
-		Engine<Nothing> engine = recur.toEngine();
+		Engine<Nothing> engine = factory.apply(recur);
 
 		Spliterator<Unifiable<T>> spliterator = new Spliterator<Unifiable<T>>() {
 			@Override
@@ -283,7 +290,22 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 			}
 		};
 
-		return StreamSupport.stream(spliterator, false);
+		return StreamSupport.stream(spliterator, false)
+				.onClose(() -> {
+					try {
+						engine.close();
+					} catch (Exception e) {
+						e.printStackTrace(System.err);
+					}
+				});
+	}
+
+	default <T> Stream<Unifiable<T>> solveParallel(Unifiable<T> out) {
+		return solve(out, r -> new ExecutorServiceEngine<>(r, THREAD_POOL));
+	}
+
+	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
+		return solve(out, BFSEngine::new);
 	}
 
 	static String printVars(Package s, Map<String, Unifiable<?>> vars) {
