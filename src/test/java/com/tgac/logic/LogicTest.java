@@ -4,7 +4,9 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.functional.recursion.SimpleEngine;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Logic;
+import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.Unifiable;
@@ -264,14 +266,27 @@ public class LogicTest {
 	public void shouldReverse3() {
 		Unifiable<LList<Integer>> normal = lvar();
 
-		// TODO - assert
-		System.out.println(runStream(normal,
-				Logic.sameLengtho(normal, LList.ofAll(IntStream.range(0, 100)
-						.boxed()
-						.collect(Collectors.toList()))),
-				reverso(normal, normal))
-				.map(Object::toString)
-				.collect(Collectors.joining("\n")));
+		Assertions.assertThat(runStream(normal,
+						Logic.sameLengtho(normal, LList.ofAll(IntStream.range(0, 100)
+								.boxed()
+								.collect(Collectors.toList()))),
+						reverso(normal, normal))
+						.map(Object::toString)
+						.collect(Collectors.joining("\n")))
+				.isEqualTo(
+						"{(<_.99>, <_.98>, <_.97>, <_.96>, <_.95>, <_.94>, <_.93>, <_.92>, "
+								+ "<_.91>, <_.90>, <_.89>, <_.88>, <_.87>, <_.86>, <_.85>, <_.84>, "
+								+ "<_.83>, <_.82>, <_.81>, <_.80>, <_.79>, <_.78>, <_.77>, <_.76>, "
+								+ "<_.75>, <_.74>, <_.73>, <_.72>, <_.71>, <_.70>, <_.69>, <_.68>, "
+								+ "<_.67>, <_.66>, <_.65>, <_.64>, <_.63>, <_.62>, <_.61>, <_.60>, "
+								+ "<_.59>, <_.58>, <_.57>, <_.56>, <_.55>, <_.54>, <_.53>, <_.52>, "
+								+ "<_.51>, <_.50>, <_.50>, <_.51>, <_.52>, <_.53>, <_.54>, <_.55>, "
+								+ "<_.56>, <_.57>, <_.58>, <_.59>, <_.60>, <_.61>, <_.62>, <_.63>, "
+								+ "<_.64>, <_.65>, <_.66>, <_.67>, <_.68>, <_.69>, <_.70>, <_.71>, "
+								+ "<_.72>, <_.73>, <_.74>, <_.75>, <_.76>, <_.77>, <_.78>, <_.79>, "
+								+ "<_.80>, <_.81>, <_.82>, <_.83>, <_.84>, <_.85>, <_.86>, <_.87>, "
+								+ "<_.88>, <_.89>, <_.90>, <_.91>, <_.92>, <_.93>, <_.94>, <_.95>, "
+								+ "<_.96>, <_.97>, <_.98>, <_.99>)}");
 	}
 
 	public <A> Goal palindromo(Unifiable<LList<A>> palindrome) {
@@ -434,5 +449,50 @@ public class LogicTest {
 
 		Assertions.assertThat(result)
 				.containsExactly(Arrays.asList(true, true, true));
+	}
+
+	@Test
+	public void foldRightTest() {
+		Unifiable<Integer> result = lvar();
+
+		Assertions.assertThat(LList.foldRight(
+								LList.ofAll(1, 2, 3, 4, 5, 6),
+								lval(5),
+								result,
+								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unify(l + r)))
+						.solve(result)
+						.map(Unifiable::get)
+						.collect(Collectors.toList()))
+				.containsExactly(26);
+	}
+
+	@Test
+	public void foldRightTest2() {
+		Unifiable<Integer> result = lvar();
+
+		Assertions.assertThat(LList.foldRight(
+								LList.ofAll(30, 15, 10, 5),
+								lval(0),
+								result,
+								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unify(l - r)))
+						.solve(result)
+						.map(Unifiable::get)
+						.collect(Collectors.toList()))
+				.containsExactly(-60);
+	}
+
+	@Test
+	public void foldLeftTest() {
+		Unifiable<Integer> result = lvar();
+
+		Assertions.assertThat(LList.foldLeft(
+								LList.ofAll(30, 15, 10, 5),
+								lval(60),
+								result,
+								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unify(l - r)))
+						.solve(result)
+						.map(Unifiable::get)
+						.collect(Collectors.toList()))
+				.containsExactly(0);
 	}
 }

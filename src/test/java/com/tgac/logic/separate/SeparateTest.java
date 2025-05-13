@@ -1,6 +1,6 @@
 package com.tgac.logic.separate;
 
-import static com.tgac.logic.Goal.defer;
+import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.LogicTest.runStream;
 import static com.tgac.logic.separate.Disequality.rembero;
 import static com.tgac.logic.separate.Disequality.separate;
@@ -8,8 +8,8 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.Goal;
-import com.tgac.logic.Logic;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Logic;
 import com.tgac.logic.LogicTest;
 import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.CKanren;

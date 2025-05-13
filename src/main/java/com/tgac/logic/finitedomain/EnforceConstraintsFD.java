@@ -2,7 +2,7 @@ package com.tgac.logic.finitedomain;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.unification.LList;

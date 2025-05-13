@@ -1,10 +1,14 @@
 package com.tgac.logic.unification;
 
 import static com.tgac.logic.ckanren.CKanren.unify;
+import static com.tgac.logic.goals.Matche.llist;
+import static com.tgac.logic.goals.Matche.matche;
+import static com.tgac.logic.unification.LVar.lvar;
 import static io.vavr.Predicates.not;
 
-import com.tgac.logic.Goal;
-import com.tgac.logic.Logic;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Logic;
+import io.vavr.Function3;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
 import io.vavr.control.Either;
@@ -127,6 +131,43 @@ public class LList<A> {
 										.and(reduce.apply(
 												zip.apply(lhsHead, rhsHead),
 												Goal.defer(() -> zipReduce(lhsTail, rhsTail, zip, reduce))))));
+	}
+
+	public static <A> Goal foldRight(
+			Unifiable<LList<A>> lst,
+			Unifiable<A> init,
+			Unifiable<A> reduced,
+			// acc = reducer(prev, current)
+			Function3<Unifiable<A>, Unifiable<A>, Unifiable<A>, Goal> reducer) {
+		Unifiable<A> acc = lvar();
+		return matche(lst,
+				llist(() -> reduced.unify(init)),
+				llist((current, tail) ->
+						Goal.defer(() -> foldRight(tail, init, acc, reducer))
+								.and(reducer.apply(reduced, acc, current))));
+	}
+
+	public static <A> Goal foldLeft(
+			Unifiable<LList<A>> lst,
+			Unifiable<A> init,
+			Unifiable<A> reduced,
+			// acc = reducer(prev, current)
+			Function3<Unifiable<A>, Unifiable<A>, Unifiable<A>, Goal> reducer) {
+		Unifiable<A> acc = lvar();
+		return matche(lst,
+				llist(() -> reduced.unify(init)),
+				llist((current, tail) ->
+						reducer.apply(acc, init, current)
+								.and(Goal.defer(() -> foldLeft(tail, acc, reduced, reducer)))));
+	}
+
+	public static <A> Goal lasto(
+			Unifiable<LList<A>> lst,
+			Unifiable<A> last) {
+		return matche(lst,
+				llist((a) -> last.unify(a)),
+				llist((a, b, d) ->
+						Goal.defer(() -> lasto(LList.of(b, d), last))));
 	}
 
 	@Override

@@ -5,7 +5,7 @@ import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.unification.LVar;

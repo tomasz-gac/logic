@@ -1,8 +1,8 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.Matche.llist;
-import static com.tgac.logic.Matche.matche;
+import static com.tgac.logic.goals.Goal.defer;
+import static com.tgac.logic.goals.Matche.llist;
+import static com.tgac.logic.goals.Matche.matche;
 import static com.tgac.logic.Utils.collect;
 import static com.tgac.logic.finitedomain.FiniteDomain.addo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
@@ -10,20 +10,16 @@ import static com.tgac.logic.finitedomain.FiniteDomain.separate;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
-import com.tgac.functional.category.Monad;
-import com.tgac.functional.monad.Cont;
-import com.tgac.logic.Goal;
-import com.tgac.logic.Logic;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Logic;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.LList;
-import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;

@@ -8,7 +8,7 @@ import static com.tgac.logic.finitedomain.FiniteDomain.multo;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.Utils;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;

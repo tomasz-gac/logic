@@ -2,7 +2,7 @@ package com.tgac.logic.ckanren;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;

@@ -5,7 +5,7 @@ import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.finitedomain.domains.Arithmetic;

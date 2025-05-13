@@ -9,7 +9,7 @@ import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;

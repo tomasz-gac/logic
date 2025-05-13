@@ -2,6 +2,8 @@ package com.tgac.logic;
 
 import static com.tgac.logic.unification.LVal.lval;
 
+import com.tgac.logic.goals.Logic;
+import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;

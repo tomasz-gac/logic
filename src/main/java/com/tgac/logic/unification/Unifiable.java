@@ -1,6 +1,6 @@
 package com.tgac.logic.unification;
 
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;

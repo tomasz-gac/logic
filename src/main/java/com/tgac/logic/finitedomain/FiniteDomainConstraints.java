@@ -4,7 +4,7 @@ import static com.tgac.logic.ckanren.CKanren.runConstraints;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.PackageAccessor;

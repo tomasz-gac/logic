@@ -1,13 +1,14 @@
-package com.tgac.logic;
+package com.tgac.logic.goals;
 
-import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.Matche.llist;
-import static com.tgac.logic.Matche.matche;
+import static com.tgac.logic.goals.Goal.defer;
+import static com.tgac.logic.goals.Matche.llist;
+import static com.tgac.logic.goals.Matche.matche;
 import static com.tgac.logic.ckanren.CKanren.unify;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.reflection.Types;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -24,7 +25,9 @@ import io.vavr.Tuple;
 import io.vavr.Tuple3;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
+import io.vavr.control.Option;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -255,7 +258,7 @@ public class Logic {
 				(a, b, c, d, e, g, h) -> project(v8, x -> f.apply(a, b, c, d, e, g, h, x)));
 	}
 
-	public static Goal project(IndexedSeq<Unifiable<?>> goals, Function<IndexedSeq<Unifiable<Object>>, Goal> f) {
+	public static Goal projectMultiType(IndexedSeq<Unifiable<?>> goals, Function<IndexedSeq<Unifiable<Object>>, Goal> f) {
 		return s -> Cont.defer(() ->
 				goals.toJavaStream()
 						.map(v -> MiniKanren.walkAll(s, v)
@@ -265,7 +268,27 @@ public class Logic {
 						.orElseGet(() -> Recur.done(java.util.stream.Stream.empty()))
 						.map(u -> u.map(Unifiable::getObjectUnifiable)
 								.collect(Array.collector()))
-						.map(f::apply)
+						.map(f)
+						.map(g -> g.named("projected(" + g + ")"))
+						.map(g -> g.apply(s)));
+	}
+
+	public static <T> Goal project(IndexedSeq<Unifiable<T>> values, Function<IndexedSeq<T>, Goal> f) {
+		return s -> Cont.defer(() ->
+				values.toJavaStream()
+						.map(v -> MiniKanren.walkAll(s, v)
+								.map(Stream::of))
+						.reduce((l, r) -> Recur.zip(l, r)
+								.map(lr -> lr.apply(Stream::concat)))
+						.orElseGet(() -> Recur.done(Stream.empty()))
+						.map(u -> u.map(Unifiable::getObjectUnifiable)
+								.collect(Array.collector()))
+						.map(u -> Option.of(u)
+								.filter(v -> v.toJavaStream().allMatch(Unifiable::isVal))
+								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Variable unbound during projection"))
+								.map(Unifiable::get)
+								.map(Types.<T> cast()))
+						.map(f)
 						.map(g -> g.named("projected(" + g + ")"))
 						.map(g -> g.apply(s)));
 	}

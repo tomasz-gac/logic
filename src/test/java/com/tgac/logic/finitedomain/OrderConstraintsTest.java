@@ -1,16 +1,16 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.Goal.defer;
-import static com.tgac.logic.Goal.success;
-import static com.tgac.logic.Matche.llist;
+import static com.tgac.logic.goals.Goal.defer;
+import static com.tgac.logic.goals.Goal.success;
+import static com.tgac.logic.goals.Matche.llist;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.lss;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.functional.Streams;
-import com.tgac.logic.Goal;
-import com.tgac.logic.Matche;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Matche;
 import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;

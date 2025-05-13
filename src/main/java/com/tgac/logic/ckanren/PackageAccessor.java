@@ -4,7 +4,7 @@ import static com.tgac.functional.category.Nothing.nothing;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.Goal;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
 import io.vavr.control.Option;
 import java.util.ArrayList;
