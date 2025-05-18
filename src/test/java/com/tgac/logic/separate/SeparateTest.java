@@ -63,10 +63,10 @@ public class SeparateTest {
 	public void shouldUnifyWithSimultaneousConstraints() {
 		Unifiable<Integer> out = lvar();
 		Assertions.assertThat(LogicTest.runStream(out, Logic.<Integer, Integer, Tuple2<Unifiable<Integer>, Unifiable<Integer>>> exist((x, y, p) ->
-								p.unify(Tuple.of(x, out))
+								p.unifies(Tuple.of(x, out))
 										.and(separate(p, lval(Tuple.of(lval(3), lval(2)))))
-										.and(x.unify(3))
-										.and(out.unify(3))))
+										.and(x.unifies(3))
+										.and(out.unifies(3))))
 						.map(Unifiable::get))
 				.containsExactly(3);
 	}
@@ -77,22 +77,22 @@ public class SeparateTest {
 		Assertions.assertThat(
 						LogicTest.runStream(out,
 								Logic.<Integer, Integer, Tuple2<Unifiable<Integer>, Unifiable<Integer>>> exist((x, y, p) ->
-										p.unify(Tuple.of(x, out))
+										p.unifies(Tuple.of(x, out))
 												.and(separate(p, lval(Tuple.of(lval(3), lval(2)))))
-												.and(x.unify(3))
-												.and(out.unify(2)))))
+												.and(x.unifies(3))
+												.and(out.unifies(2)))))
 				.isEmpty();
 	}
 
 	public static <T> Goal brokenRembero(Unifiable<LList<T>> ls, Unifiable<T> x, Unifiable<LList<T>> out) {
-		return ls.unify(LList.empty()).and(out.unify(LList.empty()))
+		return ls.unifies(LList.empty()).and(out.unifies(LList.empty()))
 				.or(Logic.<T, LList<T>> exist((a, d) ->
-						ls.unify(LList.of(a, d))
-								.and(x.unify(a))
-								.and(out.unify(d))))
+						ls.unifies(LList.of(a, d))
+								.and(x.unifies(a))
+								.and(out.unifies(d))))
 				.or(Logic.<T, LList<T>, LList<T>> exist((a, d, res) ->
-						ls.unify(LList.of(a, d))
-								.and(out.unify(LList.of(a, res)))
+						ls.unifies(LList.of(a, d))
+								.and(out.unifies(LList.of(a, res)))
 								.and(defer(() -> brokenRembero(d, x, res)))));
 	}
 
@@ -101,7 +101,7 @@ public class SeparateTest {
 		Unifiable<LList<Integer>> out = lvar();
 		List<List<Integer>> result = LogicTest.runStream(out,
 						Logic.<LList<Integer>> exist(l ->
-								l.unify(LList.ofAll(3, 2, 3, 2))
+								l.unifies(LList.ofAll(3, 2, 3, 2))
 										.and(brokenRembero(l, lval(2), out))))
 				.map(Unifiable::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
@@ -121,7 +121,7 @@ public class SeparateTest {
 						Logic.<Tuple2<Unifiable<Integer>, Unifiable<Integer>>,
 								LList<Tuple2<Unifiable<Integer>, Unifiable<Integer>>>,
 								Integer, Integer, Integer> exist((a, d, dummy, x, y) ->
-								u.unify(LList.of(a, LList.of(lval(Tuple.of(y, x)), d)))
+								u.unifies(LList.of(a, LList.of(lval(Tuple.of(y, x)), d)))
 										.and(CKanren.unify(a, lval(Tuple.of(x, y))))
 										.and(separate(x, lval(3)))
 										.and(separate(y, lval(2)))
@@ -165,8 +165,8 @@ public class SeparateTest {
 								// p cannot be (3, 2)
 								separate(p, lval(Tuple.of(lval(3), lval(2))))
 										// p is y, z so y ≠ 3 && z ≠ 2
-										.and(p.unify(Tuple.of(y, z)))
-										.and(u.unify(p))
+										.and(p.unifies(Tuple.of(y, z)))
+										.and(u.unifies(p))
 										// y ≠ 3 is more general than (y ≠ 3 && z ≠ 2)
 										.and(separate(y, lval(3)))))
 				.map(Object::toString)
@@ -177,15 +177,15 @@ public class SeparateTest {
 	}
 
 	static <A> Goal removo(Unifiable<LList<A>> with, Unifiable<LList<A>> without, Unifiable<A> item) {
-		return with.unify(LList.empty()).and(without.unify(LList.empty()))
+		return with.unifies(LList.empty()).and(without.unifies(LList.empty()))
 				.or(Logic.<A, LList<A>> exist((a, d) ->
-						with.unify(LList.of(a, d))
-								.and(a.unify(item))
+						with.unifies(LList.of(a, d))
+								.and(a.unifies(item))
 								.and(defer(() -> removo(d, without, item)))))
 				.or(Logic.<A, LList<A>, LList<A>> exist((a, d, res) ->
-						with.unify(LList.of(a, d))
+						with.unifies(LList.of(a, d))
 								.and(separate(a, item))
-								.and(without.unify(LList.of(a, res)))
+								.and(without.unifies(LList.of(a, res)))
 								.and(defer(() -> removo(d, res, item)))));
 	}
 
@@ -194,7 +194,7 @@ public class SeparateTest {
 		Unifiable<LList<Integer>> r = lvar();
 		System.out.println(LogicTest.runStream(r,
 						Logic.<LList<Integer>> exist(l ->
-								l.unify(LList.ofAll(1, 2, 1, 3))
+								l.unifies(LList.ofAll(1, 2, 1, 3))
 										.and(removo(l, r, lval(1)))))
 				.limit(4)
 				.collect(Collectors.toList()));
@@ -219,7 +219,7 @@ public class SeparateTest {
 		Unifiable<LList<Integer>> out = lvar();
 		List<List<Integer>> result = LogicTest.runStream(out,
 						Logic.<LList<Integer>> exist(l ->
-								l.unify(LList.ofAll(3, 2, 3, 2))
+								l.unifies(LList.ofAll(3, 2, 3, 2))
 										.and(rembero(out, lval(2), l))))
 				.map(Unifiable::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
@@ -233,10 +233,10 @@ public class SeparateTest {
 	}
 
 	static <A> Goal removeAllo(Unifiable<LList<A>> with, Unifiable<LList<A>> without, Unifiable<A> item) {
-		return with.unify(LList.empty()).and(without.unify(LList.empty()))
+		return with.unifies(LList.empty()).and(without.unifies(LList.empty()))
 				.or(Logic.<LList<A>> exist(res ->
 						rembero(with, item, res)
-								.and(with.unify(res).and(res.unify(without))
+								.and(with.unifies(res).and(res.unifies(without))
 										.or(with.separate(res)
 												.and(defer(() -> removeAllo(res, without, item)))))));
 	}
@@ -246,7 +246,7 @@ public class SeparateTest {
 		Unifiable<LList<Integer>> r = lvar();
 		System.out.println(LogicTest.runStream(r,
 						Logic.<LList<Integer>> exist(l ->
-								l.unify(LList.ofAll(1, 2, 1, 3, 1, 4, 1))
+								l.unifies(LList.ofAll(1, 2, 1, 3, 1, 4, 1))
 										.and(removeAllo(l, r, lval(1)))))
 				.limit(4)
 				.collect(Collectors.toList()));
@@ -264,7 +264,7 @@ public class SeparateTest {
 						x.separate(z),
 
 						y.separate(z),
-						x.unify(1))
+						x.unifies(1))
 				.collect(Collectors.toList()));
 	}
 
@@ -273,7 +273,7 @@ public class SeparateTest {
 		Unifiable<LList<Integer>> r = lvar();
 		System.out.println(LogicTest.runStream(r,
 						Logic.<LList<Integer>> exist(l ->
-								l.unify(LList.ofAll(1, 2))
+								l.unifies(LList.ofAll(1, 2))
 										.and(Disequality.distincto(r))))
 				.limit(5)
 				.map(Objects::toString)
@@ -285,8 +285,8 @@ public class SeparateTest {
 		Unifiable<Integer> x = lvar();
 		List<Integer> results = Utils.collect(Goal.condu(
 						x.separate(x),
-						x.unify(1).or(x.unify(2)),
-						x.unify(3))
+						x.unifies(1).or(x.unifies(2)),
+						x.unifies(3))
 				.solve(x)
 				.map(Unifiable::get));
 
@@ -299,9 +299,9 @@ public class SeparateTest {
 		Unifiable<Integer> x = lvar();
 		List<Integer> results =
 				Goal.condu(
-								x.unify(2).or(x.unify(3)),
-								x.unify(1),
-								x.unify(3))
+								x.unifies(2).or(x.unifies(3)),
+								x.unifies(1),
+								x.unifies(3))
 						.solve(x)
 						.map(Unifiable::get)
 						.collect(Collectors.toList());
@@ -315,8 +315,8 @@ public class SeparateTest {
 			Unifiable<Integer> x = lvar();
 			List<Integer> results = Goal.conda(
 							x.separate(x),
-							x.unify(1).or(x.unify(2)),
-							x.unify(3))
+							x.unifies(1).or(x.unifies(2)),
+							x.unifies(3))
 					.solve(x)
 					.map(Unifiable::get)
 					.collect(Collectors.toList());

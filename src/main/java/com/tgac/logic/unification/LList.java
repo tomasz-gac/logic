@@ -137,35 +137,35 @@ public class LList<A> {
 			Unifiable<LList<A>> lst,
 			Unifiable<A> init,
 			Unifiable<A> reduced,
-			// acc = reducer(prev, current)
+			// next = reducer(prev, current)
 			Function3<Unifiable<A>, Unifiable<A>, Unifiable<A>, Goal> reducer) {
-		Unifiable<A> acc = lvar();
+		Unifiable<A> next = lvar();
 		return matche(lst,
-				llist(() -> reduced.unify(init)),
+				llist(() -> reduced.unifies(init)),
 				llist((current, tail) ->
-						Goal.defer(() -> foldRight(tail, init, acc, reducer))
-								.and(reducer.apply(reduced, acc, current))));
+						Goal.defer(() -> foldRight(tail, init, next, reducer))
+								.and(reducer.apply(reduced, next, current))));
 	}
 
 	public static <A> Goal foldLeft(
 			Unifiable<LList<A>> lst,
 			Unifiable<A> init,
 			Unifiable<A> reduced,
-			// acc = reducer(prev, current)
+			// next = reducer(prev, current)
 			Function3<Unifiable<A>, Unifiable<A>, Unifiable<A>, Goal> reducer) {
-		Unifiable<A> acc = lvar();
+		Unifiable<A> next = lvar();
 		return matche(lst,
-				llist(() -> reduced.unify(init)),
+				llist(() -> reduced.unifies(init)),
 				llist((current, tail) ->
-						reducer.apply(acc, init, current)
-								.and(Goal.defer(() -> foldLeft(tail, acc, reduced, reducer)))));
+						reducer.apply(next, init, current)
+								.and(Goal.defer(() -> foldLeft(tail, next, reduced, reducer)))));
 	}
 
 	public static <A> Goal lasto(
 			Unifiable<LList<A>> lst,
 			Unifiable<A> last) {
 		return matche(lst,
-				llist((a) -> last.unify(a)),
+				llist((a) -> last.unifies(a)),
 				llist((a, b, d) ->
 						Goal.defer(() -> lasto(LList.of(b, d), last))));
 	}

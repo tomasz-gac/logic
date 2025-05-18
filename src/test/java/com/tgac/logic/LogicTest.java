@@ -29,14 +29,14 @@ public class LogicTest {
 	public <T> Goal caro(
 			Unifiable<T> lhs,
 			Unifiable<LList<T>> cons) {
-		return cons.unify(LList.of(lhs, lvar()));
+		return cons.unifies(LList.of(lhs, lvar()));
 	}
 
 	@Test
 	public void shouldConde() {
 		Unifiable<Integer> x = lvar();
 		System.out.println(
-				Utils.collect(x.unify(1).or(x.unify(2)).or(x.unify(3))
+				Utils.collect(x.unifies(1).or(x.unifies(2)).or(x.unifies(3))
 						.solve(x)));
 	}
 
@@ -46,9 +46,9 @@ public class LogicTest {
 		Unifiable<LList<Integer>> tail = lvar();
 		Unifiable<LList<Integer>> lst = lvar();
 		List<Integer> collect = runStream(lst,
-				lst.unify(LList.ofAll(1, 2, 3, 4)),
-				tail.unify((LList.ofAll(2, 3, 4))),
-				lst.unify(LList.of(head, tail)))
+				lst.unifies(LList.ofAll(1, 2, 3, 4)),
+				tail.unifies((LList.ofAll(2, 3, 4))),
+				lst.unifies(LList.of(head, tail)))
 				.map(Unifiable::get)
 				.flatMap(LList::toValueStream)
 				.collect(Collectors.toList());
@@ -67,7 +67,7 @@ public class LogicTest {
 		Unifiable<Integer> head = lvar();
 
 		val result = runStream(lval(Tuple.of(head, lst)),
-				head.unify(3),
+				head.unifies(3),
 				caro(head, lst))
 				.collect(Collectors.toList());
 		assertThat(result)
@@ -110,8 +110,8 @@ public class LogicTest {
 		Unifiable<LList<Integer>> lst = lvar();
 		Unifiable<LList<Integer>> res = lvar();
 		val result = runStream(x,
-				lst.unify(LList.ofAll(1, 2, 3)),
-				res.unify(LList.ofAll(1, 2, 3, 4, 5, 6)),
+				lst.unifies(LList.ofAll(1, 2, 3)),
+				res.unifies(LList.ofAll(1, 2, 3, 4, 5, 6)),
 				Logic.appendo(lst, x, res))
 				.collect(Collectors.toList());
 		System.out.println(result);
@@ -129,8 +129,8 @@ public class LogicTest {
 		Unifiable<LList<Integer>> lst = lvar();
 		Unifiable<LList<Integer>> res = lvar();
 		val result = runStream(lst,
-				x.unify(LList.ofAll(4, 5, 6)),
-				res.unify(LList.ofAll(1, 2, 3, 4, 5, 6)),
+				x.unifies(LList.ofAll(4, 5, 6)),
+				res.unifies(LList.ofAll(1, 2, 3, 4, 5, 6)),
 				Logic.appendo(lst, x, res))
 				.collect(Collectors.toList());
 		System.out.println(result);
@@ -145,8 +145,8 @@ public class LogicTest {
 		Unifiable<LList<Integer>> lst = lvar();
 		Unifiable<LList<Integer>> res = lvar();
 		val result = runStream(res,
-				x.unify(LList.ofAll(4, 5, 6)),
-				lst.unify(LList.ofAll(1, 2, 3)),
+				x.unifies(LList.ofAll(4, 5, 6)),
+				lst.unifies(LList.ofAll(1, 2, 3)),
 				Logic.appendo(lst, x, res))
 				.collect(Collectors.toList());
 		System.out.println(result);
@@ -180,15 +180,15 @@ public class LogicTest {
 		Unifiable<LList<A>> newAccumulator = lvar("NewAcc");
 
 		// Base case: list is empty, the accumulator is the result
-		Goal baseCase = list.unify(LList.empty())
-				.and(accumulator.unify(result));
+		Goal baseCase = list.unifies(LList.empty())
+				.and(accumulator.unifies(result));
 
 		// Recursive case:
 		// list = [head | tail]
 		// newAccumulator = [head | accumulator]
 		// recurse with reversoAcc(tail, newAccumulator, result)
-		Goal recursiveCase = list.unify(LList.of(head, tail))
-				.and(newAccumulator.unify(LList.of(head, accumulator))) // Prepend head to accumulator
+		Goal recursiveCase = list.unifies(LList.of(head, tail))
+				.and(newAccumulator.unifies(LList.of(head, accumulator))) // Prepend head to accumulator
 				.and(Goal.defer(() -> reversoAcc(tail, newAccumulator, result)));
 
 		return baseCase.or(recursiveCase);
@@ -203,8 +203,8 @@ public class LogicTest {
 		Unifiable<A> rHead = lvar();
 		Unifiable<LList<A>> rTail = lvar();
 		Unifiable<LList<A>> res = lvar();
-		return rhs.unify(LList.empty()).and(lhs.unify(LList.empty()))
-				.or(rhs.unify(LList.of(rHead, rTail))
+		return rhs.unifies(LList.empty()).and(lhs.unifies(LList.empty()))
+				.or(rhs.unifies(LList.of(rHead, rTail))
 						.and(Logic.appendo(res, LList.of(rHead), lhs))
 						.and(Goal.defer(() -> reversoUnsafe(rTail, res))));
 	}
@@ -293,8 +293,8 @@ public class LogicTest {
 		Unifiable<A> head = lvar();
 		Unifiable<LList<A>> tail = lvar();
 		Unifiable<LList<A>> middle = lvar();
-		return palindrome.unify(LList.empty())
-				.or(palindrome.unify(LList.of(head, tail))
+		return palindrome.unifies(LList.empty())
+				.or(palindrome.unifies(LList.of(head, tail))
 						.and(Logic.appendo(middle, LList.of(head), tail))
 						.and(Goal.defer(() -> palindromo(middle))));
 	}
@@ -338,7 +338,7 @@ public class LogicTest {
 		Unifiable<LList<Integer>> lst = lvar();
 
 		List<Integer> xs = runStream(x,
-				lst.unify(LList.ofAll(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)),
+				lst.unifies(LList.ofAll(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)),
 				Logic.membero(x, lst))
 				.map(Unifiable::get)
 				.collect(Collectors.toList());
@@ -348,9 +348,9 @@ public class LogicTest {
 	}
 
 	static <A> Goal lists(Unifiable<LList<A>> lists) {
-		return lists.unify(LList.empty())
+		return lists.unifies(LList.empty())
 				.or(Logic.<A, LList<A>> exist((head, tail) ->
-						lists.unify(LList.of(head, tail))
+						lists.unifies(LList.of(head, tail))
 								.and(Goal.defer(() -> lists(tail)))));
 	}
 
@@ -459,7 +459,7 @@ public class LogicTest {
 								LList.ofAll(1, 2, 3, 4, 5, 6),
 								lval(5),
 								result,
-								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unify(l + r)))
+								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l + r)))
 						.solve(result)
 						.map(Unifiable::get)
 						.collect(Collectors.toList()))
@@ -474,7 +474,7 @@ public class LogicTest {
 								LList.ofAll(30, 15, 10, 5),
 								lval(0),
 								result,
-								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unify(l - r)))
+								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l - r)))
 						.solve(result)
 						.map(Unifiable::get)
 						.collect(Collectors.toList()))
@@ -489,7 +489,7 @@ public class LogicTest {
 								LList.ofAll(30, 15, 10, 5),
 								lval(60),
 								result,
-								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unify(l - r)))
+								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l - r)))
 						.solve(result)
 						.map(Unifiable::get)
 						.collect(Collectors.toList()))

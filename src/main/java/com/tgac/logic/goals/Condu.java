@@ -31,7 +31,7 @@ public class Condu implements Goal {
 			clauses.add(goals[0]);
 			return this;
 		} else {
-			clauses.add(new Condu().and(goals));
+			clauses.add(new Conjunction().and(goals));
 			return this;
 		}
 	}

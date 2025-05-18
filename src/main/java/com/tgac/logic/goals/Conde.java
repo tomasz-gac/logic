@@ -28,7 +28,7 @@ public class Conde implements Goal {
 			clauses.add(goals[0]);
 			return this;
 		} else {
-			clauses.add(new Conde().and(goals));
+			clauses.add(new Conjunction().and(goals));
 			return this;
 		}
 	}

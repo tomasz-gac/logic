@@ -70,7 +70,7 @@ public class Logic {
 			Unifiable<Boolean> l, Unifiable<Boolean> r, Unifiable<Boolean> out,
 			Array<Tuple3<Boolean, Boolean, Boolean>> table) {
 		return table.map(b -> b
-						.map(l::unify, r::unify, out::unify).toSeq()
+						.map(l::unifies, r::unifies, out::unifies).toSeq()
 						.map(Goal.class::cast)
 						.reduce(Goal::and))
 				.reduce(Goal::or);
@@ -106,14 +106,14 @@ public class Logic {
 	 * Logical negation
 	 */
 	public static Goal nego(Unifiable<Boolean> l, Unifiable<Boolean> r) {
-		return l.unify(true).and(r.unifyNc(false))
-				.or(l.unify(false).and(r.unify(true)));
+		return l.unifies(true).and(r.unifiesNc(false))
+				.or(l.unifies(false).and(r.unifies(true)));
 	}
 
 	public static Goal anyo(Unifiable<LList<Boolean>> lst, Unifiable<Boolean> out) {
 		return matche(lst,
-				llist(() -> out.unify(false)),
-				llist(a -> a.unify(out)),
+				llist(() -> out.unifies(false)),
+				llist(a -> a.unifies(out)),
 				llist((a, b, d) -> Logic.<Boolean> exist(c ->
 						disjo(a, b, c)
 								.and(defer(() -> anyo(LList.of(c, d), out))))));
@@ -121,8 +121,8 @@ public class Logic {
 
 	public static Goal allo(Unifiable<LList<Boolean>> lst, Unifiable<Boolean> out) {
 		return matche(lst,
-				llist(() -> out.unify(true)),
-				llist(a -> a.unify(out)),
+				llist(() -> out.unifies(true)),
+				llist(a -> a.unifies(out)),
 				llist((a, b, d) -> Logic.<Boolean> exist(c ->
 						conjo(a, b, c)
 								.and(defer(() -> allo(LList.of(c, d), out))))));

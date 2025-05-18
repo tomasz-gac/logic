@@ -33,7 +33,7 @@ public class MultiplicationTest {
 				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(dom(b, Interval.of(-2, 2)))
-						.and(c.unify(-4))
+						.and(c.unifies(-4))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
 						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
@@ -51,7 +51,7 @@ public class MultiplicationTest {
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
 				Utils.collect(FiniteDomain.multo(a, b, c)
-						.and(a.unify(-2))
+						.and(a.unifies(-2))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
@@ -76,7 +76,7 @@ public class MultiplicationTest {
 		List<Tuple3<Integer, Integer, Integer>> collect =
 				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
-						.and(b.unify(-2))
+						.and(b.unifies(-2))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
@@ -99,7 +99,7 @@ public class MultiplicationTest {
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
 				Utils.collect(FiniteDomain.multo(a, b, c)
-						.and(a.unify(0))
+						.and(a.unifies(0))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
@@ -124,7 +124,7 @@ public class MultiplicationTest {
 		List<Tuple3<Integer, Integer, Integer>> collect =
 				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
-						.and(b.unify(0))
+						.and(b.unifies(0))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
@@ -149,7 +149,7 @@ public class MultiplicationTest {
 				Utils.collect(FiniteDomain.multo(a, b, c)
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(dom(b, Interval.of(-2, 2)))
-						.and(c.unify(0))
+						.and(c.unifies(0))
 						.solve(lval(Tuple.of(a, b, c)))
 						.map(Unifiable::get)
 						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));

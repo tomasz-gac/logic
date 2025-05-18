@@ -23,14 +23,14 @@ public class Conda implements Goal {
 	List<Goal> clauses = new ArrayList<>();
 
 	@Override
-	public Conda or(Goal... goals) {
+	public Conda orElseFirst(Goal... goals) {
 		if (goals.length == 0) {
 			return this;
 		} else if (goals.length == 1) {
 			clauses.add(goals[0]);
 			return this;
 		} else {
-			clauses.add(new Conda().and(goals));
+			clauses.add(new Conjunction().and(goals));
 			return this;
 		}
 	}

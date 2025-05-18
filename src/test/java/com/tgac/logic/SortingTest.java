@@ -59,10 +59,10 @@ public class SortingTest {
 				Unifiable<LList<Integer>>>> res = LVar.lvar();
 		List<Tuple2<List<Integer>, List<Integer>>> result = LogicTest.runStream(res,
 						Logic.<LList<Integer>> exist(lst ->
-								lst.unify(LList.ofAll(1, 2, 3, 4, 5))
+								lst.unifies(LList.ofAll(1, 2, 3, 4, 5))
 										.and(Matche.matche(res,
 												Matche.tuple((l, r) -> halfo(lst, l, r)
-														.and(res.unify(lval(Tuple.of(l, r)))))))))
+														.and(res.unifies(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
 		System.out.println(result);
@@ -79,10 +79,10 @@ public class SortingTest {
 				Unifiable<LList<Integer>>>> res = LVar.lvar();
 		List<Tuple2<List<Integer>, List<Integer>>> result = LogicTest.runStream(res,
 						Logic.<LList<Integer>> exist(lst ->
-								lst.unify(LList.ofAll(1, 2, 3, 4))
+								lst.unifies(LList.ofAll(1, 2, 3, 4))
 										.and(Matche.matche(res,
 												Matche.tuple((l, r) -> halfo(lst, l, r)
-														.and(res.unify(lval(Tuple.of(l, r)))))))))
+														.and(res.unifies(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
 		System.out.println(result);
@@ -99,10 +99,10 @@ public class SortingTest {
 				Unifiable<LList<Integer>>>> res = LVar.lvar();
 		List<Tuple2<List<Integer>, List<Integer>>> result = LogicTest.runStream(res,
 						Logic.<LList<Integer>> exist(lst ->
-								lst.unify(LList.ofAll(1))
+								lst.unifies(LList.ofAll(1))
 										.and(Matche.matche(res,
 												Matche.tuple((l, r) -> halfo(lst, l, r)
-														.and(res.unify(lval(Tuple.of(l, r)))))))))
+														.and(res.unifies(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
 		System.out.println(result);
@@ -125,7 +125,7 @@ public class SortingTest {
 
 	static <T> Goal middle(Unifiable<LList<T>> lst, Unifiable<T> m) {
 		return Logic.<LList<T>, LList<T>, LList<T>> exist((lhs, rhs, rest) ->
-				rest.unify(LList.of(m, rhs))
+				rest.unifies(LList.of(m, rhs))
 						.and(Logic.appendo(lhs, rest, lst)
 								.and(Logic.sameLengtho(lhs, rhs)
 										.or(Logic.sameLengtho(lhs, rest)))));
@@ -169,14 +169,14 @@ public class SortingTest {
 			Unifiable<LList<A>> less, Unifiable<LList<A>> more,
 			BiFunction<Unifiable<A>, Unifiable<A>, Goal> cmpLess) {
 		return matche(lst,
-				Matche.llist(() -> less.unify(LList.empty()).and(more.unify(LList.empty()))),
+				Matche.llist(() -> less.unifies(LList.empty()).and(more.unifies(LList.empty()))),
 				Matche.llist((a, rest) -> firsto(
 						cmpLess.apply(a, mid)
 								.and(Matche.matche(less,
-										Matche.llist((l, d) -> l.unify(a)
+										Matche.llist((l, d) -> l.unifies(a)
 												.and(Goal.defer(() -> partition(rest, mid, d, more, cmpLess)))))),
 						Matche.matche(more,
-								Matche.llist((m, d) -> m.unify(a).and(
+								Matche.llist((m, d) -> m.unifies(a).and(
 										Goal.defer(() -> partition(rest, mid, less, d, cmpLess))))))));
 	}
 
@@ -243,18 +243,18 @@ public class SortingTest {
 
 	static <A> Goal minMax(Unifiable<LList<A>> lst, Unifiable<A> min, Unifiable<A> max, Comparator<A> cmp) {
 		return matche(lst,
-				Matche.llist((a) -> min.unify(a).and(max.unify(a))),
+				Matche.llist((a) -> min.unifies(a).and(max.unifies(a))),
 				Matche.llist((a, d) -> Logic.<A, A> exist((rmin, rmax) ->
 						Goal.defer(() -> minMax(d, rmin, rmax, cmp))
 								.and(Logic.project(rmin, rmax, a, (rmiv, rmav, av) ->
 										Goal.success().and(asserto(cmp.compare(rmiv, av) < 0)
-												.and(min.unify(rmin))
+												.and(min.unifies(rmin))
 												.or(asserto(cmp.compare(rmiv, av) >= 0)
-														.and(min.unify(a)))
+														.and(min.unifies(a)))
 												.and(asserto(cmp.compare(rmav, av) > 0)
-														.and(max.unify(rmav))
+														.and(max.unifies(rmav))
 														.or(asserto(cmp.compare(rmav, av) <= 0)
-																.and(max.unify(a))))))))));
+																.and(max.unifies(a))))))))));
 	}
 
 	@Test
@@ -343,8 +343,8 @@ public class SortingTest {
 	}
 
 	static <A> Goal sorted(Unifiable<LList<A>> lst, Comparator<A> cmp) {
-		return lst.unify(LList.empty())
-				.or(lst.unify(LList.of(LVar.lvar())))
+		return lst.unifies(LList.empty())
+				.or(lst.unifies(LList.of(LVar.lvar())))
 				.or(Logic.<LList<A>, LList<A>> exist((lhs, rhs) ->
 						halfo(lst, lhs, rhs)
 								.and(Matche.matche(lhs, Matche.llist((l, dl) ->
@@ -356,11 +356,11 @@ public class SortingTest {
 
 	static <A> Goal filter(Unifiable<LList<A>> with, Unifiable<LList<A>> without, Function<Unifiable<A>, Goal> pred) {
 		return matche(with,
-				Matche.llist(() -> without.unify(LList.empty())),
+				Matche.llist(() -> without.unifies(LList.empty())),
 				Matche.llist((a, d) -> Goal.condu(
 						Goal.defer(() -> pred.apply(a)
 								.and(Matche.matche(without,
-										Matche.llist((b, e) -> b.unifyNc(a)
+										Matche.llist((b, e) -> b.unifiesNc(a)
 												.and(Goal.defer(() -> filter(d, e, pred))))))),
 						Goal.defer(() -> filter(d, without, pred)))));
 	}
@@ -416,17 +416,17 @@ public class SortingTest {
 	static <A> Goal sorto(Unifiable<LList<A>> unsorted, Unifiable<LList<A>> sorted, Comparator<A> cmp) {
 		return project(unsorted, l ->
 				l.stream().allMatch(Either::isRight) ?
-						sorted.unify(l.toValueStream().sorted(cmp).map(LVal::lval).collect(LList.collector())) :
+						sorted.unifies(l.toValueStream().sorted(cmp).map(LVal::lval).collect(LList.collector())) :
 						Goal.failure());
 	}
 
 	static <A> Goal qsorto(Unifiable<LList<A>> lst, Unifiable<LList<A>> sorted, BiFunction<Unifiable<A>, Unifiable<A>, Goal> cmp) {
 		return Matche.matche(lst,
-				Matche.llist(() -> sorted.unify(lst)),
-				Matche.llist(a -> sorted.unify(lst)),
+				Matche.llist(() -> sorted.unifies(lst)),
+				Matche.llist(a -> sorted.unifies(lst)),
 				Matche.llist((a, b, d) -> Logic.<LList<A>, LList<A>, LList<A>, LList<A>, LList<A>>
 						exist((l, lhs, rhs, lsort, rsort) ->
-						l.unify(LList.of(b, d)).and(
+						l.unifies(LList.of(b, d)).and(
 								partition(l, a, lhs, rhs, cmp)
 										.and(Goal.defer(() -> qsorto(lhs, lsort, cmp))
 												.and(Goal.defer(() -> qsorto(rhs, rsort, cmp)))

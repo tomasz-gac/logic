@@ -40,21 +40,21 @@ public interface Unifiable<T> extends Supplier<T> {
 		return (LVar<T>) this;
 	}
 
-	default Goal unify(Unifiable<T> rhs) {
+	default Goal unifies(Unifiable<T> rhs) {
 		return CKanren.unify(this, rhs);
 	}
 
-	default Goal unify(T value) {
+	default Goal unifies(T value) {
 		return CKanren.unify(this, lval(value));
 	}
 
-	default Goal unifyNc(Unifiable<T> rhs) {
+	default Goal unifiesNc(Unifiable<T> rhs) {
 		return CKanren.unifyNc(this, rhs)
 				.named("unifyNc");
 	}
 
-	default Goal unifyNc(T value) {
-		return unifyNc(lval(value));
+	default Goal unifiesNc(T value) {
+		return unifiesNc(lval(value));
 	}
 
 	@SuppressWarnings("unchecked")

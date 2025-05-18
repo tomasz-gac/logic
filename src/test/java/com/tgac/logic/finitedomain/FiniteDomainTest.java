@@ -107,7 +107,7 @@ public class FiniteDomainTest {
 
 		java.util.List<Long> result =
 				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
-						.and(k.unify(j))
+						.and(k.unifies(j))
 						.and(CKanren.unify(k, i)))
 						.map(Unifiable::get)
 						.collect(Collectors.toList());
@@ -126,7 +126,7 @@ public class FiniteDomainTest {
 
 		java.util.List<Long> result =
 				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
-						.and(k.unify(j))
+						.and(k.unifies(j))
 						.and(CKanren.unify(k, i))
 						.and(dom(k, EnumeratedDomain.range(5L, 20L))))
 						.map(Unifiable::get)
@@ -169,7 +169,7 @@ public class FiniteDomainTest {
 
 	public static <T> Goal sizo(Unifiable<Long> size, Unifiable<Long> i, Unifiable<LList<T>> lst) {
 		return matche(lst,
-				llist(() -> size.unify(i)),
+				llist(() -> size.unifies(i)),
 				llist((a, d) ->
 						Logic.<Long> exist(i1 ->
 								FiniteDomain.addo(i, lval(1L), i1)

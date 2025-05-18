@@ -74,11 +74,11 @@ public class SummationTest {
 				.and(addo(partialSum, carryIn, sum))
 				.and(Goal.failure()
 						.or(lss(lval(9), sum)
-								.and(carryOut.unify(1))
+								.and(carryOut.unifies(1))
 								.and(addo(digit, lval(10), sum)))
 						.or(leq(sum, lval(9))
-								.and(carryOut.unify(0))
-								.and(digit.unify(sum))));
+								.and(carryOut.unifies(0))
+								.and(digit.unifies(sum))));
 	}
 
 	public static Goal sendMoreMoneyo(Unifiable<LList<Integer>> letters) {
@@ -95,7 +95,7 @@ public class SummationTest {
 		Unifiable<Integer> carry1 = lvar();
 		Unifiable<Integer> carry2 = lvar();
 		Unifiable<LList<Integer>> lst = LList.ofAll(s, e, n, d, m, o, r, y);
-		return letters.unify(lst)
+		return letters.unifies(lst)
 				.and(FiniteDomainTest.distinctoFd(Arrays.asList(s, e, n, d, m, o, r, y)))
 				.and(dom(s, Interval.of(1, 9)))
 				.and(dom(m, Interval.of(1, 9)))
