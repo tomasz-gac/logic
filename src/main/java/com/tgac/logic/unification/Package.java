@@ -15,8 +15,6 @@ public class Package {
 
 	HashMap<Class<? extends Store>, Store> constraints;
 
-	Map<Unifiable<?>, Unifiable<?>> walkCache = new java.util.HashMap<>();
-
 	public static Package empty() {
 		return new Package(HashMap.empty(), HashMap.empty());
 	}
@@ -39,10 +37,6 @@ public class Package {
 	}
 
 	public <T> Unifiable<T> walk(Unifiable<T> v) {
-//		Unifiable<?> result = walkCache.get(v);
-//		if (result != null) {
-//			return (Unifiable<T>) result;
-//		}
 		if (v.asVal().isDefined()) {
 			return v;
 		}
@@ -59,7 +53,6 @@ public class Package {
 				break;
 			}
 		}
-		walkCache.put(v, result);
 		return (Unifiable<T>) result;
 	}
 
