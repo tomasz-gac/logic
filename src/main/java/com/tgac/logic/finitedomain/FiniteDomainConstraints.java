@@ -3,6 +3,8 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.ckanren.CKanren.runConstraints;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.Constraint;
@@ -75,16 +77,16 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public PackageAccessor processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
+	public Goal processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
 		return s -> MiniKanren.prefixS(s.getSubstitutions(), newSubstitutions)
 				.toJavaStream()
-				.<PackageAccessor> map(ht -> ht
+				.<Goal> map(ht -> ht
 						.apply((x, v) -> FiniteDomainConstraints.getDom(s, x)
 								.map(Domain.class::cast)
 								.map(dom -> dom.processDom(v))
-								.getOrElse(PackageAccessor.identity())
-								.compose(runConstraints(x, constraints))))
-				.reduce(PackageAccessor.identity(), PackageAccessor::compose)
+								.getOrElse(Goal.success())
+								.and(runConstraints(x, constraints))))
+				.reduce(Goal.success(), Goal::and)
 				.apply(s.withSubstitutions(newSubstitutions));
 	}
 

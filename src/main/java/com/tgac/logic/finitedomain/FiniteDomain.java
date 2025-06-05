@@ -5,12 +5,12 @@ import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.goals.Goal;
+import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.Constraint;
-import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -32,7 +32,7 @@ public class FiniteDomain {
 
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
 		return fdGoal()
-				.and(PackageAccessor.of(s -> d.processDom(MiniKanren.walk(s, u)).apply(s)).asGoal())
+				.and(Goal.goal(s -> d.processDom(MiniKanren.walk(s, u)).apply(s)))
 				.named(u + " ⊂ " + d);
 	}
 
@@ -49,19 +49,18 @@ public class FiniteDomain {
 				.filter(uds -> uds.size() == us.size());
 	}
 
-	private static <T> PackageAccessor constraintOperation(PackageAccessor constraintOp, Array<Unifiable<T>> us, ConstraintBody<T> body) {
+	private static <T> Goal constraintOperation(Goal constraintOp, Array<Unifiable<T>> us, ConstraintBody<T> body) {
 		return p -> {
-			Package p1 = Constraint.of(constraintOp,
+			Package p1 = CKanren.buildWalkedConstraint(
+							constraintOp, us,
 							FiniteDomainConstraints.class,
-							us.map(u -> MiniKanren.walk(p, u))
-									.map(Unifiable::getObjectUnifiable)
-									.toJavaList())
+							p)
 					.addTo(FiniteDomainConstraints.register(p));
 			return letDomain(p1, us)
 					.filter(uds -> uds.toJavaStream()
 							.noneMatch(ud -> ud.getDomain().isEmpty()))
 					.map(uds -> body.create(uds, p1))
-					.getOrElse(Option.of(p1));
+					.getOrElse(Cont.just(p1));
 		};
 	}
 
@@ -78,36 +77,36 @@ public class FiniteDomain {
 	}
 
 	interface ConstraintBody<T> {
-		Option<Package> create(Array<VarWithDomain<T>> vds, Package p);
+		Cont<Package, Nothing> create(Array<VarWithDomain<T>> vds, Package p);
 	}
 
 	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
 		return fdGoal()
-				.and(leqFD(less, more).asGoal())
+				.and(leqFD(less, more))
 				.named(less + " ≤ " + more);
 	}
 
 	public static <T> Goal lss(Unifiable<T> less, Unifiable<T> more) {
 		return fdGoal()
-				.and(leqFD(less, more).asGoal())
+				.and(leqFD(less, more))
 				.and(separate(less, more))
 				.named(less + " < " + more);
 	}
 
 	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
 		return fdGoal()
-				.and(leqFD(more, less).asGoal())
+				.and(leqFD(more, less))
 				.and(separate(more, less))
 				.named(more + " > " + less);
 	}
 
 	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
 		return fdGoal()
-				.and(leqFD(more, less).asGoal())
+				.and(leqFD(more, less))
 				.named(more + " ≥ " + less);
 	}
 
-	private static <T> PackageAccessor leqFD(Unifiable<T> less, Unifiable<T> more) {
+	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
 		return constraintOperation(
 				p -> leqFD(less, more).apply(p),
 				Array.of(less, more), (vds, p) ->
@@ -115,14 +114,14 @@ public class FiniteDomain {
 								.apply((lss, mor) ->
 										lss.<T> getDomain().copyBefore(mor.<T> getDomain().max())
 												.processDom(lss.unifiable)
-												.compose(mor.<T> getDomain().dropBefore(lss.<T> getDomain().min())
+												.and(mor.<T> getDomain().dropBefore(lss.<T> getDomain().min())
 														.processDom(mor.unifiable)))
 								.apply(p));
 	}
 
 	public static <T> Goal addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return fdGoal()
-				.and(addoFD(a, b, c).asGoal())
+				.and(addoFD(a, b, c))
 				.named(a + " + " + b + " = " + c);
 	}
 
@@ -131,7 +130,7 @@ public class FiniteDomain {
 				.named(a + " - " + b + " = " + c);
 	}
 
-	static <T> PackageAccessor addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
+	static <T> Goal addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
 		return constraintOperation(
 				p -> addoFD(a, b, rhs).apply(p),
 				Array.of(a, b, rhs), (vds, p) ->
@@ -143,7 +142,7 @@ public class FiniteDomain {
 								.apply(p));
 	}
 
-	private static <T> PackageAccessor addIntervals(
+	private static <T> Goal addIntervals(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
 			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
@@ -161,14 +160,14 @@ public class FiniteDomain {
 				wMax.subtract(vMin).next());
 
 		return s -> wi.processDom(w.getUnifiable())
-				.compose(vi.processDom(v.getUnifiable()))
-				.compose(ui.processDom(u.getUnifiable()))
+				.and(vi.processDom(v.getUnifiable()))
+				.and(ui.processDom(u.getUnifiable()))
 				.apply(s);
 	}
 
 	public static <T> Goal multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return fdGoal()
-				.and(mulFD(a, b, c).asGoal())
+				.and(mulFD(a, b, c))
 				.named(a + " + " + b + " = " + c);
 	}
 
@@ -183,7 +182,7 @@ public class FiniteDomain {
 				.map(t -> t.apply(Arithmetic::div));
 	}
 
-	static <T> PackageAccessor mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
+	static <T> Goal mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
 		return constraintOperation(
 				p -> mulFD(a, b, rhs).apply(p),
 				Array.of(a, b, rhs), (vds, p) ->
@@ -195,18 +194,18 @@ public class FiniteDomain {
 												.apply(p)));
 	}
 
-	private static <T> PackageAccessor mulIntervals(
+	private static <T> Goal mulIntervals(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
 			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
 		// all are numbers -> check multiplication
 		if (uMin.equals(uMax) && vMin.equals(vMax) && wMin.equals(wMax)) {
-			return PackageAccessor.filter(uMin.mul(vMin).compareTo(wMin) == 0);
+			return Goal.successIf(uMin.mul(vMin).compareTo(wMin) == 0);
 		}
 
 		// some are numbers -> do nothing until all generated
 		if (uMin.equals(uMax) || vMin.equals(vMax) || wMin.equals(wMax)) {
-			return PackageAccessor.identity();
+			return Goal.success();
 		}
 
 		// Trim domains
@@ -237,18 +236,18 @@ public class FiniteDomain {
 				div(wMax, uMin).getOrElse(vMax));
 
 		return s -> wi.processDom(w.getUnifiable())
-				.compose(ui.processDom(u.getUnifiable()))
-				.compose(vi.processDom(v.getUnifiable()))
+				.and(ui.processDom(u.getUnifiable()))
+				.and(vi.processDom(v.getUnifiable()))
 				.apply(s);
 	}
 
 	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {
 		return fdGoal()
-				.and(separateFDC(l, r).asGoal())
+				.and(separateFDC(l, r))
 				.named(l + " ≠_fd " + r);
 	}
 
-	private static <T> PackageAccessor separateFDC(Unifiable<T> l, Unifiable<T> r) {
+	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
 		return s -> letDomain(s, Array.of(l, r))
 				.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
 				.map(ds -> ds.apply((ld, rd) -> {
@@ -256,10 +255,10 @@ public class FiniteDomain {
 									getSingleElement(ld.getDomain()),
 									getSingleElement(rd.getDomain()));
 							if (zip.isDefined() && zip.get().apply(Objects::equals)) {
-								return Option.<Package> none();
+								return Cont.<Package, Nothing> complete(Nothing.nothing());
 							}
 							if (ld.getDomain().isDisjoint(rd.getDomain())) {
-								return Option.of(s);
+								return Cont.<Package, Nothing> just(s);
 							}
 							Package a = withConstraint(s,
 									Constraint.of(
@@ -275,12 +274,12 @@ public class FiniteDomain {
 										.processDom(l)
 										.apply(a);
 							} else {
-								return Option.of(a);
+								return Cont.<Package, Nothing> just(a);
 							}
 						}
 				)).getOrElse(() -> Tuple.of(s.walk(l), s.walk(r))
 						.apply((lv, rv) ->
-								Option.of(withConstraint(s,
+								Cont.just(withConstraint(s,
 										Constraint.of(p -> separateFDC(lv, rv).apply(p),
 												FiniteDomainConstraints.class,
 												Arrays.asList(lv, rv))))));
@@ -319,7 +318,6 @@ public class FiniteDomain {
 								.map(Singleton::of))
 						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get())))
 						.processDom(to)
-						.andThen(p -> p.map(Cont::<Package, Nothing>just).getOrElse(Cont.complete(Nothing.nothing())))
 						.apply(s))
 				.named(String.format("copyDom(%s, %s)", from, to));
 	}

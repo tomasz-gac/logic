@@ -2,6 +2,7 @@ package com.tgac.logic.unification;
 
 import com.tgac.logic.ckanren.ConstraintStore;
 import io.vavr.collection.HashMap;
+import io.vavr.collection.LinkedHashMap;
 import java.util.Map;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -13,10 +14,10 @@ public class Package {
 
 	HashMap<LVar<?>, Unifiable<?>> substitutions;
 
-	HashMap<Class<? extends Store>, Store> constraints;
+	LinkedHashMap<Class<? extends Store>, Store> constraints;
 
 	public static Package empty() {
-		return new Package(HashMap.empty(), HashMap.empty());
+		return new Package(HashMap.empty(), LinkedHashMap.empty());
 	}
 
 	public Package extendS(HashMap<LVar<?>, Unifiable<?>> s) {

@@ -41,6 +41,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.StreamSupport;
+import lombok.val;
 
 import static com.tgac.functional.recursion.Recur.done;
 import static com.tgac.functional.recursion.Recur.recur;
@@ -301,7 +302,7 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Recur<Package> reifyS(Package s, Unifiable<?> val) {
+	public static Recur<Package> reifyS(Package s, Unifiable<?>val) {
 		return walkAll(s, val)
 				.flatMap(v -> v.asVar()
 						.map(u -> extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())))

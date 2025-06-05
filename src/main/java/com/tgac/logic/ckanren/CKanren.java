@@ -1,6 +1,6 @@
 package com.tgac.logic.ckanren;
 
-import static com.tgac.functional.category.Nothing.*;
+import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.logic.ckanren.StoreSupport.enforceConstraints;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.ckanren.StoreSupport.processPrefix;
@@ -16,6 +16,7 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import java.util.Collection;
 import java.util.stream.StreamSupport;
@@ -28,20 +29,18 @@ public class CKanren {
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
 		Goal goal = s -> MiniKanren.unify(s, u, v)
-				.flatMap(s1 -> s == s1 ?
-						Option.of(s) :
-						processPrefix(s, s1.getSubstitutions()))
-				.map(Cont::<Package, Nothing>just)
+				.map(s1 -> s == s1 ?
+						Cont.<Package, Nothing>just(s1):
+						processPrefix(s1.getSubstitutions()).apply(s))
 				.getOrElse(() -> Cont.complete(nothing()));
 		return goal.named(u + " ≣ " + v);
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
 		Goal goal = s -> MiniKanren.unifyUnsafe(s, u, v)
-				.flatMap(s1 -> s == s1 ?
-						Option.of(s) :
-						processPrefix(s, s1.getSubstitutions()))
-				.map(Cont::<Package, Nothing>just)
+				.map(s1 -> s == s1 ?
+						Cont.<Package, Nothing>just(s1):
+						processPrefix(s1.getSubstitutions()).apply(s))
 				.getOrElse(() -> Cont.complete(nothing()));
 		return goal.named(u + " ≣_nc " + v);
 	}
@@ -54,19 +53,29 @@ public class CKanren {
 		return unifyNc(u, LVal.lval(v));
 	}
 
-	public static PackageAccessor runConstraints(Unifiable<?> xs, Iterable<Constraint> c) {
+	public static <T> Constraint buildWalkedConstraint(
+			Goal constraintOp,
+			Array<Unifiable<T>> us,
+			Class<? extends ConstraintStore> csc,
+			Package p) {
+		return Constraint.of(constraintOp, csc,
+				us.map(u -> MiniKanren.walk(p, u))
+						.map(Unifiable::getObjectUnifiable)
+						.toJavaList());
+	}
+
+	public static Goal runConstraints(Unifiable<?> xs, Iterable<Constraint> c) {
 		return StreamSupport.stream(c.spliterator(), false)
 				.map(constraint -> anyRelevantVar(xs, constraint) ?
 						remRun(constraint) :
-						PackageAccessor.identity())
-				.reduce(PackageAccessor.identity(),
-						PackageAccessor::compose);
+						Goal.success())
+				.reduce(Goal.success(), Goal::and);
 	}
 
-	private static PackageAccessor remRun(Constraint c) {
+	public static Goal remRun(Constraint c) {
 		return p -> getConstraintStore(p, c.getStoreClass()).contains(c) ?
 				c.apply(withoutConstraint(p, c)) :
-				Option.of(p);
+				Cont.just(p) ;
 	}
 
 	public static <T> Cont<Unifiable<T>, Nothing> reify(Package s, Unifiable<T> x) {

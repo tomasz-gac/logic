@@ -4,11 +4,13 @@ import static com.tgac.logic.ckanren.CKanren.runConstraints;
 import static com.tgac.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
-import com.tgac.logic.ckanren.PackageAccessor;
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;
 import com.tgac.logic.finitedomain.domains.Singleton;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -56,11 +58,12 @@ public abstract class Domain<T> {
 	 * 	since we look up variables in d only when they are not in s.)
 	 * </pre>
 	 */
-	public PackageAccessor processDom(Unifiable<T> x) {
+	public Goal processDom(Unifiable<T> x) {
 		return a -> {
 			if (x.isVal()) {
-				return Option.of(a)
-						.filter(s -> this.contains(x.get()));
+				return this.contains(x.get()) ?
+						Cont.just(a) :
+						Cont.complete(Nothing.nothing());
 			} else {
 				return updateVarDomain((LVar<T>) x).apply(a);
 			}
@@ -73,17 +76,16 @@ public abstract class Domain<T> {
 	 * 	Attempts to unify variable if the resulting domain contains only a single element.
 	 * </pre>
 	 *
-	 * @param x
-	 * 		updated variable, must already been walked
+	 * @param x updated variable, must already been walked
 	 * @return package operator
 	 */
-	private PackageAccessor updateVarDomain(LVar<T> x) {
+	private Goal updateVarDomain(LVar<T> x) {
 		return s -> FiniteDomainConstraints.getDom(s, x)
 				.map(previousDomain -> Option.of(previousDomain.intersect(this))
 						.filter(not(Domain::isEmpty))
 						.map(i -> i.resolveStorableDom(x).apply(s))
 						// intersection is empty
-						.getOrElse(Option::none))
+						.getOrElse(Cont.complete(Nothing.nothing())))
 				// x has no domain
 				.getOrElse(() -> this.resolveStorableDom(x).apply(s));
 	}
@@ -94,11 +96,10 @@ public abstract class Domain<T> {
 	 * 	Extends x's domain otherwise
 	 * </pre>
 	 *
-	 * @param x
-	 * 		variable to resolve
+	 * @param x variable to resolve
 	 * @return package operator
 	 */
-	private PackageAccessor resolveStorableDom(LVar<?> x) {
+	private Goal resolveStorableDom(LVar<?> x) {
 		return a -> {
 			if (this instanceof Singleton) {
 				T v = ((Singleton<T>) this).getValue().getValue();
@@ -106,7 +107,7 @@ public abstract class Domain<T> {
 						FiniteDomainConstraints.getFDStore(a).getConstraints())
 						.apply(a.extendS(HashMap.of(x, lval(v))));
 			} else {
-				return Option.of(extendD(x, this, a));
+				return Cont.just(extendD(x, this, a));
 			}
 		};
 	}

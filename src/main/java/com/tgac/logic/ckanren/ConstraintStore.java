@@ -36,7 +36,7 @@ public interface ConstraintStore extends Store {
 	 * @param newSubstitutions
 	 * 		- Newly added substitutions
 	 */
-	PackageAccessor processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions);
+	Goal processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions);
 
 	/**
 	 * <pre>

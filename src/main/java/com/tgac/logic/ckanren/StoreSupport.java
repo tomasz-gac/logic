@@ -1,6 +1,8 @@
 package com.tgac.logic.ckanren;
 
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
@@ -19,9 +21,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class StoreSupport {
 
-	public static ConstraintStore getConstraintStore(Package p, Class<? extends Store> cls) {
+	public static <T extends Store> T getConstraintStore(Package p, Class<T> cls) {
 		return p.getConstraints().get(cls)
-				.map(ConstraintStore.class::cast)
+				.map(Types.<T>cast())
 				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "No store associated with package"));
 	}
 
@@ -67,12 +69,12 @@ public class StoreSupport {
 								.getOrElse(() -> null)));
 	}
 
-	public static Option<Package> processPrefix(Package p, HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
-		return p.getConstraints().values().toJavaStream()
+	public static Goal processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
+		return p -> p.getConstraints().values().toJavaStream()
 				.map(ConstraintStore.class::cast)
 				.map(cs -> cs.processPrefix(newSubstitutions))
-				.reduce(PackageAccessor::compose)
-				.orElseGet(() -> s -> Option.of(p.withSubstitutions(newSubstitutions)))
+				.reduce(Goal::and)
+				.orElseGet(() -> s -> Cont.just(p.withSubstitutions(newSubstitutions)))
 				.apply(p);
 	}
 

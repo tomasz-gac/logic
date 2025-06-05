@@ -2,10 +2,11 @@ package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.unification.LVal.lval;
 
+import com.tgac.functional.category.Nothing;
 import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.Constraint;
-import com.tgac.logic.ckanren.PackageAccessor;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.TestAccess;
@@ -15,6 +16,7 @@ import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
+import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.Stream;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -29,7 +31,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class ParametersTest {
 
 	@Mock
-	PackageAccessor accessor;
+	Goal accessor;
 
 	@Test
 	public void shouldNotBlowStackWhenProcessingPrefix() {
@@ -45,13 +47,18 @@ public class ParametersTest {
 				FiniteDomainConstraints.class,
 				Arrays.asList(prefix.get()._1));
 
-		System.out.println(FiniteDomainConstraints.empty()
+		Package[] box = new Package[1];
+		FiniteDomainConstraints.empty()
 				.prepend(constraint)
 				.processPrefix(prefix)
 				.apply(Package.of(HashMap.empty(),
-						HashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty())
+						LinkedHashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty())
 				))
-				.get());
+				.run(v -> {
+					box[0] = v;
+					return Nothing.nothing();
+				}).get();
+		System.out.println(box[0]);
 	}
 
 	@Test

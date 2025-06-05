@@ -9,6 +9,7 @@ import com.tgac.functional.Exceptions;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
+import com.tgac.logic.projection.ProjectionConstraints;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -203,13 +204,14 @@ public class Logic {
 	}
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
-		return s -> Cont.defer(() ->
-				MiniKanren.walkAll(s, v1)
-						.map(v -> v.asVal()
-								.map(f)
-								.map(g -> g.named("projected(" + g + ")"))
-								.map(g -> g.apply(s))
-								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Cannot project %s. No value bound.", v))));
+		return ProjectionConstraints.project(v1, f);
+//		return s -> Cont.defer(() ->
+//				MiniKanren.walkAll(s, v1)
+//						.map(v -> v.asVal()
+//								.map(f)
+//								.map(g -> g.named("projected(" + g + ")"))
+//								.map(g -> g.apply(s))
+//								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Cannot project %s. No value bound.", v))));
 	}
 
 	public static <T1, T2> Goal project(Unifiable<T1> v1, Unifiable<T2> v2, Function2<T1, T2, Goal> f) {

@@ -5,9 +5,10 @@ import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
-import com.tgac.logic.goals.Goal;
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.ConstraintStore;
-import com.tgac.logic.ckanren.PackageAccessor;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Stored;
@@ -61,9 +62,11 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public PackageAccessor processPrefix(
+	public Goal processPrefix(
 			HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
-		return s -> Disequality.verifyUnify(s.withSubstitutions(newSubstitutions), s);
+		return s -> Disequality.verifyUnify(s.withSubstitutions(newSubstitutions), s)
+				.map(Cont::<Package, Nothing>just)
+				.getOrElse(Cont.complete(Nothing.nothing()));
 	}
 
 	@Override

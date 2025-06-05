@@ -67,7 +67,6 @@ class EnforceConstraintsFD {
 
 	private static Goal rerunConstraints(Unifiable<?> x) {
 		return a -> CKanren.runConstraints(x, getFDStore(a).getConstraints())
-				.asGoal()
 				.apply(a);
 	}
 
