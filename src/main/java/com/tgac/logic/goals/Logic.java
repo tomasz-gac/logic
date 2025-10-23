@@ -204,14 +204,13 @@ public class Logic {
 	}
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
-		return ProjectionConstraints.project(v1, f);
-//		return s -> Cont.defer(() ->
-//				MiniKanren.walkAll(s, v1)
-//						.map(v -> v.asVal()
-//								.map(f)
-//								.map(g -> g.named("projected(" + g + ")"))
-//								.map(g -> g.apply(s))
-//								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Cannot project %s. No value bound.", v))));
+		return s -> Cont.defer(() ->
+				MiniKanren.walkAll(s, v1)
+						.map(v -> v.asVal()
+								.map(f)
+								.map(g -> g.named("projected(" + g + ")"))
+								.map(g -> g.apply(s))
+								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Cannot project %s. No value bound.", v))));
 	}
 
 	public static <T1, T2> Goal project(Unifiable<T1> v1, Unifiable<T2> v2, Function2<T1, T2, Goal> f) {

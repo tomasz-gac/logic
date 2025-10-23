@@ -3,13 +3,10 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.ckanren.CKanren.runConstraints;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 
-import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.ConstraintStore;
-import com.tgac.logic.ckanren.PackageAccessor;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;

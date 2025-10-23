@@ -31,21 +31,25 @@ public class Disequality {
 	public static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return a -> {
 			Package s = NeqConstraints.register(a);
-			Option<Package> unificationResult = unify(withoutConstraints(s), lhs, rhs);
-			switch (verifySeparate(unificationResult, s)) {
-				case UNIFIED:
-					return Cont.complete(Nothing.nothing());
-				case ALREADY_SEPARATE:
-					return Cont.just(s);
-				case SEPARATE_FOR_NOW:
-					return Cont.just(withConstraint(s,
-							NeqConstraint.of(
-									prefixS(
-											s.getSubstitutions(),
-											unificationResult.get().getSubstitutions()))));
-				default:
-					throw new UnsupportedOperationException();
-			}
+			return Cont.defer(() ->
+					unify(withoutConstraints(s), lhs, rhs)
+							.getRecur()
+							.map(unificationResult -> {
+								switch (verifySeparate(unificationResult, s)) {
+									case UNIFIED:
+										return Cont.complete(Nothing.nothing());
+									case ALREADY_SEPARATE:
+										return Cont.just(s);
+									case SEPARATE_FOR_NOW:
+										return Cont.just(withConstraint(s,
+												NeqConstraint.of(
+														prefixS(
+																s.getSubstitutions(),
+																unificationResult.get().getSubstitutions()))));
+									default:
+										throw new UnsupportedOperationException();
+								}
+							}));
 		};
 	}
 
@@ -157,10 +161,8 @@ public class Disequality {
 	/**
 	 * Checks whether all constraints unify within s simultaneously.
 	 *
-	 * @param simultaneousConstraints
-	 * 		List of constraints that must be simultaneously true
-	 * @param s
-	 * 		current substitution map
+	 * @param simultaneousConstraints List of constraints that must be simultaneously true
+	 * @param s current substitution map
 	 * @return s after unification
 	 */
 	private static Option<HashMap<LVar<?>, Unifiable<?>>> unifyConstraints(
@@ -172,9 +174,9 @@ public class Disequality {
 						(acc, lr) -> acc.flatMap(s1 ->
 								// This cannot recurse deeply via verifyUnify
 								// because there are no constraints in the package
-								unify(Package.empty()
-												.withSubstitutions(s1),
+								unify(Package.empty().withSubstitutions(s1),
 										lr._1, lr._2)
+										.get()
 										.map(Package::getSubstitutions)),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}

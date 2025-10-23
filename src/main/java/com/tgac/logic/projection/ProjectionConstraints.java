@@ -101,6 +101,6 @@ public class ProjectionConstraints implements ConstraintStore {
 		return OptionT.just(MiniKanren.walkAll(s, x))
 				.flatMap(u -> u.asVal()
 						.map(v -> OptionT.just(Recur.done(v)))
-						.getOrElse(OptionT.none(Recur::done)));
+						.getOrElse(OptionT.<Recur<?>, T> none(Recur::done)));
 	}
 }

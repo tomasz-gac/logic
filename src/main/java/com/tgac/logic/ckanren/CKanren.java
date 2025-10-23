@@ -28,20 +28,20 @@ import lombok.var;
 public class CKanren {
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> MiniKanren.unify(s, u, v)
+		Goal goal = s -> Cont.defer(() -> MiniKanren.unify(s, u, v)
 				.map(s1 -> s == s1 ?
-						Cont.<Package, Nothing>just(s1):
+						Cont.<Package, Nothing> just(s1) :
 						processPrefix(s1.getSubstitutions()).apply(s))
-				.getOrElse(() -> Cont.complete(nothing()));
+				.getOrElse(() -> Cont.complete(nothing())));
 		return goal.named(u + " ≣ " + v);
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> MiniKanren.unifyUnsafe(s, u, v)
+		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyUnsafe(s, u, v)
 				.map(s1 -> s == s1 ?
-						Cont.<Package, Nothing>just(s1):
+						Cont.<Package, Nothing> just(s1) :
 						processPrefix(s1.getSubstitutions()).apply(s))
-				.getOrElse(() -> Cont.complete(nothing()));
+				.getOrElse(() -> Cont.complete(nothing())));
 		return goal.named(u + " ≣_nc " + v);
 	}
 
@@ -75,7 +75,7 @@ public class CKanren {
 	public static Goal remRun(Constraint c) {
 		return p -> getConstraintStore(p, c.getStoreClass()).contains(c) ?
 				c.apply(withoutConstraint(p, c)) :
-				Cont.just(p) ;
+				Cont.just(p);
 	}
 
 	public static <T> Cont<Unifiable<T>, Nothing> reify(Package s, Unifiable<T> x) {

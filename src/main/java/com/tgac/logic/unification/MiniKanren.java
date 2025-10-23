@@ -1,8 +1,18 @@
 package com.tgac.logic.unification;
 
+import static com.tgac.functional.Exceptions.throwingBiOp;
+import static com.tgac.functional.recursion.MRecur.mdone;
+import static com.tgac.functional.recursion.MRecur.mrecur;
+import static com.tgac.functional.recursion.MRecur.none;
+import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.functional.recursion.Recur.recur;
+import static com.tgac.logic.unification.LVal.lval;
+import static io.vavr.Predicates.not;
+
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
 import com.tgac.functional.Streams;
+import com.tgac.functional.recursion.MRecur;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
 import io.vavr.Tuple;
@@ -28,25 +38,17 @@ import io.vavr.collection.TreeSet;
 import io.vavr.collection.Vector;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Set;
 import java.util.Spliterators;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.StreamSupport;
-import lombok.val;
-
-import static com.tgac.functional.recursion.Recur.done;
-import static com.tgac.functional.recursion.Recur.recur;
-import static com.tgac.logic.unification.LVal.lval;
-import static io.vavr.Predicates.not;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 /**
  * @author TGa
@@ -108,27 +110,27 @@ public class MiniKanren {
 		<T> Package apply(Package s, LVar<T> lhs, Unifiable<T> rhs);
 	}
 
-	private static <T> Option<Package> unify(
+	private static <T> MRecur<Package> unify(
 			Extender extend,
 			Package s,
 			Unifiable<T> lhs,
 			Unifiable<T> rhs) {
-
 		Unifiable<T> l = walk(s, lhs);
 		Unifiable<T> r = walk(s, rhs);
+
+		// it's important to return the same object when l equals r
+		// because we test with == to see if substitution already exists
 		if (l.equals(r)) {
-			// it's important to return the same object when l equals r
-			// because we test with == to see if substitution already exists
-			return Option.of(s);
+			return mdone(s);
 		}
 
 		return l.asVar().map(lVar -> r.asVar()
 						.map(rVar -> extendNoCheck(s, lVar, rVar))
-						.map(Option::of)
-						.getOrElse(() -> Option.of(extend.apply(s, lVar, r))))
+						.map(MRecur::mdone)
+						.getOrElse(() -> mdone(extend.apply(s, lVar, r))))
 				.orElse(() -> r.asVar()
 						.map(rVar -> extend.apply(s, rVar, l))
-						.map(Option::of))
+						.map(MRecur::mdone))
 				.orElse(() -> zip(l.asVal(), r.asVal())
 						.flatMap(MiniKanren::toIterable)
 						.map(lr -> unifyIterable(extend, s, lr._1, lr._2)))
@@ -137,56 +139,39 @@ public class MiniKanren {
 						r.asVal().flatMap(MiniKanren::<T>asLList))
 						.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
 						.map(lr -> unifyLList(extend, s, lr._1, lr._2)))
-				.getOrElse(Option::none);
+				.orElse(() -> zip(
+						l.asVal().flatMap(MiniKanren::<T>asLTree),
+						r.asVal().flatMap(MiniKanren::<T>asLTree))
+						.map(lr -> unifyLTree(extend, s, lr._1, lr._2)))
+				.getOrElse(MRecur::none);
 	}
 
-	private static <T> Option<Package> unifyLList(
-			Extender extend,
-			Package s,
-			LList<T> lhs, LList<T> rhs) {
-		Package currentState = s;
-		while (true) {
-			if (lhs.isEmpty() || rhs.isEmpty()) {
-				return unify(extend, currentState, lval(lhs), lval(rhs));
-			}
-			// unify heads
-			Option<Package> tmp = unify(extend, currentState, lhs.getHead(), rhs.getHead());
-			if (tmp.isEmpty()) {
-				return Option.none();
-			}
-			currentState = tmp.get();
-
-			Unifiable<LList<T>> lTail = walk(currentState, lhs.getTail());
-			Unifiable<LList<T>> rTail = walk(currentState, rhs.getTail());
-			if (lTail.asVar().isDefined()) {
-				return unify(extend, currentState, lTail, rTail);
-			}
-
-			if (rTail.asVar().isDefined()) {
-				return unify(extend, currentState, lTail, rTail);
-			}
-
-			lhs = lTail.get();
-			rhs = rTail.get();
-		}
+	private static <T> MRecur<Package> unifyLList(Extender extend, Package s, LList<T> l, LList<T> r) {
+		return mrecur(() -> unify(extend, s, l.getHead(), r.getHead()))
+				.flatMap(s1 -> unify(extend, s1, l.getTail(), r.getTail()));
 	}
 
-	private static <T> Option<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
+	private static <T> MRecur<Package> unifyLTree(Extender extend, Package s, LTree<T> l, LTree<T> r) {
+		return mrecur(() -> unify(extend, s, l.getValue(), r.getValue()))
+				.flatMap(s1 -> unify(extend, s1, l.getChildren(), r.getChildren()));
+	}
+
+	private static <T> MRecur<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
 		if (!l.iterator().hasNext() && r.iterator().hasNext()) {
-			return Option.of(s);
+			return mdone(s);
 		}
 		if (toJavaStream(l).count() != toJavaStream(r).count()) {
-			return Option.none();
+			return none();
 		} else {
 			return Streams.zip(toJavaStream(l), toJavaStream(r), Tuple::of)
 					// Because Tuples are treated as iterable
 					// some of their elements may not be unifiable.
 					// For those, we're wrapping them as Val to process them anyway
 					.map(p -> p.map(applyOnBoth(MiniKanren::<T>wrapUnifiable)))
-					.reduce(Option.of(s),
+					.reduce(mdone(s),
 							(state, unifiedItems) ->
 									state.flatMap(s1 -> unify(extender, s1, unifiedItems._1, unifiedItems._2)),
-							Exceptions.throwingBiOp(UnsupportedOperationException::new));
+							throwingBiOp(UnsupportedOperationException::new));
 		}
 	}
 
@@ -207,24 +192,24 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Option<Set<T>> asSet(Object v) {
-		return v instanceof Set ?
-				Try.of(() -> (Set<T>) v).toOption() :
-				Option.none();
-	}
-
-	@SuppressWarnings("unchecked")
 	public static <T> Option<LList<T>> asLList(Object v) {
 		return v instanceof LList ?
 				Try.of(() -> (LList<T>) v).toOption() :
 				Option.none();
 	}
 
-	public static <T> Option<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	@SuppressWarnings("unchecked")
+	public static <T> Option<LTree<T>> asLTree(Object v) {
+		return v instanceof LTree ?
+				Try.of(() -> (LTree<T>) v).toOption() :
+				Option.none();
+	}
+
+	public static <T> MRecur<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return unify(MiniKanren::extend, s, lhs, rhs);
 	}
 
-	public static <T> Option<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MRecur<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return unify(MiniKanren::extendNoCheck, s, lhs, rhs);
 	}
 
@@ -242,6 +227,14 @@ public class MiniKanren {
 												recur(() -> walkAll(s, c.getHead())),
 												recur(() -> walkAll(s, c.getTail())))
 										.map(ht -> ht.apply(LList::of).get())
+										.map(w -> Types.<T> castAs(w, Object.class).get())
+										.map(LVal::lval)))
+						.orElse(() -> v.asVal()
+								.flatMap(MiniKanren::<T>asLTree)
+								.map(c -> Recur.zip(
+												recur(() -> walkAll(s, c.getValue())),
+												recur(() -> walkAll(s, c.getChildren())))
+										.map(vc -> vc.apply(LTree::of).get())
 										.map(w -> Types.<T> castAs(w, Object.class).get())
 										.map(LVal::lval)))
 						.orElse(() -> v.asVal()
@@ -302,7 +295,7 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Recur<Package> reifyS(Package s, Unifiable<?>val) {
+	public static Recur<Package> reifyS(Package s, Unifiable<?> val) {
 		return walkAll(s, val)
 				.flatMap(v -> v.asVar()
 						.map(u -> extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())))
@@ -314,8 +307,12 @@ public class MiniKanren {
 						.orElse(() -> v.asVal()
 								.flatMap(w -> Types.cast(w, LList.class))
 								.map(llist -> reifyLList(s, llist)))
+						.orElse(() -> v.asVal()
+								.flatMap(w -> Types.cast(w, LTree.class))
+								.map(ltree -> reifyLTree(s, ltree)))
 						.getOrElse(done(s)));
 	}
+
 	private static Recur<Package> reifyLList(Package s, LList<?> llist) {
 		if (llist.isEmpty()) {
 			return done(s);
@@ -323,6 +320,11 @@ public class MiniKanren {
 			return reifyS(s, llist.getHead())
 					.flatMap(s1 -> reifyS(s1, llist.getTail()));
 		}
+	}
+
+	private static Recur<Package> reifyLTree(Package s, LTree<?> tree) {
+		return reifyS(s, tree.getValue())
+				.flatMap(p -> reifyS(p, tree.getChildren()));
 	}
 
 	private static Recur<Package> reifyIterable(Package s, Iterable<Object> l) {
