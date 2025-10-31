@@ -490,6 +490,56 @@ public class MiniKanrenTest {
 				.isEqualTo("[({1}, <_.0>, <_.1>, {({LTree(value={2}, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
 
+	@Test
+	public void shouldUnifyLTrees3() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Unifiable<Integer> z = lvar();
+		Unifiable<LList<LTree<Integer>>> children = lvar();
+
+		Unifiable<LTree<Integer>> tlTree = LTree.of(
+				x, LList.of(
+						LTree.of(y, LList.empty()),
+						children));
+		Unifiable<LTree<Integer>> tlTree1 = LTree.of(
+				lval(1), LList.ofAll(
+						LTree.of(lval(2), LList.empty()),
+						LTree.of(lval(3), LList.empty())));
+
+		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
+								.solve(lval(Tuple.of(x, y, z, children)))
+								.map(Unifiable::get))
+						.toString())
+				.isEqualTo("[({1}, {2}, <_.0>, {({LTree(value={3}, children={()})})})]");
+	}
+
+	@Test
+	public void shouldUnifyEmptyLTree(){
+		Unifiable<LTree<Integer>> tree = lvar();
+
+		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
+				.solve(tree)
+				.map(Unifiable::get)
+				.collect(Collectors.toList());
+
+		assertThat(collect)
+				.containsExactly(LTree.<Integer>empty().get());
+	}
+
+	@Test
+	public void shouldUnifyEmptyLTree2(){
+		Unifiable<LTree<Integer>> tree = LTree.ofAll(3);
+
+		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
+				.solve(tree)
+				.map(Unifiable::get)
+				.collect(Collectors.toList());
+
+		assertThat(collect)
+				.isEmpty();
+	}
+
+
 	private static <T> Optional<T> extractValue(Unifiable<T> variable, Package subs) {
 		return MiniKanren.walk(subs, variable)
 				.asVal()

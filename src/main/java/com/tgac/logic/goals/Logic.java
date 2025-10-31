@@ -1,18 +1,19 @@
 package com.tgac.logic.goals;
 
+import static com.tgac.logic.ckanren.CKanren.unify;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.goals.Matche.llist;
 import static com.tgac.logic.goals.Matche.matche;
-import static com.tgac.logic.ckanren.CKanren.unify;
 
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.Recur;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.projection.ProjectionConstraints;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Function1;
 import io.vavr.Function2;
@@ -201,6 +202,14 @@ public class Logic {
 			Unifiable<T8>,
 			Goal> f) {
 		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
+	}
+
+	public static Goal ground(Unifiable<?> v) {
+		return (Package s) -> Cont.defer(() ->
+				MiniKanren.walkAll(s, v)
+						.map(u -> u.asVal()
+								.<Cont<Package, Nothing>> map(_lv -> Cont.just(s))
+								.getOrElse(k -> Recur.done(Nothing.nothing()))));
 	}
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {

@@ -142,6 +142,7 @@ public class MiniKanren {
 				.orElse(() -> zip(
 						l.asVal().flatMap(MiniKanren::<T>asLTree),
 						r.asVal().flatMap(MiniKanren::<T>asLTree))
+						.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
 						.map(lr -> unifyLTree(extend, s, lr._1, lr._2)))
 				.getOrElse(MRecur::none);
 	}
@@ -231,6 +232,7 @@ public class MiniKanren {
 										.map(LVal::lval)))
 						.orElse(() -> v.asVal()
 								.flatMap(MiniKanren::<T>asLTree)
+								.filter(not(LTree::isEmpty))
 								.map(c -> Recur.zip(
 												recur(() -> walkAll(s, c.getValue())),
 												recur(() -> walkAll(s, c.getChildren())))
@@ -323,8 +325,12 @@ public class MiniKanren {
 	}
 
 	private static Recur<Package> reifyLTree(Package s, LTree<?> tree) {
-		return reifyS(s, tree.getValue())
-				.flatMap(p -> reifyS(p, tree.getChildren()));
+		if (tree.isEmpty()) {
+			return done(s);
+		} else {
+			return reifyS(s, tree.getValue())
+					.flatMap(p -> reifyS(p, tree.getChildren()));
+		}
 	}
 
 	private static Recur<Package> reifyIterable(Package s, Iterable<Object> l) {
