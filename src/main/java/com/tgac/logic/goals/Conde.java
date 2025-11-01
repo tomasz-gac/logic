@@ -1,11 +1,11 @@
 package com.tgac.logic.goals;
 
-import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.functional.recursion.Fiber.done;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.logic.unification.Package;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +35,7 @@ public class Conde implements Goal {
 
 	@Override
 	public Cont<com.tgac.logic.unification.Package, Nothing> apply(Package s) {
-		return k -> Recur.forEach(
+		return k -> Fiber.forEach(
 				clauses.stream()
 						.map(g -> g.apply(s).apply(k))
 						.collect(Collectors.toList()),
@@ -44,7 +44,7 @@ public class Conde implements Goal {
 	}
 
 	@Override
-	public Recur<Goal> optimize() {
+	public Fiber<Goal> optimize() {
 		return clauses.stream()
 				.map(Goal::optimize)
 				.map(v -> v.map(g ->
@@ -52,7 +52,7 @@ public class Conde implements Goal {
 								((Conde) g).clauses.stream() :
 								java.util.stream.Stream.of(g)))
 				.reduce(done(new Conde()),
-						(l, r) -> Recur.zip(l, r).map(t -> t._1
+						(l, r) -> Fiber.zip(l, r).map(t -> t._1
 								.or(t._2.toArray(Goal[]::new))),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}

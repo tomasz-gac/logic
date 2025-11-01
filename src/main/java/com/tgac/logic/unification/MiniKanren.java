@@ -1,19 +1,19 @@
 package com.tgac.logic.unification;
 
 import static com.tgac.functional.Exceptions.throwingBiOp;
-import static com.tgac.functional.recursion.MRecur.mdone;
-import static com.tgac.functional.recursion.MRecur.mrecur;
-import static com.tgac.functional.recursion.MRecur.none;
-import static com.tgac.functional.recursion.Recur.done;
-import static com.tgac.functional.recursion.Recur.recur;
+import static com.tgac.functional.recursion.MFiber.mdone;
+import static com.tgac.functional.recursion.MFiber.mdefer;
+import static com.tgac.functional.recursion.MFiber.none;
+import static com.tgac.functional.recursion.Fiber.done;
+import static com.tgac.functional.recursion.Fiber.defer;
 import static com.tgac.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
 import com.tgac.functional.Streams;
-import com.tgac.functional.recursion.MRecur;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.MFiber;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.functional.reflection.Types;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
@@ -110,7 +110,7 @@ public class MiniKanren {
 		<T> Package apply(Package s, LVar<T> lhs, Unifiable<T> rhs);
 	}
 
-	private static <T> MRecur<Package> unify(
+	private static <T> MFiber<Package> unify(
 			Extender extend,
 			Package s,
 			Unifiable<T> lhs,
@@ -126,11 +126,11 @@ public class MiniKanren {
 
 		return l.asVar().map(lVar -> r.asVar()
 						.map(rVar -> extendNoCheck(s, lVar, rVar))
-						.map(MRecur::mdone)
+						.map(MFiber::mdone)
 						.getOrElse(() -> mdone(extend.apply(s, lVar, r))))
 				.orElse(() -> r.asVar()
 						.map(rVar -> extend.apply(s, rVar, l))
-						.map(MRecur::mdone))
+						.map(MFiber::mdone))
 				.orElse(() -> zip(l.asVal(), r.asVal())
 						.flatMap(MiniKanren::toIterable)
 						.map(lr -> unifyIterable(extend, s, lr._1, lr._2)))
@@ -144,20 +144,20 @@ public class MiniKanren {
 						r.asVal().flatMap(MiniKanren::<T>asLTree))
 						.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
 						.map(lr -> unifyLTree(extend, s, lr._1, lr._2)))
-				.getOrElse(MRecur::none);
+				.getOrElse(MFiber::none);
 	}
 
-	private static <T> MRecur<Package> unifyLList(Extender extend, Package s, LList<T> l, LList<T> r) {
-		return mrecur(() -> unify(extend, s, l.getHead(), r.getHead()))
+	private static <T> MFiber<Package> unifyLList(Extender extend, Package s, LList<T> l, LList<T> r) {
+		return mdefer(() -> unify(extend, s, l.getHead(), r.getHead()))
 				.flatMap(s1 -> unify(extend, s1, l.getTail(), r.getTail()));
 	}
 
-	private static <T> MRecur<Package> unifyLTree(Extender extend, Package s, LTree<T> l, LTree<T> r) {
-		return mrecur(() -> unify(extend, s, l.getValue(), r.getValue()))
+	private static <T> MFiber<Package> unifyLTree(Extender extend, Package s, LTree<T> l, LTree<T> r) {
+		return mdefer(() -> unify(extend, s, l.getValue(), r.getValue()))
 				.flatMap(s1 -> unify(extend, s1, l.getChildren(), r.getChildren()));
 	}
 
-	private static <T> MRecur<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
+	private static <T> MFiber<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
 		if (!l.iterator().hasNext() && r.iterator().hasNext()) {
 			return mdone(s);
 		}
@@ -206,36 +206,36 @@ public class MiniKanren {
 				Option.none();
 	}
 
-	public static <T> MRecur<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MFiber<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return unify(MiniKanren::extend, s, lhs, rhs);
 	}
 
-	public static <T> MRecur<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MFiber<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
 		return unify(MiniKanren::extendNoCheck, s, lhs, rhs);
 	}
 
-	public static <T> Recur<Unifiable<T>> walkAll(Package s, Unifiable<T> u) {
+	public static <T> Fiber<Unifiable<T>> walkAll(Package s, Unifiable<T> u) {
 		return done(walk(s, u))
 				.flatMap(v -> v.asVar()
-						.map(Recur::<Unifiable<T>>done)
+						.map(Fiber::<Unifiable<T>>done)
 						.orElse(() -> v.asVal()
 								.flatMap(MiniKanren::asIterable)
 								.map(t -> walkIterable(s, t)))
 						.orElse(() -> v.asVal()
 								.flatMap(MiniKanren::<T>asLList)
 								.filter(not(LList::isEmpty))
-								.map(c -> Recur.zip(
-												recur(() -> walkAll(s, c.getHead())),
-												recur(() -> walkAll(s, c.getTail())))
+								.map(c -> Fiber.zip(
+												defer(() -> walkAll(s, c.getHead())),
+												defer(() -> walkAll(s, c.getTail())))
 										.map(ht -> ht.apply(LList::of).get())
 										.map(w -> Types.<T> castAs(w, Object.class).get())
 										.map(LVal::lval)))
 						.orElse(() -> v.asVal()
 								.flatMap(MiniKanren::<T>asLTree)
 								.filter(not(LTree::isEmpty))
-								.map(c -> Recur.zip(
-												recur(() -> walkAll(s, c.getValue())),
-												recur(() -> walkAll(s, c.getChildren())))
+								.map(c -> Fiber.zip(
+												defer(() -> walkAll(s, c.getValue())),
+												defer(() -> walkAll(s, c.getChildren())))
 										.map(vc -> vc.apply(LTree::of).get())
 										.map(w -> Types.<T> castAs(w, Object.class).get())
 										.map(LVal::lval)))
@@ -245,7 +245,7 @@ public class MiniKanren {
 						.getOrElse(done(v)));
 	}
 
-	private static <T> Recur<Unifiable<T>> walkIterable(Package s, Iterable<Object> iterable) {
+	private static <T> Fiber<Unifiable<T>> walkIterable(Package s, Iterable<Object> iterable) {
 		Collector<Object, ?, ?> collector = MiniKanren.getCollector(iterable)
 				.getOrElseThrow(Exceptions.format(RuntimeException::new,
 						"Unsupported iterable type: %s", iterable));
@@ -255,7 +255,7 @@ public class MiniKanren {
 						.map(w -> (u instanceof Unifiable) ?
 								w : w.asVal().get()))
 				.reduce(done(new ArrayList<>()),
-						(Recur<ArrayList<Object>> acc, Recur<Object> item) -> Recur.zip(acc, item)
+						(Fiber<ArrayList<Object>> acc, Fiber<Object> item) -> Fiber.zip(acc, item)
 								.map(lr -> {
 									lr._1.add(lr._2);
 									return lr._1;
@@ -265,7 +265,7 @@ public class MiniKanren {
 				.map(MiniKanren::<T>wrapUnifiable);
 	}
 
-	private static <T> Recur<Unifiable<T>> walkTuple(Package s, Iterable<Object> tuple) {
+	private static <T> Fiber<Unifiable<T>> walkTuple(Package s, Iterable<Object> tuple) {
 		return toJavaStream(tuple)
 				// walkAll accepts Unifiable,
 				// but some elements may be regular types.
@@ -278,7 +278,7 @@ public class MiniKanren {
 								u : u.asVal().get()))
 				.reduce(
 						done(new ArrayList<>()),
-						(acc, item) -> Recur.zip(acc, item)
+						(acc, item) -> Fiber.zip(acc, item)
 								.map(lr -> {
 									lr._1.add(lr._2);
 									return lr._1;
@@ -290,18 +290,18 @@ public class MiniKanren {
 				.map(MiniKanren::castUnifiable);
 	}
 
-	public static <T> Recur<Unifiable<T>> reify(Package s, Unifiable<T> item) {
+	public static <T> Fiber<Unifiable<T>> reify(Package s, Unifiable<T> item) {
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Package.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)));
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Recur<Package> reifyS(Package s, Unifiable<?> val) {
+	public static Fiber<Package> reifyS(Package s, Unifiable<?> val) {
 		return walkAll(s, val)
 				.flatMap(v -> v.asVar()
 						.map(u -> extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())))
-						.map(Recur::done)
+						.map(Fiber::done)
 						.orElse(() -> v.asVal()
 								.flatMap(w -> asIterable(w)
 										.orElse(() -> tupleAsIterable(w)))
@@ -315,7 +315,7 @@ public class MiniKanren {
 						.getOrElse(done(s)));
 	}
 
-	private static Recur<Package> reifyLList(Package s, LList<?> llist) {
+	private static Fiber<Package> reifyLList(Package s, LList<?> llist) {
 		if (llist.isEmpty()) {
 			return done(s);
 		} else {
@@ -324,7 +324,7 @@ public class MiniKanren {
 		}
 	}
 
-	private static Recur<Package> reifyLTree(Package s, LTree<?> tree) {
+	private static Fiber<Package> reifyLTree(Package s, LTree<?> tree) {
 		if (tree.isEmpty()) {
 			return done(s);
 		} else {
@@ -333,7 +333,7 @@ public class MiniKanren {
 		}
 	}
 
-	private static Recur<Package> reifyIterable(Package s, Iterable<Object> l) {
+	private static Fiber<Package> reifyIterable(Package s, Iterable<Object> l) {
 		return toJavaStream(l)
 				.map(MiniKanren::wrapUnifiable)
 				.reduce(done(s),

@@ -1,6 +1,6 @@
 package com.tgac.logic.finitedomain;
 import com.tgac.functional.Exceptions;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
@@ -39,7 +39,7 @@ class EnforceConstraintsFD {
 	}
 
 	public static <T> Goal forceAns(Unifiable<T> x) {
-		return s -> Recur.done(MiniKanren.walk(s, x))
+		return s -> Fiber.done(MiniKanren.walk(s, x))
 				.map(v -> v.asVar()
 						.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv))
 						.map(d -> unifyWithAllDomainValues(x, d))

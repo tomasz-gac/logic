@@ -8,7 +8,7 @@ import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
@@ -84,7 +84,7 @@ public class CKanren {
 						calculateSubstitutionAndRenamePackage(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->
 										r.getSubstitutions().isEmpty() ?
-												Recur.done(v) :
+												Fiber.done(v) :
 												MiniKanren.walkAll(r, v)
 														.map(result ->
 																s1.getConstraints() == null ?
@@ -93,7 +93,7 @@ public class CKanren {
 								.map(Cont::just)));
 	}
 
-	public static <T> Recur<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {
+	public static <T> Fiber<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {
 		return MiniKanren.walkAll(s1, x)
 				.flatMap(v -> MiniKanren.reifyS(Package.empty(), v)
 						.map(r -> Tuple.of(v, r)));

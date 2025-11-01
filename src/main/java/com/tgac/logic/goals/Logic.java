@@ -8,7 +8,7 @@ import static com.tgac.logic.goals.Matche.matche;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
@@ -209,7 +209,7 @@ public class Logic {
 				MiniKanren.walkAll(s, v)
 						.map(u -> u.asVal()
 								.<Cont<Package, Nothing>> map(_lv -> Cont.just(s))
-								.getOrElse(k -> Recur.done(Nothing.nothing()))));
+								.getOrElse(k -> Fiber.done(Nothing.nothing()))));
 	}
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
@@ -273,9 +273,9 @@ public class Logic {
 				goals.toJavaStream()
 						.map(v -> MiniKanren.walkAll(s, v)
 								.map(java.util.stream.Stream::of))
-						.reduce((l, r) -> Recur.zip(l, r)
+						.reduce((l, r) -> Fiber.zip(l, r)
 								.map(lr -> lr.apply(java.util.stream.Stream::concat)))
-						.orElseGet(() -> Recur.done(java.util.stream.Stream.empty()))
+						.orElseGet(() -> Fiber.done(java.util.stream.Stream.empty()))
 						.map(u -> u.map(Unifiable::getObjectUnifiable)
 								.collect(Array.collector()))
 						.map(f)
@@ -288,9 +288,9 @@ public class Logic {
 				values.toJavaStream()
 						.map(v -> MiniKanren.walkAll(s, v)
 								.map(Stream::of))
-						.reduce((l, r) -> Recur.zip(l, r)
+						.reduce((l, r) -> Fiber.zip(l, r)
 								.map(lr -> lr.apply(Stream::concat)))
-						.orElseGet(() -> Recur.done(Stream.empty()))
+						.orElseGet(() -> Fiber.done(Stream.empty()))
 						.map(u -> u.map(Unifiable::getObjectUnifiable)
 								.collect(Array.collector()))
 						.map(u -> Option.of(u)

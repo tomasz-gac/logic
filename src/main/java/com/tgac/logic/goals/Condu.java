@@ -1,12 +1,12 @@
 package com.tgac.logic.goals;
 
 import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.functional.recursion.Fiber.done;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.logic.unification.Package;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,7 +42,7 @@ public class Condu implements Goal {
 			AtomicBoolean committed = new AtomicBoolean(false);
 			List<Package> results = new ArrayList<>();
 			return clauses.stream()
-					.reduce(Recur.done(nothing()),
+					.reduce(Fiber.done(nothing()),
 							(acc, g) -> acc.flatMap(_0 ->
 									g.apply(s).run(s1 -> {
 										results.add(s1);
@@ -63,7 +63,7 @@ public class Condu implements Goal {
 	}
 
 	@Override
-	public Recur<Goal> optimize() {
+	public Fiber<Goal> optimize() {
 		return clauses.stream()
 				.map(Goal::optimize)
 				.map(v -> v.map(g ->
@@ -71,7 +71,7 @@ public class Condu implements Goal {
 								((Condu) g).clauses.stream() :
 								java.util.stream.Stream.of(g)))
 				.reduce(done(new Condu()),
-						(l, r) -> Recur.zip(l, r).map(t -> t._1
+						(l, r) -> Fiber.zip(l, r).map(t -> t._1
 								.orElse(t._2.toArray(Goal[]::new))),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}

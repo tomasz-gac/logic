@@ -183,7 +183,7 @@ public class LogicTest {
 		Goal baseCase = list.unifies(LList.empty())
 				.and(accumulator.unifies(result));
 
-		// Recursive case:
+		// Fibersive case:
 		// list = [head | tail]
 		// newAccumulator = [head | accumulator]
 		// recurse with reversoAcc(tail, newAccumulator, result)

@@ -59,7 +59,7 @@ public class MiniKanrenTest {
 	}
 
 	@Test
-	public void shouldNotExtendRecursion() {
+	public void shouldNotExtendFibersion() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Package subst = MiniKanren.unify(Package.empty(), x, y).get().get();

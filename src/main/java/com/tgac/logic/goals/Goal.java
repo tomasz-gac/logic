@@ -1,14 +1,14 @@
 package com.tgac.logic.goals;
 
 import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.functional.recursion.Fiber.done;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.recursion.BFSEngine;
 import com.tgac.functional.recursion.Engine;
 import com.tgac.functional.recursion.ExecutorServiceEngine;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
@@ -212,12 +212,12 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * Provides an opportunity to optimize this goal.
 	 * <pre>
 	 * The default implementation performs no optimization and returns the goal itself
-	 * wrapped in a completed {@link Recur} object.
+	 * wrapped in a completed {@link Fiber} object.
 	 * </pre>
-	 * @return A {@link Recur} containing the (potentially optimized) goal.
-	 * By default, returns {@code Recur.done(this)}.
+	 * @return A {@link Fiber} containing the (potentially optimized) goal.
+	 * By default, returns {@code Fiber.done(this)}.
 	 */
-	default Recur<Goal> optimize() {
+	default Fiber<Goal> optimize() {
 		return done(this);
 	}
 
@@ -327,7 +327,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * </pre>
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
-	 * @param factory A function that takes a {@link Recur} computation (representing the goal's execution logic)
+	 * @param factory A function that takes a {@link Fiber} computation (representing the goal's execution logic)
 	 * and produces an {@link Engine} to run it. This allows for different execution
 	 * strategies (e.g., BFS, DFS, parallel).
 	 * @return A {@link Stream} of {@link Unifiable}s, where each element is an instantiation
@@ -335,10 +335,10 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 */
 	default <T> Stream<Unifiable<T>> solve(
 			Unifiable<T> out,
-			Function<Recur<Nothing>, Engine<Nothing>> factory) {
+			Function<Fiber<Nothing>, Engine<Nothing>> factory) {
 		Deque<Unifiable<T>> results = new LinkedBlockingDeque<>();
 
-		Recur<Nothing> recur = apply(Package.empty())
+		Fiber<Nothing> recur = apply(Package.empty())
 				.flatMap(s -> CKanren.reify(s, out))
 				.run(v -> {
 					results.add(v);      // Push result to queue

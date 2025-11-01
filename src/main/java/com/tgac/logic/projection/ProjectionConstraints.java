@@ -2,7 +2,7 @@ package com.tgac.logic.projection;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.functional.transformer.OptionT;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.Constraint;
@@ -97,10 +97,10 @@ public class ProjectionConstraints implements ConstraintStore {
 						.cast())));
 	}
 
-	private static <T> OptionT<Recur<?>, T> getVal(Package s, Unifiable<T> x) {
+	private static <T> OptionT<Fiber<?>, T> getVal(Package s, Unifiable<T> x) {
 		return OptionT.just(MiniKanren.walkAll(s, x))
 				.flatMap(u -> u.asVal()
-						.map(v -> OptionT.just(Recur.done(v)))
-						.getOrElse(OptionT.<Recur<?>, T> none(Recur::done)));
+						.map(v -> OptionT.just(Fiber.done(v)))
+						.getOrElse(OptionT.<Fiber<?>, T> none(Fiber::done)));
 	}
 }

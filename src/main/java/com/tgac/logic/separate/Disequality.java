@@ -1,6 +1,6 @@
 package com.tgac.logic.separate;
 
-import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.functional.recursion.Fiber.done;
 import static com.tgac.logic.ckanren.CKanren.unify;
 import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
 import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
@@ -13,7 +13,7 @@ import static com.tgac.logic.unification.MiniKanren.walkAll;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.recursion.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
@@ -33,7 +33,7 @@ public class Disequality {
 			Package s = NeqConstraints.register(a);
 			return Cont.defer(() ->
 					unify(withoutConstraints(s), lhs, rhs)
-							.getRecur()
+							.getFiber()
 							.map(unificationResult -> {
 								switch (verifySeparate(unificationResult, s)) {
 									case UNIFIED:
@@ -181,13 +181,13 @@ public class Disequality {
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	static Recur<List<NeqConstraint>> walkAllConstraints(
+	static Fiber<List<NeqConstraint>> walkAllConstraints(
 			List<NeqConstraint> constraints,
 			Package s) {
 		return constraints.toJavaStream()
 				.map(c -> walkAllConstraint(s, c.getSeparate())
 						.map(java.util.stream.Stream::of))
-				.reduce((l, r) -> Recur.zip(l, r)
+				.reduce((l, r) -> Fiber.zip(l, r)
 						.map(lr -> lr.apply(java.util.stream.Stream::concat)))
 				.orElseGet(() -> done(java.util.stream.Stream.empty()))
 				.map(stream -> stream
@@ -195,16 +195,16 @@ public class Disequality {
 						.collect(List.collector()));
 	}
 
-	private static Recur<HashMap<LVar<?>, Unifiable<?>>> walkAllConstraint(Package s, HashMap<LVar<?>, Unifiable<?>> c) {
+	private static Fiber<HashMap<LVar<?>, Unifiable<?>>> walkAllConstraint(Package s, HashMap<LVar<?>, Unifiable<?>> c) {
 		return c.toJavaStream()
 				.map(valSub -> valSub.map(
 								val -> walkAll(s, val)
 										// this should be right since lhs of a substitution is unbound and unique
 										.map(u -> u.asVar().get()),
 								sub -> walkAll(s, sub))
-						.apply(Recur::zip))
+						.apply(Fiber::zip))
 				.reduce(done(HashMap.empty()),
-						(acc, v) -> Recur.zip(acc, v)
+						(acc, v) -> Fiber.zip(acc, v)
 								.map(ms -> ms.apply(HashMap::put)),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
@@ -241,13 +241,13 @@ public class Disequality {
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	static Recur<List<NeqConstraint>> removeSubsumed(
+	static Fiber<List<NeqConstraint>> removeSubsumed(
 			List<NeqConstraint> constraints,
 			List<NeqConstraint> constraintAcc) {
 		if (constraints.isEmpty()) {
 			return done(constraintAcc);
 		} else {
-			return Recur.zip(
+			return Fiber.zip(
 							// constraint subsumes another existing constraint
 							done(isConstraintSubsumed(constraints.head(), constraintAcc)),
 							// constraint subsumed by previously processed
