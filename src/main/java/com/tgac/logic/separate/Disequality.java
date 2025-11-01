@@ -1,6 +1,6 @@
 package com.tgac.logic.separate;
 
-import static com.tgac.functional.recursion.Fiber.done;
+import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.ckanren.CKanren.unify;
 import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
 import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
@@ -13,7 +13,7 @@ import static com.tgac.logic.unification.MiniKanren.walkAll;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Fiber;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;

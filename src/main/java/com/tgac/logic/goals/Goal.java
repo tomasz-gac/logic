@@ -1,20 +1,19 @@
 package com.tgac.logic.goals;
 
 import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.functional.recursion.Fiber.done;
+import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.BFSEngine;
-import com.tgac.functional.recursion.Engine;
-import com.tgac.functional.recursion.ExecutorServiceEngine;
-import com.tgac.functional.recursion.Fiber;
+import com.tgac.functional.fibers.schedulers.BredthFirstScheduler;
+import com.tgac.functional.fibers.Scheduler;
+import com.tgac.functional.fibers.schedulers.ExecutorServiceScheduler;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.IndexedSeq;
-import io.vavr.collection.Map;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
@@ -315,7 +314,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * The process involves:
 	 * - Applying the current goal to an empty initial state ({@link Package#empty()}).
 	 * - For each successful resulting state, reifying (extracting the value of) the {@code out} variable.
-	 * - Using an {@link Engine} (provided by the {@code factory}) to manage the execution of the continuations.
+	 * - Using an {@link Scheduler} (provided by the {@code factory}) to manage the execution of the continuations.
 	 * - Streaming the reified values of {@code out} as they are found.
 	 *
 	 * The results are provided as a {@link Stream}. The stream is populated lazily as the engine
@@ -328,14 +327,14 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
 	 * @param factory A function that takes a {@link Fiber} computation (representing the goal's execution logic)
-	 * and produces an {@link Engine} to run it. This allows for different execution
+	 * and produces an {@link Scheduler} to run it. This allows for different execution
 	 * strategies (e.g., BFS, DFS, parallel).
 	 * @return A {@link Stream} of {@link Unifiable}s, where each element is an instantiation
 	 * of the {@code out} variable representing a solution.
 	 */
 	default <T> Stream<Unifiable<T>> solve(
 			Unifiable<T> out,
-			Function<Fiber<Nothing>, Engine<Nothing>> factory) {
+			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
 		Deque<Unifiable<T>> results = new LinkedBlockingDeque<>();
 
 		Fiber<Nothing> recur = apply(Package.empty())
@@ -344,7 +343,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 					results.add(v);      // Push result to queue
 					return nothing();         // Unit signal
 				});
-		Engine<Nothing> engine = factory.apply(recur);
+		Scheduler<Nothing> scheduler = factory.apply(recur);
 
 		Spliterator<Unifiable<T>> spliterator = new Spliterator<Unifiable<T>>() {
 			@Override
@@ -352,7 +351,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 				while (results.isEmpty()) { // Loop if no results are immediately available
 					// Run the engine for a batch of steps.
 					// engine.run() returns true if the entire computation has completed.
-					if (engine.run(64, v -> { /* Engine's internal step callback, not for results here */ })) {
+					if (scheduler.run(64, v -> { /* Engine's internal step callback, not for results here */ })) {
 						// Engine has completed. Process any remaining items in the results queue.
 						// Note: This inner loop processes all remaining items in one go if the engine is done.
 						// This differs from typical tryAdvance behavior which processes one item.
@@ -389,7 +388,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 		return StreamSupport.stream(spliterator, false)
 				.onClose(() -> {
 					try {
-						engine.close();
+						scheduler.close();
 					} catch (Exception e) {
 						throw new RuntimeException("Failed to close engine", e);
 					}
@@ -399,32 +398,32 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	/**
 	 * Solves this goal in parallel, attempting to find instantiations for the specified output variable.
 	 * <pre>
-	 * This is a convenience method that uses an {@link ExecutorServiceEngine} with the default {@link #THREAD_POOL}.
+	 * This is a convenience method that uses an {@link ExecutorServiceScheduler} with the default {@link #THREAD_POOL}.
 	 * </pre>
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
 	 * @return A {@link Stream} of {@link Unifiable}s representing solutions, potentially computed in parallel.
 	 * @see #solve(Unifiable, Function)
-	 * @see ExecutorServiceEngine
+	 * @see ExecutorServiceScheduler
 	 */
 	default <T> Stream<Unifiable<T>> solveParallel(Unifiable<T> out) {
-		return solve(out, r -> new ExecutorServiceEngine<>(r, THREAD_POOL));
+		return solve(out, r -> new ExecutorServiceScheduler<>(r, THREAD_POOL));
 	}
 
 	/**
 	 * Solves this goal, attempting to find instantiations for the specified output variable,
 	 * using a default Breadth-First Search (BFS) engine.
 	 * <pre>
-	 * This is a convenience method that uses a {@link BFSEngine}.
+	 * This is a convenience method that uses a {@link BredthFirstScheduler}.
 	 * </pre>
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
 	 * @return A {@link Stream} of {@link Unifiable}s representing solutions, computed using BFS.
 	 * @see #solve(Unifiable, Function)
-	 * @see BFSEngine
+	 * @see BredthFirstScheduler
 	 */
 	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
-		return solve(out, BFSEngine::new);
+		return solve(out, BredthFirstScheduler::new);
 	}
 
 	/**

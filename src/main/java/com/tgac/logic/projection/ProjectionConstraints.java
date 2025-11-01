@@ -2,7 +2,7 @@ package com.tgac.logic.projection;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Fiber;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.transformer.OptionT;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.Constraint;

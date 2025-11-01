@@ -1,7 +1,7 @@
 package com.tgac.logic.ckanren;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Fiber;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.Utils;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;

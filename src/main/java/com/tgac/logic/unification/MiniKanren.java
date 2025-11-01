@@ -1,19 +1,19 @@
 package com.tgac.logic.unification;
 
 import static com.tgac.functional.Exceptions.throwingBiOp;
-import static com.tgac.functional.recursion.MFiber.mdone;
-import static com.tgac.functional.recursion.MFiber.mdefer;
-import static com.tgac.functional.recursion.MFiber.none;
-import static com.tgac.functional.recursion.Fiber.done;
-import static com.tgac.functional.recursion.Fiber.defer;
+import static com.tgac.functional.fibers.MFiber.mdone;
+import static com.tgac.functional.fibers.MFiber.mdefer;
+import static com.tgac.functional.fibers.MFiber.none;
+import static com.tgac.functional.fibers.Fiber.done;
+import static com.tgac.functional.fibers.Fiber.defer;
 import static com.tgac.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
 import com.tgac.functional.Streams;
-import com.tgac.functional.recursion.MFiber;
-import com.tgac.functional.recursion.Fiber;
+import com.tgac.functional.fibers.MFiber;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;

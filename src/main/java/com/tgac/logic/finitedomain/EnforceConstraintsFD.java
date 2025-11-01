@@ -1,6 +1,6 @@
 package com.tgac.logic.finitedomain;
 import com.tgac.functional.Exceptions;
-import com.tgac.functional.recursion.Fiber;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
