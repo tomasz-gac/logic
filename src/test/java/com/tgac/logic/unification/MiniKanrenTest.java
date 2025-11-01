@@ -6,6 +6,9 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.schedulers.BredthFirstScheduler;
 import com.tgac.logic.Utils;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -16,6 +19,7 @@ import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.val;
@@ -539,6 +543,115 @@ public class MiniKanrenTest {
 				.isEmpty();
 	}
 
+
+	@Test
+	public void testContainsLVars_SimpleLVar() {
+		Unifiable<Integer> x = lvar();
+		assertThat(runFiber(MiniKanren.containsLVars(x))).isTrue();
+	}
+
+	@Test
+	public void testContainsLVars_GroundValue() {
+		Unifiable<Integer> val = lval(42);
+		assertThat(runFiber(MiniKanren.containsLVars(val))).isFalse();
+	}
+
+	@Test
+	public void testContainsLVars_ListWithLVars() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<List<Unifiable<Integer>>> list = lval(List.of(lval(1), x, lval(3)));
+		assertThat(runFiber(MiniKanren.containsLVars(list))).isTrue();
+	}
+
+	@Test
+	public void testContainsLVars_ListWithoutLVars() {
+		Unifiable<List<Unifiable<Integer>>> list = lval(List.of(lval(1), lval(2), lval(3)));
+		assertThat(runFiber(MiniKanren.containsLVars(list))).isFalse();
+	}
+
+	@Test
+	public void testContainsLVars_TupleWithLVars() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> tuple = lval(Tuple.of(lval(1), x));
+		assertThat(runFiber(MiniKanren.containsLVars(tuple))).isTrue();
+	}
+
+	@Test
+	public void testContainsLVars_TupleWithoutLVars() {
+		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> tuple = lval(Tuple.of(lval(1), lval(2)));
+		assertThat(runFiber(MiniKanren.containsLVars(tuple))).isFalse();
+	}
+
+	@Test
+	public void testContainsLVars_DeeplyNestedWithLVars() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<List<Unifiable<List<Unifiable<Integer>>>>> nested =
+			lval(List.of(lval(List.of(lval(1), x))));
+		assertThat(runFiber(MiniKanren.containsLVars(nested))).isTrue();
+	}
+
+	@Test
+	public void testContainsLVars_DeeplyNestedWithoutLVars() {
+		Unifiable<List<Unifiable<List<Unifiable<Integer>>>>> nested =
+			lval(List.of(lval(List.of(lval(1), lval(2)))));
+		assertThat(runFiber(MiniKanren.containsLVars(nested))).isFalse();
+	}
+
+	@Test
+	public void testContainsLVars_LListWithLVars() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<LList<Integer>> llist = LList.ofAll(lval(1), x);
+		assertThat(runFiber(MiniKanren.containsLVars(llist))).isTrue();
+	}
+
+	@Test
+	public void testContainsLVars_LListWithoutLVars() {
+		Unifiable<LList<Integer>> llist = LList.ofAll(lval(1), lval(2), lval(3));
+		assertThat(runFiber(MiniKanren.containsLVars(llist))).isFalse();
+	}
+
+	@Test
+	public void testContainsLVars_EmptyLList() {
+		Unifiable<LList<Integer>> llist = LList.empty();
+		assertThat(runFiber(MiniKanren.containsLVars(llist))).isFalse();
+	}
+
+	@Test
+	public void testContainsLVars_LTreeWithLVars() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<LTree<Integer>> ltree = LTree.of(x, LList.empty());
+		assertThat(runFiber(MiniKanren.containsLVars(ltree))).isTrue();
+	}
+
+	@Test
+	public void testContainsLVars_LTreeWithoutLVars() {
+		Unifiable<LTree<Integer>> ltree = LTree.of(lval(1), LList.empty());
+		assertThat(runFiber(MiniKanren.containsLVars(ltree))).isFalse();
+	}
+
+	@Test
+	public void testContainsLVars_LTreeWithLVarInChildren() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<LTree<Integer>> child = LTree.of(x, LList.empty());
+		Unifiable<LTree<Integer>> ltree = LTree.of(lval(1), LList.of(child));
+		assertThat(runFiber(MiniKanren.containsLVars(ltree))).isTrue();
+	}
+
+	@Test
+	public void testContainsLVars_EmptyLTree() {
+		Unifiable<LTree<Integer>> ltree = LTree.empty();
+		assertThat(runFiber(MiniKanren.containsLVars(ltree))).isFalse();
+	}
+
+	/**
+	 * Helper to run a Fiber synchronously and get its result.
+	 */
+	private <T> T runFiber(Fiber<T> fiber) {
+		AtomicReference<T> result = new AtomicReference<>();
+		BredthFirstScheduler<T> scheduler = new BredthFirstScheduler<>(fiber);
+		scheduler.run(result::set);
+		return result.get();
+	}
 
 	private static <T> Optional<T> extractValue(Unifiable<T> variable, Package subs) {
 		return MiniKanren.walk(subs, variable)
