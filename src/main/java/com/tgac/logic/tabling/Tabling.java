@@ -65,13 +65,13 @@ public class Tabling {
 				// Step 4: Try to become master
 				if (entry.tryBecomeMaster()) {
 					if (goalName.equals("path")) {
-						System.out.println("[DEBUG] path - MASTER");
+						System.out.println("[DEBUG] path - MASTER for key: " + key);
 					}
 					// We are the master
 					return producerCont(entry, goalFactory.apply(args), pkg, args).apply(k);
 				} else {
 					if (goalName.equals("path")) {
-						System.out.println("[DEBUG] path - SLAVE");
+						System.out.println("[DEBUG] path - SLAVE for key: " + key);
 					}
 					// We are a slave
 					return consumerCont(entry, pkg, args).apply(k);

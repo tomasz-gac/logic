@@ -114,20 +114,35 @@ public class Call {
 
 	/**
 	 * Check if two arguments are equal structurally.
-	 * Reified calls can contain LVars (with name-based equality).
+	 * Reified calls can contain LVars, which should compare by name for table lookup.
 	 */
+	@SuppressWarnings("unchecked")
 	private boolean argumentsEqual(Unifiable a, Unifiable b) {
+		// For LVars, compare by name (since reified LVars are fresh objects)
+		if (a.asVar().isDefined() && b.asVar().isDefined()) {
+			LVar<Object> aVar = (LVar<Object>) a.asVar().get();
+			LVar<Object> bVar = (LVar<Object>) b.asVar().get();
+			return aVar.getName().equals(bVar.getName());
+		}
 		return a.equals(b);
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public int hashCode() {
 		int result = goalName.hashCode();
 
 		// Hash based on argument structure
-		// Reified calls can contain fresh variables (from reify process)
+		// For LVars, hash by name (consistent with argumentsEqual)
 		for (Unifiable arg : arguments) {
-			result = 31 * result + arg.hashCode();
+			int argHash;
+			if (arg.asVar().isDefined()) {
+				LVar<Object> var = (LVar<Object>) arg.asVar().get();
+				argHash = var.getName().hashCode();
+			} else {
+				argHash = arg.hashCode();
+			}
+			result = 31 * result + argHash;
 		}
 
 		return result;
