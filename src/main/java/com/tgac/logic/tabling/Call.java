@@ -114,14 +114,9 @@ public class Call {
 
 	/**
 	 * Check if two arguments are equal structurally.
-	 * Tabled calls must be ground - any LVar indicates a bug.
+	 * Reified calls can contain LVars (with name-based equality).
 	 */
 	private boolean argumentsEqual(Unifiable a, Unifiable b) {
-		if (a instanceof LVar || b instanceof LVar) {
-			throw new IllegalStateException(
-				"Tabling invariant violated: non-ground call in table equality check: " + this +
-				" (comparing " + a + " vs " + b + ")");
-		}
 		return a.equals(b);
 	}
 
@@ -130,12 +125,8 @@ public class Call {
 		int result = goalName.hashCode();
 
 		// Hash based on argument structure
-		// Tabled calls must be ground - any LVar indicates a bug
+		// Reified calls can contain fresh variables (from reify process)
 		for (Unifiable arg : arguments) {
-			if (arg instanceof LVar) {
-				throw new IllegalStateException(
-					"Tabling invariant violated: non-ground call being hashed: " + this);
-			}
 			result = 31 * result + arg.hashCode();
 		}
 

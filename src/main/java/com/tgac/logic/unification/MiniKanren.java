@@ -342,6 +342,72 @@ public class MiniKanren {
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
+	/**
+	 * Like reify, but replaces unbound variables with fresh LVars instead of symbols.
+	 * Used for tabling to copy terms without leaking variable context.
+	 */
+	public static <T> Fiber<Unifiable<T>> reifyVar(Package s, Unifiable<T> item) {
+		return walkAll(s, item)
+				.flatMap(v -> reifyVarS(Package.empty(), v)
+						.flatMap(rp -> walkAll(rp, v)));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Fiber<Package> reifyVarS(Package s, Unifiable<?> val) {
+		return walkAll(s, val)
+				.flatMap(v -> v.asVar()
+						.map(u -> extend(s, (LVar<Object>) u, (Unifiable<Object>) LVar.lvar()))
+						.map(Fiber::done)
+						.orElse(() -> v.asVal()
+								.flatMap(w -> asIterable(w)
+										.orElse(() -> tupleAsIterable(w)))
+								.map(it -> reifyVarIterable(s, it)))
+						.orElse(() -> v.asVal()
+								.flatMap(w -> Types.cast(w, LList.class))
+								.map(llist -> reifyVarLList(s, llist)))
+						.orElse(() -> v.asVal()
+								.flatMap(w -> Types.cast(w, LTree.class))
+								.map(ltree -> reifyVarLTree(s, ltree)))
+						.getOrElse(done(s)));
+	}
+
+	private static Fiber<Package> reifyVarLList(Package s, LList<?> llist) {
+		if (llist.isEmpty()) {
+			return done(s);
+		} else {
+			return reifyVarS(s, llist.getHead())
+					.flatMap(s1 -> reifyVarS(s1, llist.getTail()));
+		}
+	}
+
+	private static Fiber<Package> reifyVarLTree(Package s, LTree<?> tree) {
+		if (tree.isEmpty()) {
+			return done(s);
+		} else {
+			return reifyVarS(s, tree.getValue())
+					.flatMap(p -> reifyVarS(p, tree.getChildren()));
+		}
+	}
+
+	private static Fiber<Package> reifyVarIterable(Package s, Iterable<Object> l) {
+		return toJavaStream(l)
+				.map(MiniKanren::wrapUnifiable)
+				.reduce(done(s),
+						(state, item) ->
+								state.flatMap(s1 -> reifyVarS(s1, item)),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
+	}
+
+	/**
+	 * Check if two terms are alpha-equivalent (equivalent modulo variable renaming).
+	 * Used for tabling to detect duplicate answer terms.
+	 */
+	public static <T> Fiber<Boolean> alphaEquiv(Unifiable<T> x, Unifiable<T> y, Package s) {
+		return reify(s, x).flatMap(xReified ->
+			reify(s, y).map(yReified ->
+				xReified.equals(yReified)));
+	}
+
 	public static HashMap<LVar<?>, Unifiable<?>> prefixS(
 			HashMap<LVar<?>, Unifiable<?>> s,
 			HashMap<LVar<?>, Unifiable<?>> extendedS) {

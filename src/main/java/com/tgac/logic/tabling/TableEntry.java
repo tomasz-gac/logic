@@ -1,6 +1,8 @@
 package com.tgac.logic.tabling;
 
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Unifiable;
+import io.vavr.collection.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -15,17 +17,16 @@ import lombok.Getter;
  * - The MASTER is the first invocation that actually executes the goal
  * - SLAVES are subsequent invocations that read from the cached answers
  *
- * The master produces answers incrementally and stores them in the cache.
- * Slaves consume from the cache and suspend when they exhaust it, waiting
- * for the master to produce more answers or complete.
+ * The master produces answer terms (reified arguments with fresh variables).
+ * Slaves unify their arguments with cached answer terms.
  */
 public class TableEntry {
 	/** The call being tabled */
 	@Getter
 	private final Call call;
 
-	/** Cached answers produced by the master */
-	private final CopyOnWriteArrayList<Package> answers = new CopyOnWriteArrayList<>();
+	/** Cached answer terms produced by the master - each is a list of reified arguments */
+	private final CopyOnWriteArrayList<List<Unifiable<?>>> answers = new CopyOnWriteArrayList<>();
 
 	/** Whether the master has completed producing all answers */
 	private final AtomicBoolean complete = new AtomicBoolean(false);
@@ -53,10 +54,10 @@ public class TableEntry {
 	 */
 	@Getter
 	public static class Answer implements AnswerStatus {
-		private final Package answer;
+		private final List<Unifiable<?>> answerTerm;
 
-		public Answer(Package answer) {
-			this.answer = answer;
+		public Answer(List<Unifiable<?>> answerTerm) {
+			this.answerTerm = answerTerm;
 		}
 	}
 
@@ -83,12 +84,12 @@ public class TableEntry {
 	}
 
 	/**
-	 * Add an answer to the cache and notify waiting slaves.
+	 * Add an answer term to the cache and notify waiting slaves.
 	 * Should only be called by the master.
 	 */
-	public void addAnswer(Package answer) {
+	public void addAnswer(List<Unifiable<?>> answerTerm) {
 		int index = answers.size();
-		answers.add(answer);
+		answers.add(answerTerm);
 
 		// Notify all slaves waiting at this index
 		CopyOnWriteArrayList<CompletableFuture<AnswerStatus>> waitingAtIndex =
@@ -96,7 +97,7 @@ public class TableEntry {
 
 		if (waitingAtIndex != null) {
 			for (CompletableFuture<AnswerStatus> future : waitingAtIndex) {
-				future.complete(new Answer(answer));
+				future.complete(new Answer(answerTerm));
 			}
 		}
 	}
@@ -118,9 +119,9 @@ public class TableEntry {
 	}
 
 	/**
-	 * Get an answer at the specified index, or null if not yet available.
+	 * Get an answer term at the specified index, or null if not yet available.
 	 */
-	public Package getAnswerAt(int index) {
+	public List<Unifiable<?>> getAnswerAt(int index) {
 		if (index < answers.size()) {
 			return answers.get(index);
 		}

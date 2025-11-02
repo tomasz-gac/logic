@@ -2,8 +2,10 @@ package com.tgac.logic.tabling;
 
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
+import io.vavr.collection.List;
 import org.junit.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -35,10 +37,9 @@ public class TableEntryTest {
 
 		assertThat(entry.getAnswerCount()).isEqualTo(0);
 
-		// Add some answers
-		LVar x = (LVar) lvar("X");
-		Package ans1 = Package.of(HashMap.of(x, lval("alice")), LinkedHashMap.empty());
-		Package ans2 = Package.of(HashMap.of(x, lval("bob")), LinkedHashMap.empty());
+		// Add some answers (answer terms are lists of reified arguments)
+		List<Unifiable<?>> ans1 = List.of(lval("alice"), lval("bob"));
+		List<Unifiable<?>> ans2 = List.of(lval("charlie"), lval("dave"));
 
 		entry.addAnswer(ans1);
 		entry.addAnswer(ans2);
@@ -59,14 +60,13 @@ public class TableEntryTest {
 		assertThat(future).isNotCompleted();
 
 		// Master produces answer
-		LVar x = (LVar) lvar("X");
-		Package ans = Package.of(HashMap.of(x, lval("charlie")), LinkedHashMap.empty());
+		List<Unifiable<?>> ans = List.of(lval("charlie"), lval("dave"));
 		entry.addAnswer(ans);
 
 		// Slave's future should now complete
 		TableEntry.AnswerStatus status = future.get(100, TimeUnit.MILLISECONDS);
 		assertThat(status).isInstanceOf(TableEntry.Answer.class);
-		assertThat(((TableEntry.Answer) status).getAnswer()).isEqualTo(ans);
+		assertThat(((TableEntry.Answer) status).getAnswerTerm()).isEqualTo(ans);
 	}
 
 	@Test
@@ -75,8 +75,7 @@ public class TableEntryTest {
 		TableEntry entry = new TableEntry(call);
 
 		// Master produces answer first
-		LVar x = (LVar) lvar("X");
-		Package ans = Package.of(HashMap.of(x, lval("charlie")), LinkedHashMap.empty());
+		List<Unifiable<?>> ans = List.of(lval("charlie"), lval("dave"));
 		entry.addAnswer(ans);
 
 		// Slave requests answer at index 0 (already available)
@@ -86,7 +85,7 @@ public class TableEntryTest {
 		assertThat(future).isCompleted();
 		TableEntry.AnswerStatus status = future.get();
 		assertThat(status).isInstanceOf(TableEntry.Answer.class);
-		assertThat(((TableEntry.Answer) status).getAnswer()).isEqualTo(ans);
+		assertThat(((TableEntry.Answer) status).getAnswerTerm()).isEqualTo(ans);
 	}
 
 	@Test
@@ -124,8 +123,7 @@ public class TableEntryTest {
 		assertThat(future3).isNotCompleted();
 
 		// Master produces answer
-		LVar x = (LVar) lvar("X");
-		Package ans = Package.of(HashMap.of(x, lval("charlie")), LinkedHashMap.empty());
+		List<Unifiable<?>> ans = List.of(lval("charlie"), lval("dave"));
 		entry.addAnswer(ans);
 
 		// All slaves should be notified
