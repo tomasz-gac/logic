@@ -43,14 +43,23 @@ public class Tabling {
 		return pkg -> k -> {
 			// Create the call, walk it deeply, then check if it contains any LVars (non-ground)
 			// Use Fiber to avoid stack overflow on deeply nested structures
-			return Call.of(goalName, args).walkFiber(pkg).flatMap(walkedCall ->
-				walkedCall.containsLVarsFiber().flatMap(hasLVars -> {
+			return Call.of(goalName, args).walkFiber(pkg).flatMap(walkedCall -> {
+				if (goalName.equals("path")) {
+					System.out.println("[DEBUG] path - walked: " + walkedCall);
+				}
+				return walkedCall.containsLVarsFiber().flatMap(hasLVars -> {
 					if (hasLVars) {
 						// Contains unbound variables - execute normally without tabling
+						if (goalName.equals("path")) {
+							System.out.println("[DEBUG] path - BYPASSING");
+						}
 						return goalFactory.apply(args).apply(pkg).apply(k);
 					}
 
 					// Ground call - use tabling
+					if (goalName.equals("path")) {
+						System.out.println("[DEBUG] path - USING TABLING");
+					}
 					Table table = Table.instance();
 					TableEntry entry = table.getOrCreateEntry(walkedCall);
 
@@ -62,28 +71,30 @@ public class Tabling {
 						// We are a slave - consume from cache
 						return consumerCont(entry, pkg).apply(k);
 					}
-				})
-			);
+				});
+			});
 		};
 	}
 
 	/**
 	 * Master producer: executes the goal and caches each answer.
+	 * After caching is complete, the master becomes a consumer and reads from the cache.
 	 */
 	private static Cont<Package, Nothing> producerCont(TableEntry entry, Goal goal, Package initialPkg) {
 		return k -> {
-			// Execute the goal
-			Fiber<Nothing> goalFiber = goal.apply(initialPkg).apply(ans -> {
-				// Cache this answer
+			// Execute the goal with a caching-only continuation
+			Fiber<Nothing> cachingFiber = goal.apply(initialPkg).apply(ans -> {
 				entry.addAnswer(ans);
-				// Continue with this answer
-				return k.apply(ans);
+				// Don't call k here - just cache and continue the goal
+				return done(Nothing.nothing());
 			});
 
-			// After goal completes, mark entry as complete
-			return goalFiber.flatMap(result -> {
+			// After caching completes, mark as complete and then consume answers like a slave
+			return cachingFiber.flatMap(result -> {
 				entry.markComplete();
-				return done(result);
+
+				// Now consume answers from the cache to continue the query
+				return consumeAnswers(entry, k, initialPkg, new AtomicInteger(0));
 			});
 		};
 	}

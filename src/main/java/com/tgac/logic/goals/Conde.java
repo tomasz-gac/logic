@@ -35,7 +35,7 @@ public class Conde implements Goal {
 
 	@Override
 	public Cont<com.tgac.logic.unification.Package, Nothing> apply(Package s) {
-		return k -> Fiber.forEach(
+		return k -> Fiber.fork(
 				clauses.stream()
 						.map(g -> g.apply(s).apply(k))
 						.collect(Collectors.toList()),
