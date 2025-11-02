@@ -6,6 +6,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -101,30 +102,86 @@ public class Tabling {
 	@SuppressWarnings("unchecked")
 	private static Cont<Package, Nothing> producerCont(TableEntry entry, Goal goal, Package initialPkg, List<Unifiable> args) {
 		return k -> {
-			// Execute the goal with a caching-only continuation
-			Fiber<Nothing> cachingFiber = goal.apply(initialPkg).apply(answerPkg -> {
-				// For each answer Package, reify the arguments and cache them as answer terms
+			System.out.println("[DEBUG] MASTER starting execution for: " + entry.getCall());
+
+			// Execute the goal with a continuation that both caches AND passes answers forward
+			Fiber<Nothing> goalFiber = goal.apply(initialPkg).apply(answerPkg -> {
+				// For each answer Package, reify the arguments to create answer term
 				return reifyArguments(answerPkg, args).flatMap(answerTerm -> {
+					// Check if this answer is a duplicate (already cached)
+					if (isDuplicate(entry, (List<Unifiable<?>>) (List<?>) answerTerm)) {
+						System.out.println("[DEBUG] MASTER skipping duplicate answer: " + answerTerm + " for " + entry.getCall());
+						// Duplicate - don't cache or pass to continuation (goal fails for this branch)
+						return done(Nothing.nothing());
+					}
+
+					System.out.println("[DEBUG] MASTER caching NEW answer: " + answerTerm + " for " + entry.getCall());
+
+					// Cache the answer term (for slaves to consume)
 					entry.addAnswer((List<Unifiable<?>>) (List<?>) answerTerm);
-					// Don't call k here - just cache and continue the goal
-					return done(Nothing.nothing());
+
+					// ALSO pass the answer to the continuation (return as singleton stream)
+					// This allows answers to flow through the query
+					return k.apply(answerPkg);
 				});
 			});
 
-			// After caching completes, mark as complete and then consume answers like a slave
-			return cachingFiber.flatMap(result -> {
+			// After goal execution completes, mark as complete
+			return goalFiber.flatMap(result -> {
+				System.out.println("[DEBUG] MASTER marking complete: " + entry.getCall());
 				entry.markComplete();
-
-				// Now consume answers from the cache to continue the query
-				return consumeAnswers(entry, k, initialPkg, args, new AtomicInteger(0));
+				return done(Nothing.nothing());
 			});
 		};
+	}
+
+	/**
+	 * Check if an answer term is already in the cache.
+	 * Uses structural equality to detect duplicates.
+	 */
+	private static boolean isDuplicate(TableEntry entry, List<Unifiable<?>> answerTerm) {
+		for (int i = 0; i < entry.getAnswerCount(); i++) {
+			List<Unifiable<?>> cached = entry.getAnswerAt(i);
+			if (answersEqual(cached, answerTerm)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Check if two answer terms are equal.
+	 * Answer terms are lists of Unifiables that should be structurally equal.
+	 * LVars (from reification) are compared by name, not object identity.
+	 */
+	@SuppressWarnings("unchecked")
+	private static boolean answersEqual(List<Unifiable<?>> a, List<Unifiable<?>> b) {
+		if (a.size() != b.size()) {
+			return false;
+		}
+		for (int i = 0; i < a.size(); i++) {
+			Unifiable<?> aElem = a.get(i);
+			Unifiable<?> bElem = b.get(i);
+
+			// For LVars, compare by name (reified LVars are fresh objects)
+			if (aElem.asVar().isDefined() && bElem.asVar().isDefined()) {
+				LVar<Object> aVar = (LVar<Object>) aElem.asVar().get();
+				LVar<Object> bVar = (LVar<Object>) bElem.asVar().get();
+				if (!aVar.getName().equals(bVar.getName())) {
+					return false;
+				}
+			} else if (!aElem.equals(bElem)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
 	 * Slave consumer: reads answer terms from the cache and unifies with current arguments.
 	 */
 	private static Cont<Package, Nothing> consumerCont(TableEntry entry, Package initialPkg, List<Unifiable> args) {
+		System.out.println("[DEBUG] SLAVE starting consumption for: " + entry.getCall());
 		return k -> consumeAnswers(entry, k, initialPkg, args, new AtomicInteger(0));
 	}
 
@@ -143,6 +200,7 @@ public class Tabling {
 			AtomicInteger index) {
 
 		int currentIndex = index.get();
+		System.out.println("[DEBUG] consumeAnswers waiting for answer at index " + currentIndex + " for " + entry.getCall());
 
 		// Wait for answer at current index
 		CompletableFuture<TableEntry.AnswerStatus> answerFuture = entry.waitForAnswerAt(currentIndex);
