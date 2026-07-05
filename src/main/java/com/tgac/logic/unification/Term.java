@@ -39,4 +39,9 @@ public interface Term<T> extends Supplier<T> {
 	default LVar<T> getVar() {
 		return (LVar<T>) this;
 	}
+
+	@SuppressWarnings("unchecked")
+	default Term<Object> getObjectTerm() {
+		return (Term<Object>) this;
+	}
 }

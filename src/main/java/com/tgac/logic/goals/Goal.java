@@ -13,6 +13,7 @@ import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.IndexedSeq;
 import java.util.ArrayList;
@@ -333,10 +334,10 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @return A {@link Stream} of {@link Unifiable}s, where each element is an instantiation
 	 * of the {@code out} variable representing a solution.
 	 */
-	default <T> Stream<Unifiable<T>> solve(
+	default <T> Stream<Reified<T>> solve(
 			Unifiable<T> out,
 			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
-		Deque<Unifiable<T>> results = new LinkedBlockingDeque<>();
+		Deque<Reified<T>> results = new LinkedBlockingDeque<>();
 
 		Fiber<Nothing> recur = apply(Package.empty().withStore(Table.empty()))
 				.flatMap(s -> CKanren.reify(s, out))
@@ -346,9 +347,9 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 				});
 		Scheduler<Nothing> scheduler = factory.apply(recur);
 
-		Spliterator<Unifiable<T>> spliterator = new Spliterator<Unifiable<T>>() {
+		Spliterator<Reified<T>> spliterator = new Spliterator<Reified<T>>() {
 			@Override
-			public boolean tryAdvance(Consumer<? super Unifiable<T>> action) {
+			public boolean tryAdvance(Consumer<? super Reified<T>> action) {
 				while (results.isEmpty()) { // Loop if no results are immediately available
 					// Run the engine for a batch of steps.
 					// engine.run() returns true if the entire computation has completed.
@@ -371,7 +372,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 			}
 
 			@Override
-			public Spliterator<Unifiable<T>> trySplit() {
+			public Spliterator<Reified<T>> trySplit() {
 				return null; // Splitting not supported
 			}
 
@@ -407,7 +408,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @see #solve(Unifiable, Function)
 	 * @see ExecutorServiceScheduler
 	 */
-	default <T> Stream<Unifiable<T>> solveParallel(Unifiable<T> out) {
+	default <T> Stream<Reified<T>> solveParallel(Unifiable<T> out) {
 		return solve(out, r -> new ExecutorServiceScheduler<>(r, THREAD_POOL));
 	}
 
@@ -423,7 +424,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @see #solve(Unifiable, Function)
 	 * @see BredthFirstScheduler
 	 */
-	default <T> Stream<Unifiable<T>> solve(Unifiable<T> out) {
+	default <T> Stream<Reified<T>> solve(Unifiable<T> out) {
 		return solve(out, BredthFirstScheduler::new);
 	}
 

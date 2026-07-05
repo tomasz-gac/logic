@@ -225,42 +225,55 @@ public class MiniKanren {
 		return done(walk(s, u))
 				.flatMap(v -> v.asVar()
 						.map(w -> Fiber.<Term<T>> done(w))
-						.orElse(() -> v.asVal()
-								.flatMap(MiniKanren::asIterable)
-								.map(t -> walkIterable(s, t)))
-						.orElse(() -> v.asVal()
-								.flatMap(MiniKanren::<T>asLList)
-								.filter(not(LList::isEmpty))
-								.map(c -> Fiber.zip(
-												defer(() -> walkAll(s, c.getHead())),
-												defer(() -> walkAll(s, c.getTail())))
-										.map(ht -> ht.apply(LList::of).get())
-										.map(w -> Types.<T> castAs(w, Object.class).get())
-										.map(LVal::lval)
-										.map(MiniKanren::<T>castTerm)))
-						.orElse(() -> v.asVal()
-								.flatMap(MiniKanren::<T>asLTree)
-								.filter(not(LTree::isEmpty))
-								.map(c -> Fiber.zip(
-												defer(() -> walkAll(s, c.getValue())),
-												defer(() -> walkAll(s, c.getChildren())))
-										.map(vc -> vc.apply(LTree::of).get())
-										.map(w -> Types.<T> castAs(w, Object.class).get())
-										.map(LVal::lval)
-										.map(MiniKanren::<T>castTerm)))
-						.orElse(() -> v.asVal()
-								.flatMap(MiniKanren::tupleAsIterable)
-								.map(t -> walkTuple(s, t)))
+						.orElse(() -> MiniKanren.<T> mapStructure(v, e -> walkAll(s, e)))
 						.getOrElse(done(v)));
 	}
 
-	private static <T> Fiber<Term<T>> walkIterable(Package s, Iterable<Object> iterable) {
+	/**
+	 * Rebuild the structure of a term (collection, LList, LTree or tuple)
+	 * with each component passed through the mapper. Empty when the term
+	 * is not structural.
+	 */
+	private static <T> Option<Fiber<Term<T>>> mapStructure(
+			Term<T> v,
+			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
+		return v.asVal()
+				.flatMap(MiniKanren::asIterable)
+				.map(t -> MiniKanren.<T> mapIterable(t, mapper))
+				.orElse(() -> v.asVal()
+						.flatMap(MiniKanren::<T>asLList)
+						.filter(not(LList::isEmpty))
+						.map(c -> Fiber.zip(
+										defer(() -> mapper.apply(c.getHead().getObjectTerm())),
+										defer(() -> mapper.apply(c.getTail().getObjectTerm())))
+								.map(ht -> LList.of(ht._1, MiniKanren.<LList<Object>> castTerm(ht._2)).get())
+								.map(w -> Types.<T> castAs(w, Object.class).get())
+								.map(LVal::lval)
+								.map(MiniKanren::<T>castTerm)))
+				.orElse(() -> v.asVal()
+						.flatMap(MiniKanren::<T>asLTree)
+						.filter(not(LTree::isEmpty))
+						.map(c -> Fiber.zip(
+										defer(() -> mapper.apply(c.getValue().getObjectTerm())),
+										defer(() -> mapper.apply(c.getChildren().getObjectTerm())))
+								.map(vc -> LTree.of(vc._1, MiniKanren.<LList<LTree<Object>>> castTerm(vc._2)).get())
+								.map(w -> Types.<T> castAs(w, Object.class).get())
+								.map(LVal::lval)
+								.map(MiniKanren::<T>castTerm)))
+				.orElse(() -> v.asVal()
+						.flatMap(MiniKanren::tupleAsIterable)
+						.map(t -> MiniKanren.<T> mapTuple(t, mapper)));
+	}
+
+	private static <T> Fiber<Term<T>> mapIterable(
+			Iterable<Object> iterable,
+			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
 		Collector<Object, ?, ?> collector = MiniKanren.getCollector(iterable)
 				.getOrElseThrow(Exceptions.format(RuntimeException::new,
 						"Unsupported iterable type: %s", iterable));
 
 		return toJavaStream(iterable)
-				.map(u -> walkAll(s, wrapTerm(u))
+				.map(u -> mapper.apply(wrapTerm(u))
 						.map(w -> (u instanceof Term) ?
 								w : w.asVal().get()))
 				.reduce(done(new ArrayList<>()),
@@ -274,12 +287,14 @@ public class MiniKanren {
 				.map(MiniKanren::<T>wrapTerm);
 	}
 
-	private static <T> Fiber<Term<T>> walkTuple(Package s, Iterable<Object> tuple) {
+	private static <T> Fiber<Term<T>> mapTuple(
+			Iterable<Object> tuple,
+			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
 		return toJavaStream(tuple)
-				// walkAll accepts Term,
+				// the mapper accepts Term,
 				// but some elements may be regular types.
 				// We're wrapping those types in a Val
-				.map(e -> walkAll(s, wrapTerm(e))
+				.map(e -> mapper.apply(wrapTerm(e))
 						// Here, we unwrap the Term,
 						// if the original type was not Term
 						// so that we can reconstruct the original tuple
@@ -299,10 +314,34 @@ public class MiniKanren {
 				.map(MiniKanren::castTerm);
 	}
 
-	public static <T> Fiber<Term<T>> reify(Package s, Term<T> item) {
+	/**
+	 * Convert a reified term back into a solver term: canonical holes become
+	 * fresh variables — holes sharing a name share the variable — and ground
+	 * structure is preserved.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Fiber<Unifiable<T>> instantiate(Reified<T> term) {
+		return instantiateTerm(term, new java.util.concurrent.ConcurrentHashMap<>())
+				.map(t -> (Unifiable<T>) t);
+	}
+
+	private static <T> Fiber<Term<T>> instantiateTerm(
+			Term<T> u,
+			java.util.concurrent.ConcurrentMap<String, Term<Object>> fresh) {
+		return u.asReified()
+				.map(hole -> Fiber.<Term<T>> done((Term<T>) fresh.computeIfAbsent(
+						hole.getName(), name -> LVar.lvar())))
+				.orElse(() -> MiniKanren.<T> mapStructure(u, e -> instantiateTerm(e, fresh)))
+				.getOrElse(done(u));
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <T> Fiber<Reified<T>> reify(Package s, Term<T> item) {
+		// after renaming, every node is an LVal or a ReifiedVar — both Reified
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Package.empty(), v)
-						.flatMap(rp -> walkAll(rp, v)));
+						.flatMap(rp -> walkAll(rp, v)))
+				.map(v -> (Reified<T>) v);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -313,7 +352,7 @@ public class MiniKanren {
 				.flatMap(v -> v.asVar()
 						// a var that walked to something else is already renamed
 						.map(u -> u == val ?
-								extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())) :
+								extend(s, (LVar<Object>) u, ReifiedVar.of("_." + s.size())) :
 								s)
 						.map(Fiber::done)
 						.orElse(() -> v.asVal()

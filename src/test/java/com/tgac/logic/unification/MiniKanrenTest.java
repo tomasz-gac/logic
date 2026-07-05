@@ -351,11 +351,11 @@ public class MiniKanrenTest {
 		assertThat(MiniKanren.walkAll(s, lval(List.of(x, y, z)))
 				.get())
 				.isEqualTo(lval(List.of(y, y, lval(3))));
-		List<Unifiable<Integer>> x1 =
-				MiniKanren.reify(s, lval(List.of(x, y, z))).get()
+		List<Term<Integer>> x1 =
+				MiniKanren.reify(s, lval(List.<Term<Integer>> of(x, y, z))).get()
 						.get();
 		assertThat(x1.get(0))
-				.matches(v -> v.asVar().isDefined())
+				.matches(v -> v.asReified().isDefined())
 				.isEqualTo(x1.get(1));
 
 		assertThat(x1.get(2))
@@ -412,7 +412,7 @@ public class MiniKanrenTest {
 						.and(unify(u, v))
 						.and(unify(val, 123))
 						.solve(val2)
-						.map(Unifiable::get)))
+						.map(Term::get)))
 				.containsExactly(123);
 	}
 
@@ -427,7 +427,7 @@ public class MiniKanrenTest {
 
 		Assertions.assertThat(Utils.collect(x.unifies(tlTree1)
 								.solve(x)
-								.map(Unifiable::get))
+								.map(Term::get))
 						.toString())
 				.isEqualTo("[LTree(value={1}, children={({LTree(value=<_.0>, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
@@ -446,7 +446,7 @@ public class MiniKanrenTest {
 						Utils.collect(x.unifies(tlTree1)
 										.and(y.unifies(1))
 										.solve(x)
-										.map(Unifiable::get))
+										.map(Term::get))
 								.toString())
 				.isEqualTo("[LTree(value={1}, children={({LTree(value=<_.0>, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
@@ -468,8 +468,8 @@ public class MiniKanrenTest {
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
 						.solve(lval(Tuple.of(x, y, z)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))))
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get))))
 				.containsExactly(Tuple.of(1, 2, 3));
 	}
 
@@ -489,7 +489,7 @@ public class MiniKanrenTest {
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
 								.solve(lval(Tuple.of(x, y, z, children)))
-								.map(Unifiable::get))
+								.map(Term::get))
 						.toString())
 				.isEqualTo("[({1}, <_.0>, <_.1>, {({LTree(value={2}, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
@@ -512,7 +512,7 @@ public class MiniKanrenTest {
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
 								.solve(lval(Tuple.of(x, y, z, children)))
-								.map(Unifiable::get))
+								.map(Term::get))
 						.toString())
 				.isEqualTo("[({1}, {2}, <_.0>, {({LTree(value={3}, children={()})})})]");
 	}
@@ -523,7 +523,7 @@ public class MiniKanrenTest {
 
 		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
 				.solve(tree)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(collect)
@@ -536,7 +536,7 @@ public class MiniKanrenTest {
 
 		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
 				.solve(tree)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(collect)
@@ -648,11 +648,11 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		List<Unifiable<Integer>> reified =
-				MiniKanren.reify(Package.empty(), lval(List.of(x, y, x))).get().get();
+		List<Term<Integer>> reified =
+				MiniKanren.reify(Package.empty(), lval(List.<Term<Integer>> of(x, y, x))).get().get();
 
-		assertThat(reified.get(0).asVar().get().getName()).isEqualTo("_.0");
-		assertThat(reified.get(1).asVar().get().getName()).isEqualTo("_.1");
+		assertThat(reified.get(0).asReified().get().getName()).isEqualTo("_.0");
+		assertThat(reified.get(1).asReified().get().getName()).isEqualTo("_.1");
 		assertThat(reified.get(2)).isSameAs(reified.get(0));
 	}
 

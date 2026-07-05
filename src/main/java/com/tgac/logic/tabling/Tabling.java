@@ -11,6 +11,8 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.TableEntry.Registration;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
 import java.util.function.Function;
@@ -56,6 +58,7 @@ public class Tabling {
 	public static Goal tabled(String goalName, List<Unifiable> args, Function<List<Unifiable>, Goal> goalFactory) {
 		return pkg -> k -> reifyArguments(pkg, args).flatMap(reifiedArgs -> {
 			Call key = Call.of(goalName, reifiedArgs);
+
 			Table table = StoreSupport.getConstraintStore(pkg, Table.class);
 			TableEntry entry = table.getOrCreateEntry(key);
 			return entry.tryBecomeMaster() ?
@@ -70,7 +73,6 @@ public class Tabling {
 	 * respawned, and the answer flows on through the query. Duplicate
 	 * answers fail their branch.
 	 */
-	@SuppressWarnings("unchecked")
 	private static Fiber<Nothing> produce(
 			TableEntry entry,
 			Goal goal,
@@ -79,7 +81,7 @@ public class Tabling {
 			Fiber.Fn<Package, Nothing> k) {
 		return goal.apply(initialPkg).apply(answerPkg ->
 				reifyArguments(answerPkg, args).flatMap(answerTerm ->
-						entry.addAnswer((List<Unifiable<?>>) (List<?>) answerTerm)
+						entry.addAnswer(answerTerm)
 								.map(parked -> respawn(entry, parked)
 										.flatMap(__ -> k.apply(answerPkg)))
 								.getOrElse(() -> done(nothing()))));
@@ -112,10 +114,10 @@ public class Tabling {
 			int index) {
 
 		if (index < entry.getAnswerCount()) {
-			List<Unifiable<?>> answerTerm = entry.getAnswerAt(index);
+			List<Term<?>> answerTerm = entry.getAnswerAt(index);
 			// Fresh variables per consumption, so separate consumptions of the
 			// same answer don't alias each other's free variables
-			return refresh(answerTerm).flatMap(freshTerm ->
+			return instantiate(answerTerm).flatMap(freshTerm ->
 					unifyArguments(initialPkg, args, freshTerm)
 							.map(unifiedPkg -> k.apply(unifiedPkg)
 									.flatMap(__ -> Fiber.defer(() ->
@@ -138,17 +140,17 @@ public class Tabling {
 	 * numbering spans all arguments: path(X, Y) must not collide with path(X, X).
 	 */
 	@SuppressWarnings("unchecked")
-	private static Fiber<List<Unifiable>> reifyArguments(Package pkg, List<Unifiable> args) {
+	private static Fiber<List<Term<?>>> reifyArguments(Package pkg, List<Unifiable> args) {
 		return MiniKanren.reify(pkg, lval(args))
-				.map(reified -> (List<Unifiable>) (List<?>) reified.get());
+				.map(reified -> (List<Term<?>>) (List<?>) reified.get());
 	}
 
 	/**
-	 * Copy a cached answer term with fresh variables.
+	 * Instantiate a cached answer template with fresh variables.
 	 */
 	@SuppressWarnings("unchecked")
-	private static Fiber<List<Unifiable<?>>> refresh(List<Unifiable<?>> answerTerm) {
-		return MiniKanren.reifyVar(Package.empty(), lval(answerTerm))
+	private static Fiber<List<Unifiable<?>>> instantiate(List<Term<?>> answerTerm) {
+		return MiniKanren.instantiate((Reified<List<Term<?>>>) (Reified<?>) lval(answerTerm))
 				.map(fresh -> (List<Unifiable<?>>) (List<?>) fresh.get());
 	}
 

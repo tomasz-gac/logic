@@ -4,6 +4,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.tabling.TableEntry.Registration;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -43,8 +44,8 @@ public class TableEntryTest {
 		assertThat(entry.getAnswerCount()).isEqualTo(0);
 
 		// Add some answers (answer terms are lists of reified arguments)
-		List<Unifiable<?>> ans1 = List.of(lval("alice"), lval("bob"));
-		List<Unifiable<?>> ans2 = List.of(lval("charlie"), lval("dave"));
+		List<Term<?>> ans1 = List.of(lval("alice"), lval("bob"));
+		List<Term<?>> ans2 = List.of(lval("charlie"), lval("dave"));
 
 		assertThat(entry.addAnswer(ans1).isDefined()).isTrue();
 		assertThat(entry.addAnswer(ans2).isDefined()).isTrue();
@@ -73,8 +74,8 @@ public class TableEntryTest {
 
 		// Reified answer terms carry canonical variable names, so terms that
 		// differ only in variable objects are the same answer
-		List<Unifiable<?>> first = List.of(lvar("_.0"), lval("bob"));
-		List<Unifiable<?>> second = List.of(lvar("_.0"), lval("bob"));
+		List<Term<?>> first = List.of(lvar("_.0"), lval("bob"));
+		List<Term<?>> second = List.of(lvar("_.0"), lval("bob"));
 
 		assertThat(entry.addAnswer(first).isDefined()).isTrue();
 		assertThat(entry.addAnswer(second).isDefined()).isFalse();
@@ -124,7 +125,7 @@ public class TableEntryTest {
 		Call call = Call.of("ancestor", lval("alice"), lval("bob"));
 		TableEntry entry = new TableEntry(call);
 
-		List<Unifiable<?>> ans = List.of(lval("charlie"), lval("dave"));
+		List<Term<?>> ans = List.of(lval("charlie"), lval("dave"));
 		entry.addAnswer(ans);
 
 		assertThat(entry.register(registrationAt(1))).isTrue();

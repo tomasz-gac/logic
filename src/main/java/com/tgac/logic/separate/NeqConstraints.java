@@ -4,6 +4,7 @@ import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
+import com.tgac.logic.unification.Term;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
@@ -75,10 +76,10 @@ class NeqConstraints implements ConstraintStore {
 				.flatMap(c_star -> removeSubsumed(
 						purify(c_star, renamePackage),
 						List.empty())
-						.flatMap(c1 -> walkAllConstraints(c1, renamePackage)))
+						.flatMap(c1 -> Disequality.renameForDisplay(c1, renamePackage)))
 				.map(c1 -> c1.isEmpty() ?
 						unifiable :
-						Constrained.of(unifiable, c1.map(NeqConstraint::getSeparate)))
+						Constrained.of(unifiable, c1))
 				.get();
 	}
 }

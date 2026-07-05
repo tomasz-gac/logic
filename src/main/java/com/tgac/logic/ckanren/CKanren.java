@@ -13,6 +13,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -79,8 +80,8 @@ public class CKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Cont<Unifiable<T>, Nothing> reify(Package s, Term<T> x) {
-		// reified output is Unifiable until reification emits its own var kind
+	public static <T> Cont<Reified<T>, Nothing> reify(Package s, Term<T> x) {
+		// after renaming every node is an LVal, a ReifiedVar, or a Constrained wrapper
 		return enforceConstraints(s, x).apply(s)
 				.flatMap(s1 -> Cont.defer(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)
@@ -92,7 +93,7 @@ public class CKanren {
 																s1.getConstraints() == null ?
 																		result :
 																		StoreSupport.reify(s1, result, vr._2))))
-								.map(t -> (Unifiable<T>) t)
+								.map(t -> (Reified<T>) t)
 								.map(Cont::just)));
 	}
 

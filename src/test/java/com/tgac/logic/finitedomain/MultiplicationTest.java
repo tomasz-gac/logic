@@ -12,6 +12,8 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.Utils;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
@@ -35,8 +37,8 @@ public class MultiplicationTest {
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(c.unifies(-4))
 						.solve(lval(Tuple.of(a, b, c)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get))
 				);
 
 		Assertions.assertThat(collect)
@@ -55,8 +57,8 @@ public class MultiplicationTest {
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -79,8 +81,8 @@ public class MultiplicationTest {
 						.and(b.unifies(-2))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -103,8 +105,8 @@ public class MultiplicationTest {
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -127,8 +129,8 @@ public class MultiplicationTest {
 						.and(b.unifies(0))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -151,8 +153,8 @@ public class MultiplicationTest {
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(c.unifies(0))
 						.solve(lval(Tuple.of(a, b, c)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -179,8 +181,8 @@ public class MultiplicationTest {
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		System.out.println(collect);
 
@@ -234,8 +236,8 @@ public class MultiplicationTest {
 				.and(dom(rest, Interval.of(-2, 2)))
 				.and(divoWithRest(divided, divisor, rest, result))
 				.solve(lval(Tuple.of(divided, divisor, rest, result)))
-				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get, Unifiable::get)));
+				.map(Term::get)
+				.map(t -> t.map(Term::get, Term::get, Term::get, Term::get)));
 
 		System.out.println(results);
 		Assertions.assertThat(results)
@@ -257,8 +259,8 @@ public class MultiplicationTest {
 				.and(dom(a, Interval.of(0, 1000)))
 				.and(dom(b, Interval.of(0, 1000)))
 				.solve(lval(Tuple.of(a, b, c)))
-				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+				.map(Term::get)
+				.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(results)
 				.allMatch(t -> t._1 * t._2 == t._3);

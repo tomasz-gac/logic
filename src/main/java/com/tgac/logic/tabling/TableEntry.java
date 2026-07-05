@@ -7,6 +7,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -33,7 +34,7 @@ public class TableEntry {
 	private final Call call;
 
 	/** Answer terms (reified argument vectors) in production order. Guarded by this. */
-	private final ArrayList<List<Unifiable<?>>> answers = new ArrayList<>();
+	private final ArrayList<List<Term<?>>> answers = new ArrayList<>();
 
 	/** Consumers waiting for answers past the end of the cache. Guarded by this. */
 	private final ArrayList<Registration> registrations = new ArrayList<>();
@@ -71,8 +72,8 @@ public class TableEntry {
 	 *
 	 * @return the drained registrations to respawn, or none if the answer is a duplicate
 	 */
-	public synchronized Option<List<Registration>> addAnswer(List<Unifiable<?>> answerTerm) {
-		for (List<Unifiable<?>> cached : answers) {
+	public synchronized Option<List<Registration>> addAnswer(List<Term<?>> answerTerm) {
+		for (List<Term<?>> cached : answers) {
 			if (answersEqual(cached, answerTerm)) {
 				return Option.none();
 			}
@@ -99,7 +100,7 @@ public class TableEntry {
 	/**
 	 * Get an answer term at the specified index, or null if not present.
 	 */
-	public synchronized List<Unifiable<?>> getAnswerAt(int index) {
+	public synchronized List<Term<?>> getAnswerAt(int index) {
 		return index < answers.size() ? answers.get(index) : null;
 	}
 
@@ -121,7 +122,7 @@ public class TableEntry {
 	 * Answer terms are equal when they are alpha-equivalent: both are reified,
 	 * so structural comparison with name-based variable equality decides it.
 	 */
-	private static boolean answersEqual(List<Unifiable<?>> a, List<Unifiable<?>> b) {
+	private static boolean answersEqual(List<Term<?>> a, List<Term<?>> b) {
 		if (a.size() != b.size()) {
 			return false;
 		}

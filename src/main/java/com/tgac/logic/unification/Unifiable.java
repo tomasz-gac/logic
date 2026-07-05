@@ -2,8 +2,6 @@ package com.tgac.logic.unification;
 
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.List;
 
 import static com.tgac.logic.unification.LVal.lval;
 
@@ -13,10 +11,6 @@ import static com.tgac.logic.unification.LVal.lval;
  * @author TGa
  */
 public interface Unifiable<T> extends Term<T> {
-
-	default List<HashMap<LVar<?>, Term<?>>> getConstraints() {
-		return List.empty();
-	}
 
 	default Goal unifies(Unifiable<T> rhs) {
 		return CKanren.unify(this, rhs);

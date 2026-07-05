@@ -7,6 +7,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.schedulers.RoundRobin;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -77,7 +79,7 @@ public class TablingTest {
 				.and(ancestor(alice, charlie))
 				.and(result.unifies("yes"));
 
-		Stream<Unifiable<String>> results = query.solve(result);
+		Stream<Reified<String>> results = query.solve(result);
 
 		// Should find answer (through bob)
 		assertThat(results.count()).isEqualTo(1);
@@ -91,11 +93,11 @@ public class TablingTest {
 
 		Goal query = x.unifies("alice").and(ancestor(x, y));
 
-		Stream<Unifiable<String>> results = query.solve(y);
+		Stream<Reified<String>> results = query.solve(y);
 
 		// alice is ancestor of: bob, charlie, david
 		java.util.List<String> descendants = results
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(descendants).hasSize(3);
@@ -110,11 +112,11 @@ public class TablingTest {
 
 		Goal query = y.unifies("david").and(ancestor(x, y));
 
-		Stream<Unifiable<String>> results = query.solve(x);
+		Stream<Reified<String>> results = query.solve(x);
 
 		// david's ancestors are: charlie, bob, alice
 		java.util.List<String> ancestors = results
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(ancestors).hasSize(3);
@@ -131,7 +133,7 @@ public class TablingTest {
 
 			java.util.List<String> descendants = x.unifies("alice").and(ancestor(x, y))
 					.solve(y)
-					.map(Unifiable::get)
+					.map(Term::get)
 					.collect(Collectors.toList());
 
 			assertThat(descendants).containsExactlyInAnyOrder("bob", "charlie", "david");
@@ -178,7 +180,7 @@ public class TablingTest {
 				}
 		);
 		java.util.List<Integer> results = single.solve(x)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(results).containsExactly(42);
@@ -208,8 +210,8 @@ public class TablingTest {
 
 		// Should work even without ground args
 		java.util.List<Tuple2<Integer, Integer>> results = numRel.solve(lval(Tuple.of(x, y)))
-				.map(Unifiable::get)
-				.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
+				.map(Term::get)
+				.map(t -> t.map1(Term::get).map2(Term::get))
 				.collect(Collectors.toList());
 
 		assertThat(results).hasSize(3);
@@ -439,7 +441,7 @@ public class TablingTest {
 		);
 
 		java.util.List<Integer> results = manyNumbers.solve(x)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(results).hasSize(100);
@@ -580,7 +582,7 @@ public class TablingTest {
 		);
 
 		java.util.List<Tuple2<String, String>> results = familyPair.solve(pair)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(results).hasSize(3);

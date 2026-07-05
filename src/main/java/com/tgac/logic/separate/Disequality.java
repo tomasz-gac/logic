@@ -210,6 +210,29 @@ public class Disequality {
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
+	static Fiber<List<HashMap<Term<?>, Term<?>>>> renameForDisplay(
+			List<NeqConstraint> constraints,
+			Package renamePackage) {
+		return constraints.toJavaStream()
+				.map(c -> renameConstraint(renamePackage, c.getSeparate())
+						.map(java.util.stream.Stream::of))
+				.reduce((l, r) -> Fiber.zip(l, r)
+						.map(lr -> lr.apply(java.util.stream.Stream::concat)))
+				.orElseGet(() -> done(java.util.stream.Stream.empty()))
+				.map(stream -> stream.collect(List.collector()));
+	}
+
+	private static Fiber<HashMap<Term<?>, Term<?>>> renameConstraint(Package r, HashMap<LVar<?>, Term<?>> c) {
+		return c.toJavaStream()
+				.map(pair -> Fiber.zip(
+						walkAll(r, pair._1.getObjectTerm()),
+						walkAll(r, pair._2.getObjectTerm())))
+				.reduce(done(HashMap.<Term<?>, Term<?>> empty()),
+						(acc, v) -> Fiber.zip(acc, v)
+								.map(ms -> ms._1.put(ms._2._1, ms._2._2)),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
+	}
+
 	static List<NeqConstraint> purify(List<NeqConstraint> c, Package r) {
 		return c.toJavaStream()
 				.map(cc -> purifySingle(cc, r))

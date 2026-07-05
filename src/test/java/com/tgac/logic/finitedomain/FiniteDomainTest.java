@@ -17,6 +17,8 @@ import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -40,7 +42,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> i = lvar();
 		java.util.List<Long> result =
 				solve(i, dom(i, EnumeratedDomain.range(0L, 10L)))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList());
 
 		System.out.println(result);
@@ -56,7 +58,7 @@ public class FiniteDomainTest {
 		java.util.List<Long> result =
 				solve(i, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(dom(i, EnumeratedDomain.range(5L, 15L))))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList());
 
 		System.out.println(result);
@@ -73,7 +75,7 @@ public class FiniteDomainTest {
 		java.util.List<Long> result =
 				solve(j, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(CKanren.unify(i, j)))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList());
 
 		System.out.println(result);
@@ -90,7 +92,7 @@ public class FiniteDomainTest {
 		java.util.List<Long> result =
 				solve(j, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(CKanren.unify(j, i)))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList());
 
 		System.out.println(result);
@@ -109,7 +111,7 @@ public class FiniteDomainTest {
 				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(k.unifies(j))
 						.and(CKanren.unify(k, i)))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList());
 
 		System.out.println(result);
@@ -129,7 +131,7 @@ public class FiniteDomainTest {
 						.and(k.unifies(j))
 						.and(CKanren.unify(k, i))
 						.and(dom(k, EnumeratedDomain.range(5L, 20L))))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList());
 
 		System.out.println(result);
@@ -147,8 +149,8 @@ public class FiniteDomainTest {
 				solve(lval(Tuple.of(i, j)),
 						dom(i, EnumeratedDomain.range(0L, 3L))
 								.and(dom(j, EnumeratedDomain.range(0L, 3L))))
-						.map(Unifiable::get)
-						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get))
+						.map(Term::get)
+						.map(t -> t.map1(Term::get).map2(Term::get))
 						.collect(Collectors.toList());
 
 		System.out.println(results);
@@ -189,7 +191,7 @@ public class FiniteDomainTest {
 		System.out.println(goal);
 
 		var result = collect(goal.solve(i)
-				.map(Unifiable::get));
+				.map(Term::get));
 
 		Assertions.assertThat(result)
 				.allMatch(t -> t != 5L);
@@ -237,7 +239,7 @@ public class FiniteDomainTest {
 				.and(dom(v3, Interval.of(0, n)))
 				.and(dom(v4, Interval.of(0, n)))
 				.solve(lst)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(LList::toValueStream)
 				.map(s -> s.collect(Collectors.toList())));
 
@@ -259,7 +261,7 @@ public class FiniteDomainTest {
 				);
 	}
 
-	static <T> java.util.stream.Stream<Unifiable<T>> solve(Unifiable<T> out, Goal g) {
+	static <T> java.util.stream.Stream<Reified<T>> solve(Unifiable<T> out, Goal g) {
 		return g.solve(out);
 	}
 
@@ -277,8 +279,8 @@ public class FiniteDomainTest {
 						.and(dom(c, Interval.of(-5, 10)))
 						.and(Disequality.separate(str, lval("123")))
 						.solve(lval(Tuple.of(a, b, c, str)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get, Function.identity()))
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get, Function.identity()))
 		));
 	}
 }

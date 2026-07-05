@@ -77,7 +77,7 @@ public class ParametersTest {
 
 		Assertions.assertThat(collect.stream()
 						.map(p -> TestAccess.get(p, i.asVar().get()).get())
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
 	}
@@ -100,7 +100,7 @@ public class ParametersTest {
 		java.util.List<Tuple2<Long, Long>> results = collect.stream()
 				.map(p -> Tuple.of(TestAccess.get(p, i.asVar().get()).get(),
 						TestAccess.get(p, j.asVar().get()).get()))
-				.map(t -> t.map(Unifiable::get, Unifiable::get))
+				.map(t -> t.map(Term::get, Term::get))
 				.collect(Collectors.toList());
 
 		System.out.println(results);

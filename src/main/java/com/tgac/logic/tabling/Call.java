@@ -4,7 +4,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
-import com.tgac.logic.unification.Unifiable;
+import com.tgac.logic.unification.Term;
 import io.vavr.collection.List;
 import lombok.Value;
 
@@ -20,19 +20,19 @@ import static com.tgac.functional.fibers.Fiber.done;
 @Value
 public class Call {
 	String goalName;
-	List<Unifiable> arguments;
+	List<Term<?>> arguments;
 
 	/**
 	 * Create a Call from a goal name and arguments.
 	 */
-	public static Call of(String goalName, Unifiable... args) {
+	public static Call of(String goalName, Term<?>... args) {
 		return new Call(goalName, List.of(args));
 	}
 
 	/**
 	 * Create a Call from a goal name and argument list.
 	 */
-	public static Call of(String goalName, List<Unifiable> args) {
+	public static Call of(String goalName, List<Term<?>> args) {
 		return new Call(goalName, args);
 	}
 
@@ -47,7 +47,7 @@ public class Call {
 		// Check each argument for LVars at any depth using MiniKanren.containsLVars
 		Fiber<Boolean> result = done(false);
 
-		for (Unifiable arg : arguments) {
+		for (Term<?> arg : arguments) {
 			result = result.flatMap(hasLVars -> {
 				if (hasLVars) {
 					return done(true);  // Already found LVars, short-circuit
@@ -74,14 +74,14 @@ public class Call {
 	 * Helper: deeply walk all arguments using walkAll, returning Fiber of walked argument list.
 	 */
 	@SuppressWarnings("unchecked")
-	private Fiber<List<Unifiable>> walkAllArguments(Package pkg) {
+	private Fiber<List<Term<?>>> walkAllArguments(Package pkg) {
 		// Start with empty list wrapped in Fiber
-		Fiber<List<Unifiable>> result = done(List.empty());
+		Fiber<List<Term<?>>> result = done(List.empty());
 
 		// For each argument, walk it deeply and append to result
-		for (Unifiable arg : arguments) {
+		for (Term<?> arg : arguments) {
 			result = result.flatMap(accList ->
-				((Fiber<Unifiable>) MiniKanren.walkAll(pkg, arg))
+				((Fiber<Term<?>>) (Fiber<?>) MiniKanren.walkAll(pkg, arg))
 						.map(accList::append));
 		}
 
@@ -116,7 +116,7 @@ public class Call {
 	 * Check if two arguments are equal structurally.
 	 * Reified calls can contain LVars at any depth, which compare by name for table lookup.
 	 */
-	private boolean argumentsEqual(Unifiable a, Unifiable b) {
+	private boolean argumentsEqual(Term<?> a, Term<?> b) {
 		return MiniKanren.structuralEquals(a, b);
 	}
 
@@ -125,7 +125,7 @@ public class Call {
 		int result = goalName.hashCode();
 
 		// Hash by argument structure, consistent with argumentsEqual
-		for (Unifiable arg : arguments) {
+		for (Term<?> arg : arguments) {
 			result = 31 * result + MiniKanren.structuralHash(arg);
 		}
 

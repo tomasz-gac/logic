@@ -11,6 +11,8 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.Utils;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
@@ -45,11 +47,11 @@ public class SummationTest {
 
 		java.util.List<Tuple3<Long, Long, Long>> result =
 				Utils.collect(goal.solve(lval(Tuple.of(i, j, k)))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.map(t -> t
-								.map1(Unifiable::get)
-								.map2(Unifiable::get)
-								.map3(Unifiable::get)));
+								.map1(Term::get)
+								.map2(Term::get)
+								.map3(Term::get)));
 
 		System.out.println(Duration.between(start, Instant.now()).toMillis() / 1000.);
 		System.out.println(result.size());
@@ -120,7 +122,7 @@ public class SummationTest {
 
 		List<List<Integer>> result = Utils.collect(sendMoreMoneyo(letters)
 				.solve(letters)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
@@ -168,6 +170,6 @@ public class SummationTest {
 				.and(dom(a, Interval.of(0, 100)))
 				.and(dom(c, Interval.of(0, 100)))
 				.solve(lval(Tuple.of(a, b, c)))
-				.map(Unifiable::get)));
+				.map(Term::get)));
 	}
 }
