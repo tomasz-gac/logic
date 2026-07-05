@@ -14,6 +14,7 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
@@ -30,7 +31,7 @@ public class ProjectionConstraints implements ConstraintStore {
 	LinkedHashSet<Constraint> projections;
 
 	@Override
-	public <T> Goal enforceConstraints(Unifiable<T> x) {
+	public <T> Goal enforceConstraints(Term<T> x) {
 		return CKanren.runConstraints(x, projections)
 				.and(s1 -> StoreSupport.getConstraintStore(s1, ProjectionConstraints.class)
 						.projections
@@ -40,7 +41,7 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Goal processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
+	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return s -> MiniKanren.prefixS(s.getSubstitutions(), newSubstitutions)
 				.toJavaStream()
 				.map(sub -> sub.apply((x, v) ->
@@ -50,7 +51,7 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <A> Unifiable<A> reify(Unifiable<A> unifiable, Package renameSubstitutions, Package p) {
+	public <A> Term<A> reify(Term<A> unifiable, Package renameSubstitutions, Package p) {
 		return unifiable;
 	}
 

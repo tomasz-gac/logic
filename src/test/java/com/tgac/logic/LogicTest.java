@@ -9,6 +9,7 @@ import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
@@ -118,7 +119,7 @@ public class LogicTest {
 		assertThat(result.get(0).get()
 				.stream()
 				.map(Either::get)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList()))
 				.containsExactlyElementsOf(Arrays.asList(4, 5, 6));
 	}

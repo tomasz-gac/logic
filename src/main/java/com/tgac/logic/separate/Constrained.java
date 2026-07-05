@@ -1,5 +1,6 @@
 package com.tgac.logic.separate;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
@@ -13,9 +14,9 @@ import java.util.stream.Collectors;
 @Value
 @RequiredArgsConstructor(staticName = "of")
 class Constrained<T> implements Unifiable<T> {
-	Unifiable<T> that;
+	Term<T> that;
 	@Getter
-	List<HashMap<LVar<?>, Unifiable<?>>> constraints;
+	List<HashMap<LVar<?>, Term<?>>> constraints;
 
 	@Override
 	public Option<T> asVal() {
@@ -32,11 +33,6 @@ class Constrained<T> implements Unifiable<T> {
 	@Override
 	public LVar<T> getVar() {
 		return that.getVar();
-	}
-
-	@Override
-	public Unifiable<Object> getObjectUnifiable() {
-		return that.getObjectUnifiable();
 	}
 
 	@Override

@@ -4,40 +4,18 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
-import io.vavr.control.Option;
-
-import java.util.function.Supplier;
 
 import static com.tgac.logic.unification.LVal.lval;
 
 /**
+ * A term that may enter a solver: goals are built by unifying these.
+ *
  * @author TGa
  */
-public interface Unifiable<T> extends Supplier<T> {
+public interface Unifiable<T> extends Term<T> {
 
-	default Option<T> asVal() {
-		return Option.none();
-	}
-
-	default boolean isVal() {
-		return false;
-	}
-
-	default Option<LVar<T>> asVar() {
-		return Option.none();
-	}
-
-	default List<HashMap<LVar<?>, Unifiable<?>>> getConstraints() {
+	default List<HashMap<LVar<?>, Term<?>>> getConstraints() {
 		return List.empty();
-	}
-
-	@Override
-	default T get() {
-		return ((LVal<T>) this).getValue();
-	}
-
-	default LVar<T> getVar() {
-		return (LVar<T>) this;
 	}
 
 	default Goal unifies(Unifiable<T> rhs) {

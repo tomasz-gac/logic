@@ -46,7 +46,7 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		val subs = MiniKanren.unify(Package.empty(), x, y).get().get();
-		Unifiable<Integer> z = MiniKanren.walk(subs, x);
+		Term<Integer> z = MiniKanren.walk(subs, x);
 		assertThat(z)
 				.isEqualTo(y);
 	}
@@ -259,7 +259,7 @@ public class MiniKanrenTest {
 		s = MiniKanren.unify(s, x, lval(m1)).get().get();
 		s = MiniKanren.unify(s, lval(m1), lval(m2)).get().get();
 
-		Unifiable<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x1 = MiniKanren.walkAll(s, x).get();
+		Term<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x1 = MiniKanren.walkAll(s, x).get();
 		System.out.println(x1);
 		System.out.println(x1.get().get("v1").get()._2.asVal());
 		assertThat(MiniKanren.walk(s, x).get())
@@ -662,7 +662,7 @@ public class MiniKanrenTest {
 		Unifiable<LList<Integer>> t = lvar();
 
 		// repeated vars inside nested structures keep first-occurrence numbering
-		Unifiable<?> reified = MiniKanren.reify(Package.empty(),
+		Term<?> reified = MiniKanren.reify(Package.empty(),
 				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get())))).get();
 
 		assertThat(reified.toString())
@@ -674,9 +674,9 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Unifiable<Tuple2<Unifiable<Integer>, Integer>> left =
+		Term<Tuple2<Unifiable<Integer>, Integer>> left =
 				MiniKanren.reify(Package.empty(), lval(Tuple.of(x, 1))).get();
-		Unifiable<Tuple2<Unifiable<Integer>, Integer>> right =
+		Term<Tuple2<Unifiable<Integer>, Integer>> right =
 				MiniKanren.reify(Package.empty(), lval(Tuple.of(y, 1))).get();
 
 		assertThat(MiniKanren.structuralEquals(left, right)).isTrue();
@@ -688,9 +688,9 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 
 		// (x, x) shares one variable; (x, y) has two distinct ones
-		Unifiable<List<Unifiable<Integer>>> shared =
+		Term<List<Unifiable<Integer>>> shared =
 				MiniKanren.reify(Package.empty(), lval(List.of(x, x))).get();
-		Unifiable<List<Unifiable<Integer>>> distinct =
+		Term<List<Unifiable<Integer>>> distinct =
 				MiniKanren.reify(Package.empty(), lval(List.of(x, y))).get();
 
 		assertThat(MiniKanren.structuralEquals(shared, distinct)).isFalse();

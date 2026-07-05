@@ -10,6 +10,7 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
@@ -40,7 +41,7 @@ public class StoreSupport {
 	/**
 	 * Checks whether any item within v is unbound within r Original name: anyVar
 	 */
-	public static Boolean isAssociated(Package p, Unifiable<?> v) {
+	public static Boolean isAssociated(Package p, Term<?> v) {
 		return v.asVar()
 				.map(lvar -> MiniKanren.walk(p, lvar) != lvar)
 				.getOrElse(true);
@@ -69,7 +70,7 @@ public class StoreSupport {
 								.getOrElse(() -> null)));
 	}
 
-	public static Goal processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
+	public static Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return p -> p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
@@ -79,7 +80,7 @@ public class StoreSupport {
 				.apply(p);
 	}
 
-	public static <T> Goal enforceConstraints(Package p, Unifiable<T> x) {
+	public static <T> Goal enforceConstraints(Package p, Term<T> x) {
 		return p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
@@ -88,7 +89,7 @@ public class StoreSupport {
 				.orElseGet(Goal::success);
 	}
 
-	public static <A> Unifiable<A> reify(Package p, Unifiable<A> unifiable, Package renameSubstitutions) {
+	public static <A> Term<A> reify(Package p, Term<A> unifiable, Package renameSubstitutions) {
 		return p.getConstraints().values()
 				.toJavaStream()
 				.filter(ConstraintStore.class::isInstance)

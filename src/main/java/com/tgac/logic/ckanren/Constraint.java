@@ -9,7 +9,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
-import com.tgac.logic.unification.Unifiable;
+import com.tgac.logic.unification.Term;
 import io.vavr.control.Option;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +20,7 @@ import lombok.Value;
 public class Constraint implements Stored, Goal {
 	Goal constraintOp;
 	Class<? extends Store> storeClass;
-	List<? extends Unifiable<?>> args;
+	List<? extends Term<?>> args;
 
 	@Override
 	public Cont<Package, Nothing> apply(Package p) {

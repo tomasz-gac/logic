@@ -12,7 +12,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Stored;
-import com.tgac.logic.unification.Unifiable;
+import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import lombok.RequiredArgsConstructor;
@@ -57,20 +57,20 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <T> Goal enforceConstraints(Unifiable<T> x) {
+	public <T> Goal enforceConstraints(Term<T> x) {
 		return Goal.success();
 	}
 
 	@Override
 	public Goal processPrefix(
-			HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
+			HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return s -> Disequality.verifyUnify(s.withSubstitutions(newSubstitutions), s)
 				.map(Cont::<Package, Nothing>just)
 				.getOrElse(Cont.complete(Nothing.nothing()));
 	}
 
 	@Override
-	public <A> Unifiable<A> reify(Unifiable<A> unifiable, Package renamePackage, Package s) {
+	public <A> Term<A> reify(Term<A> unifiable, Package renamePackage, Package s) {
 		return walkAllConstraints(getConstraints(s), s)
 				.flatMap(c_star -> removeSubsumed(
 						purify(c_star, renamePackage),

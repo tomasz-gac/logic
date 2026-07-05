@@ -8,14 +8,14 @@ import lombok.Value;
 @RequiredArgsConstructor(access = AccessLevel.MODULE)
 public class LTree<T> {
 	private static Unifiable<?> EMPTY = LVal.lval(new LTree<>(null, null));
-	Unifiable<T> value;
-	Unifiable<LList<LTree<T>>> children;
+	Term<T> value;
+	Term<LList<LTree<T>>> children;
 
-	public static <T> Unifiable<LTree<T>> of(Unifiable<T> value) {
+	public static <T> Unifiable<LTree<T>> of(Term<T> value) {
 		return LVal.lval(new LTree<>(value, LList.empty()));
 	}
 
-	public static <T> Unifiable<LTree<T>> of(Unifiable<T> value, Unifiable<LList<LTree<T>>> children) {
+	public static <T> Unifiable<LTree<T>> of(Term<T> value, Term<LList<LTree<T>>> children) {
 		return LVal.lval(new LTree<>(value, children));
 	}
 

@@ -13,6 +13,7 @@ import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -36,7 +37,7 @@ public class FiniteDomain {
 				.named(u + " ⊂ " + d);
 	}
 
-	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<Unifiable<T>> us) {
+	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
 		return Option.of(us.toJavaStream()
 						.map(u -> MiniKanren.walk(p, u))
 						.flatMap(v -> v.asVal()
@@ -67,7 +68,7 @@ public class FiniteDomain {
 	@Value
 	@RequiredArgsConstructor(staticName = "of")
 	static class VarWithDomain<T> {
-		Unifiable<T> unifiable;
+		Term<T> unifiable;
 		Domain<?> domain;
 
 		@SuppressWarnings("unchecked")
@@ -247,7 +248,7 @@ public class FiniteDomain {
 				.named(l + " ≠_fd " + r);
 	}
 
-	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
+	private static <T> Goal separateFDC(Term<T> l, Term<T> r) {
 		return s -> letDomain(s, Array.of(l, r))
 				.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
 				.map(ds -> ds.apply((ld, rd) -> {

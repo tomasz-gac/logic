@@ -10,6 +10,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.TestAccess;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -35,9 +36,9 @@ public class ParametersTest {
 
 	@Test
 	public void shouldNotBlowStackWhenProcessingPrefix() {
-		HashMap<LVar<?>, Unifiable<?>> empty = HashMap.empty();
+		HashMap<LVar<?>, Term<?>> empty = HashMap.empty();
 
-		HashMap<LVar<?>, Unifiable<?>> prefix = Stream.range(0, 10)
+		HashMap<LVar<?>, Term<?>> prefix = Stream.range(0, 10)
 				.map(i -> Tuple.of(TestAccess.lvarUnsafe(), lval(i)))
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));

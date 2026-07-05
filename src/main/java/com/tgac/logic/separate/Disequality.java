@@ -21,6 +21,7 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
@@ -125,7 +126,7 @@ public class Disequality {
 	private static Option<List<NeqConstraint>> verifyAndSimplifyConstraints(
 			List<NeqConstraint> constraints,
 			List<NeqConstraint> newConstraints,
-			HashMap<LVar<?>, Unifiable<?>> s) {
+			HashMap<LVar<?>, Term<?>> s) {
 		return constraints.toJavaStream()
 				.reduce(Option.of(newConstraints),
 						(acc, c) -> acc.flatMap(currentConstraints ->
@@ -134,10 +135,10 @@ public class Disequality {
 	}
 
 	private static Option<List<NeqConstraint>> verificationStep(
-			HashMap<LVar<?>, Unifiable<?>> substitutions,
+			HashMap<LVar<?>, Term<?>> substitutions,
 			List<NeqConstraint> newConstraints,
 			NeqConstraint constraint) {
-		Option<HashMap<LVar<?>, Unifiable<?>>> unification = unifyConstraints(constraint, substitutions);
+		Option<HashMap<LVar<?>, Term<?>>> unification = unifyConstraints(constraint, substitutions);
 
 		if (unification.isDefined()) {
 			return unification
@@ -165,11 +166,11 @@ public class Disequality {
 	 * @param s current substitution map
 	 * @return s after unification
 	 */
-	private static Option<HashMap<LVar<?>, Unifiable<?>>> unifyConstraints(
+	private static Option<HashMap<LVar<?>, Term<?>>> unifyConstraints(
 			NeqConstraint simultaneousConstraints,
-			HashMap<LVar<?>, Unifiable<?>> s) {
+			HashMap<LVar<?>, Term<?>> s) {
 		return simultaneousConstraints.getSeparate().toJavaStream()
-				.map(t -> t.map(applyOnBoth(Unifiable::getObjectUnifiable)))
+				.map(t -> t.map(applyOnBoth(u -> (Term<Object>) u)))
 				.reduce(Option.of(s),
 						(acc, lr) -> acc.flatMap(s1 ->
 								// This cannot recurse deeply via verifyUnify
@@ -195,7 +196,7 @@ public class Disequality {
 						.collect(List.collector()));
 	}
 
-	private static Fiber<HashMap<LVar<?>, Unifiable<?>>> walkAllConstraint(Package s, HashMap<LVar<?>, Unifiable<?>> c) {
+	private static Fiber<HashMap<LVar<?>, Term<?>>> walkAllConstraint(Package s, HashMap<LVar<?>, Term<?>> c) {
 		return c.toJavaStream()
 				.map(valSub -> valSub.map(
 								val -> walkAll(s, val)

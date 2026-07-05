@@ -86,37 +86,37 @@ public class MiniKanren {
 				.map(c -> (Collector<Object, ?, ?>) c);
 	}
 
-	private static <T> Package extendNoCheck(Package s, LVar<T> lhs, Unifiable<T> rhs) {
+	private static <T> Package extendNoCheck(Package s, LVar<T> lhs, Term<T> rhs) {
 		return s.put(lhs, rhs);
 	}
 
-	public static <T> Unifiable<T> walk(Package s, Unifiable<T> v) {
+	public static <T> Term<T> walk(Package s, Term<T> v) {
 		return s.walk(v);
 	}
 
-	public static <T> Boolean occursCheck(Package s, LVar<T> x, Unifiable<T> v) {
+	public static <T> Boolean occursCheck(Package s, LVar<T> x, Term<T> v) {
 		return walk(s, v).asVar()
 				.map(vv -> vv == x)
 				.getOrElse(false);
 	}
 
-	public static <T> Package extend(Package s, LVar<T> lhs, Unifiable<T> rhs) {
+	public static <T> Package extend(Package s, LVar<T> lhs, Term<T> rhs) {
 		return occursCheck(s, lhs, rhs) ?
 				s :
 				extendNoCheck(s, lhs, rhs);
 	}
 
 	private interface Extender {
-		<T> Package apply(Package s, LVar<T> lhs, Unifiable<T> rhs);
+		<T> Package apply(Package s, LVar<T> lhs, Term<T> rhs);
 	}
 
 	private static <T> MFiber<Package> unify(
 			Extender extend,
 			Package s,
-			Unifiable<T> lhs,
-			Unifiable<T> rhs) {
-		Unifiable<T> l = walk(s, lhs);
-		Unifiable<T> r = walk(s, rhs);
+			Term<T> lhs,
+			Term<T> rhs) {
+		Term<T> l = walk(s, lhs);
+		Term<T> r = walk(s, rhs);
 
 		// it's important to return the same object when l equals r
 		// because we test with == to see if substitution already exists
@@ -166,9 +166,9 @@ public class MiniKanren {
 		} else {
 			return Streams.zip(toJavaStream(l), toJavaStream(r), Tuple::of)
 					// Because Tuples are treated as iterable
-					// some of their elements may not be unifiable.
+					// some of their elements may not be terms.
 					// For those, we're wrapping them as Val to process them anyway
-					.map(p -> p.map(applyOnBoth(MiniKanren::<T>wrapUnifiable)))
+					.map(p -> p.map(applyOnBoth(MiniKanren::<T>wrapTerm)))
 					.reduce(mdone(s),
 							(state, unifiedItems) ->
 									state.flatMap(s1 -> unify(extender, s1, unifiedItems._1, unifiedItems._2)),
@@ -177,11 +177,11 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Unifiable<T> wrapUnifiable(Object v) {
-		if (v instanceof Unifiable) {
-			return (Unifiable<T>) v;
+	public static <T> Term<T> wrapTerm(Object v) {
+		if (v instanceof Term) {
+			return (Term<T>) v;
 		} else {
-			return (Unifiable<T>) lval(v);
+			return (Term<T>) lval(v);
 		}
 	}
 
@@ -206,18 +206,18 @@ public class MiniKanren {
 				Option.none();
 	}
 
-	public static <T> MFiber<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MFiber<Package> unify(Package s, Term<T> lhs, Term<T> rhs) {
 		return unify(MiniKanren::extend, s, lhs, rhs);
 	}
 
-	public static <T> MFiber<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MFiber<Package> unifyUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
 		return unify(MiniKanren::extendNoCheck, s, lhs, rhs);
 	}
 
-	public static <T> Fiber<Unifiable<T>> walkAll(Package s, Unifiable<T> u) {
+	public static <T> Fiber<Term<T>> walkAll(Package s, Term<T> u) {
 		return done(walk(s, u))
 				.flatMap(v -> v.asVar()
-						.map(Fiber::<Unifiable<T>>done)
+						.map(w -> Fiber.<Term<T>> done(w))
 						.orElse(() -> v.asVal()
 								.flatMap(MiniKanren::asIterable)
 								.map(t -> walkIterable(s, t)))
@@ -229,7 +229,8 @@ public class MiniKanren {
 												defer(() -> walkAll(s, c.getTail())))
 										.map(ht -> ht.apply(LList::of).get())
 										.map(w -> Types.<T> castAs(w, Object.class).get())
-										.map(LVal::lval)))
+										.map(LVal::lval)
+										.map(MiniKanren::<T>castTerm)))
 						.orElse(() -> v.asVal()
 								.flatMap(MiniKanren::<T>asLTree)
 								.filter(not(LTree::isEmpty))
@@ -238,21 +239,22 @@ public class MiniKanren {
 												defer(() -> walkAll(s, c.getChildren())))
 										.map(vc -> vc.apply(LTree::of).get())
 										.map(w -> Types.<T> castAs(w, Object.class).get())
-										.map(LVal::lval)))
+										.map(LVal::lval)
+										.map(MiniKanren::<T>castTerm)))
 						.orElse(() -> v.asVal()
 								.flatMap(MiniKanren::tupleAsIterable)
 								.map(t -> walkTuple(s, t)))
 						.getOrElse(done(v)));
 	}
 
-	private static <T> Fiber<Unifiable<T>> walkIterable(Package s, Iterable<Object> iterable) {
+	private static <T> Fiber<Term<T>> walkIterable(Package s, Iterable<Object> iterable) {
 		Collector<Object, ?, ?> collector = MiniKanren.getCollector(iterable)
 				.getOrElseThrow(Exceptions.format(RuntimeException::new,
 						"Unsupported iterable type: %s", iterable));
 
 		return toJavaStream(iterable)
-				.map(u -> walkAll(s, wrapUnifiable(u))
-						.map(w -> (u instanceof Unifiable) ?
+				.map(u -> walkAll(s, wrapTerm(u))
+						.map(w -> (u instanceof Term) ?
 								w : w.asVal().get()))
 				.reduce(done(new ArrayList<>()),
 						(Fiber<ArrayList<Object>> acc, Fiber<Object> item) -> Fiber.zip(acc, item)
@@ -262,19 +264,19 @@ public class MiniKanren {
 								}),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))
 				.map(r -> r.stream().collect(collector))
-				.map(MiniKanren::<T>wrapUnifiable);
+				.map(MiniKanren::<T>wrapTerm);
 	}
 
-	private static <T> Fiber<Unifiable<T>> walkTuple(Package s, Iterable<Object> tuple) {
+	private static <T> Fiber<Term<T>> walkTuple(Package s, Iterable<Object> tuple) {
 		return toJavaStream(tuple)
-				// walkAll accepts Unifiable,
+				// walkAll accepts Term,
 				// but some elements may be regular types.
 				// We're wrapping those types in a Val
-				.map(e -> walkAll(s, wrapUnifiable(e))
-						// Here, we unwrap the Unifiable,
-						// if the original type was not Unifiable
+				.map(e -> walkAll(s, wrapTerm(e))
+						// Here, we unwrap the Term,
+						// if the original type was not Term
 						// so that we can reconstruct the original tuple
-						.map(u -> e instanceof Unifiable ?
+						.map(u -> e instanceof Term ?
 								u : u.asVal().get()))
 				.reduce(
 						done(new ArrayList<>()),
@@ -287,17 +289,17 @@ public class MiniKanren {
 				.map(ArrayList::toArray)
 				.map(MiniKanren::tupleFromArray)
 				.map(LVal::lval)
-				.map(MiniKanren::castUnifiable);
+				.map(MiniKanren::castTerm);
 	}
 
-	public static <T> Fiber<Unifiable<T>> reify(Package s, Unifiable<T> item) {
+	public static <T> Fiber<Term<T>> reify(Package s, Term<T> item) {
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Package.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)));
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Fiber<Package> reifyS(Package s, Unifiable<?> val) {
+	public static Fiber<Package> reifyS(Package s, Term<?> val) {
 		// shallow walk only: a deep walk would rebuild structures with rename
 		// vars substituted in, and nested calls would rename the rename vars
 		return done(walk(s, val))
@@ -340,7 +342,7 @@ public class MiniKanren {
 
 	private static Fiber<Package> reifyIterable(Package s, Iterable<Object> l) {
 		return toJavaStream(l)
-				.map(MiniKanren::wrapUnifiable)
+				.map(MiniKanren::wrapTerm)
 				.reduce(done(s),
 						(state, item) ->
 								state.flatMap(s1 -> reifyS(s1, item)),
@@ -351,21 +353,21 @@ public class MiniKanren {
 	 * Like reify, but replaces unbound variables with fresh LVars instead of symbols.
 	 * Used for tabling to copy terms without leaking variable context.
 	 */
-	public static <T> Fiber<Unifiable<T>> reifyVar(Package s, Unifiable<T> item) {
+	public static <T> Fiber<Term<T>> reifyVar(Package s, Term<T> item) {
 		return walkAll(s, item)
 				.flatMap(v -> reifyVarS(Package.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)));
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Fiber<Package> reifyVarS(Package s, Unifiable<?> val) {
+	private static Fiber<Package> reifyVarS(Package s, Term<?> val) {
 		// shallow walk only: a deep walk would rebuild structures with the
 		// fresh replacements substituted in, and nested calls would refresh them again
 		return done(walk(s, val))
 				.flatMap(v -> v.asVar()
 						// a var that walked to something else is already refreshed
 						.map(u -> u == val ?
-								extend(s, (LVar<Object>) u, (Unifiable<Object>) LVar.lvar()) :
+								extend(s, (LVar<Object>) u, (Term<Object>) LVar.lvar()) :
 								s)
 						.map(Fiber::done)
 						.orElse(() -> v.asVal()
@@ -401,7 +403,7 @@ public class MiniKanren {
 
 	private static Fiber<Package> reifyVarIterable(Package s, Iterable<Object> l) {
 		return toJavaStream(l)
-				.map(MiniKanren::wrapUnifiable)
+				.map(MiniKanren::wrapTerm)
 				.reduce(done(s),
 						(state, item) ->
 								state.flatMap(s1 -> reifyVarS(s1, item)),
@@ -412,7 +414,7 @@ public class MiniKanren {
 	 * Check if two terms are alpha-equivalent (equivalent modulo variable renaming).
 	 * Used for tabling to detect duplicate answer terms.
 	 */
-	public static <T> Fiber<Boolean> alphaEquiv(Unifiable<T> x, Unifiable<T> y, Package s) {
+	public static <T> Fiber<Boolean> alphaEquiv(Term<T> x, Term<T> y, Package s) {
 		return reify(s, x).flatMap(xReified ->
 			reify(s, y).map(yReified ->
 				structuralEquals(xReified, yReified)));
@@ -425,7 +427,7 @@ public class MiniKanren {
 	 * variable names are canonical — only then does name equality mean
 	 * alpha-equivalence.
 	 */
-	public static boolean structuralEquals(Unifiable<?> a, Unifiable<?> b) {
+	public static boolean structuralEquals(Term<?> a, Term<?> b) {
 		if (a == b) {
 			return true;
 		}
@@ -479,7 +481,7 @@ public class MiniKanren {
 		java.util.Iterator<Object> li = l.iterator();
 		java.util.Iterator<Object> ri = r.iterator();
 		while (li.hasNext() && ri.hasNext()) {
-			if (!structuralEquals(wrapUnifiable(li.next()), wrapUnifiable(ri.next()))) {
+			if (!structuralEquals(wrapTerm(li.next()), wrapTerm(ri.next()))) {
 				return false;
 			}
 		}
@@ -490,7 +492,7 @@ public class MiniKanren {
 	 * Hash code consistent with {@link #structuralEquals}: variables hash by
 	 * name, values hash recursively through the same structures.
 	 */
-	public static int structuralHash(Unifiable<?> u) {
+	public static int structuralHash(Term<?> u) {
 		if (u == null) {
 			return 0;
 		}
@@ -517,16 +519,16 @@ public class MiniKanren {
 		if (asIterable.isDefined()) {
 			int result = 3;
 			for (Object item : asIterable.get()) {
-				result = 31 * result + structuralHash(wrapUnifiable(item));
+				result = 31 * result + structuralHash(wrapTerm(item));
 			}
 			return result;
 		}
 		return v.hashCode();
 	}
 
-	public static HashMap<LVar<?>, Unifiable<?>> prefixS(
-			HashMap<LVar<?>, Unifiable<?>> s,
-			HashMap<LVar<?>, Unifiable<?>> extendedS) {
+	public static HashMap<LVar<?>, Term<?>> prefixS(
+			HashMap<LVar<?>, Term<?>> s,
+			HashMap<LVar<?>, Term<?>> extendedS) {
 		return extendedS.removeAll(s.keysIterator());
 	}
 
@@ -625,8 +627,8 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> Unifiable<T> castUnifiable(Object v) {
-		return (Unifiable<T>) v;
+	private static <T> Term<T> castTerm(Object v) {
+		return (Term<T>) v;
 	}
 
 	private static java.util.stream.Stream<Object> toJavaStream(Iterable<Object> it) {
@@ -641,14 +643,14 @@ public class MiniKanren {
 	}
 
 	/**
-	 * Check if a Unifiable contains any LVars at any nesting depth.
-	 * Should only be called on a walked Unifiable.
+	 * Check if a Term contains any LVars at any nesting depth.
+	 * Should only be called on a walked Term.
 	 * Uses Fiber to avoid stack overflow on deeply nested structures.
 	 *
-	 * @param u The Unifiable to check (should already be walked)
+	 * @param u The Term to check (should already be walked)
 	 * @return Fiber that yields true if any LVars are found, false if ground
 	 */
-	public static <T> Fiber<Boolean> containsLVars(Unifiable<T> u) {
+	public static <T> Fiber<Boolean> containsLVars(Term<T> u) {
 		return u.asVar()
 				.map(v -> done(true))  // Found an LVar
 				.orElse(() -> u.asVal()
@@ -672,8 +674,8 @@ public class MiniKanren {
 		if (llist.isEmpty()) {
 			return done(false);
 		} else {
-			Unifiable<T> head = llist.getHead();
-			Unifiable<LList<T>> tail = llist.getTail();
+			Term<T> head = llist.getHead();
+			Term<LList<T>> tail = llist.getTail();
 
 			if (head == null && tail == null) {
 				return done(false);  // Empty list
@@ -699,8 +701,8 @@ public class MiniKanren {
 		if (tree.isEmpty()) {
 			return done(false);
 		} else {
-			Unifiable<T> value = tree.getValue();
-			Unifiable<LList<LTree<T>>> children = tree.getChildren();
+			Term<T> value = tree.getValue();
+			Term<LList<LTree<T>>> children = tree.getChildren();
 
 			if (value == null && children == null) {
 				return done(false);  // Empty tree
@@ -724,7 +726,7 @@ public class MiniKanren {
 
 	private static Fiber<Boolean> containsLVarsIterable(Iterable<Object> iterable) {
 		return toJavaStream(iterable)
-				.map(item -> containsLVars(wrapUnifiable(item)))
+				.map(item -> containsLVars(wrapTerm(item)))
 				.reduce(done(false),
 						(acc, itemFiber) -> acc.flatMap(found -> found ?
 								done(true) :
@@ -734,7 +736,7 @@ public class MiniKanren {
 
 	private static Fiber<Boolean> containsLVarsTuple(Iterable<Object> tuple) {
 		return toJavaStream(tuple)
-				.map(item -> containsLVars(wrapUnifiable(item)))
+				.map(item -> containsLVars(wrapTerm(item)))
 				.reduce(done(false),
 						(acc, itemFiber) -> acc.flatMap(found -> found ?
 								done(true) :

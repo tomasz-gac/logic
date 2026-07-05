@@ -14,6 +14,7 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Function1;
 import io.vavr.Function2;
@@ -268,7 +269,7 @@ public class Logic {
 				(a, b, c, d, e, g, h) -> project(v8, x -> f.apply(a, b, c, d, e, g, h, x)));
 	}
 
-	public static Goal projectMultiType(IndexedSeq<Unifiable<?>> goals, Function<IndexedSeq<Unifiable<Object>>, Goal> f) {
+	public static Goal projectMultiType(IndexedSeq<Unifiable<?>> goals, Function<IndexedSeq<Term<Object>>, Goal> f) {
 		return s -> Cont.defer(() ->
 				goals.toJavaStream()
 						.map(v -> MiniKanren.walkAll(s, v)
@@ -276,7 +277,7 @@ public class Logic {
 						.reduce((l, r) -> Fiber.zip(l, r)
 								.map(lr -> lr.apply(java.util.stream.Stream::concat)))
 						.orElseGet(() -> Fiber.done(java.util.stream.Stream.empty()))
-						.map(u -> u.map(Unifiable::getObjectUnifiable)
+						.map(u -> u.map(t -> (Term<Object>) t)
 								.collect(Array.collector()))
 						.map(f)
 						.map(g -> g.named("projected(" + g + ")"))
@@ -291,12 +292,12 @@ public class Logic {
 						.reduce((l, r) -> Fiber.zip(l, r)
 								.map(lr -> lr.apply(Stream::concat)))
 						.orElseGet(() -> Fiber.done(Stream.empty()))
-						.map(u -> u.map(Unifiable::getObjectUnifiable)
+						.map(u -> u.map(t -> (Term<Object>) t)
 								.collect(Array.collector()))
 						.map(u -> Option.of(u)
-								.filter(v -> v.toJavaStream().allMatch(Unifiable::isVal))
+								.filter(v -> v.toJavaStream().allMatch(Term::isVal))
 								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Variable unbound during projection"))
-								.map(Unifiable::get)
+								.map(Term::get)
 								.map(Types.<T> cast()))
 						.map(f)
 						.map(g -> g.named("projected(" + g + ")"))
