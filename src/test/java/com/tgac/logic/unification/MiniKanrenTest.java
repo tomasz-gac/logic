@@ -643,6 +643,78 @@ public class MiniKanrenTest {
 		assertThat(runFiber(MiniKanren.containsLVars(ltree))).isFalse();
 	}
 
+	@Test
+	public void shouldReifyWithCanonicalNumbering() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		List<Unifiable<Integer>> reified =
+				MiniKanren.reify(Package.empty(), lval(List.of(x, y, x))).get().get();
+
+		assertThat(reified.get(0).asVar().get().getName()).isEqualTo("_.0");
+		assertThat(reified.get(1).asVar().get().getName()).isEqualTo("_.1");
+		assertThat(reified.get(2)).isSameAs(reified.get(0));
+	}
+
+	@Test
+	public void shouldReifyRepeatedVarsInNestedStructuresCanonically() {
+		Unifiable<Integer> h = lvar();
+		Unifiable<LList<Integer>> t = lvar();
+
+		// repeated vars inside nested structures keep first-occurrence numbering
+		Unifiable<?> reified = MiniKanren.reify(Package.empty(),
+				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get())))).get();
+
+		assertThat(reified.toString())
+				.isEqualTo("{({(<_.0>)}, <_.1>, {(<_.0> . <_.1>)})}");
+	}
+
+	@Test
+	public void shouldTreatVariantTermsAsStructurallyEqual() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		Unifiable<Tuple2<Unifiable<Integer>, Integer>> left =
+				MiniKanren.reify(Package.empty(), lval(Tuple.of(x, 1))).get();
+		Unifiable<Tuple2<Unifiable<Integer>, Integer>> right =
+				MiniKanren.reify(Package.empty(), lval(Tuple.of(y, 1))).get();
+
+		assertThat(MiniKanren.structuralEquals(left, right)).isTrue();
+	}
+
+	@Test
+	public void shouldDistinguishSharingStructureInStructuralEquals() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		// (x, x) shares one variable; (x, y) has two distinct ones
+		Unifiable<List<Unifiable<Integer>>> shared =
+				MiniKanren.reify(Package.empty(), lval(List.of(x, x))).get();
+		Unifiable<List<Unifiable<Integer>>> distinct =
+				MiniKanren.reify(Package.empty(), lval(List.of(x, y))).get();
+
+		assertThat(MiniKanren.structuralEquals(shared, distinct)).isFalse();
+		assertThat(MiniKanren.structuralEquals(shared, shared)).isTrue();
+	}
+
+	@Test
+	public void shouldAlphaEquateNonGroundTerms() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		assertThat(runFiber(MiniKanren.alphaEquiv(
+				lval(Tuple.of(x, 1)),
+				lval(Tuple.of(y, 1)),
+				Package.empty())))
+				.isTrue();
+
+		assertThat(runFiber(MiniKanren.alphaEquiv(
+				lval(List.of(x, x)).getObjectUnifiable(),
+				lval(List.of(x, y)).getObjectUnifiable(),
+				Package.empty())))
+				.isFalse();
+	}
+
 	/**
 	 * Helper to run a Fiber synchronously and get its result.
 	 */

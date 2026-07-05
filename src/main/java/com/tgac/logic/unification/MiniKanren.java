@@ -298,9 +298,14 @@ public class MiniKanren {
 
 	@SuppressWarnings("unchecked")
 	public static Fiber<Package> reifyS(Package s, Unifiable<?> val) {
-		return walkAll(s, val)
+		// shallow walk only: a deep walk would rebuild structures with rename
+		// vars substituted in, and nested calls would rename the rename vars
+		return done(walk(s, val))
 				.flatMap(v -> v.asVar()
-						.map(u -> extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())))
+						// a var that walked to something else is already renamed
+						.map(u -> u == val ?
+								extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())) :
+								s)
 						.map(Fiber::done)
 						.orElse(() -> v.asVal()
 								.flatMap(w -> asIterable(w)
@@ -354,9 +359,14 @@ public class MiniKanren {
 
 	@SuppressWarnings("unchecked")
 	private static Fiber<Package> reifyVarS(Package s, Unifiable<?> val) {
-		return walkAll(s, val)
+		// shallow walk only: a deep walk would rebuild structures with the
+		// fresh replacements substituted in, and nested calls would refresh them again
+		return done(walk(s, val))
 				.flatMap(v -> v.asVar()
-						.map(u -> extend(s, (LVar<Object>) u, (Unifiable<Object>) LVar.lvar()))
+						// a var that walked to something else is already refreshed
+						.map(u -> u == val ?
+								extend(s, (LVar<Object>) u, (Unifiable<Object>) LVar.lvar()) :
+								s)
 						.map(Fiber::done)
 						.orElse(() -> v.asVal()
 								.flatMap(w -> asIterable(w)
@@ -405,7 +415,113 @@ public class MiniKanren {
 	public static <T> Fiber<Boolean> alphaEquiv(Unifiable<T> x, Unifiable<T> y, Package s) {
 		return reify(s, x).flatMap(xReified ->
 			reify(s, y).map(yReified ->
-				xReified.equals(yReified)));
+				structuralEquals(xReified, yReified)));
+	}
+
+	/**
+	 * Structural equality on reified terms: variables compare by name, values
+	 * compare recursively through collections, tuples, LLists and LTrees.
+	 * Both terms must come from {@link #reify} (or {@link #reifyS}) so that
+	 * variable names are canonical — only then does name equality mean
+	 * alpha-equivalence.
+	 */
+	public static boolean structuralEquals(Unifiable<?> a, Unifiable<?> b) {
+		if (a == b) {
+			return true;
+		}
+		if (a == null || b == null) {
+			return false;
+		}
+		if (a.asVar().isDefined() || b.asVar().isDefined()) {
+			return a.asVar().isDefined() && b.asVar().isDefined()
+					&& a.asVar().get().getName().equals(b.asVar().get().getName());
+		}
+		Object l = a.asVal().isDefined() ? a.asVal().get() : null;
+		Object r = b.asVal().isDefined() ? b.asVal().get() : null;
+		if (l == null || r == null) {
+			return a.equals(b);
+		}
+		Option<LList<Object>> lAsLList = asLList(l);
+		Option<LList<Object>> rAsLList = asLList(r);
+		if (lAsLList.isDefined() && rAsLList.isDefined()) {
+			return structuralEqualsLList(lAsLList.get(), rAsLList.get());
+		}
+		Option<LTree<Object>> lAsLTree = asLTree(l);
+		Option<LTree<Object>> rAsLTree = asLTree(r);
+		if (lAsLTree.isDefined() && rAsLTree.isDefined()) {
+			return structuralEqualsLTree(lAsLTree.get(), rAsLTree.get());
+		}
+		Option<Iterable<Object>> lAsIterable = asIterable(l).orElse(() -> tupleAsIterable(l));
+		Option<Iterable<Object>> rAsIterable = asIterable(r).orElse(() -> tupleAsIterable(r));
+		if (lAsIterable.isDefined() && rAsIterable.isDefined()) {
+			return structuralEqualsIterable(lAsIterable.get(), rAsIterable.get());
+		}
+		return l.equals(r);
+	}
+
+	private static boolean structuralEqualsLList(LList<?> l, LList<?> r) {
+		if (l.isEmpty() || r.isEmpty()) {
+			return l.isEmpty() && r.isEmpty();
+		}
+		return structuralEquals(l.getHead(), r.getHead())
+				&& structuralEquals(l.getTail(), r.getTail());
+	}
+
+	private static boolean structuralEqualsLTree(LTree<?> l, LTree<?> r) {
+		if (l.isEmpty() || r.isEmpty()) {
+			return l.isEmpty() && r.isEmpty();
+		}
+		return structuralEquals(l.getValue(), r.getValue())
+				&& structuralEquals(l.getChildren(), r.getChildren());
+	}
+
+	private static boolean structuralEqualsIterable(Iterable<Object> l, Iterable<Object> r) {
+		java.util.Iterator<Object> li = l.iterator();
+		java.util.Iterator<Object> ri = r.iterator();
+		while (li.hasNext() && ri.hasNext()) {
+			if (!structuralEquals(wrapUnifiable(li.next()), wrapUnifiable(ri.next()))) {
+				return false;
+			}
+		}
+		return li.hasNext() == ri.hasNext();
+	}
+
+	/**
+	 * Hash code consistent with {@link #structuralEquals}: variables hash by
+	 * name, values hash recursively through the same structures.
+	 */
+	public static int structuralHash(Unifiable<?> u) {
+		if (u == null) {
+			return 0;
+		}
+		if (u.asVar().isDefined()) {
+			return u.asVar().get().getName().hashCode();
+		}
+		Object v = u.asVal().isDefined() ? u.asVal().get() : null;
+		if (v == null) {
+			return 0;
+		}
+		Option<LList<Object>> asLList = asLList(v);
+		if (asLList.isDefined()) {
+			LList<Object> l = asLList.get();
+			return l.isEmpty() ? 1 :
+					31 * structuralHash(l.getHead()) + structuralHash(l.getTail());
+		}
+		Option<LTree<Object>> asLTree = asLTree(v);
+		if (asLTree.isDefined()) {
+			LTree<Object> t = asLTree.get();
+			return t.isEmpty() ? 2 :
+					31 * structuralHash(t.getValue()) + structuralHash(t.getChildren());
+		}
+		Option<Iterable<Object>> asIterable = asIterable(v).orElse(() -> tupleAsIterable(v));
+		if (asIterable.isDefined()) {
+			int result = 3;
+			for (Object item : asIterable.get()) {
+				result = 31 * result + structuralHash(wrapUnifiable(item));
+			}
+			return result;
+		}
+		return v.hashCode();
 	}
 
 	public static HashMap<LVar<?>, Unifiable<?>> prefixS(
