@@ -1,7 +1,6 @@
 package com.tgac.logic.tabling;
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Term;
