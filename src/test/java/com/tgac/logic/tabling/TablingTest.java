@@ -13,19 +13,12 @@ import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Tests for the Tabling.tabled() wrapper that actually uses tabling.
  */
 public class TablingTest {
-
-	@Before
-	public void setup() {
-		// Clear table before each test
-		Table.instance().clear();
-	}
 
 	/**
 	 * Define parent relationships using proper types.
@@ -129,25 +122,20 @@ public class TablingTest {
 	}
 
 	@Test
-	public void testTablingCachesResults() {
-		// Run a query with ground arguments so tabling actually happens
-		Unifiable<String> x = lvar();
-		Unifiable<String> y = lvar();
-		Goal query = x.unifies("alice").and(ancestor(x, y));
+	public void testRepeatedSolvesAreIndependent() {
+		// Each solve gets a fresh table, so a second identical query is
+		// unaffected by the first solve's cache
+		for (int i = 0; i < 2; i++) {
+			Unifiable<String> x = lvar();
+			Unifiable<String> y = lvar();
 
-		System.out.println("Before solve - table size: " + Table.instance().size());
-		long count = query.solve(y).count(); // Force evaluation
-		System.out.println("After solve - table size: " + Table.instance().size());
-		System.out.println("Result count: " + count);
+			java.util.List<String> descendants = x.unifies("alice").and(ancestor(x, y))
+					.solve(y)
+					.map(Unifiable::get)
+					.collect(Collectors.toList());
 
-		// Table should have entries (ancestor("alice", Y) is ground in first argument)
-		// Note: May be 0 if all calls are non-ground
-		// Let's just verify the query worked
-		assertThat(count).isGreaterThan(0);
-
-		// Clear and verify
-		Table.instance().clear();
-		assertThat(Table.instance().size()).isEqualTo(0);
+			assertThat(descendants).containsExactlyInAnyOrder("bob", "charlie", "david");
+		}
 	}
 
 	// ============================================
@@ -491,6 +479,87 @@ public class TablingTest {
 	// ============================================
 	// COMPLEX NESTED STRUCTURES
 	// ============================================
+
+	@Test(timeout = 5000)
+	public void testSlaveReceivesAnswersProducedAfterRegistration() {
+		// Two independent calls to the same tabled relation in one query.
+		// The second call becomes a slave; it registers before the master has
+		// produced all answers and must receive the later ones via reactivation.
+		class PathGoal {
+			Goal edge(Unifiable<Integer> x, Unifiable<Integer> y) {
+				return x.unifies(1).and(y.unifies(2))
+						.or(x.unifies(2).and(y.unifies(3)))
+						.or(x.unifies(3).and(y.unifies(4)));
+			}
+
+			Goal path(Unifiable<Integer> x, Unifiable<Integer> y) {
+				return Tabling.tabled(
+						"path",
+						List.of(x.getObjectUnifiable(), y.getObjectUnifiable()),
+						args -> {
+							@SuppressWarnings("unchecked")
+							Unifiable<Integer> x1 = (Unifiable<Integer>) args.get(0);
+							@SuppressWarnings("unchecked")
+							Unifiable<Integer> y1 = (Unifiable<Integer>) args.get(1);
+
+							Goal base = edge(x1, y1);
+
+							Goal rec = defer(() -> {
+								Unifiable<Integer> z = lvar();
+								return path(x1, z).and(edge(z, y1));
+							});
+
+							return base.or(rec);
+						}
+				);
+			}
+		}
+
+		PathGoal pg = new PathGoal();
+		Unifiable<Integer> one = lvar();
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+
+		// path(1, _) = {2, 3, 4}; the query pairs every a with every b
+		long count = one.unifies(1)
+				.and(pg.path(one, a))
+				.and(pg.path(one, b))
+				.solve(lval(Tuple.of(a, b)))
+				.count();
+
+		assertThat(count).isEqualTo(9);
+	}
+
+	@Test(timeout = 5000)
+	public void testAlphaEquivalentAnswersAreDeduped() {
+		// Both branches produce an answer of the same shape (fresh var, 1).
+		// The answers are alpha-equivalent, so the table must keep only one.
+		Unifiable<Object> p = lvar();
+
+		Goal pairs = Tabling.tabled(
+				"pairs",
+				List.of(p.getObjectUnifiable()),
+				args -> {
+					Unifiable<Object> q = args.get(0).getObjectUnifiable();
+
+					Goal first = defer(() -> {
+						Unifiable<Integer> a = lvar();
+						return q.unifies(Tuple.of(a, 1));
+					});
+
+					Goal second = defer(() -> {
+						Unifiable<Integer> b = lvar();
+						return q.unifies(Tuple.of(b, 1));
+					});
+
+					return first.or(second);
+				}
+		);
+
+		long count = pairs.solve(p).count();
+
+		assertThat(count).isEqualTo(1);
+	}
 
 	@Test
 	public void testTablingWithNestedStructures() {

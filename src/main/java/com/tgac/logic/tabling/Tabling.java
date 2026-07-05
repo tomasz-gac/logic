@@ -1,33 +1,39 @@
 package com.tgac.logic.tabling;
 
+// ABOUTME: Tabled evaluation of logic goals: answers are cached per call and shared,
+// ABOUTME: which makes left-recursive and mutually recursive predicates terminate.
+
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.fibers.Awaitable;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.MFiber;
-import com.tgac.functional.monad.Cont;
+import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.LVar;
+import com.tgac.logic.tabling.TableEntry.Registration;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
+import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-
+import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.functional.fibers.MFiber.mdone;
+import static com.tgac.logic.unification.LVal.lval;
 
 /**
  * Provides tabling (memoization) for logic goals to prevent infinite loops
  * and improve performance by caching answers.
  *
- * Tabling implements a master/slave pattern where the first invocation of a
- * tabled goal becomes the "master" and executes the goal, caching answers
- * as they are produced. Subsequent invocations with the same arguments
- * become "slaves" that read from the cache.
+ * The first invocation of a call becomes the master and executes the goal
+ * with a caching hook threaded through its continuation: every derived
+ * answer is reified, deduplicated and cached before it flows on. Later
+ * invocations consume the cache. Nothing ever blocks — a consumer that
+ * exhausts the cache parks its continuation in the table entry as data and
+ * terminates, and whoever derives a new answer respawns the parked consumers
+ * as detached fibers. The search reaches its fixpoint when the scheduler
+ * runs out of work; parked consumers left at that point are failed branches.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Tabling {
@@ -35,234 +41,115 @@ public class Tabling {
 	/**
 	 * Create a tabled version of a goal.
 	 *
-	 * Uses Byrd's tabling algorithm:
-	 * 1. Reify the arguments to create a lookup key
-	 * 2. Look up the call in the table
-	 * 3. If new call, become master and execute the goal, caching answer terms
-	 * 4. If existing call, become slave and unify with cached answer terms
+	 * <pre>
+	 * 1. Reify the arguments in the current state to create the lookup key
+	 * 2. Look up the call in the solve-scoped table
+	 * 3. A new call becomes master and executes the goal, caching answer terms
+	 * 4. An existing call consumes cached answer terms, parking when it catches up
+	 * </pre>
 	 *
 	 * @param goalName The name of the goal for identification
 	 * @param args The arguments to the goal
 	 * @param goalFactory A function that creates the actual goal given the arguments
 	 * @return A tabled goal that caches answers
 	 */
-	public static Goal tabled(String goalName, List<Unifiable> args, java.util.function.Function<List<Unifiable>, Goal> goalFactory) {
-		return pkg -> k -> {
-			if (goalName.equals("path")) {
-				System.out.println("[DEBUG] path - tabling with args: " + args);
-			}
-			// Step 1: Reify the arguments in the current package to create the lookup key
-			return reifyArguments(pkg, args).flatMap(reifiedArgs -> {
-				// Step 2: Create a Call with the reified arguments as the key
-				Call key = Call.of(goalName, reifiedArgs);
-				if (goalName.equals("path")) {
-					System.out.println("[DEBUG] path - reified key: " + key);
-				}
-
-				// Step 3: Look up or create table entry
-				Table table = Table.instance();
-				TableEntry entry = table.getOrCreateEntry(key);
-
-				// Step 4: Try to become master
-				if (entry.tryBecomeMaster()) {
-					if (goalName.equals("path")) {
-						System.out.println("[DEBUG] path - MASTER for key: " + key);
-					}
-					// We are the master
-					return producerCont(entry, goalFactory.apply(args), pkg, args).apply(k);
-				} else {
-					if (goalName.equals("path")) {
-						System.out.println("[DEBUG] path - SLAVE for key: " + key);
-					}
-					// We are a slave
-					return consumerCont(entry, pkg, args).apply(k);
-				}
-			});
-		};
+	public static Goal tabled(String goalName, List<Unifiable> args, Function<List<Unifiable>, Goal> goalFactory) {
+		return pkg -> k -> reifyArguments(pkg, args).flatMap(reifiedArgs -> {
+			Call key = Call.of(goalName, reifiedArgs);
+			Table table = StoreSupport.getConstraintStore(pkg, Table.class);
+			TableEntry entry = table.getOrCreateEntry(key);
+			return entry.tryBecomeMaster() ?
+					produce(entry, goalFactory.apply(args), pkg, args, k) :
+					consume(entry, k, pkg, args, 0);
+		});
 	}
 
 	/**
-	 * Reify all arguments to create the table lookup key.
+	 * Master: execute the goal with a caching hook in its continuation.
+	 * Each new answer is cached, the consumers parked on the entry are
+	 * respawned, and the answer flows on through the query. Duplicate
+	 * answers fail their branch.
 	 */
 	@SuppressWarnings("unchecked")
-	private static Fiber<List<Unifiable>> reifyArguments(Package pkg, List<Unifiable> args) {
-		Fiber<List<Unifiable>> result = done(List.empty());
-		for (Unifiable arg : args) {
-			result = result.flatMap(accum ->
-				MiniKanren.reify(pkg, arg).map(reified -> accum.append((Unifiable) reified))
-			);
+	private static Fiber<Nothing> produce(
+			TableEntry entry,
+			Goal goal,
+			Package initialPkg,
+			List<Unifiable> args,
+			Fiber.Fn<Package, Nothing> k) {
+		return goal.apply(initialPkg).apply(answerPkg ->
+				reifyArguments(answerPkg, args).flatMap(answerTerm ->
+						entry.addAnswer((List<Unifiable<?>>) (List<?>) answerTerm)
+								.map(parked -> respawn(entry, parked)
+										.flatMap(__ -> k.apply(answerPkg)))
+								.getOrElse(() -> done(nothing()))));
+	}
+
+	/**
+	 * Respawn parked consumers as detached fibers so they pick up the answers
+	 * cached since they parked. Whoever derives an answer drives its consequences.
+	 */
+	private static Fiber<Nothing> respawn(TableEntry entry, List<Registration> parked) {
+		Fiber<Nothing> result = done(nothing());
+		for (Registration r : parked) {
+			result = result.flatMap(__ -> Fiber.detach(Fiber.defer(() ->
+					consume(entry, r.getContinuation(), r.getPkg(), r.getArgs(), r.getNextIndex()))));
 		}
 		return result;
 	}
 
 	/**
-	 * Master producer: executes the goal and caches answer terms.
-	 * After caching is complete, the master becomes a consumer and reads from the cache.
+	 * Consumer: unify cached answer terms with the arguments, yielding each
+	 * success to the continuation. On catching up with the cache the consumer
+	 * parks itself in the entry and terminates — {@link #respawn} continues it
+	 * when new answers arrive, and the fixpoint abandons it otherwise.
 	 */
-	@SuppressWarnings("unchecked")
-	private static Cont<Package, Nothing> producerCont(TableEntry entry, Goal goal, Package initialPkg, List<Unifiable> args) {
-		return k -> {
-			System.out.println("[DEBUG] MASTER starting execution for: " + entry.getCall());
-
-			// Execute the goal with a continuation that both caches AND passes answers forward
-			Fiber<Nothing> goalFiber = goal.apply(initialPkg).apply(answerPkg -> {
-				// For each answer Package, reify the arguments to create answer term
-				return reifyArguments(answerPkg, args).flatMap(answerTerm -> {
-					// Check if this answer is a duplicate (already cached)
-					if (isDuplicate(entry, (List<Unifiable<?>>) (List<?>) answerTerm)) {
-						System.out.println("[DEBUG] MASTER skipping duplicate answer: " + answerTerm + " for " + entry.getCall());
-						// Duplicate - don't cache or pass to continuation (goal fails for this branch)
-						return done(Nothing.nothing());
-					}
-
-					System.out.println("[DEBUG] MASTER caching NEW answer: " + answerTerm + " for " + entry.getCall());
-
-					// Cache the answer term (for slaves to consume)
-					entry.addAnswer((List<Unifiable<?>>) (List<?>) answerTerm);
-
-					// ALSO pass the answer to the continuation (return as singleton stream)
-					// This allows answers to flow through the query
-					return k.apply(answerPkg);
-				});
-			});
-
-			// After goal execution completes, mark as complete
-			return goalFiber.flatMap(result -> {
-				System.out.println("[DEBUG] MASTER marking complete: " + entry.getCall());
-				entry.markComplete();
-				return done(Nothing.nothing());
-			});
-		};
-	}
-
-	/**
-	 * Check if an answer term is already in the cache.
-	 * Uses structural equality to detect duplicates.
-	 */
-	private static boolean isDuplicate(TableEntry entry, List<Unifiable<?>> answerTerm) {
-		for (int i = 0; i < entry.getAnswerCount(); i++) {
-			List<Unifiable<?>> cached = entry.getAnswerAt(i);
-			if (answersEqual(cached, answerTerm)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * Check if two answer terms are equal.
-	 * Answer terms are lists of Unifiables that should be structurally equal.
-	 * LVars (from reification) are compared by name, not object identity.
-	 */
-	@SuppressWarnings("unchecked")
-	private static boolean answersEqual(List<Unifiable<?>> a, List<Unifiable<?>> b) {
-		if (a.size() != b.size()) {
-			return false;
-		}
-		for (int i = 0; i < a.size(); i++) {
-			Unifiable<?> aElem = a.get(i);
-			Unifiable<?> bElem = b.get(i);
-
-			// For LVars, compare by name (reified LVars are fresh objects)
-			if (aElem.asVar().isDefined() && bElem.asVar().isDefined()) {
-				LVar<Object> aVar = (LVar<Object>) aElem.asVar().get();
-				LVar<Object> bVar = (LVar<Object>) bElem.asVar().get();
-				if (!aVar.getName().equals(bVar.getName())) {
-					return false;
-				}
-			} else if (!aElem.equals(bElem)) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	/**
-	 * Slave consumer: reads answer terms from the cache and unifies with current arguments.
-	 */
-	private static Cont<Package, Nothing> consumerCont(TableEntry entry, Package initialPkg, List<Unifiable> args) {
-		System.out.println("[DEBUG] SLAVE starting consumption for: " + entry.getCall());
-		return k -> consumeAnswers(entry, k, initialPkg, args, new AtomicInteger(0));
-	}
-
-	/**
-	 * Recursively consume answer terms from the cache.
-	 * Suspends when the cache is exhausted and resumes when new answers arrive.
-	 *
-	 * For each answer term, we unify it with the current arguments.
-	 * If unification succeeds, we yield the unified Package.
-	 */
-	private static Fiber<Nothing> consumeAnswers(
+	private static Fiber<Nothing> consume(
 			TableEntry entry,
 			Fiber.Fn<Package, Nothing> k,
 			Package initialPkg,
 			List<Unifiable> args,
-			AtomicInteger index) {
+			int index) {
 
-		int currentIndex = index.get();
-		System.out.println("[DEBUG] consumeAnswers waiting for answer at index " + currentIndex + " for " + entry.getCall());
-
-		// Wait for answer at current index
-		CompletableFuture<TableEntry.AnswerStatus> answerFuture = entry.waitForAnswerAt(currentIndex);
-
-		// If already completed, process immediately
-		if (answerFuture.isDone()) {
-			try {
-				TableEntry.AnswerStatus status = answerFuture.get();
-				if (status instanceof TableEntry.Done) {
-					// Master is done, no more answers
-					return done(Nothing.nothing());
-				} else if (status instanceof TableEntry.Answer) {
-					List<Unifiable<?>> answerTerm = ((TableEntry.Answer) status).getAnswerTerm();
-					// Unify the answer term with our arguments - MFiber.getOrElse returns Fiber
-					return unifyArguments(initialPkg, args, answerTerm)
-						.map(unifiedPkg -> {
-							// Unification succeeded, yield result and continue
-							index.incrementAndGet();
-							return k.apply(unifiedPkg).flatMap(__ ->
-								Fiber.defer(() -> consumeAnswers(entry, k, initialPkg, args, index))
-							);
-						})
-						.getOrElse(() -> {
-							// Unification failed, try next answer
-							index.incrementAndGet();
-							return Fiber.defer(() -> consumeAnswers(entry, k, initialPkg, args, index));
-						})
-						.flatMap(fib -> fib);
-				}
-			} catch (Exception e) {
-				throw new RuntimeException("Error getting answer from table", e);
-			}
+		if (index < entry.getAnswerCount()) {
+			List<Unifiable<?>> answerTerm = entry.getAnswerAt(index);
+			// Fresh variables per consumption, so separate consumptions of the
+			// same answer don't alias each other's free variables
+			return refresh(answerTerm).flatMap(freshTerm ->
+					unifyArguments(initialPkg, args, freshTerm)
+							.map(unifiedPkg -> k.apply(unifiedPkg)
+									.flatMap(__ -> Fiber.defer(() ->
+											consume(entry, k, initialPkg, args, index + 1))))
+							.getOrElse(() -> Fiber.defer(() ->
+									consume(entry, k, initialPkg, args, index + 1)))
+							.flatMap(fib -> fib));
 		}
 
-		// Answer not ready - suspend until it arrives
-		Awaitable<TableEntry.AnswerStatus> awaitable = () -> answerFuture;
+		if (entry.register(new Registration(k, initialPkg, args, index))) {
+			return done(nothing());
+		}
 
-		return awaitable.await((TableEntry.AnswerStatus status) -> {
-			if (status instanceof TableEntry.Done) {
-				// Master is done, no more answers
-				return done(Nothing.nothing());
-			} else if (status instanceof TableEntry.Answer) {
-				List<Unifiable<?>> answerTerm = ((TableEntry.Answer) status).getAnswerTerm();
-				// Unify the answer term with our arguments - MFiber.getOrElse returns Fiber
-				return unifyArguments(initialPkg, args, answerTerm)
-					.map(unifiedPkg -> {
-						// Unification succeeded, yield result and continue
-						index.incrementAndGet();
-						return k.apply(unifiedPkg).flatMap(__ ->
-							Fiber.defer(() -> consumeAnswers(entry, k, initialPkg, args, index))
-						);
-					})
-					.getOrElse(() -> {
-						// Unification failed, try next answer
-						index.incrementAndGet();
-						return Fiber.defer(() -> consumeAnswers(entry, k, initialPkg, args, index));
-					})
-					.flatMap(fib -> fib);
-			} else {
-				return done(Nothing.nothing());
-			}
-		});
+		// An answer arrived while registering — keep consuming
+		return Fiber.defer(() -> consume(entry, k, initialPkg, args, index));
+	}
+
+	/**
+	 * Reify the whole argument vector as one term, so the canonical variable
+	 * numbering spans all arguments: path(X, Y) must not collide with path(X, X).
+	 */
+	@SuppressWarnings("unchecked")
+	private static Fiber<List<Unifiable>> reifyArguments(Package pkg, List<Unifiable> args) {
+		return MiniKanren.reify(pkg, lval(args))
+				.map(reified -> (List<Unifiable>) (List<?>) reified.get());
+	}
+
+	/**
+	 * Copy a cached answer term with fresh variables.
+	 */
+	@SuppressWarnings("unchecked")
+	private static Fiber<List<Unifiable<?>>> refresh(List<Unifiable<?>> answerTerm) {
+		return MiniKanren.reifyVar(Package.empty(), lval(answerTerm))
+				.map(fresh -> (List<Unifiable<?>>) (List<?>) fresh.get());
 	}
 
 	/**

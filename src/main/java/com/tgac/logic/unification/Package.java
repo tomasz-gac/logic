@@ -1,6 +1,5 @@
 package com.tgac.logic.unification;
 
-import com.tgac.logic.ckanren.ConstraintStore;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
 import java.util.Map;
@@ -61,7 +60,7 @@ public class Package {
 		return substitutions.size();
 	}
 
-	public Package withStore(ConstraintStore empty) {
+	public Package withStore(Store empty) {
 		if (constraints.get(empty.getClass()).isDefined()) {
 			return this;
 		} else {

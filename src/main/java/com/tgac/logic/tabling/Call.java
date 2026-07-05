@@ -114,35 +114,19 @@ public class Call {
 
 	/**
 	 * Check if two arguments are equal structurally.
-	 * Reified calls can contain LVars, which should compare by name for table lookup.
+	 * Reified calls can contain LVars at any depth, which compare by name for table lookup.
 	 */
-	@SuppressWarnings("unchecked")
 	private boolean argumentsEqual(Unifiable a, Unifiable b) {
-		// For LVars, compare by name (since reified LVars are fresh objects)
-		if (a.asVar().isDefined() && b.asVar().isDefined()) {
-			LVar<Object> aVar = (LVar<Object>) a.asVar().get();
-			LVar<Object> bVar = (LVar<Object>) b.asVar().get();
-			return aVar.getName().equals(bVar.getName());
-		}
-		return a.equals(b);
+		return MiniKanren.structuralEquals(a, b);
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public int hashCode() {
 		int result = goalName.hashCode();
 
-		// Hash based on argument structure
-		// For LVars, hash by name (consistent with argumentsEqual)
+		// Hash by argument structure, consistent with argumentsEqual
 		for (Unifiable arg : arguments) {
-			int argHash;
-			if (arg.asVar().isDefined()) {
-				LVar<Object> var = (LVar<Object>) arg.asVar().get();
-				argHash = var.getName().hashCode();
-			} else {
-				argHash = arg.hashCode();
-			}
-			result = 31 * result + argHash;
+			result = 31 * result + MiniKanren.structuralHash(arg);
 		}
 
 		return result;

@@ -1,30 +1,34 @@
 package com.tgac.logic.tabling;
 
+// ABOUTME: Maps tabled goal calls to their table entries for the duration of one solve.
+// ABOUTME: Rides the package's constraint-store map so every derived state shares it.
+
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.unification.Store;
+import com.tgac.logic.unification.Stored;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * The global table that maps tabled goal calls to their table entries.
+ * The table that maps tabled goal calls to their table entries.
  *
- * This maintains the master/slave coordination for all tabled goals.
- * Each unique call (identified by goal name and ground arguments) gets
- * its own TableEntry where answers are cached.
+ * Each unique call (identified by goal name and reified arguments) gets its
+ * own {@link TableEntry} where answers are cached. The table is scoped to a
+ * single solve: {@link Goal#solve} seeds a fresh one into the root package's
+ * store map, and all packages derived during the search share it.
+ *
+ * It is a plain {@link Store} — not a constraint store — so constraint
+ * processing ignores it; the store map is only its transport.
  */
-public class Table {
-	/** Global singleton instance */
-	private static final Table INSTANCE = new Table();
+public class Table implements Store {
 
 	/** Map from calls to their table entries */
 	private final ConcurrentHashMap<Call, TableEntry> entries = new ConcurrentHashMap<>();
 
 	private Table() {
-		// Private constructor for singleton
 	}
 
-	/**
-	 * Get the global table instance.
-	 */
-	public static Table instance() {
-		return INSTANCE;
+	public static Table empty() {
+		return new Table();
 	}
 
 	/**
@@ -43,14 +47,6 @@ public class Table {
 	}
 
 	/**
-	 * Clear all table entries.
-	 * This should be called between queries to prevent answer pollution.
-	 */
-	public void clear() {
-		entries.clear();
-	}
-
-	/**
 	 * Get the number of distinct calls currently in the table.
 	 */
 	public int size() {
@@ -62,6 +58,21 @@ public class Table {
 	 */
 	public boolean contains(Call call) {
 		return entries.containsKey(call);
+	}
+
+	@Override
+	public Store remove(Stored c) {
+		return this;
+	}
+
+	@Override
+	public Store prepend(Stored c) {
+		return this;
+	}
+
+	@Override
+	public boolean contains(Stored c) {
+		return false;
 	}
 
 	@Override

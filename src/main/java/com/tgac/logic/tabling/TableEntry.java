@@ -1,74 +1,57 @@
 package com.tgac.logic.tabling;
 
+// ABOUTME: Holds the cached answers and parked consumer continuations for one tabled call.
+// ABOUTME: Consumers never block: they park here as data and are respawned by addAnswer.
+
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
+import io.vavr.control.Option;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
+import lombok.Value;
 
 /**
  * A table entry for a specific tabled goal call.
  *
- * This implements the master/slave pattern from Byrd's dissertation:
- * - The MASTER is the first invocation that actually executes the goal
- * - SLAVES are subsequent invocations that read from the cached answers
- *
- * The master produces answer terms (reified arguments with fresh variables).
- * Slaves unify their arguments with cached answer terms.
+ * The first invocation of a call becomes the MASTER and executes the goal,
+ * caching each new answer term it derives. Subsequent invocations are
+ * CONSUMERS that unify their arguments against the cached answers. A consumer
+ * that exhausts the cache registers its continuation here and terminates;
+ * {@link #addAnswer} hands the registrations back to whoever derived the
+ * answer, which respawns them as independent fibers. At the fixpoint no new
+ * answers appear, remaining registrations never fire, and the computation
+ * simply drains.
  */
 public class TableEntry {
 	/** The call being tabled */
 	@Getter
 	private final Call call;
 
-	/** Cached answer terms produced by the master - each is a list of reified arguments */
-	private final CopyOnWriteArrayList<List<Unifiable<?>>> answers = new CopyOnWriteArrayList<>();
+	/** Answer terms (reified argument vectors) in production order. Guarded by this. */
+	private final ArrayList<List<Unifiable<?>>> answers = new ArrayList<>();
 
-	/** Whether the master has completed producing all answers */
-	private final AtomicBoolean complete = new AtomicBoolean(false);
+	/** Consumers waiting for answers past the end of the cache. Guarded by this. */
+	private final ArrayList<Registration> registrations = new ArrayList<>();
 
-	/** Whether a master is currently executing for this call */
+	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
 	/**
-	 * Slaves waiting for answers at specific indices.
-	 * Key: index in answers list where slave is waiting
-	 * Value: future to complete when answer becomes available
+	 * A consumer parked as data: its continuation, the state it was consuming
+	 * in, the arguments it unifies answers against, and the cache index it
+	 * will resume from.
 	 */
-	private final ConcurrentHashMap<Integer, CopyOnWriteArrayList<CompletableFuture<AnswerStatus>>>
-		waitingSlavesAtIndex = new ConcurrentHashMap<>();
-
-	/**
-	 * Status of an answer request - either an answer is available or master is done.
-	 */
-	public interface AnswerStatus {
-		// Marker interface for sealed-like behavior
-	}
-
-	/**
-	 * An answer is available at the requested index.
-	 */
-	@Getter
-	public static class Answer implements AnswerStatus {
-		private final List<Unifiable<?>> answerTerm;
-
-		public Answer(List<Unifiable<?>> answerTerm) {
-			this.answerTerm = answerTerm;
-		}
-	}
-
-	/**
-	 * The master has completed; no more answers will be produced.
-	 */
-	public static class Done implements AnswerStatus {
-		public static final Done INSTANCE = new Done();
-
-		private Done() {
-		}
+	@Value
+	public static class Registration {
+		Fiber.Fn<Package, Nothing> continuation;
+		Package pkg;
+		List<Unifiable> args;
+		int nextIndex;
 	}
 
 	public TableEntry(Call call) {
@@ -84,105 +67,78 @@ public class TableEntry {
 	}
 
 	/**
-	 * Add an answer term to the cache and notify waiting slaves.
-	 * Should only be called by the master.
+	 * Cache an answer term unless an alpha-equivalent one is already present.
+	 *
+	 * @return the drained registrations to respawn, or none if the answer is a duplicate
 	 */
-	public void addAnswer(List<Unifiable<?>> answerTerm) {
-		int index = answers.size();
+	public synchronized Option<List<Registration>> addAnswer(List<Unifiable<?>> answerTerm) {
+		for (List<Unifiable<?>> cached : answers) {
+			if (answersEqual(cached, answerTerm)) {
+				return Option.none();
+			}
+		}
 		answers.add(answerTerm);
-
-		// Notify all slaves waiting at this index
-		CopyOnWriteArrayList<CompletableFuture<AnswerStatus>> waitingAtIndex =
-			waitingSlavesAtIndex.remove(index);
-
-		if (waitingAtIndex != null) {
-			for (CompletableFuture<AnswerStatus> future : waitingAtIndex) {
-				future.complete(new Answer(answerTerm));
-			}
-		}
+		List<Registration> drained = List.ofAll(registrations);
+		registrations.clear();
+		return Option.of(drained);
 	}
 
 	/**
-	 * Mark this table entry as complete (master finished).
-	 * Notifies all waiting slaves that no more answers will come.
+	 * Park a consumer waiting at the end of the cache.
+	 *
+	 * @return false if answers arrived since the consumer last looked — it should keep consuming instead
 	 */
-	public void markComplete() {
-		complete.set(true);
-
-		// Notify all waiting slaves at any index
-		for (CopyOnWriteArrayList<CompletableFuture<AnswerStatus>> futures : waitingSlavesAtIndex.values()) {
-			for (CompletableFuture<AnswerStatus> future : futures) {
-				future.complete(Done.INSTANCE);
-			}
+	public synchronized boolean register(Registration registration) {
+		if (registration.getNextIndex() < answers.size()) {
+			return false;
 		}
-		waitingSlavesAtIndex.clear();
+		registrations.add(registration);
+		return true;
 	}
 
 	/**
-	 * Get an answer term at the specified index, or null if not yet available.
+	 * Get an answer term at the specified index, or null if not present.
 	 */
-	public List<Unifiable<?>> getAnswerAt(int index) {
-		if (index < answers.size()) {
-			return answers.get(index);
-		}
-		return null;
-	}
-
-	/**
-	 * Check if the master has completed.
-	 */
-	public boolean isComplete() {
-		return complete.get();
+	public synchronized List<Unifiable<?>> getAnswerAt(int index) {
+		return index < answers.size() ? answers.get(index) : null;
 	}
 
 	/**
 	 * Get the current number of cached answers.
 	 */
-	public int getAnswerCount() {
+	public synchronized int getAnswerCount() {
 		return answers.size();
 	}
 
 	/**
-	 * Register a slave to wait for an answer at the specified index.
-	 * Returns a future that will be completed when the answer becomes available
-	 * or when the master completes.
+	 * Get the current number of parked consumers.
 	 */
-	public CompletableFuture<AnswerStatus> waitForAnswerAt(int index) {
-		CompletableFuture<AnswerStatus> future = new CompletableFuture<>();
+	public synchronized int getRegistrationCount() {
+		return registrations.size();
+	}
 
-		// Double-check: answer might already be available
-		if (index < answers.size()) {
-			future.complete(new Answer(answers.get(index)));
-			return future;
+	/**
+	 * Answer terms are equal when they are alpha-equivalent: both are reified,
+	 * so structural comparison with name-based variable equality decides it.
+	 */
+	private static boolean answersEqual(List<Unifiable<?>> a, List<Unifiable<?>> b) {
+		if (a.size() != b.size()) {
+			return false;
 		}
-
-		// Double-check: master might be done
-		if (complete.get()) {
-			future.complete(Done.INSTANCE);
-			return future;
+		for (int i = 0; i < a.size(); i++) {
+			if (!MiniKanren.structuralEquals(a.get(i), b.get(i))) {
+				return false;
+			}
 		}
-
-		// Register to wait
-		waitingSlavesAtIndex
-			.computeIfAbsent(index, k -> new CopyOnWriteArrayList<>())
-			.add(future);
-
-		// Triple-check after registering (race condition)
-		if (index < answers.size()) {
-			future.complete(new Answer(answers.get(index)));
-		} else if (complete.get()) {
-			future.complete(Done.INSTANCE);
-		}
-
-		return future;
+		return true;
 	}
 
 	@Override
 	public String toString() {
 		return "TableEntry{" +
-			"call=" + call +
-			", answers=" + answers.size() +
-			", complete=" + complete.get() +
-			'}';
+				"call=" + call +
+				", answers=" + getAnswerCount() +
+				", registrations=" + getRegistrationCount() +
+				'}';
 	}
 }

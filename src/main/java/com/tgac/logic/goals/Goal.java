@@ -10,6 +10,7 @@ import com.tgac.functional.fibers.Scheduler;
 import com.tgac.functional.fibers.schedulers.ExecutorServiceScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -337,7 +338,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
 		Deque<Unifiable<T>> results = new LinkedBlockingDeque<>();
 
-		Fiber<Nothing> recur = apply(Package.empty())
+		Fiber<Nothing> recur = apply(Package.empty().withStore(Table.empty()))
 				.flatMap(s -> CKanren.reify(s, out))
 				.run(v -> {
 					results.add(v);      // Push result to queue

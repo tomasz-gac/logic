@@ -71,6 +71,7 @@ public class StoreSupport {
 
 	public static Goal processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
 		return p -> p.getConstraints().values().toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
 				.map(cs -> cs.processPrefix(newSubstitutions))
 				.reduce(Goal::and)
@@ -80,6 +81,7 @@ public class StoreSupport {
 
 	public static <T> Goal enforceConstraints(Package p, Unifiable<T> x) {
 		return p.getConstraints().values().toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
 				.map(cs -> cs.enforceConstraints(x))
 				.reduce(Goal::and)
@@ -89,6 +91,7 @@ public class StoreSupport {
 	public static <A> Unifiable<A> reify(Package p, Unifiable<A> unifiable, Package renameSubstitutions) {
 		return p.getConstraints().values()
 				.toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
 				.reduce(Try.success(unifiable),
 						(l, cs) -> l.flatMap(u -> Try.of(() -> cs.reify(u, renameSubstitutions, p))),
