@@ -118,6 +118,13 @@ public class MiniKanren {
 		Term<T> l = walk(s, lhs);
 		Term<T> r = walk(s, rhs);
 
+		// reified terms are solver output; meeting one here is a programming error
+		// that the type system cannot catch when it is nested inside a value
+		if (l.asReified().isDefined() || r.asReified().isDefined()) {
+			throw new IllegalStateException(
+					"Reified terms cannot re-enter unification: " + l + " ≣ " + r);
+		}
+
 		// it's important to return the same object when l equals r
 		// because we test with == to see if substitution already exists
 		if (l.equals(r)) {

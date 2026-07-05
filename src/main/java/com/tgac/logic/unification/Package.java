@@ -36,7 +36,8 @@ public class Package {
 	}
 
 	public <T> Term<T> walk(Term<T> v) {
-		if (v.asVal().isDefined()) {
+		// only input vars are substitution keys; vals and reified vars walk to themselves
+		if (!v.asVar().isDefined()) {
 			return v;
 		}
 		if (get(v.getVar()) == null) {
@@ -46,11 +47,8 @@ public class Package {
 		}
 		Term<?> result = v;
 		Term<?> tmp;
-		while ((tmp = get(result.getVar())) != null) {
+		while (result.asVar().isDefined() && (tmp = get(result.getVar())) != null) {
 			result = tmp;
-			if (result.isVal()) {
-				break;
-			}
 		}
 		return (Term<T>) result;
 	}

@@ -12,7 +12,7 @@ import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class LVal<T> implements Unifiable<T> {
+public class LVal<T> implements Unifiable<T>, Reified<T> {
 	T value;
 
 	public static <T> Unifiable<T> lval(@NonNull T v) {

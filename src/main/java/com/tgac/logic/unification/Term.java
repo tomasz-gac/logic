@@ -27,6 +27,10 @@ public interface Term<T> extends Supplier<T> {
 		return Option.none();
 	}
 
+	default Option<ReifiedVar<T>> asReified() {
+		return Option.none();
+	}
+
 	@Override
 	default T get() {
 		return ((LVal<T>) this).getValue();
