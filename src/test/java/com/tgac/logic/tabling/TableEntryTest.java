@@ -4,6 +4,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.tabling.TableEntry.Registration;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.ReifiedVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
@@ -72,10 +73,10 @@ public class TableEntryTest {
 		Call call = Call.of("parent", lval("alice"), lval("bob"));
 		TableEntry entry = new TableEntry(call);
 
-		// Reified answer terms carry canonical variable names, so terms that
-		// differ only in variable objects are the same answer
-		List<Term<?>> first = List.of(lvar("_.0"), lval("bob"));
-		List<Term<?>> second = List.of(lvar("_.0"), lval("bob"));
+		// Reified answer terms carry canonical hole names, so terms that
+		// differ only in token objects are the same answer
+		List<Term<?>> first = List.of(ReifiedVar.of("_.0"), lval("bob"));
+		List<Term<?>> second = List.of(ReifiedVar.of("_.0"), lval("bob"));
 
 		assertThat(entry.addAnswer(first).isDefined()).isTrue();
 		assertThat(entry.addAnswer(second).isDefined()).isFalse();

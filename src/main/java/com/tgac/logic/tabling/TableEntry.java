@@ -5,7 +5,6 @@ package com.tgac.logic.tabling;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -120,18 +119,11 @@ public class TableEntry {
 
 	/**
 	 * Answer terms are equal when they are alpha-equivalent: both are reified,
-	 * so structural comparison with name-based variable equality decides it.
+	 * and reified vars carry value equality by canonical name, so plain
+	 * structural equality decides it.
 	 */
 	private static boolean answersEqual(List<Term<?>> a, List<Term<?>> b) {
-		if (a.size() != b.size()) {
-			return false;
-		}
-		for (int i = 0; i < a.size(); i++) {
-			if (!MiniKanren.structuralEquals(a.get(i), b.get(i))) {
-				return false;
-			}
-		}
-		return true;
+		return a.equals(b);
 	}
 
 	@Override

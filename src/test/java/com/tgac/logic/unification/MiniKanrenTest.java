@@ -670,7 +670,7 @@ public class MiniKanrenTest {
 	}
 
 	@Test
-	public void shouldTreatVariantTermsAsStructurallyEqual() {
+	public void shouldTreatVariantTermsAsEqualWhenReified() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
@@ -679,11 +679,11 @@ public class MiniKanrenTest {
 		Term<Tuple2<Unifiable<Integer>, Integer>> right =
 				MiniKanren.reify(Package.empty(), lval(Tuple.of(y, 1))).get();
 
-		assertThat(MiniKanren.structuralEquals(left, right)).isTrue();
+		assertThat(left).isEqualTo(right);
 	}
 
 	@Test
-	public void shouldDistinguishSharingStructureInStructuralEquals() {
+	public void shouldDistinguishSharingStructureWhenReified() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
@@ -693,8 +693,55 @@ public class MiniKanrenTest {
 		Term<List<Unifiable<Integer>>> distinct =
 				MiniKanren.reify(Package.empty(), lval(List.of(x, y))).get();
 
-		assertThat(MiniKanren.structuralEquals(shared, distinct)).isFalse();
-		assertThat(MiniKanren.structuralEquals(shared, shared)).isTrue();
+		assertThat(shared).isNotEqualTo(distinct);
+		assertThat(shared).isEqualTo(shared);
+	}
+
+	@Test
+	public void shouldInstantiateHolesAsFreshSharedVariables() {
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		// (a, b, a) reifies to (_.0, _.1, _.0); shared holes share the fresh variable
+		Reified<?> template = MiniKanren.reify(Package.empty(),
+				lval(List.<Term<Integer>> of(a, b, a))).get();
+
+		Unifiable<?> instantiated = MiniKanren.instantiate(template).get();
+
+		List<Term<Integer>> items = (List<Term<Integer>>) instantiated.get();
+		assertThat(items.get(0).asVar().isDefined()).isTrue();
+		assertThat(items.get(1).asVar().isDefined()).isTrue();
+		assertThat(items.get(0)).isSameAs(items.get(2));
+		assertThat(items.get(0)).isNotEqualTo(items.get(1));
+	}
+
+	@Test
+	public void shouldInstantiateGroundStructureUnchanged() {
+		Reified<?> template = MiniKanren.reify(Package.empty(),
+				lval(Tuple.of(1, "a"))).get();
+
+		assertThat(MiniKanren.instantiate(template).get())
+				.isEqualTo(lval(Tuple.of(1, "a")));
+	}
+
+	@Test
+	public void shouldInstantiateNestedHoles() {
+		Unifiable<Integer> h = lvar();
+		Unifiable<LList<Integer>> t = lvar();
+		// ({(h)}, t, {(h . t)}) — sharing must survive instantiation through structures
+		Reified<?> template = MiniKanren.reify(Package.empty(),
+				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get())))).get();
+
+		Unifiable<?> instantiated = MiniKanren.instantiate(template).get();
+
+		io.vavr.Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>> tuple =
+				(io.vavr.Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>>) instantiated.get();
+		Term<?> firstHead = tuple._1.get().getHead();
+		Term<?> consHead = tuple._3.get().getHead();
+		Term<?> consTail = tuple._3.get().getTail();
+
+		assertThat(firstHead.asVar().isDefined()).isTrue();
+		assertThat(firstHead).isSameAs(consHead);
+		assertThat(tuple._2).isSameAs(consTail);
 	}
 
 	@Test

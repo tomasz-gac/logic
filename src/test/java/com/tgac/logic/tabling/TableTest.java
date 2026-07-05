@@ -1,9 +1,9 @@
 package com.tgac.logic.tabling;
 
+import com.tgac.logic.unification.ReifiedVar;
 import org.junit.Test;
 
 import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TableTest {
@@ -44,10 +44,9 @@ public class TableTest {
 	public void testVariantCallsShareEntry() {
 		Table table = Table.empty();
 
-		// Reified keys carry canonical variable names, so calls that differ
-		// only in variable objects are the same call
-		Call call1 = Call.of("ancestor", lval("alice"), lvar("_.0"));
-		Call call2 = Call.of("ancestor", lval("alice"), lvar("_.0"));
+		// Reified keys carry canonical hole names, so variant calls are the same call
+		Call call1 = Call.of("ancestor", lval("alice"), ReifiedVar.of("_.0"));
+		Call call2 = Call.of("ancestor", lval("alice"), ReifiedVar.of("_.0"));
 
 		TableEntry entry1 = table.getOrCreateEntry(call1);
 		TableEntry entry2 = table.getOrCreateEntry(call2);
