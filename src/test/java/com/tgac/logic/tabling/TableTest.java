@@ -11,8 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class TableTest {
 
-	private static <T> Tabled<T> relation(String name) {
-		return Tabling.define(name, args -> Goal.success());
+	private static <T> Tabled<T> relation() {
+		return Tabling.define(args -> Goal.success());
 	}
 
 	private static Call call(Tabled<?> relation, Object args) {
@@ -22,7 +22,7 @@ public class TableTest {
 	@Test
 	public void testGetOrCreateEntry() {
 		Table table = Table.empty();
-		Tabled<Object> ancestor = relation("ancestor");
+		Tabled<Object> ancestor = relation();
 
 		Call call = call(ancestor, Tuple.of("alice", "bob"));
 
@@ -41,7 +41,7 @@ public class TableTest {
 	@Test
 	public void testDifferentCallsDifferentEntries() {
 		Table table = Table.empty();
-		Tabled<Object> ancestor = relation("ancestor");
+		Tabled<Object> ancestor = relation();
 
 		TableEntry entry1 = table.getOrCreateEntry(call(ancestor, Tuple.of("alice", "bob")));
 		TableEntry entry2 = table.getOrCreateEntry(call(ancestor, Tuple.of("alice", "charlie")));
@@ -53,7 +53,7 @@ public class TableTest {
 	@Test
 	public void testVariantCallsShareEntry() {
 		Table table = Table.empty();
-		Tabled<Object> ancestor = relation("ancestor");
+		Tabled<Object> ancestor = relation();
 
 		// Reified keys carry canonical hole names, so variant calls are the same call
 		TableEntry entry1 = table.getOrCreateEntry(
@@ -66,11 +66,11 @@ public class TableTest {
 	}
 
 	@Test
-	public void testSameNameRelationsDoNotShareEntries() {
+	public void testDistinctRelationsDoNotShareEntries() {
 		Table table = Table.empty();
 
-		TableEntry entry1 = table.getOrCreateEntry(call(relation("path"), Tuple.of(1, 2)));
-		TableEntry entry2 = table.getOrCreateEntry(call(relation("path"), Tuple.of(1, 2)));
+		TableEntry entry1 = table.getOrCreateEntry(call(relation(), Tuple.of(1, 2)));
+		TableEntry entry2 = table.getOrCreateEntry(call(relation(), Tuple.of(1, 2)));
 
 		assertThat(entry1).isNotSameAs(entry2);
 		assertThat(table.size()).isEqualTo(2);
@@ -79,7 +79,7 @@ public class TableTest {
 	@Test
 	public void testContains() {
 		Table table = Table.empty();
-		Call call = call(relation("parent"), Tuple.of("alice", "bob"));
+		Call call = call(relation(), Tuple.of("alice", "bob"));
 
 		assertThat(table.contains(call)).isFalse();
 
@@ -94,7 +94,7 @@ public class TableTest {
 		Table first = Table.empty();
 		Table second = Table.empty();
 
-		Call call = call(relation("ancestor"), Tuple.of("alice", "bob"));
+		Call call = call(relation(), Tuple.of("alice", "bob"));
 		first.getOrCreateEntry(call);
 
 		assertThat(second.contains(call)).isFalse();
@@ -104,7 +104,7 @@ public class TableTest {
 	@Test
 	public void testGetEntry() {
 		Table table = Table.empty();
-		Call call = call(relation("ancestor"), Tuple.of("alice", "bob"));
+		Call call = call(relation(), Tuple.of("alice", "bob"));
 
 		assertThat(table.getEntry(call)).isNull();
 

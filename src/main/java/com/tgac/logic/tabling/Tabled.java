@@ -14,31 +14,22 @@ import java.util.function.Function;
  * runs the body over those same arguments; the two cannot diverge because
  * call sites never assemble the pair themselves.
  *
- * The {@code self} parameter of {@link Tabling#define} is the recursion
+ * The {@code self} parameter of {@link Tabling#defineRecursive} is the recursion
  * handle: a lambda cannot name the variable it is being assigned to.
  */
 public final class Tabled<T> {
-	private final String name;
 	private final Function<Tabled<T>, Function<T, Goal>> body;
 
-	Tabled(String name, Function<Tabled<T>, Function<T, Goal>> body) {
-		this.name = name;
+	Tabled(Function<Tabled<T>, Function<T, Goal>> body) {
 		this.body = body;
 	}
 
 	/**
-	 * Apply the relation to actual arguments.
+	 * Apply the relation to actual arguments. Name the resulting goal with
+	 * {@link Goal#named} where traces should be legible.
 	 */
 	public Goal apply(T args) {
 		return Tabling.tabled(this, args, () -> body.apply(this).apply(args));
 	}
 
-	String getName() {
-		return name;
-	}
-
-	@Override
-	public String toString() {
-		return name;
-	}
 }

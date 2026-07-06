@@ -11,13 +11,13 @@ import org.junit.Test;
 
 public class CallTest {
 
-	private static <T> Tabled<T> relation(String name) {
-		return Tabling.define(name, args -> Goal.success());
+	private static <T> Tabled<T> relation() {
+		return Tabling.define(args -> Goal.success());
 	}
 
 	@Test
 	public void testEqualityByRelationAndArguments() {
-		Tabled<Object> rel = relation("ancestor");
+		Tabled<Object> rel = relation();
 
 		Call call1 = Call.of(rel, (Reified<?>) lval(Tuple.of("alice", "bob")));
 		Call call2 = Call.of(rel, (Reified<?>) lval(Tuple.of("alice", "bob")));
@@ -28,7 +28,7 @@ public class CallTest {
 
 	@Test
 	public void testDifferentArgumentsDiffer() {
-		Tabled<Object> rel = relation("ancestor");
+		Tabled<Object> rel = relation();
 
 		Call call1 = Call.of(rel, (Reified<?>) lval(Tuple.of("alice", "bob")));
 		Call call2 = Call.of(rel, (Reified<?>) lval(Tuple.of("alice", "charlie")));
@@ -37,18 +37,18 @@ public class CallTest {
 	}
 
 	@Test
-	public void testSameNameDifferentRelationsDiffer() {
-		// the cache is keyed on relation identity — a shared display name
-		// must not make two relations share answers
-		Call call1 = Call.of(relation("path"), (Reified<?>) lval(Tuple.of(1, 2)));
-		Call call2 = Call.of(relation("path"), (Reified<?>) lval(Tuple.of(1, 2)));
+	public void testDistinctRelationsDiffer() {
+		// the cache is keyed on relation identity — distinct relations
+		// must not share answers even with identical arguments
+		Call call1 = Call.of(relation(), (Reified<?>) lval(Tuple.of(1, 2)));
+		Call call2 = Call.of(relation(), (Reified<?>) lval(Tuple.of(1, 2)));
 
 		assertThat(call1).isNotEqualTo(call2);
 	}
 
 	@Test
 	public void testAlphaEquivalentArgumentsAreTheSameCall() {
-		Tabled<Object> rel = relation("path");
+		Tabled<Object> rel = relation();
 
 		// reified holes are equal by canonical name
 		Call call1 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), ReifiedVar.of("_.0"))));
@@ -58,9 +58,9 @@ public class CallTest {
 	}
 
 	@Test
-	public void testToStringShowsNameAndArguments() {
-		Call call = Call.of(relation("path"), (Reified<?>) lval(Tuple.of(1, 4)));
+	public void testToStringShowsArguments() {
+		Call call = Call.of(relation(), (Reified<?>) lval(Tuple.of(1, 4)));
 
-		assertThat(call.toString()).contains("path").contains("1").contains("4");
+		assertThat(call.toString()).contains("1").contains("4");
 	}
 }

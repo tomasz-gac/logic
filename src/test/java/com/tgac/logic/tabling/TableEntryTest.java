@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TableEntryTest {
 
 	private static TableEntry entry() {
-		Tabled<Object> relation = Tabling.define("parent", args -> Goal.success());
+		Tabled<Object> relation = Tabling.define(args -> Goal.success());
 		return new TableEntry(Call.of(relation, (Reified<?>) lval(Tuple.of("alice", "bob"))));
 	}
 

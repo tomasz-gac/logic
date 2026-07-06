@@ -1,7 +1,7 @@
 package com.tgac.logic.tabling;
 
 // ABOUTME: The cache key of a tabled call: the relation's identity plus its reified arguments.
-// ABOUTME: Identity keying means relations sharing a display name never share a cache.
+// ABOUTME: Identity keying means distinct relations never share a cache.
 
 import com.tgac.logic.unification.Reified;
 import lombok.Value;
@@ -24,6 +24,6 @@ public class Call {
 
 	@Override
 	public String toString() {
-		return relation.getName() + arguments;
+		return relation + "" + arguments;
 	}
 }

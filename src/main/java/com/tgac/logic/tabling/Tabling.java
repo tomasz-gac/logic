@@ -43,29 +43,29 @@ public class Tabling {
 	 *
 	 * <pre>
 	 * Tabled&lt;Tuple2&lt;Unifiable&lt;Integer&gt;, Unifiable&lt;Integer&gt;&gt;&gt; path =
-	 *     Tabling.define("path", self -&gt; args -&gt; args.apply((x, y) -&gt;
+	 *     Tabling.defineRecursive(self -&gt; args -&gt; args.apply((x, y) -&gt;
 	 *         edge(x, y).or(defer(() -&gt; exist(z -&gt;
 	 *             self.apply(Tuple.of(x, z)).and(edge(z, y)))))));
 	 * </pre>
 	 *
-	 * @param name display name for traces; the cache is keyed on the
-	 * 		relation's identity, so equal names do not collide
+	 * The cache is keyed on the relation's identity, so a relation must be
+	 * created exactly once — a body that calls define mints a new cache per
+	 * call. Name goals via {@link Goal#named} where traces should be legible.
+	 *
 	 * @param body the relation body, given the recursion handle and the
-	 * 		argument tuple; use {@link #define(String, Function)} when the
-	 * 		handle is not needed
+	 * 		argument tuple; use {@link #define(Function)} when the handle
+	 * 		is not needed
 	 */
-	public static <T> Tabled<T> defineRecursive(String name, Function<Tabled<T>, Function<T, Goal>> body) {
-		return new Tabled<>(name, body);
+	public static <T> Tabled<T> defineRecursive(Function<Tabled<T>, Function<T, Goal>> body) {
+		return new Tabled<>(body);
 	}
 
 	/**
 	 * Define a tabled relation without the recursion handle: non-recursive,
-	 * or recursing through a field read at goal execution time. The relation
-	 * must still be created exactly once — a body that calls define again
-	 * mints a new cache per call.
+	 * or recursing through a field read at goal execution time.
 	 */
-	public static <T> Tabled<T> define(String name, Function<T, Goal> body) {
-		return defineRecursive(name, self -> body);
+	public static <T> Tabled<T> define(Function<T, Goal> body) {
+		return defineRecursive(self -> body);
 	}
 
 	/**

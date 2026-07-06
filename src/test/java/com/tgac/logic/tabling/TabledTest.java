@@ -28,7 +28,7 @@ public class TabledTest {
 	}
 
 	private final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> path =
-			Tabling.defineRecursive("path", self -> args -> args.apply((x, y) ->
+			Tabling.defineRecursive(self -> args -> args.apply((x, y) ->
 					edge(x, y)
 							.or(defer(() -> {
 								Unifiable<Integer> z = lvar();
@@ -65,12 +65,12 @@ public class TabledTest {
 	}
 
 	@Test
-	public void shouldNotShareCachesBetweenRelationsWithTheSameName() {
-		// two distinct relations that happen to share a display name
+	public void shouldNotShareCachesBetweenDistinctRelations() {
+		// two distinct relations, even with identical bodies, have separate caches
 		Tabled<Tuple1<Unifiable<Integer>>> constant1 =
-				Tabling.define("same", args -> args.apply(x -> x.unifies(1)));
+				Tabling.define(args -> args.apply(x -> x.unifies(1)));
 		Tabled<Tuple1<Unifiable<Integer>>> constant2 =
-				Tabling.define("same", args -> args.apply(x -> x.unifies(2)));
+				Tabling.define(args -> args.apply(x -> x.unifies(2)));
 
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
@@ -89,7 +89,7 @@ public class TabledTest {
 	@Test
 	public void shouldDeduplicateAlphaEquivalentAnswers() {
 		Tabled<Tuple1<Unifiable<Object>>> pairs =
-				Tabling.define("pairs", args -> args.apply(q -> {
+				Tabling.define(args -> args.apply(q -> {
 					Goal first = defer(() -> {
 						Unifiable<Integer> a = lvar();
 						return q.unifies(Tuple.of(a, 1));
@@ -108,7 +108,7 @@ public class TabledTest {
 	}
 
 	private final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> pathNoSelf =
-			Tabling.define("pathNoSelf", args -> args.apply((x, y) ->
+			Tabling.define(args -> args.apply((x, y) ->
 					edge(x, y)
 							.or(defer(() -> {
 								Unifiable<Integer> z = lvar();
@@ -132,8 +132,4 @@ public class TabledTest {
 		assertThat(count).isEqualTo(1);
 	}
 
-	@Test
-	public void shouldDisplayTheRelationName() {
-		assertThat(path.toString()).contains("path");
-	}
 }
