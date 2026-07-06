@@ -66,14 +66,14 @@ public class Logic {
 				.or(matche(lhs,
 						Matche.llist((_0, lTail) -> matche(rhs, Matche.llist((_1, rTail) ->
 								defer(() -> sameLengtho(lTail, rTail)))))))
-				.named("len(" + formatLList(lhs) + ") = len(" + formatLList(rhs) + ")");
+				.named(s -> "len(" + formatLList(s, lhs) + ") = len(" + formatLList(s, rhs) + ")");
 	}
 
 	public static <A> Goal membero(Unifiable<A> x, Unifiable<LList<A>> lst) {
 		return matche(lst, Matche.llist((a, d) ->
 				unify(a, x)
 						.or(defer((() -> membero(x, d))))))
-				.named(x + " ⊂ " + formatLList(lst));
+				.named(s -> MiniKanren.format(s, x) + " ⊂ " + formatLList(s, lst));
 	}
 
 	public static Goal booleanGoal(

@@ -6,6 +6,7 @@ import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
 import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 import static com.tgac.logic.ckanren.StoreSupport.withoutConstraints;
 import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
+import static com.tgac.logic.unification.MiniKanren.format;
 import static com.tgac.logic.unification.MiniKanren.prefixS;
 import static com.tgac.logic.unification.MiniKanren.unify;
 import static com.tgac.logic.unification.MiniKanren.walkAll;
@@ -67,7 +68,7 @@ public class Disequality {
 						separate(a, x)
 								.and(unify(out, LList.of(a, res)))
 								.and(Goal.defer(() -> rembero(d, x, res)))))))
-				.named(x + " ⊄ " + Logic.formatLList(ls) + " ≣ " + out);
+				.named(pkg -> format(pkg, x) + " ⊄ " + Logic.formatLList(pkg, ls) + " ≣ " + format(pkg, out));
 	}
 
 	public static <A> Goal distincto(Unifiable<LList<A>> distinct) {
@@ -77,7 +78,7 @@ public class Disequality {
 						Matche.llist((a, b, d) -> separate(a, b)
 								.and(Goal.defer(() -> distincto(LList.of(a, d))))
 								.and(Goal.defer(() -> distincto(LList.of(b, d))))))
-				.named("distincto(" + distinct + ")");
+				.named(pkg -> "distincto(" + Logic.formatLList(pkg, distinct) + ")");
 	}
 
 	private enum VerificationResult {

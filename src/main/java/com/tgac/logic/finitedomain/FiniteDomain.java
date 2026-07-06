@@ -34,7 +34,7 @@ public class FiniteDomain {
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
 		return fdGoal()
 				.and(Goal.goal(s -> d.processDom(MiniKanren.walk(s, u)).apply(s)))
-				.named(u + " ⊂ " + d);
+				.named(pkg -> MiniKanren.format(pkg, u) + " ⊂ " + MiniKanren.format(pkg, d));
 	}
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
@@ -84,27 +84,27 @@ public class FiniteDomain {
 	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
 		return fdGoal()
 				.and(leqFD(less, more))
-				.named(less + " ≤ " + more);
+				.named(pkg -> MiniKanren.format(pkg, less) + " ≤ " + MiniKanren.format(pkg, more));
 	}
 
 	public static <T> Goal lss(Unifiable<T> less, Unifiable<T> more) {
 		return fdGoal()
 				.and(leqFD(less, more))
 				.and(separate(less, more))
-				.named(less + " < " + more);
+				.named(pkg -> MiniKanren.format(pkg, less) + " < " + MiniKanren.format(pkg, more));
 	}
 
 	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
 		return fdGoal()
 				.and(leqFD(more, less))
 				.and(separate(more, less))
-				.named(more + " > " + less);
+				.named(pkg -> MiniKanren.format(pkg, more) + " > " + MiniKanren.format(pkg, less));
 	}
 
 	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
 		return fdGoal()
 				.and(leqFD(more, less))
-				.named(more + " ≥ " + less);
+				.named(pkg -> MiniKanren.format(pkg, more) + " ≥ " + MiniKanren.format(pkg, less));
 	}
 
 	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
@@ -123,12 +123,12 @@ public class FiniteDomain {
 	public static <T> Goal addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return fdGoal()
 				.and(addoFD(a, b, c))
-				.named(a + " + " + b + " = " + c);
+				.named(pkg -> MiniKanren.format(pkg, a) + " + " + MiniKanren.format(pkg, b) + " = " + MiniKanren.format(pkg, c));
 	}
 
 	public static <T> Goal subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return addo(c, b, a)
-				.named(a + " - " + b + " = " + c);
+				.named(pkg -> MiniKanren.format(pkg, a) + " - " + MiniKanren.format(pkg, b) + " = " + MiniKanren.format(pkg, c));
 	}
 
 	static <T> Goal addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
@@ -169,12 +169,12 @@ public class FiniteDomain {
 	public static <T> Goal multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return fdGoal()
 				.and(mulFD(a, b, c))
-				.named(a + " + " + b + " = " + c);
+				.named(pkg -> MiniKanren.format(pkg, a) + " + " + MiniKanren.format(pkg, b) + " = " + MiniKanren.format(pkg, c));
 	}
 
 	public static <T> Goal divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {
 		return multo(result, divisor, divided)
-				.named(divided + " / " + divisor + " = " + result);
+				.named(pkg -> MiniKanren.format(pkg, divided) + " / " + MiniKanren.format(pkg, divisor) + " = " + MiniKanren.format(pkg, result));
 	}
 
 	private static <T> Option<Arithmetic<T>> div(Arithmetic<T> lhs, Arithmetic<T> rhs) {
@@ -245,7 +245,7 @@ public class FiniteDomain {
 	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {
 		return fdGoal()
 				.and(separateFDC(l, r))
-				.named(l + " ≠_fd " + r);
+				.named(pkg -> MiniKanren.format(pkg, l) + " ≠_fd " + MiniKanren.format(pkg, r));
 	}
 
 	private static <T> Goal separateFDC(Term<T> l, Term<T> r) {
@@ -320,6 +320,6 @@ public class FiniteDomain {
 						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get())))
 						.processDom(to)
 						.apply(s))
-				.named(String.format("copyDom(%s, %s)", from, to));
+				.named(pkg -> String.format("copyDom(%s, %s)", MiniKanren.format(pkg, from), MiniKanren.format(pkg, to)));
 	}
 }

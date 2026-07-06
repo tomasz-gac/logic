@@ -94,6 +94,15 @@ public class MiniKanren {
 		return s.walk(v);
 	}
 
+	/**
+	 * Renders a value for a trace label: a {@link Term} is walked to its current
+	 * binding, anything else is printed as-is. Used by goal labels so a trace
+	 * shows arguments substituted rather than as raw variable names.
+	 */
+	public static String format(Package s, Object o) {
+		return o instanceof Term ? walk(s, (Term<?>) o).toString() : String.valueOf(o);
+	}
+
 	public static <T> Boolean occursCheck(Package s, LVar<T> x, Term<T> v) {
 		return walk(s, v).asVar()
 				.map(vv -> vv == x)

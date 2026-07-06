@@ -35,7 +35,7 @@ public class CKanren {
 						Cont.<Package, Nothing> just(s1) :
 						processPrefix(s1.getSubstitutions()).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
-		return goal.named(u + " ≣ " + v);
+		return goal.named(pkg -> MiniKanren.format(pkg, u) + " ≣ " + MiniKanren.format(pkg, v));
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
@@ -44,7 +44,7 @@ public class CKanren {
 						Cont.<Package, Nothing> just(s1) :
 						processPrefix(s1.getSubstitutions()).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
-		return goal.named(u + " ≣_nc " + v);
+		return goal.named(pkg -> MiniKanren.format(pkg, u) + " ≣_nc " + MiniKanren.format(pkg, v));
 	}
 
 	public static <T> Goal unify(Unifiable<T> u, T v) {
