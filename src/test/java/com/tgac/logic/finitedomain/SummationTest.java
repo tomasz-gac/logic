@@ -162,10 +162,12 @@ public class SummationTest {
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();
-		System.out.println(Utils.collect(addo(a, b, c)
+		// b has no domain, so addo cannot enumerate a solution
+		Assertions.assertThat(Utils.collect(addo(a, b, c)
 				.and(dom(a, Interval.of(0, 100)))
 				.and(dom(c, Interval.of(0, 100)))
 				.solve(lval(Tuple.of(a, b, c)))
-				.map(Term::get)));
+				.map(Term::get)))
+				.isEmpty();
 	}
 }

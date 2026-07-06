@@ -1,6 +1,7 @@
 package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.unification.LVal.lval;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.logic.Utils;
@@ -59,7 +60,10 @@ public class ParametersTest {
 					box[0] = v;
 					return Nothing.nothing();
 				}).get();
-		System.out.println(box[0]);
+		// processing a 10-association prefix completes without blowing the stack,
+		// and the substitutions are applied
+		assertThat(box[0]).isNotNull();
+		assertThat(box[0].getSubstitutions().size()).isEqualTo(10);
 	}
 
 	@Test

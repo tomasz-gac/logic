@@ -37,9 +37,11 @@ public class LogicTest {
 	@Test
 	public void shouldConde() {
 		Unifiable<Integer> x = lvar();
-		System.out.println(
-				Utils.collect(x.unifies(1).or(x.unifies(2)).or(x.unifies(3))
-						.solve(x)));
+		assertThat(x.unifies(1).or(x.unifies(2)).or(x.unifies(3))
+				.solve(x)
+				.map(Term::get)
+				.collect(Collectors.toList()))
+				.containsExactlyInAnyOrder(1, 2, 3);
 	}
 
 	@Test
@@ -340,9 +342,12 @@ public class LogicTest {
 	@Test
 	public void shouldRefreshVariablesOnDisjunction() {
 		Unifiable<LList<Integer>> lst = lvar();
-		System.out.println(runStream(lst, lists(lst))
+		// each generated list uses fresh variables, so lengths grow 0,1,2,3
+		assertThat(runStream(lst, lists(lst))
 				.limit(4)
-				.collect(Collectors.toList()));
+				.map(Object::toString)
+				.collect(Collectors.toList()))
+				.containsExactly("{()}", "{(<_.0>)}", "{(<_.0>, <_.1>)}", "{(<_.0>, <_.1>, <_.2>)}");
 	}
 
 	@Test

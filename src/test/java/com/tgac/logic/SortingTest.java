@@ -324,13 +324,14 @@ public class SortingTest {
 	public void shouldPivot() {
 		Unifiable<Tuple2<Unifiable<LList<Integer>>, Unifiable<LList<Integer>>>> lr = LVar.lvar();
 
-		System.out.println(LogicTest.runStream(lr,
+		assertThat(LogicTest.runStream(lr,
 						Matche.matche(lr, Matche.tuple((l, r) ->
 								pivot(LList.ofAll(3, 2, 1, 2, 5), l, r,
 										Integer::compareTo,
 										(a, b) -> (a + b) / 2))))
 				.map(SortingTest::unwrapListTuple)
-				.collect(Collectors.toList()));
+				.collect(Collectors.toList()))
+				.containsExactly(Tuple.of(Arrays.asList(2, 1, 2), Arrays.asList(3, 5)));
 	}
 
 	static <A> Goal sorted(Unifiable<LList<A>> lst, Comparator<A> cmp) {

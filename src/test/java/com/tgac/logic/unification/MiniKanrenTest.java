@@ -17,7 +17,6 @@ import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
 import io.vavr.control.Option;
-import java.util.ArrayList;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -189,28 +188,14 @@ public class MiniKanrenTest {
 				.boxed()
 				.map(i -> LVar.<Integer> lvar("_." + i))
 				.collect(List.collector());
-		java.util.List<Long> times0 = new ArrayList<>();
-		java.util.List<Long> times1 = new ArrayList<>();
-		for (int i = 0; i < 5; ++i) {
-			long start = System.nanoTime();
-			Package s = Package.empty();
-			s = MiniKanren.unify(s, x, y).get().get();
-			s = MiniKanren.unify(s, y, lval(vals)).get().get();
-			s = MiniKanren.unify(s, y, lval(vs)).get().get();
+		// unifying a variable with a million-element list must not blow the stack
+		Package s = Package.empty();
+		s = MiniKanren.unify(s, x, y).get().get();
+		s = MiniKanren.unify(s, y, lval(vals)).get().get();
+		s = MiniKanren.unify(s, y, lval(vs)).get().get();
 
-			times0.add((System.nanoTime() - start) / n);
-			start = System.nanoTime();
-
-			List<Unifiable<Integer>> unifiables =
-					MiniKanren.walkAll(s, x).get()
-							.get();
-			times1.add((System.nanoTime() - start) / n);
-			System.out.println(i);
-		}
-		System.out.println(times0);
-		System.out.println("unify mean: " + times0.stream().reduce(Long::sum).orElse(0L) / times0.size());
-		System.out.println(times1);
-		System.out.println("lookup mean: " + times1.stream().reduce(Long::sum).orElse(0L) / times1.size());
+		List<Unifiable<Integer>> unifiables = MiniKanren.walkAll(s, x).get().get();
+		assertThat(unifiables).hasSize(n);
 	}
 
 	@Test

@@ -189,12 +189,14 @@ public class SeparateTest {
 	@Test
 	public void shouldRemovo() {
 		Unifiable<LList<Integer>> r = lvar();
-		System.out.println(LogicTest.runStream(r,
+		assertThat(LogicTest.runStream(r,
 						Logic.<LList<Integer>> exist(l ->
 								l.unifies(LList.ofAll(1, 2, 1, 3))
 										.and(removo(l, r, lval(1)))))
 				.limit(4)
-				.collect(Collectors.toList()));
+				.map(x -> x.get().toValueStream().collect(Collectors.toList()))
+				.collect(Collectors.toList()))
+				.containsExactly(Arrays.asList(2, 3));
 	}
 
 	@Test
@@ -239,12 +241,14 @@ public class SeparateTest {
 	@Test
 	public void shouldRemoveAll() {
 		Unifiable<LList<Integer>> r = lvar();
-		System.out.println(LogicTest.runStream(r,
+		assertThat(LogicTest.runStream(r,
 						Logic.<LList<Integer>> exist(l ->
 								l.unifies(LList.ofAll(1, 2, 1, 3, 1, 4, 1))
 										.and(removeAllo(l, r, lval(1)))))
 				.limit(4)
-				.collect(Collectors.toList()));
+				.map(x -> x.get().toValueStream().collect(Collectors.toList()))
+				.collect(Collectors.toList()))
+				.containsExactly(Arrays.asList(2, 3, 4));
 	}
 
 	@Test
@@ -253,26 +257,36 @@ public class SeparateTest {
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
 
-		System.out.println(LogicTest.runStream(
+		List<?> result = LogicTest.runStream(
 						LList.ofAll(x, y, z),
 						x.separate(y),
 						x.separate(z),
 
 						y.separate(z),
 						x.unifies(1))
-				.collect(Collectors.toList()));
+				.collect(Collectors.toList());
+		// one solution: x = 1, with y and z still open under the disequalities
+		assertThat(result).hasSize(1);
+		assertThat(result.toString()).contains("{1}").contains("≠");
 	}
 
 	@Test
 	public void shouldMakeDistinct() {
 		Unifiable<LList<Integer>> r = lvar();
-		System.out.println(LogicTest.runStream(r,
+		// distincto generates lists of pairwise-distinct fresh variables, growing in length
+		assertThat(LogicTest.runStream(r,
 						Logic.<LList<Integer>> exist(l ->
 								l.unifies(LList.ofAll(1, 2))
 										.and(Disequality.distincto(r))))
 				.limit(5)
 				.map(Objects::toString)
-				.collect(Collectors.joining("\n")));
+				.collect(Collectors.toList()))
+				.containsExactly(
+						"{()}",
+						"{(<_.0>)}",
+						"{(<_.0>, <_.1>)} : (<_.0> ≠ <_.1>)",
+						"{(<_.0>, <_.1>, <_.2>)} : (<_.0> ≠ <_.1>) || (<_.0> ≠ <_.2>) || (<_.1> ≠ <_.2>)",
+						"{(<_.0>, <_.1>, <_.2>, <_.3>)} : (<_.0> ≠ <_.1>) || (<_.0> ≠ <_.2>) || (<_.0> ≠ <_.3>) || (<_.2> ≠ <_.3>) || (<_.1> ≠ <_.2>) || (<_.1> ≠ <_.3>)");
 	}
 
 	@Test
