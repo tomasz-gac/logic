@@ -124,5 +124,8 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
 - `docs/design/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
   together, AND why NOT to merge them into one engine prematurely.
+- `docs/design/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
+  (native debugging, simpler tabling, natural cut) as a separate experimental module; the
+  completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
 - This file — architecture, landmines, workflow.
 - Commit history is descriptive; read it when a change looks surprising.
