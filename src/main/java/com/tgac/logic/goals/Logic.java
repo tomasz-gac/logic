@@ -55,7 +55,7 @@ public class Logic {
 	}
 
 	public static <T> String formatLList(Package s, Unifiable<LList<T>> first) {
-		Term<LList<T>> walked = MiniKanren.walk(s, first);
+		Term<LList<T>> walked = MiniKanren.walkAll(s, first).get();
 		return walked.asVar()
 				.map(v -> "[" + v + "]")
 				.getOrElse(() -> walked.get().toString());
