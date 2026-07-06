@@ -80,8 +80,8 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
-		return s -> MiniKanren.prefixS(s.getSubstitutions(), newSubstitutions)
+	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
+		return s -> MiniKanren.prefixS(oldPackage.getSubstitutions(), newSubstitutions)
 				.toJavaStream()
 				.<Goal> map(ht -> ht
 						.apply((x, v) -> FiniteDomainConstraints.getDom(s, x)

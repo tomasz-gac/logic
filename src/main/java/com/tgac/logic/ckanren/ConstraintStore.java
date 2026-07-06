@@ -38,12 +38,14 @@ public interface ConstraintStore extends Store {
 	 * 	cKanren, miniKanren with Constraints. Alvis et al.
 	 * </pre>
 	 *
-	 * Old package to which prefix is added is passed to PackageAccessor
-	 *
 	 * @param newSubstitutions
-	 * 		- Newly added substitutions
+	 * 		- the full substitution map after the unification
+	 * @param oldPackage
+	 * 		- the package before the unification; the prefix (newly added
+	 * 		associations) is computed against it, so composing stores never
+	 * 		starve one another by pre-applying the substitutions
 	 */
-	Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions);
+	Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage);
 
 	/**
 	 * <pre>

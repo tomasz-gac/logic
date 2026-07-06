@@ -49,12 +49,12 @@ public class ParametersTest {
 				Arrays.asList(prefix.get()._1));
 
 		Package[] box = new Package[1];
+		Package pkg = Package.of(HashMap.empty(),
+				LinkedHashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty()));
 		FiniteDomainConstraints.empty()
 				.prepend(constraint)
-				.processPrefix(prefix)
-				.apply(Package.of(HashMap.empty(),
-						LinkedHashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty())
-				))
+				.processPrefix(prefix, pkg)
+				.apply(pkg)
 				.run(v -> {
 					box[0] = v;
 					return Nothing.nothing();

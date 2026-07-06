@@ -69,8 +69,8 @@ class NeqConstraints implements ConstraintStore {
 
 	@Override
 	public Goal processPrefix(
-			HashMap<LVar<?>, Term<?>> newSubstitutions) {
-		return s -> Disequality.verifyUnify(s.withSubstitutions(newSubstitutions), s)
+			HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
+		return s -> Disequality.verifyUnify(s.withSubstitutions(newSubstitutions), oldPackage)
 				.map(Cont::<Package, Nothing>just)
 				.getOrElse(Cont.complete(Nothing.nothing()));
 	}

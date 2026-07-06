@@ -41,8 +41,8 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
-		return s -> MiniKanren.prefixS(s.getSubstitutions(), newSubstitutions)
+	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
+		return s -> MiniKanren.prefixS(oldPackage.getSubstitutions(), newSubstitutions)
 				.toJavaStream()
 				.map(sub -> sub.apply((x, v) ->
 						CKanren.runConstraints(x, projections)))

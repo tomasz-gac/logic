@@ -74,7 +74,7 @@ public class StoreSupport {
 		return p -> p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
-				.map(cs -> cs.processPrefix(newSubstitutions))
+				.map(cs -> cs.processPrefix(newSubstitutions, p))
 				.reduce(Goal::and)
 				.orElseGet(() -> s -> Cont.just(p.withSubstitutions(newSubstitutions)))
 				.apply(p);
