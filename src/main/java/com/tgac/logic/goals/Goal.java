@@ -10,6 +10,8 @@ import com.tgac.functional.fibers.Scheduler;
 import com.tgac.functional.fibers.schedulers.ForkJoinScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.debug.DebugStore;
+import com.tgac.logic.debug.Trace;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
@@ -327,9 +329,27 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	default <T> Stream<Reified<T>> solve(
 			Unifiable<T> out,
 			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
+		return solveFrom(Package.empty().withStore(Table.empty()), out, factory);
+	}
+
+	/**
+	 * Solves this goal while reporting box-model ports through the given tracer.
+	 * Seeds a {@link DebugStore} so every {@link NamedGoal} reached during the
+	 * search reports its Call/Exit/Redo/Fail ports.
+	 */
+	default <T> Stream<Reified<T>> solve(Unifiable<T> out, Trace.Tracer tracer) {
+		return solveFrom(
+				Package.empty().withStore(Table.empty()).withStore(DebugStore.of(tracer)),
+				out, BreadthFirstScheduler::new);
+	}
+
+	default <T> Stream<Reified<T>> solveFrom(
+			Package root,
+			Unifiable<T> out,
+			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
 		Deque<Reified<T>> results = new LinkedBlockingDeque<>();
 
-		Fiber<Nothing> recur = apply(Package.empty().withStore(Table.empty()))
+		Fiber<Nothing> recur = apply(root)
 				.flatMap(s -> CKanren.reify(s, out))
 				.run(v -> {
 					results.add(v);      // Push result to queue

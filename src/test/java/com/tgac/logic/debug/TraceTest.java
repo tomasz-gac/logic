@@ -63,6 +63,22 @@ public class TraceTest {
 	}
 
 	@Test
+	public void shouldAutoTraceNamedGoalsThroughTheStore() {
+		Recorder recorder = new Recorder();
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		// no hand-wrapping: named goals report their ports because a tracer is seeded
+		Goal inner = y.unifies(10).named("inner");
+		Goal outer = x.unifies(1).and(inner).named("outer");
+		outer.solve(x, recorder).count();
+
+		// every named goal reached reports its ports; inner nests within outer
+		assertThat(recorder.ports)
+				.containsSubsequence("Call outer", "Call inner", "Exit inner", "Exit outer");
+	}
+
+	@Test
 	public void shouldNestPorts() {
 		Recorder recorder = new Recorder();
 		Unifiable<Integer> x = lvar();

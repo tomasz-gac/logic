@@ -2,6 +2,8 @@ package com.tgac.logic.goals;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.debug.DebugStore;
+import com.tgac.logic.debug.Trace;
 import com.tgac.logic.unification.Package;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -15,7 +17,9 @@ class NamedGoal implements Goal {
 
 	@Override
 	public Cont<com.tgac.logic.unification.Package, Nothing> apply(Package aPackage) {
-		return goal.apply(aPackage);
+		return DebugStore.from(aPackage)
+				.map(store -> Trace.traced(name, goal, store.getTracer()).apply(aPackage))
+				.getOrElse(() -> goal.apply(aPackage));
 	}
 
 	@Override
