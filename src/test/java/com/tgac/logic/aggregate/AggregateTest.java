@@ -8,6 +8,11 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
 import java.util.stream.Collectors;
+import static com.tgac.logic.finitedomain.FiniteDomain.dom;
+import static com.tgac.logic.separate.Disequality.separate;
+import static com.tgac.logic.unification.LVal.lval;
+
+import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import org.junit.Test;
 
 public class AggregateTest {
@@ -149,6 +154,43 @@ public class AggregateTest {
 
 			assertThat(result).isEqualTo(3);
 		}
+	}
+
+	@Test
+	public void findallEnumeratesAFiniteDomain() {
+		Unifiable<Long> i = lvar();
+		Unifiable<LList<Long>> result = lvar();
+
+		Goal g = Aggregate.findall(i, dom(i, EnumeratedDomain.range(0L, 6L)), result);
+
+		List<Long> list = g.solve(result).findFirst().get().get()
+				.toValueStream().collect(Collectors.toList());
+		assertThat(list).containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L);
+	}
+
+	@Test
+	public void countCountsFiniteDomainSolutions() {
+		Unifiable<Long> i = lvar();
+		Unifiable<Integer> n = lvar();
+
+		int result = Aggregate.count(dom(i, EnumeratedDomain.range(0L, 6L)), n)
+				.solve(n).findFirst().get().get();
+
+		assertThat(result).isEqualTo(6);
+	}
+
+	@Test
+	public void findallRespectsDisequalityWhenAnswersAreGround() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<LList<Integer>> result = lvar();
+
+		Goal g = Aggregate.findall(x,
+				x.unifies(2).or(x.unifies(3)).or(x.unifies(4)).and(separate(x, lval(3))),
+				result);
+
+		List<Integer> list = g.solve(result).findFirst().get().get()
+				.toValueStream().collect(Collectors.toList());
+		assertThat(list).containsExactlyInAnyOrder(2, 4);
 	}
 
 	// bob, charlie, david are alice's descendants

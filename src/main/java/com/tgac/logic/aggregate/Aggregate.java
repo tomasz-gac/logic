@@ -23,6 +23,7 @@ import lombok.NoArgsConstructor;
 
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
+import static com.tgac.logic.unification.LVar.lvar;
 import static com.tgac.logic.unification.LVal.lval;
 
 /**
@@ -49,7 +50,7 @@ public class Aggregate {
 		return pkg -> k -> {
 			Collection<Reified<T>> collected = new ConcurrentLinkedQueue<>();
 			return goal.apply(pkg).apply(answerPkg ->
-					MiniKanren.reify(answerPkg, template).flatMap(reified -> {
+					CKanren.reify(answerPkg, template).apply(reified -> {
 						collected.add(reified);
 						return done(nothing());
 					}))
@@ -64,10 +65,11 @@ public class Aggregate {
 	public static Goal count(Goal goal, Unifiable<Integer> result) {
 		return pkg -> k -> {
 			AtomicInteger n = new AtomicInteger(0);
-			return goal.apply(pkg).apply(answerPkg -> {
+			return goal.apply(pkg).apply(answerPkg ->
+					CKanren.reify(answerPkg, lvar()).apply(reified -> {
 						n.incrementAndGet();
 						return done(nothing());
-					})
+					}))
 					.flatMap(exhausted -> CKanren.unify(result, lval(n.get())).apply(pkg).apply(k));
 		};
 	}
@@ -103,7 +105,7 @@ public class Aggregate {
 		return pkg -> k -> {
 			AtomicReference<Integer> acc = new AtomicReference<>(initial);
 			return goal.apply(pkg).apply(answerPkg ->
-					MiniKanren.reify(answerPkg, expr).flatMap(reified -> {
+					CKanren.reify(answerPkg, expr).apply(reified -> {
 						int v = requireInt(reified);
 						acc.updateAndGet(cur -> cur == null ? v : combine.applyAsInt(cur, v));
 						return done(nothing());
