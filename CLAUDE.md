@@ -112,9 +112,15 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - **Constraint-propagation redesign** — HIGH risk, touches the core. Follow
   `docs/design/constraint-propagation.md`; do the Phase 0 "fail loud on multi-domain" guard
   first. Don't start without the human's go-ahead.
+- **Semiring-weighted inference** — turn the engine into a weighted-inference machine
+  (counting, probability, shortest-path, MAP, provenance, learning) via one small `Semiring`
+  abstraction. Follow `docs/design/semiring-inference.md`; Phase 1 (refactor `aggregate`
+  onto `Semiring`) is low-risk and the on-ramp. Later phases are research; don't start those
+  without the human's go-ahead.
 
 ## Where knowledge lives
 
 - `docs/design/constraint-propagation.md` — the propagator/fixpoint design, phased.
+- `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
 - This file — architecture, landmines, workflow.
 - Commit history is descriptive; read it when a change looks surprising.

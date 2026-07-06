@@ -1,0 +1,242 @@
+# Semiring-weighted logic programming — design sketch
+
+**Status:** design sketch, NOT implemented. Nothing here is needed for the library to work
+today. It describes how to generalize the engine from "find solutions" to "compute a
+weighted value over all proofs" — which yields counting, probability (Bayesian inference),
+shortest-path, most-probable-proof (MAP), provenance, and gradient-based learning, all as
+instances of one small abstraction. Read this top to bottom before starting; do the phases
+in order; do NOT skip to the hard parts.
+
+---
+
+## 1. The one idea
+
+A logic engine already has the two operations a **semiring** needs:
+
+- **⊗ (times)** combines *along a proof* — this is conjunction (AND of subgoals).
+- **⊕ (plus)** combines *across proofs* — this is disjunction (the alternative derivations
+  the search enumerates).
+- **0** = failure, **1** = trivial success.
+
+So if you thread a semiring value through the search, the *same logic program* computes
+different things depending on which semiring you plug in. The engine enumerates the proofs
+(it already does this); the semiring turns that enumeration into a value.
+
+| Semiring `S` | ⊕ / ⊗ | `solve` computes | Notes |
+|---|---|---|---|
+| Boolean | ∨ / ∧ | is there a proof? (today's behaviour) | clean |
+| Counting (ℕ) | + / × | number of proofs | clean (this is `aggregate.count`) |
+| Probability [0,1] | + / × | marginal probability (Bayesian) | **the only tricky one — see §6** |
+| Viterbi | max / × | most-probable proof (MAP) | clean (idempotent ⊕) |
+| Tropical | min / + | shortest / cheapest proof | clean (idempotent ⊕) |
+| Provenance | ∪ / ∧ | which facts explain it | clean (idempotent ⊕) |
+| Expectation | pair ops (§8) | derivative → learning weights | advanced; §8 |
+
+**Key fact to internalise:** every semiring above is clean and free of the hard problem in
+§6 EXCEPT probability. The framework is not risky; one specific instance is.
+
+---
+
+## 2. The `Semiring<S>` abstraction (Phase 1)
+
+Java 8. This is the whole abstraction — a few methods. The work lives in the instances,
+and the instances are each a few lines.
+
+```java
+public interface Semiring<S> {
+    S zero();                 // ⊕ identity (failure)
+    S one();                  // ⊗ identity (trivial success)
+    S plus(S a, S b);         // ⊕ : combine across proofs (disjunction)
+    S times(S a, S b);        // ⊗ : combine along a proof (conjunction)
+
+    // Kleene closure 1 ⊕ a ⊕ (a⊗a) ⊕ ... — only needed for RECURSIVE programs (§7).
+    // For non-recursive use it is never called. Idempotent semirings: star(a) = one().
+    default S star(S a) { throw new UnsupportedOperationException("no closure for recursion"); }
+}
+```
+
+Instances to write (each is trivial):
+- `BooleanSemiring` : `false/true`, `||`, `&&`, `star = true`.
+- `CountingSemiring` : `0/1` (long/BigInteger), `+`, `×`, no star on cycles (diverges).
+- `ViterbiSemiring` : `0/1` (double), `max`, `×`, `star = 1`.
+- `TropicalSemiring` : `+∞/0` (double), `min`, `+`, `star = 0`.
+- `ProbabilitySemiring` : `0/1` (double), `+`, `×`, star only under §6 assumptions.
+
+---
+
+## 3. First, refactor `aggregate` onto it (Phase 1, low risk, do this first)
+
+`aggregate`/`findall` (in `com.tgac.logic.aggregate`) already folds solution values —
+`count` is `+` with `1` per solution, `sum`/`max`/`min` fold a projected value. These are
+exactly ⊕ with ⊗ trivial (weight `one()` per solution). Refactor them to go through
+`Semiring<S>`:
+- `count` = `CountingSemiring`;
+- `max`/`min` = `Viterbi`/`Tropical`-style ⊕ over the projected value.
+
+This does not change behaviour; it proves the abstraction unifies what exists, and it is the
+safe on-ramp. **Do this and stop; get it reviewed before Phase 2.**
+
+---
+
+## 4. Weighted goals — the injection side (Phase 2)
+
+Weights go on the *uncertain choices* (probabilistic facts, rule strengths), not on ordinary
+goals. Ordinary goals (unify, recurse, arithmetic) carry weight `one()` and just thread it.
+
+Add two goal factories (near `Goal.success`):
+```java
+// succeed once, multiplying the derivation's accumulated weight by w
+static <S> Goal factor(S w);
+// weighted(w, g) = factor(w).and(g)
+static <S> Goal weighted(S w, Goal g);
+```
+
+**Threading mechanism — copy the DebugStore pattern exactly.** The debugger already threads
+a value through the immutable `Package` via a plain `Store` in the constraint-store map
+(`com.tgac.logic.debug.DebugStore`, riding `Package.getConstraints()`). Do the same:
+- a `WeightStore<S>` holding the running ⊗-product for the current derivation, seeded to
+  `semiring.one()`;
+- `factor(w)` reads it, `times(current, w)`, writes it back into a new package (persistent,
+  so branches keep their own copy — this is why backtracking is free), and succeeds;
+- because `Package` is immutable, disjunction branches automatically carry independent
+  weights — do NOT try to share mutable weight state.
+
+`solve` under a semiring folds the solutions' weights with ⊕:
+```java
+static <T, S> S solve(Unifiable<T> out, Semiring<S> semiring);
+// or, keeping answers: Stream<Tuple2<Reified<T>, S>>
+```
+Seed a `WeightStore` (like `solve(out, tracer)` seeds a `DebugStore`), run the search, and
+⊕-fold the per-solution weights. `factor(0.5)` + `ProbabilitySemiring` gives the dice/mutex
+examples in §9. This is the whole of Phase 2 for **non-recursive** programs.
+
+---
+
+## 5. Sampling inference — the robust escape for probability (Phase 3)
+
+For probability with *correlated* proofs, exact sum-product is wrong (see §6). The simple,
+robust answer is Monte Carlo, and it fits the search engine perfectly:
+- interpret each `factor(p)` as a biased coin: with probability `p` succeed, else fail;
+- run the deterministic search once → one sampled possible world; record whether the query
+  held;
+- repeat N times; estimate `P(query) ≈ (# worlds where it held) / N`.
+
+This sidesteps the hard problem entirely (you sample whole consistent worlds, so correlation
+is handled correctly), at the cost of variance instead of exactness. Implement it as a
+`SamplingSolver` that drives the existing search with a seeded RNG (pass the seed via `args`;
+`Math.random`/`Date.now` are unavailable in this environment's scripts, but tests run on the
+JVM where `java.util.Random(seed)` is fine). This is the recommended path to general
+probabilistic queries and the truest "Bayesian" mode.
+
+---
+
+## 6. The one hard problem (READ THIS — it is narrow and avoidable)
+
+Only the **probability** semiring has it. `P(proof1 ∨ proof2) = P(proof1) + P(proof2)` is
+correct ONLY when the proofs are mutually exclusive. If two proofs share a probabilistic
+fact, they overlap, and summing over-counts. This is the *disjoint-sum problem*, and exact
+inference for it is #P-complete — a fundamental hardness in all of AI, not a flaw here.
+
+Every other semiring is immune: counting genuinely wants to add distinct proofs; min/max
+(tropical/Viterbi) are idempotent so shared structure is fine; boolean/provenance likewise.
+
+**Do NOT implement exact correlated inference (knowledge compilation / BDD / SDD).** It is a
+large subsystem, worst-case exponential, and out of scope (§10). Handle probability the two
+clean ways instead:
+1. **Restrict to the disjoint/independent fragment** (PRISM's choice): require that a query's
+   proofs are mutually exclusive and shared facts are independent. Then sum-product is exact
+   and linear. Covers HMMs, PCFGs, Markov chains, many Bayes nets. If you add this mode,
+   *check the assumption at runtime and fail loudly* when violated (same discipline as the
+   constraint single-domain guard) — never silently return a wrong probability.
+2. **Sampling** (§5) for the general correlated case.
+
+---
+
+## 7. Recursion — semiring-tabling (Phase 4a, hard)
+
+Non-recursive programs are handled by §4. For recursive relations the value is a *fixpoint*:
+`reach(a,b)`'s probability = combine over all paths, which requires iterating.
+
+Tabling (`com.tgac.logic.tabling`) is ALREADY a fixpoint engine: it memoizes a tabled call's
+answers and iterates until the answer set stops growing (least fixpoint over the set lattice).
+Generalize the table's accumulator from **set of answers** to **answer → semiring value**:
+when the same answer is derived again, `plus` the values; along a proof, `times`. Iterate to
+a fixpoint.
+
+Caveats (do not ignore):
+- **Idempotent semirings** (boolean, tropical, Viterbi) converge under "iterate to no change"
+  — safe.
+- **Non-idempotent semirings** (counting, probability) DIVERGE around cycles (the value keeps
+  growing). They need the `star` closure or a bounded/ε-convergence solve. Do NOT ship
+  counting/probability over cyclic programs without handling closure; restrict to acyclic, or
+  use sampling (§5), or implement `star`.
+- This reuses tabling's EXISTING worklist/parking; it does not need a new fixpoint driver. Do
+  NOT try to merge this with the constraint AC-3 driver (see §11).
+
+---
+
+## 8. Learning — the expectation/gradient semiring (Phase 4b, advanced)
+
+To *learn* weights θ from data you need `∂P(query;θ)/∂θ`. The expectation semiring computes it
+in the same pass as `P`. Elements are pairs `(p, r)` where `p` is the value and `r` its
+derivative:
+```
+(p1,r1) ⊗ (p2,r2) = (p1·p2,  p1·r2 + p2·r1)   // product rule
+(p1,r1) ⊕ (p2,r2) = (p1+p2,  r1 + r2)          // sum rule
+zero = (0,0)   one = (1,0)
+```
+Seed the fact using θ with `(θ, 1)` and every other fact with `(weight, 0)`; run the same
+sum-product; the answer's second coordinate is `∂P/∂θ`. Then gradient-ascend the likelihood.
+It is just another `Semiring<S>` instance once §2 exists — nearly free to add.
+
+Caveats: this is forward-mode (one parameter per pass — O(#params); the reverse/inside-outside
+version is the scalable form and is more work); it inherits §6 (the gradient is only as exact
+as `P`); needs log-space care for underflow. Advanced/research — do §2–§5 first.
+
+---
+
+## 9. Acceptance tests (write these as you go)
+
+- **Phase 1:** existing `aggregate` tests still pass after the refactor; `count` equals the
+  old count.
+- **Phase 2 (exact, disjoint):** two dice — `die(1..6)` each `factor(1/6)`, query `a+b=7`
+  under `ProbabilitySemiring` gives `6/36 = 1/6` (proofs are mutually exclusive → exact).
+- **Phase 2 (idempotent):** a small weighted graph — `TropicalSemiring` gives the true
+  shortest path length; `ViterbiSemiring` gives the most-probable single proof.
+- **Phase 3 (sampling):** the dice query estimated by sampling converges to `1/6` within a
+  tolerance for large N and a fixed seed.
+- **Phase 6-guard:** a query with shared probabilistic facts, under the "restricted-fragment"
+  mode, is REJECTED loudly (not silently mis-answered).
+
+---
+
+## 10. Non-goals (explicit)
+
+- **Exact correlated Bayesian inference** (knowledge compilation, BDD/SDD). #P-hard, large,
+  out of scope. Use sampling or the disjoint fragment.
+- **Scalable reverse-mode learning** (full inside-outside). The forward expectation semiring
+  (§8) is the target; the scalable version is a separate research effort.
+
+---
+
+## 11. Relationship to constraint propagation (do NOT over-unify)
+
+Both this and `docs/design/constraint-propagation.md` are "iterate a monotone operator on a
+lattice to a fixpoint." That kinship is a useful *mental model* but they are **duals** and
+should stay separate code:
+- semiring-tabling **grows** answers (least fixpoint, ⊕ accumulates);
+- constraint propagation **shrinks** domains (greatest fixpoint, meet narrows).
+The shared machinery (a worklist + change detection) is thin; the clients differ in
+granularity (running a whole goal vs. a cheap local narrowing), keys (calls vs. variables),
+and direction. Build each on its own; extract a shared `Fixpoint` helper ONLY if real
+duplication appears after both exist. Do NOT design a unified driver up front.
+
+---
+
+## 12. Order of work (start here)
+
+1. `Semiring<S>` + instances (boolean, counting, viterbi, tropical) — §2.
+2. Refactor `aggregate` onto it — §3. **Review before continuing.**
+3. `factor`/`weighted` + `solve(out, semiring)` for non-recursive programs — §4. Dice test.
+4. `SamplingSolver` for general probability — §5.
+5. (Research, separate go-aheads) semiring-tabling — §7; expectation semiring — §8.
