@@ -7,6 +7,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.Scheduler;
+import com.tgac.functional.fibers.schedulers.DepthFirstScheduler;
 import com.tgac.functional.fibers.schedulers.ForkJoinScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.CKanren;
@@ -338,9 +339,11 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * search reports its Call/Exit/Redo/Fail ports.
 	 */
 	default <T> Stream<Reified<T>> solve(Unifiable<T> out, Trace.Tracer tracer) {
+		// depth-first so the trace reads in Prolog order: a branch runs to completion
+		// before its siblings, rather than interleaving the ports of concurrent branches.
 		return solveFrom(
 				Package.empty().withStore(Table.empty()).withStore(DebugStore.of(tracer)),
-				out, BreadthFirstScheduler::new);
+				out, DepthFirstScheduler::of);
 	}
 
 	default <T> Stream<Reified<T>> solveFrom(

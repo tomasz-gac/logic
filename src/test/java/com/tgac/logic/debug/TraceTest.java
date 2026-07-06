@@ -79,6 +79,21 @@ public class TraceTest {
 	}
 
 	@Test
+	public void shouldNotInterleaveSiblingBranchBodies() {
+		Recorder recorder = new Recorder();
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+
+		Goal left = a.unifies(1).and(b.unifies(10).named("p1")).named("LEFT");
+		Goal right = a.unifies(2).and(b.unifies(20).named("q1")).named("RIGHT");
+		left.or(right).named("ROOT").solve(a, recorder).count();
+
+		// the trace reads depth-first: LEFT's body finishes before RIGHT's body starts
+		assertThat(recorder.ports.indexOf("Exit p1"))
+				.isLessThan(recorder.ports.indexOf("Call q1"));
+	}
+
+	@Test
 	public void shouldDeepenSpineForNestedGoals() {
 		java.util.Map<String, Integer> depthAtCall = new java.util.HashMap<>();
 		Tracer tracer = new Tracer() {
