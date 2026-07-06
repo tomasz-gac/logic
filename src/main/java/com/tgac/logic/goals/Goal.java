@@ -7,7 +7,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.Scheduler;
-import com.tgac.functional.fibers.schedulers.ExecutorServiceScheduler;
+import com.tgac.functional.fibers.schedulers.ForkJoinScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.tabling.Table;
@@ -21,8 +21,6 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.Spliterator;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -50,14 +48,6 @@ import java.util.stream.StreamSupport;
  * @author TGa
  */
 public interface Goal extends Function<Package, Cont<Package, Nothing>> {
-
-	/**
-	 * A shared thread pool for executing goals in parallel.
-	 * <pre>
-	 * Defaults to a {@link ForkJoinPool}.
-	 * </pre>
-	 */
-	ExecutorService THREAD_POOL = new ForkJoinPool();
 
 	/**
 	 * A static factory method that simply returns the provided goal.
@@ -400,16 +390,16 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	/**
 	 * Solves this goal in parallel, attempting to find instantiations for the specified output variable.
 	 * <pre>
-	 * This is a convenience method that uses an {@link ExecutorServiceScheduler} with the default {@link #THREAD_POOL}.
+	 * This is a convenience method that uses a {@link ForkJoinScheduler} on the common pool.
 	 * </pre>
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
 	 * @return A {@link Stream} of {@link Unifiable}s representing solutions, potentially computed in parallel.
 	 * @see #solve(Unifiable, Function)
-	 * @see ExecutorServiceScheduler
+	 * @see ForkJoinScheduler
 	 */
 	default <T> Stream<Reified<T>> solveParallel(Unifiable<T> out) {
-		return solve(out, r -> new ExecutorServiceScheduler<>(r, THREAD_POOL));
+		return solve(out, ForkJoinScheduler::new);
 	}
 
 	/**

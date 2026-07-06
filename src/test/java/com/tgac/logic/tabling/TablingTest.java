@@ -82,6 +82,54 @@ public class TablingTest {
 		assertThat(descendants).containsExactlyInAnyOrder("bob", "charlie", "david");
 	}
 
+	@Test(timeout = 10000)
+	public void testParallelTabledDescendants() {
+		// tabling under the fork/join scheduler: TableEntry's synchronization
+		// must hold up under real concurrency
+		for (int i = 0; i < 20; i++) {
+			Unifiable<String> x = lvar();
+			Unifiable<String> y = lvar();
+
+			java.util.List<String> descendants = x.unifies("alice").and(ancestor(x, y))
+					.solveParallel(y)
+					.map(Term::get)
+					.collect(Collectors.toList());
+
+			assertThat(descendants).containsExactlyInAnyOrder("bob", "charlie", "david");
+		}
+	}
+
+	@Test(timeout = 15000)
+	public void testParallelLeftRecursion() {
+		class PathGoal {
+			Goal edge(Unifiable<Integer> x, Unifiable<Integer> y) {
+				return x.unifies(1).and(y.unifies(2))
+						.or(x.unifies(2).and(y.unifies(3)))
+						.or(x.unifies(3).and(y.unifies(4)));
+			}
+
+			final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> path =
+					Tabling.defineRecursive(self -> args -> args.apply((x, y) ->
+							edge(x, y)
+									.or(defer(() -> {
+										Unifiable<Integer> z = lvar();
+										return self.apply(Tuple.of(x, z)).and(edge(z, y));
+									}))));
+		}
+
+		for (int i = 0; i < 20; i++) {
+			PathGoal pg = new PathGoal();
+			Unifiable<Integer> x = lvar();
+			Unifiable<Integer> y = lvar();
+
+			long count = x.unifies(1).and(y.unifies(4)).and(pg.path.apply(Tuple.of(x, y)))
+					.solveParallel(lvar())
+					.count();
+
+			assertThat(count).isEqualTo(1);
+		}
+	}
+
 	@Test
 	public void testTabledAncestorFindAncestors() {
 		// Query: Who are all of david's ancestors?
