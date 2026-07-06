@@ -34,3 +34,7 @@ build/
 ### Mac OS ###
 .DS_Store
 /.idea/
+
+# accidental build-output dumps
+test-output.txt
+test-tabling.txt
