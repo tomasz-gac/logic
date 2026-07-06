@@ -1,0 +1,140 @@
+package com.tgac.logic.aggregate;
+
+// ABOUTME: Reflects a sub-search's solutions into a value — findall and its count/sum/max/min folds.
+// ABOUTME: Runs the goal to exhaustion, copies each answer, and yields one result to the continuation.
+
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Unifiable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+
+import static com.tgac.functional.category.Nothing.nothing;
+import static com.tgac.functional.fibers.Fiber.done;
+import static com.tgac.logic.unification.LVal.lval;
+
+/**
+ * Aggregation over the solutions of a goal. Each construct runs its goal to
+ * exhaustion in the current state, folds the answers, and succeeds exactly
+ * once with the result (except {@link #max}/{@link #min}, which fail on an
+ * empty solution set). The enclosed goal's variables do not leak: collected
+ * answers are copied.
+ *
+ * Sound when the enclosed goal terminates on its own. Over a tabled recursive
+ * goal a consumer's fiber completes by parking before the relation is
+ * exhausted, so the fold would see a partial answer set — the same completion
+ * caveat as if-then-else over tabled goals. Under a parallel scheduler the
+ * fold is order-independent but {@link #findall}'s list order is not.
+ */
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class Aggregate {
+
+	/**
+	 * Collect a copy of {@code template} for every solution of {@code goal}
+	 * into {@code result}, in the order the scheduler produces them.
+	 */
+	public static <T> Goal findall(Unifiable<T> template, Goal goal, Unifiable<LList<T>> result) {
+		return pkg -> k -> {
+			Collection<Reified<T>> collected = new ConcurrentLinkedQueue<>();
+			return goal.apply(pkg).apply(answerPkg ->
+					MiniKanren.reify(answerPkg, template).flatMap(reified -> {
+						collected.add(reified);
+						return done(nothing());
+					}))
+					.flatMap(exhausted -> buildList(collected).flatMap(list ->
+							CKanren.unify(result, list).apply(pkg).apply(k)));
+		};
+	}
+
+	/**
+	 * Count the solutions of {@code goal}.
+	 */
+	public static Goal count(Goal goal, Unifiable<Integer> result) {
+		return pkg -> k -> {
+			AtomicInteger n = new AtomicInteger(0);
+			return goal.apply(pkg).apply(answerPkg -> {
+						n.incrementAndGet();
+						return done(nothing());
+					})
+					.flatMap(exhausted -> CKanren.unify(result, lval(n.get())).apply(pkg).apply(k));
+		};
+	}
+
+	/**
+	 * Sum {@code expr} over the solutions of {@code goal} (0 if none).
+	 */
+	public static Goal sum(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
+		return fold(expr, goal, result, 0, Integer::sum, false);
+	}
+
+	/**
+	 * Largest {@code expr} over the solutions of {@code goal}; fails if none.
+	 */
+	public static Goal max(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
+		return fold(expr, goal, result, null, Math::max, true);
+	}
+
+	/**
+	 * Smallest {@code expr} over the solutions of {@code goal}; fails if none.
+	 */
+	public static Goal min(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
+		return fold(expr, goal, result, null, Math::min, true);
+	}
+
+	private static Goal fold(
+			Unifiable<Integer> expr,
+			Goal goal,
+			Unifiable<Integer> result,
+			Integer initial,
+			java.util.function.IntBinaryOperator combine,
+			boolean failWhenEmpty) {
+		return pkg -> k -> {
+			AtomicReference<Integer> acc = new AtomicReference<>(initial);
+			return goal.apply(pkg).apply(answerPkg ->
+					MiniKanren.reify(answerPkg, expr).flatMap(reified -> {
+						int v = requireInt(reified);
+						acc.updateAndGet(cur -> cur == null ? v : combine.applyAsInt(cur, v));
+						return done(nothing());
+					}))
+					.flatMap(exhausted -> {
+						Integer total = acc.get();
+						if (total == null && failWhenEmpty) {
+							return done(nothing());
+						}
+						return CKanren.unify(result, lval(total == null ? 0 : total)).apply(pkg).apply(k);
+					});
+		};
+	}
+
+	private static <T> Fiber<Unifiable<LList<T>>> buildList(Collection<Reified<T>> collected) {
+		List<Reified<T>> snapshot = new ArrayList<>(collected);
+		Fiber<ArrayList<Term<T>>> items = done(new ArrayList<>());
+		for (Reified<T> reified : snapshot) {
+			items = items.flatMap(acc ->
+					MiniKanren.instantiate(reified).map(u -> {
+						acc.add(u);
+						return acc;
+					}));
+		}
+		return items.map(acc -> LList.ofAll(acc.size(), acc::get));
+	}
+
+	private static int requireInt(Reified<Integer> reified) {
+		if (reified.asReified().isDefined()) {
+			throw new IllegalStateException("cannot aggregate over an unbound expression");
+		}
+		return reified.get();
+	}
+}
