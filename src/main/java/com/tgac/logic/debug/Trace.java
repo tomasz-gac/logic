@@ -48,29 +48,31 @@ public final class Trace {
 	}
 
 	public static Goal traced(String label, Goal goal, Tracer tracer) {
-		return pkg -> tracedCont(label, goal, tracer, pkg, Function.identity());
+		return pkg -> tracedCont(p -> label, goal, tracer, pkg, Function.identity());
 	}
 
 	/**
 	 * Runs {@code goal} on the {@code entered} package while reporting ports,
 	 * applying {@code restore} to each solution before handing it downstream —
 	 * the seam through which a caller restores its own spine after a box exits.
+	 * The label is rendered against the state at each port, so Call shows the
+	 * arguments as entered and Exit shows them walked to their solution bindings.
 	 */
-	public static Cont<Package, Nothing> tracedCont(String label, Goal goal, Tracer tracer,
+	public static Cont<Package, Nothing> tracedCont(Function<Package, String> label, Goal goal, Tracer tracer,
 			Package entered, Function<Package, Package> restore) {
 		return k -> {
-			tracer.onCall(label, entered);
+			tracer.onCall(label.apply(entered), entered);
 			AtomicInteger exits = new AtomicInteger(0);
 			Fiber<Nothing> exploration = goal.apply(entered).apply(answer -> {
 				if (exits.getAndIncrement() > 0) {
-					tracer.onRedo(label, entered);
+					tracer.onRedo(label.apply(answer), answer);
 				}
-				tracer.onExit(label, answer);
+				tracer.onExit(label.apply(answer), answer);
 				return k.apply(restore.apply(answer));
 			});
 			return exploration.flatMap(done -> {
 				if (exits.get() == 0) {
-					tracer.onFail(label, entered);
+					tracer.onFail(label.apply(entered), entered);
 				}
 				return Fiber.done(done);
 			});

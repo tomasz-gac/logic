@@ -5,6 +5,7 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.debug.DebugStore;
 import com.tgac.logic.debug.Trace;
 import com.tgac.logic.unification.Package;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
@@ -12,20 +13,20 @@ import lombok.Value;
 @RequiredArgsConstructor(staticName = "of")
 public
 class NamedGoal implements Goal {
-	String name;
+	Function<Package, String> label;
 	Goal goal;
 
 	@Override
 	public Cont<com.tgac.logic.unification.Package, Nothing> apply(Package aPackage) {
 		return DebugStore.from(aPackage)
-				.map(store -> Trace.tracedCont(name, goal, store.getTracer(),
-						aPackage.putStore(store.push(name)),
+				.map(store -> Trace.tracedCont(label, goal, store.getTracer(),
+						aPackage.putStore(store.push(label.apply(aPackage))),
 						answer -> answer.putStore(store)))
 				.getOrElse(() -> goal.apply(aPackage));
 	}
 
 	@Override
 	public String toString() {
-		return name;
+		return label.apply(Package.empty());
 	}
 }

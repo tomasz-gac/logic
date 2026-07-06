@@ -94,6 +94,21 @@ public class TraceTest {
 	}
 
 	@Test
+	public void shouldRenderPackageAwareLabelWithCurrentBindings() {
+		Recorder recorder = new Recorder();
+		Unifiable<Integer> x = lvar();
+
+		// the label walks x against the state, so it is rendered per port
+		Goal g = x.unifies(5).named(pkg -> "x=" + pkg.walk(x));
+		g.solve(x, recorder).count();
+
+		// at Exit x is bound, so the label shows the value, not the variable name
+		assertThat(recorder.ports.stream()
+				.anyMatch(p -> p.startsWith("Exit x=") && p.contains("5")))
+				.isTrue();
+	}
+
+	@Test
 	public void shouldDeepenSpineForNestedGoals() {
 		java.util.Map<String, Integer> depthAtCall = new java.util.HashMap<>();
 		Tracer tracer = new Tracer() {

@@ -45,13 +45,20 @@ public class Logic {
 						Matche.llist((a, d) -> Logic.<LList<T>> exist(res ->
 								unify(both, LList.of(a, res))
 										.and(defer(() -> appendo(d, second, res)))))))
-				.named(formatLList(first) + " ++ " + formatLList(second) + " ≣ " + formatLList(both));
+				.named(s -> formatLList(s, first) + " ++ " + formatLList(s, second) + " ≣ " + formatLList(s, both));
 	}
 
 	public static <T> String formatLList(Unifiable<LList<T>> first) {
 		return first.asVar()
 				.map(v -> "[" + v + "]")
 				.getOrElse(() -> first.get().toString());
+	}
+
+	public static <T> String formatLList(Package s, Unifiable<LList<T>> first) {
+		Term<LList<T>> walked = MiniKanren.walk(s, first);
+		return walked.asVar()
+				.map(v -> "[" + v + "]")
+				.getOrElse(() -> walked.get().toString());
 	}
 
 	public static <A, B> Goal sameLengtho(Unifiable<LList<A>> lhs, Unifiable<LList<B>> rhs) {

@@ -199,7 +199,18 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @return A {@link NamedGoal} wrapping this goal with the given name.
 	 */
 	default Goal named(String name) {
-		return NamedGoal.of(name, this);
+		return NamedGoal.of(pkg -> name, this);
+	}
+
+	/**
+	 * Names this goal with a label rendered against the current state, so a
+	 * trace can show the goal's arguments walked to their bindings at each port.
+	 *
+	 * @param label Renders the goal's label from the package it is applied to.
+	 * @return A {@link NamedGoal} whose label is computed per port.
+	 */
+	default Goal named(Function<Package, String> label) {
+		return NamedGoal.of(label, this);
 	}
 
 	/**
