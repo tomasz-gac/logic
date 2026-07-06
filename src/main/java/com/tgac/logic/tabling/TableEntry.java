@@ -6,7 +6,7 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Package;
-import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -32,8 +32,8 @@ public class TableEntry {
 	@Getter
 	private final Call call;
 
-	/** Answer terms (reified argument vectors) in production order. Guarded by this. */
-	private final ArrayList<List<Term<?>>> answers = new ArrayList<>();
+	/** Answer terms (reified argument tuples) in production order. Guarded by this. */
+	private final ArrayList<Reified<?>> answers = new ArrayList<>();
 
 	/** Consumers waiting for answers past the end of the cache. Guarded by this. */
 	private final ArrayList<Registration> registrations = new ArrayList<>();
@@ -50,7 +50,7 @@ public class TableEntry {
 	public static class Registration {
 		Fiber.Fn<Package, Nothing> continuation;
 		Package pkg;
-		List<Unifiable> args;
+		Unifiable<?> argsTerm;
 		int nextIndex;
 	}
 
@@ -67,15 +67,15 @@ public class TableEntry {
 	}
 
 	/**
-	 * Cache an answer term unless an alpha-equivalent one is already present.
+	 * Cache an answer term unless an alpha-equivalent one is already present:
+	 * answers are reified, and reified vars carry value equality by canonical
+	 * name, so plain equality decides alpha-equivalence.
 	 *
 	 * @return the drained registrations to respawn, or none if the answer is a duplicate
 	 */
-	public synchronized Option<List<Registration>> addAnswer(List<Term<?>> answerTerm) {
-		for (List<Term<?>> cached : answers) {
-			if (answersEqual(cached, answerTerm)) {
-				return Option.none();
-			}
+	public synchronized Option<List<Registration>> addAnswer(Reified<?> answerTerm) {
+		if (answers.contains(answerTerm)) {
+			return Option.none();
 		}
 		answers.add(answerTerm);
 		List<Registration> drained = List.ofAll(registrations);
@@ -99,7 +99,7 @@ public class TableEntry {
 	/**
 	 * Get an answer term at the specified index, or null if not present.
 	 */
-	public synchronized List<Term<?>> getAnswerAt(int index) {
+	public synchronized Reified<?> getAnswerAt(int index) {
 		return index < answers.size() ? answers.get(index) : null;
 	}
 
@@ -115,15 +115,6 @@ public class TableEntry {
 	 */
 	public synchronized int getRegistrationCount() {
 		return registrations.size();
-	}
-
-	/**
-	 * Answer terms are equal when they are alpha-equivalent: both are reified,
-	 * and reified vars carry value equality by canonical name, so plain
-	 * structural equality decides it.
-	 */
-	private static boolean answersEqual(List<Term<?>> a, List<Term<?>> b) {
-		return a.equals(b);
 	}
 
 	@Override
