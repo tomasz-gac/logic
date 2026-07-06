@@ -5,7 +5,7 @@ import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.fibers.schedulers.BredthFirstScheduler;
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.Scheduler;
 import com.tgac.functional.fibers.schedulers.ExecutorServiceScheduler;
 import com.tgac.functional.fibers.Fiber;
@@ -416,16 +416,16 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * Solves this goal, attempting to find instantiations for the specified output variable,
 	 * using a default Breadth-First Search (BFS) engine.
 	 * <pre>
-	 * This is a convenience method that uses a {@link BredthFirstScheduler}.
+	 * This is a convenience method that uses a {@link BreadthFirstScheduler}.
 	 * </pre>
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
 	 * @return A {@link Stream} of {@link Unifiable}s representing solutions, computed using BFS.
 	 * @see #solve(Unifiable, Function)
-	 * @see BredthFirstScheduler
+	 * @see BreadthFirstScheduler
 	 */
 	default <T> Stream<Reified<T>> solve(Unifiable<T> out) {
-		return solve(out, BredthFirstScheduler::new);
+		return solve(out, BreadthFirstScheduler::new);
 	}
 
 	/**

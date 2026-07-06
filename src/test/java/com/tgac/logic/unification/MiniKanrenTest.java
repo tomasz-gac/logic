@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.schedulers.BredthFirstScheduler;
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.Utils;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -668,7 +668,7 @@ public class MiniKanrenTest {
 	 */
 	private <T> T runFiber(Fiber<T> fiber) {
 		AtomicReference<T> result = new AtomicReference<>();
-		BredthFirstScheduler<T> scheduler = new BredthFirstScheduler<>(fiber);
+		BreadthFirstScheduler<T> scheduler = new BreadthFirstScheduler<>(fiber);
 		scheduler.run(result::set);
 		return result.get();
 	}
