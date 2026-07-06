@@ -10,6 +10,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Wraps a goal to report the classic logic-debugger ports:
@@ -42,6 +43,44 @@ public final class Trace {
 		void onRedo(String label, Package state);
 
 		void onFail(String label, Package state);
+
+		/**
+		 * A tracer that forwards a port to this one only when its label passes
+		 * {@code keep}. Since a box's four ports share a label, a label predicate
+		 * drops or keeps whole boxes — hide primitive goals, or spy on one relation.
+		 */
+		default Tracer filter(Predicate<String> keep) {
+			Tracer inner = this;
+			return new Tracer() {
+				@Override
+				public void onCall(String label, Package state) {
+					if (keep.test(label)) {
+						inner.onCall(label, state);
+					}
+				}
+
+				@Override
+				public void onExit(String label, Package state) {
+					if (keep.test(label)) {
+						inner.onExit(label, state);
+					}
+				}
+
+				@Override
+				public void onRedo(String label, Package state) {
+					if (keep.test(label)) {
+						inner.onRedo(label, state);
+					}
+				}
+
+				@Override
+				public void onFail(String label, Package state) {
+					if (keep.test(label)) {
+						inner.onFail(label, state);
+					}
+				}
+			};
+		}
 	}
 
 	private Trace() {
@@ -117,5 +156,32 @@ public final class Trace {
 
 	public static Tracer printing() {
 		return printing(System.out::println);
+	}
+
+	/**
+	 * Prints only the boxes whose label contains one of {@code names} — spy points
+	 * on the relations you care about, hiding everything else.
+	 */
+	public static Tracer spy(String... names) {
+		return printing().filter(label -> anyContains(label, names));
+	}
+
+	/**
+	 * Prints every box except those whose label contains one of {@code substrings}
+	 * — e.g. {@code hiding("recursive call")} drops the recursion wrappers. Prefer
+	 * {@link #spy} when a symbol is shared across relations, since hiding by a
+	 * shared substring drops more than intended.
+	 */
+	public static Tracer hiding(String... substrings) {
+		return printing().filter(label -> !anyContains(label, substrings));
+	}
+
+	private static boolean anyContains(String label, String[] needles) {
+		for (String needle : needles) {
+			if (label.contains(needle)) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

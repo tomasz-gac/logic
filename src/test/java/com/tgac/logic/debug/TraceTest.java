@@ -109,6 +109,19 @@ public class TraceTest {
 	}
 
 	@Test
+	public void shouldFilterPortsByLabel() {
+		Recorder recorder = new Recorder();
+		Unifiable<Integer> x = lvar();
+
+		Goal keep = x.unifies(1).named("keep");
+		Goal drop = Goal.success().named("drop");
+		keep.and(drop).solve(x, recorder.filter(label -> label.contains("keep"))).count();
+
+		// only the matching box's ports reach the inner tracer
+		assertThat(recorder.ports).containsExactly("Call keep", "Exit keep");
+	}
+
+	@Test
 	public void shouldDeepenSpineForNestedGoals() {
 		java.util.Map<String, Integer> depthAtCall = new java.util.HashMap<>();
 		Tracer tracer = new Tracer() {
