@@ -8,6 +8,12 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 
 public interface ConstraintStore extends Store {
+
+	/**
+	 * Whether the store currently holds no constraints.
+	 */
+	boolean isEmpty();
+
 	/**
 	 * <pre>
 	 *    This function is run immediately before we reify the constraints

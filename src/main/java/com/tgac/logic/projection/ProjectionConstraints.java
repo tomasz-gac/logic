@@ -56,6 +56,11 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
+	public boolean isEmpty() {
+		return projections.isEmpty();
+	}
+
+	@Override
 	public Store remove(Stored c) {
 		if (c instanceof Constraint) {
 			return new ProjectionConstraints(projections.remove((Constraint) c));

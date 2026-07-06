@@ -42,6 +42,11 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
+	public boolean isEmpty() {
+		return constraints.isEmpty();
+	}
+
+	@Override
 	public ConstraintStore remove(Stored c) {
 		return NeqConstraints.of(constraints.remove((NeqConstraint) c));
 	}

@@ -5,6 +5,7 @@ package com.tgac.logic.tabling;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.TableEntry.Registration;
@@ -80,14 +81,37 @@ public class Tabling {
 	 */
 	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
 		Unifiable<T> argsTerm = lval(args);
-		return pkg -> k -> MiniKanren.reify(pkg, argsTerm).flatMap(reifiedArgs -> {
+		return pkg -> k -> {
+			assertNoConstraints(pkg, "at a tabled call");
+			return MiniKanren.reify(pkg, argsTerm).flatMap(reifiedArgs -> {
 			Call key = Call.of(relation, reifiedArgs);
 			Table table = StoreSupport.getConstraintStore(pkg, Table.class);
 			TableEntry entry = table.getOrCreateEntry(key);
-			return entry.tryBecomeMaster() ?
-					produce(entry, body.get(), pkg, argsTerm, k) :
-					consume(entry, k, pkg, argsTerm, 0);
-		});
+				return entry.tryBecomeMaster() ?
+						produce(entry, body.get(), pkg, argsTerm, k) :
+						consume(entry, k, pkg, argsTerm, 0);
+			});
+		};
+	}
+
+	/**
+	 * Tabling does not capture constraints yet: variant keys ignore
+	 * constraint stores, and answers are cached as plain reified terms. A
+	 * cache produced under one constraint context and consumed under another
+	 * would silently generalize answers, so any active constraint store
+	 * around a tabled call or answer is rejected loudly instead.
+	 */
+	private static void assertNoConstraints(Package pkg, String when) {
+		pkg.getConstraints().values().toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
+				.map(ConstraintStore.class::cast)
+				.filter(cs -> !cs.isEmpty())
+				.findAny()
+				.ifPresent(cs -> {
+					throw new IllegalStateException(
+							"Tabling does not capture constraints yet: non-empty "
+									+ cs.getClass().getSimpleName() + " " + when);
+				});
 	}
 
 	/**
@@ -102,12 +126,14 @@ public class Tabling {
 			Package initialPkg,
 			Unifiable<T> argsTerm,
 			Fiber.Fn<Package, Nothing> k) {
-		return goal.apply(initialPkg).apply(answerPkg ->
-				MiniKanren.reify(answerPkg, argsTerm).flatMap(answerTerm ->
-						entry.addAnswer(answerTerm)
-								.map(parked -> respawn(entry, parked)
-										.flatMap(__ -> k.apply(answerPkg)))
-								.getOrElse(() -> done(nothing()))));
+		return goal.apply(initialPkg).apply(answerPkg -> {
+			assertNoConstraints(answerPkg, "on a tabled answer");
+			return MiniKanren.reify(answerPkg, argsTerm).flatMap(answerTerm ->
+					entry.addAnswer(answerTerm)
+							.map(parked -> respawn(entry, parked)
+									.flatMap(__ -> k.apply(answerPkg)))
+							.getOrElse(() -> done(nothing())));
+		});
 	}
 
 	/**

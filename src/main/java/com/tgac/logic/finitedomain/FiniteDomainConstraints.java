@@ -45,6 +45,11 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
+	public boolean isEmpty() {
+		return domains.isEmpty() && constraints.isEmpty();
+	}
+
+	@Override
 	public ConstraintStore remove(Stored c) {
 		return FiniteDomainConstraints.of(domains, constraints.remove((Constraint) c));
 	}

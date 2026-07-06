@@ -4,6 +4,7 @@ import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
@@ -105,6 +106,40 @@ public class TabledTest {
 		long count = pairs.apply(Tuple.of(p)).solve(p).count();
 
 		assertThat(count).isEqualTo(1);
+	}
+
+	@Test
+	public void shouldRejectTabledCallsUnderActiveConstraints() {
+		// variant keys ignore constraint stores, so a cache shared between
+		// differently-constrained callers would be unsound
+		Tabled<Tuple1<Unifiable<Integer>>> anything =
+				Tabling.define(args -> args.apply(x -> x.unifies(1)));
+
+		Unifiable<Integer> constrained = lvar();
+		Unifiable<Integer> x = lvar();
+
+		assertThatThrownBy(() ->
+				com.tgac.logic.separate.Disequality.separate(constrained, lval(3))
+						.and(anything.apply(Tuple.of(x)))
+						.solve(x)
+						.count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("constraint");
+	}
+
+	@Test
+	public void shouldRejectConstrainedAnswers() {
+		// an answer whose variables carry residual constraints would be cached
+		// as an unconstrained template and replayed too generally
+		Tabled<Tuple1<Unifiable<Integer>>> notThree =
+				Tabling.define(args -> args.apply(x ->
+						com.tgac.logic.separate.Disequality.separate(x, lval(3))));
+
+		Unifiable<Integer> x = lvar();
+
+		assertThatThrownBy(() -> notThree.apply(Tuple.of(x)).solve(x).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("constraint");
 	}
 
 	private final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> pathNoSelf =
