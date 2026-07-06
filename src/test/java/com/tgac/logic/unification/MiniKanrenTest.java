@@ -6,6 +6,9 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.Utils;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -16,6 +19,7 @@ import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.val;
@@ -42,7 +46,7 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		val subs = MiniKanren.unify(Package.empty(), x, y).get().get();
-		Unifiable<Integer> z = MiniKanren.walk(subs, x);
+		Term<Integer> z = MiniKanren.walk(subs, x);
 		assertThat(z)
 				.isEqualTo(y);
 	}
@@ -59,7 +63,7 @@ public class MiniKanrenTest {
 	}
 
 	@Test
-	public void shouldNotExtendRecursion() {
+	public void shouldNotExtendFibersion() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Package subst = MiniKanren.unify(Package.empty(), x, y).get().get();
@@ -255,7 +259,7 @@ public class MiniKanrenTest {
 		s = MiniKanren.unify(s, x, lval(m1)).get().get();
 		s = MiniKanren.unify(s, lval(m1), lval(m2)).get().get();
 
-		Unifiable<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x1 = MiniKanren.walkAll(s, x).get();
+		Term<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x1 = MiniKanren.walkAll(s, x).get();
 		System.out.println(x1);
 		System.out.println(x1.get().get("v1").get()._2.asVal());
 		assertThat(MiniKanren.walk(s, x).get())
@@ -347,11 +351,11 @@ public class MiniKanrenTest {
 		assertThat(MiniKanren.walkAll(s, lval(List.of(x, y, z)))
 				.get())
 				.isEqualTo(lval(List.of(y, y, lval(3))));
-		List<Unifiable<Integer>> x1 =
-				MiniKanren.reify(s, lval(List.of(x, y, z))).get()
+		List<Term<Integer>> x1 =
+				MiniKanren.reify(s, lval(List.<Term<Integer>> of(x, y, z))).get()
 						.get();
 		assertThat(x1.get(0))
-				.matches(v -> v.asVar().isDefined())
+				.matches(v -> v.asReified().isDefined())
 				.isEqualTo(x1.get(1));
 
 		assertThat(x1.get(2))
@@ -408,7 +412,7 @@ public class MiniKanrenTest {
 						.and(unify(u, v))
 						.and(unify(val, 123))
 						.solve(val2)
-						.map(Unifiable::get)))
+						.map(Term::get)))
 				.containsExactly(123);
 	}
 
@@ -423,7 +427,7 @@ public class MiniKanrenTest {
 
 		Assertions.assertThat(Utils.collect(x.unifies(tlTree1)
 								.solve(x)
-								.map(Unifiable::get))
+								.map(Term::get))
 						.toString())
 				.isEqualTo("[LTree(value={1}, children={({LTree(value=<_.0>, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
@@ -442,7 +446,7 @@ public class MiniKanrenTest {
 						Utils.collect(x.unifies(tlTree1)
 										.and(y.unifies(1))
 										.solve(x)
-										.map(Unifiable::get))
+										.map(Term::get))
 								.toString())
 				.isEqualTo("[LTree(value={1}, children={({LTree(value=<_.0>, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
@@ -464,8 +468,8 @@ public class MiniKanrenTest {
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
 						.solve(lval(Tuple.of(x, y, z)))
-						.map(Unifiable::get)
-						.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get))))
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get))))
 				.containsExactly(Tuple.of(1, 2, 3));
 	}
 
@@ -485,7 +489,7 @@ public class MiniKanrenTest {
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
 								.solve(lval(Tuple.of(x, y, z, children)))
-								.map(Unifiable::get))
+								.map(Term::get))
 						.toString())
 				.isEqualTo("[({1}, <_.0>, <_.1>, {({LTree(value={2}, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
@@ -508,7 +512,7 @@ public class MiniKanrenTest {
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
 								.solve(lval(Tuple.of(x, y, z, children)))
-								.map(Unifiable::get))
+								.map(Term::get))
 						.toString())
 				.isEqualTo("[({1}, {2}, <_.0>, {({LTree(value={3}, children={()})})})]");
 	}
@@ -519,7 +523,7 @@ public class MiniKanrenTest {
 
 		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
 				.solve(tree)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(collect)
@@ -532,13 +536,142 @@ public class MiniKanrenTest {
 
 		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
 				.solve(tree)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(collect)
 				.isEmpty();
 	}
 
+
+	@Test
+	public void shouldReifyWithCanonicalNumbering() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		List<Term<Integer>> reified =
+				MiniKanren.reify(Package.empty(), lval(List.<Term<Integer>> of(x, y, x))).get().get();
+
+		assertThat(reified.get(0).asReified().get().getName()).isEqualTo("_.0");
+		assertThat(reified.get(1).asReified().get().getName()).isEqualTo("_.1");
+		assertThat(reified.get(2)).isSameAs(reified.get(0));
+	}
+
+	@Test
+	public void shouldReifyRepeatedVarsInNestedStructuresCanonically() {
+		Unifiable<Integer> h = lvar();
+		Unifiable<LList<Integer>> t = lvar();
+
+		// repeated vars inside nested structures keep first-occurrence numbering
+		Term<?> reified = MiniKanren.reify(Package.empty(),
+				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get())))).get();
+
+		assertThat(reified.toString())
+				.isEqualTo("{({(<_.0>)}, <_.1>, {(<_.0> . <_.1>)})}");
+	}
+
+	@Test
+	public void shouldTreatVariantTermsAsEqualWhenReified() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		Term<Tuple2<Unifiable<Integer>, Integer>> left =
+				MiniKanren.reify(Package.empty(), lval(Tuple.of(x, 1))).get();
+		Term<Tuple2<Unifiable<Integer>, Integer>> right =
+				MiniKanren.reify(Package.empty(), lval(Tuple.of(y, 1))).get();
+
+		assertThat(left).isEqualTo(right);
+	}
+
+	@Test
+	public void shouldDistinguishSharingStructureWhenReified() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		// (x, x) shares one variable; (x, y) has two distinct ones
+		Term<List<Unifiable<Integer>>> shared =
+				MiniKanren.reify(Package.empty(), lval(List.of(x, x))).get();
+		Term<List<Unifiable<Integer>>> distinct =
+				MiniKanren.reify(Package.empty(), lval(List.of(x, y))).get();
+
+		assertThat(shared).isNotEqualTo(distinct);
+		assertThat(shared).isEqualTo(shared);
+	}
+
+	@Test
+	public void shouldInstantiateHolesAsFreshSharedVariables() {
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		// (a, b, a) reifies to (_.0, _.1, _.0); shared holes share the fresh variable
+		Reified<?> template = MiniKanren.reify(Package.empty(),
+				lval(List.<Term<Integer>> of(a, b, a))).get();
+
+		Unifiable<?> instantiated = MiniKanren.instantiate(template).get();
+
+		List<Term<Integer>> items = (List<Term<Integer>>) instantiated.get();
+		assertThat(items.get(0).asVar().isDefined()).isTrue();
+		assertThat(items.get(1).asVar().isDefined()).isTrue();
+		assertThat(items.get(0)).isSameAs(items.get(2));
+		assertThat(items.get(0)).isNotEqualTo(items.get(1));
+	}
+
+	@Test
+	public void shouldInstantiateGroundStructureUnchanged() {
+		Reified<?> template = MiniKanren.reify(Package.empty(),
+				lval(Tuple.of(1, "a"))).get();
+
+		assertThat(MiniKanren.instantiate(template).get())
+				.isEqualTo(lval(Tuple.of(1, "a")));
+	}
+
+	@Test
+	public void shouldInstantiateNestedHoles() {
+		Unifiable<Integer> h = lvar();
+		Unifiable<LList<Integer>> t = lvar();
+		// ({(h)}, t, {(h . t)}) — sharing must survive instantiation through structures
+		Reified<?> template = MiniKanren.reify(Package.empty(),
+				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get())))).get();
+
+		Unifiable<?> instantiated = MiniKanren.instantiate(template).get();
+
+		io.vavr.Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>> tuple =
+				(io.vavr.Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>>) instantiated.get();
+		Term<?> firstHead = tuple._1.get().getHead();
+		Term<?> consHead = tuple._3.get().getHead();
+		Term<?> consTail = tuple._3.get().getTail();
+
+		assertThat(firstHead.asVar().isDefined()).isTrue();
+		assertThat(firstHead).isSameAs(consHead);
+		assertThat(tuple._2).isSameAs(consTail);
+	}
+
+	@Test
+	public void shouldAlphaEquateNonGroundTerms() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		assertThat(runFiber(MiniKanren.alphaEquiv(
+				lval(Tuple.of(x, 1)),
+				lval(Tuple.of(y, 1)),
+				Package.empty())))
+				.isTrue();
+
+		assertThat(runFiber(MiniKanren.alphaEquiv(
+				lval(List.of(x, x)).getObjectUnifiable(),
+				lval(List.of(x, y)).getObjectUnifiable(),
+				Package.empty())))
+				.isFalse();
+	}
+
+	/**
+	 * Helper to run a Fiber synchronously and get its result.
+	 */
+	private <T> T runFiber(Fiber<T> fiber) {
+		AtomicReference<T> result = new AtomicReference<>();
+		BreadthFirstScheduler<T> scheduler = new BreadthFirstScheduler<>(fiber);
+		scheduler.run(result::set);
+		return result.get();
+	}
 
 	private static <T> Optional<T> extractValue(Unifiable<T> variable, Package subs) {
 		return MiniKanren.walk(subs, variable)

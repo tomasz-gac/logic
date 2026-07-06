@@ -11,6 +11,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Stored;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
@@ -44,6 +45,11 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
+	public boolean isEmpty() {
+		return domains.isEmpty() && constraints.isEmpty();
+	}
+
+	@Override
 	public ConstraintStore remove(Stored c) {
 		return FiniteDomainConstraints.of(domains, constraints.remove((Constraint) c));
 	}
@@ -68,13 +74,13 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <T> Goal enforceConstraints(Unifiable<T> x) {
+	public <T> Goal enforceConstraints(Term<T> x) {
 		return EnforceConstraintsFD.enforceConstraints(x);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Goal processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
+	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return s -> MiniKanren.prefixS(s.getSubstitutions(), newSubstitutions)
 				.toJavaStream()
 				.<Goal> map(ht -> ht
@@ -88,7 +94,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <A> Unifiable<A> reify(Unifiable<A> unifiable, Package renameSubstitutions, Package p) {
+	public <A> Term<A> reify(Term<A> unifiable, Package renameSubstitutions, Package p) {
 		Set<LVar<?>> varsWithDomains = domains.keySet().toJavaStream()
 				.map(p::walk)
 				.flatMap(u -> u.asVar().toJavaStream())
@@ -118,7 +124,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 		return FiniteDomainConstraints.of(domains.put(x, xd), constraints);
 	}
 
-	public <A> boolean constrains(Unifiable<A> u) {
+	public <A> boolean constrains(Term<A> u) {
 		return domains.toJavaStream()
 				.map(Tuple2::_1)
 				.anyMatch(u::equals) ||

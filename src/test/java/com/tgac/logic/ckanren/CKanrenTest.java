@@ -1,7 +1,7 @@
 package com.tgac.logic.ckanren;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.Utils;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -25,7 +25,7 @@ public class CKanrenTest {
 		Cont<Package, Nothing> s = CKanren.unify(u, v)
 				.apply(Package.empty());
 		List<Integer> map = Utils.collect(s
-				.map(p -> Recur.done(MiniKanren.walk(p, v))
+				.map(p -> Fiber.done(MiniKanren.walk(p, v))
 						.map(v1 -> Utils.collect(CKanren.
 										reify(p, v1))
 								.stream()

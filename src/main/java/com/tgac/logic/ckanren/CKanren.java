@@ -8,11 +8,13 @@ import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -59,12 +61,11 @@ public class CKanren {
 			Class<? extends ConstraintStore> csc,
 			Package p) {
 		return Constraint.of(constraintOp, csc,
-				us.map(u -> MiniKanren.walk(p, u))
-						.map(Unifiable::getObjectUnifiable)
+				us.map(u -> MiniKanren.<Object> walk(p, u.getObjectUnifiable()))
 						.toJavaList());
 	}
 
-	public static Goal runConstraints(Unifiable<?> xs, Iterable<Constraint> c) {
+	public static Goal runConstraints(Term<?> xs, Iterable<Constraint> c) {
 		return StreamSupport.stream(c.spliterator(), false)
 				.map(constraint -> anyRelevantVar(xs, constraint) ?
 						remRun(constraint) :
@@ -78,34 +79,37 @@ public class CKanren {
 				Cont.just(p);
 	}
 
-	public static <T> Cont<Unifiable<T>, Nothing> reify(Package s, Unifiable<T> x) {
+	@SuppressWarnings("unchecked")
+	public static <T> Cont<Reified<T>, Nothing> reify(Package s, Term<T> x) {
+		// after renaming every node is an LVal, a ReifiedVar, or a Constrained wrapper
 		return enforceConstraints(s, x).apply(s)
 				.flatMap(s1 -> Cont.defer(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->
 										r.getSubstitutions().isEmpty() ?
-												Recur.done(v) :
+												Fiber.done(v) :
 												MiniKanren.walkAll(r, v)
 														.map(result ->
 																s1.getConstraints() == null ?
 																		result :
 																		StoreSupport.reify(s1, result, vr._2))))
+								.map(t -> (Reified<T>) t)
 								.map(Cont::just)));
 	}
 
-	public static <T> Recur<Tuple2<Unifiable<T>, Package>> calculateSubstitutionAndRenamePackage(Unifiable<T> x, Package s1) {
+	public static <T> Fiber<Tuple2<Term<T>, Package>> calculateSubstitutionAndRenamePackage(Term<T> x, Package s1) {
 		return MiniKanren.walkAll(s1, x)
 				.flatMap(v -> MiniKanren.reifyS(Package.empty(), v)
 						.map(r -> Tuple.of(v, r)));
 	}
 
-	private static boolean anyRelevantVar(Unifiable<?> xs, Constraint c) {
+	private static boolean anyRelevantVar(Term<?> xs, Constraint c) {
 		return isVarRelevant(xs, c)
 				|| isAnyItemRelevantCollection(xs, c)
 				|| isAnyItemRelevantLList(xs, c);
 	}
 
-	private static boolean isAnyItemRelevantLList(Unifiable<?> xs, Constraint c) {
+	private static boolean isAnyItemRelevantLList(Term<?> xs, Constraint c) {
 		return xs.isVal() &&
 				MiniKanren.asLList(xs)
 						.filter(l -> l.stream()
@@ -120,7 +124,7 @@ public class CKanren {
 				.orElse(() -> MiniKanren.tupleAsIterable(w));
 	}
 
-	private static boolean isAnyItemRelevantCollection(Unifiable<?> xs, Constraint c) {
+	private static boolean isAnyItemRelevantCollection(Term<?> xs, Constraint c) {
 		if (!xs.isVal()) {
 			return false;
 		}
@@ -136,7 +140,7 @@ public class CKanren {
 	private static boolean processIterable(Object w, Constraint c) {
 		return asIterable(w)
 				.filter(it -> StreamSupport.stream(it.spliterator(), false)
-						.map(MiniKanren::wrapUnifiable)
+						.map(MiniKanren::wrapTerm)
 						.anyMatch(c.getArgs()::contains))
 				.isDefined();
 	}
@@ -150,7 +154,7 @@ public class CKanren {
 		return false;
 	}
 
-	private static boolean isVarRelevant(Unifiable<?> xs, Constraint c) {
+	private static boolean isVarRelevant(Term<?> xs, Constraint c) {
 		return xs.asVar()
 				.filter(c.getArgs()::contains)
 				.isDefined();

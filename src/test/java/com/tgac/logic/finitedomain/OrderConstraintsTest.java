@@ -16,6 +16,8 @@ import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -39,8 +41,8 @@ public class OrderConstraintsTest {
 						.and(dom(i, EnumeratedDomain.range(0L, 4L)))
 						.and(dom(j, EnumeratedDomain.range(0L, 4L)))
 						.solve(lval(Tuple.of(i, j)))
-						.map(Unifiable::get)
-						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get)));
+						.map(Term::get)
+						.map(t -> t.map1(Term::get).map2(Term::get)));
 
 		System.out.println(result);
 
@@ -59,8 +61,8 @@ public class OrderConstraintsTest {
 						.and(dom(j, EnumeratedDomain.range(0L, 4L)))
 						.and((FiniteDomain.leq(i, j)))
 						.solve(lval(Tuple.of(i, j)))
-						.map(Unifiable::get)
-						.map(t -> t.map1(Unifiable::get).map2(Unifiable::get)));
+						.map(Term::get)
+						.map(t -> t.map1(Term::get).map2(Term::get)));
 
 		System.out.println(result);
 
@@ -81,8 +83,8 @@ public class OrderConstraintsTest {
 				.and(FiniteDomain.leq(x, lval(5L)))
 				.and(CKanren.unify(x, y))
 				.solve(lval(Tuple.of(y, z)))
-				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get)));
+				.map(Term::get)
+				.map(t -> t.map(Term::get, Term::get)));
 
 		System.out.println(results);
 
@@ -109,7 +111,7 @@ public class OrderConstraintsTest {
 				.and(dom(v4, Interval.of(0, n)))
 				.and(dom(v5, Interval.of(0, n)))
 				.solve(lst)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(LList::toValueStream)
 				.map(s -> s.collect(Collectors.toList())));
 

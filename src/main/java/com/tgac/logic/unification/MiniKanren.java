@@ -1,19 +1,19 @@
 package com.tgac.logic.unification;
 
 import static com.tgac.functional.Exceptions.throwingBiOp;
-import static com.tgac.functional.recursion.MRecur.mdone;
-import static com.tgac.functional.recursion.MRecur.mrecur;
-import static com.tgac.functional.recursion.MRecur.none;
-import static com.tgac.functional.recursion.Recur.done;
-import static com.tgac.functional.recursion.Recur.recur;
+import static com.tgac.functional.fibers.MFiber.mdone;
+import static com.tgac.functional.fibers.MFiber.mdefer;
+import static com.tgac.functional.fibers.MFiber.none;
+import static com.tgac.functional.fibers.Fiber.done;
+import static com.tgac.functional.fibers.Fiber.defer;
 import static com.tgac.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
 import com.tgac.functional.Streams;
-import com.tgac.functional.recursion.MRecur;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.fibers.MFiber;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
@@ -86,37 +86,44 @@ public class MiniKanren {
 				.map(c -> (Collector<Object, ?, ?>) c);
 	}
 
-	private static <T> Package extendNoCheck(Package s, LVar<T> lhs, Unifiable<T> rhs) {
+	private static <T> Package extendNoCheck(Package s, LVar<T> lhs, Term<T> rhs) {
 		return s.put(lhs, rhs);
 	}
 
-	public static <T> Unifiable<T> walk(Package s, Unifiable<T> v) {
+	public static <T> Term<T> walk(Package s, Term<T> v) {
 		return s.walk(v);
 	}
 
-	public static <T> Boolean occursCheck(Package s, LVar<T> x, Unifiable<T> v) {
+	public static <T> Boolean occursCheck(Package s, LVar<T> x, Term<T> v) {
 		return walk(s, v).asVar()
 				.map(vv -> vv == x)
 				.getOrElse(false);
 	}
 
-	public static <T> Package extend(Package s, LVar<T> lhs, Unifiable<T> rhs) {
+	public static <T> Package extend(Package s, LVar<T> lhs, Term<T> rhs) {
 		return occursCheck(s, lhs, rhs) ?
 				s :
 				extendNoCheck(s, lhs, rhs);
 	}
 
 	private interface Extender {
-		<T> Package apply(Package s, LVar<T> lhs, Unifiable<T> rhs);
+		<T> Package apply(Package s, LVar<T> lhs, Term<T> rhs);
 	}
 
-	private static <T> MRecur<Package> unify(
+	private static <T> MFiber<Package> unify(
 			Extender extend,
 			Package s,
-			Unifiable<T> lhs,
-			Unifiable<T> rhs) {
-		Unifiable<T> l = walk(s, lhs);
-		Unifiable<T> r = walk(s, rhs);
+			Term<T> lhs,
+			Term<T> rhs) {
+		Term<T> l = walk(s, lhs);
+		Term<T> r = walk(s, rhs);
+
+		// reified terms are solver output; meeting one here is a programming error
+		// that the type system cannot catch when it is nested inside a value
+		if (l.asReified().isDefined() || r.asReified().isDefined()) {
+			throw new IllegalStateException(
+					"Reified terms cannot re-enter unification: " + l + " ≣ " + r);
+		}
 
 		// it's important to return the same object when l equals r
 		// because we test with == to see if substitution already exists
@@ -126,11 +133,11 @@ public class MiniKanren {
 
 		return l.asVar().map(lVar -> r.asVar()
 						.map(rVar -> extendNoCheck(s, lVar, rVar))
-						.map(MRecur::mdone)
+						.map(MFiber::mdone)
 						.getOrElse(() -> mdone(extend.apply(s, lVar, r))))
 				.orElse(() -> r.asVar()
 						.map(rVar -> extend.apply(s, rVar, l))
-						.map(MRecur::mdone))
+						.map(MFiber::mdone))
 				.orElse(() -> zip(l.asVal(), r.asVal())
 						.flatMap(MiniKanren::toIterable)
 						.map(lr -> unifyIterable(extend, s, lr._1, lr._2)))
@@ -144,20 +151,20 @@ public class MiniKanren {
 						r.asVal().flatMap(MiniKanren::<T>asLTree))
 						.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
 						.map(lr -> unifyLTree(extend, s, lr._1, lr._2)))
-				.getOrElse(MRecur::none);
+				.getOrElse(MFiber::none);
 	}
 
-	private static <T> MRecur<Package> unifyLList(Extender extend, Package s, LList<T> l, LList<T> r) {
-		return mrecur(() -> unify(extend, s, l.getHead(), r.getHead()))
+	private static <T> MFiber<Package> unifyLList(Extender extend, Package s, LList<T> l, LList<T> r) {
+		return mdefer(() -> unify(extend, s, l.getHead(), r.getHead()))
 				.flatMap(s1 -> unify(extend, s1, l.getTail(), r.getTail()));
 	}
 
-	private static <T> MRecur<Package> unifyLTree(Extender extend, Package s, LTree<T> l, LTree<T> r) {
-		return mrecur(() -> unify(extend, s, l.getValue(), r.getValue()))
+	private static <T> MFiber<Package> unifyLTree(Extender extend, Package s, LTree<T> l, LTree<T> r) {
+		return mdefer(() -> unify(extend, s, l.getValue(), r.getValue()))
 				.flatMap(s1 -> unify(extend, s1, l.getChildren(), r.getChildren()));
 	}
 
-	private static <T> MRecur<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
+	private static <T> MFiber<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
 		if (!l.iterator().hasNext() && r.iterator().hasNext()) {
 			return mdone(s);
 		}
@@ -166,9 +173,9 @@ public class MiniKanren {
 		} else {
 			return Streams.zip(toJavaStream(l), toJavaStream(r), Tuple::of)
 					// Because Tuples are treated as iterable
-					// some of their elements may not be unifiable.
+					// some of their elements may not be terms.
 					// For those, we're wrapping them as Val to process them anyway
-					.map(p -> p.map(applyOnBoth(MiniKanren::<T>wrapUnifiable)))
+					.map(p -> p.map(applyOnBoth(MiniKanren::<T>wrapTerm)))
 					.reduce(mdone(s),
 							(state, unifiedItems) ->
 									state.flatMap(s1 -> unify(extender, s1, unifiedItems._1, unifiedItems._2)),
@@ -177,11 +184,11 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Unifiable<T> wrapUnifiable(Object v) {
-		if (v instanceof Unifiable) {
-			return (Unifiable<T>) v;
+	public static <T> Term<T> wrapTerm(Object v) {
+		if (v instanceof Term) {
+			return (Term<T>) v;
 		} else {
-			return (Unifiable<T>) lval(v);
+			return (Term<T>) lval(v);
 		}
 	}
 
@@ -206,79 +213,96 @@ public class MiniKanren {
 				Option.none();
 	}
 
-	public static <T> MRecur<Package> unify(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MFiber<Package> unify(Package s, Term<T> lhs, Term<T> rhs) {
 		return unify(MiniKanren::extend, s, lhs, rhs);
 	}
 
-	public static <T> MRecur<Package> unifyUnsafe(Package s, Unifiable<T> lhs, Unifiable<T> rhs) {
+	public static <T> MFiber<Package> unifyUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
 		return unify(MiniKanren::extendNoCheck, s, lhs, rhs);
 	}
 
-	public static <T> Recur<Unifiable<T>> walkAll(Package s, Unifiable<T> u) {
+	public static <T> Fiber<Term<T>> walkAll(Package s, Term<T> u) {
 		return done(walk(s, u))
 				.flatMap(v -> v.asVar()
-						.map(Recur::<Unifiable<T>>done)
-						.orElse(() -> v.asVal()
-								.flatMap(MiniKanren::asIterable)
-								.map(t -> walkIterable(s, t)))
-						.orElse(() -> v.asVal()
-								.flatMap(MiniKanren::<T>asLList)
-								.filter(not(LList::isEmpty))
-								.map(c -> Recur.zip(
-												recur(() -> walkAll(s, c.getHead())),
-												recur(() -> walkAll(s, c.getTail())))
-										.map(ht -> ht.apply(LList::of).get())
-										.map(w -> Types.<T> castAs(w, Object.class).get())
-										.map(LVal::lval)))
-						.orElse(() -> v.asVal()
-								.flatMap(MiniKanren::<T>asLTree)
-								.filter(not(LTree::isEmpty))
-								.map(c -> Recur.zip(
-												recur(() -> walkAll(s, c.getValue())),
-												recur(() -> walkAll(s, c.getChildren())))
-										.map(vc -> vc.apply(LTree::of).get())
-										.map(w -> Types.<T> castAs(w, Object.class).get())
-										.map(LVal::lval)))
-						.orElse(() -> v.asVal()
-								.flatMap(MiniKanren::tupleAsIterable)
-								.map(t -> walkTuple(s, t)))
+						.map(w -> Fiber.<Term<T>> done(w))
+						.orElse(() -> MiniKanren.<T> mapStructure(v, e -> walkAll(s, e)))
 						.getOrElse(done(v)));
 	}
 
-	private static <T> Recur<Unifiable<T>> walkIterable(Package s, Iterable<Object> iterable) {
+	/**
+	 * Rebuild the structure of a term (collection, LList, LTree or tuple)
+	 * with each component passed through the mapper. Empty when the term
+	 * is not structural.
+	 */
+	private static <T> Option<Fiber<Term<T>>> mapStructure(
+			Term<T> v,
+			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
+		return v.asVal()
+				.flatMap(MiniKanren::asIterable)
+				.map(t -> MiniKanren.<T> mapIterable(t, mapper))
+				.orElse(() -> v.asVal()
+						.flatMap(MiniKanren::<T>asLList)
+						.filter(not(LList::isEmpty))
+						.map(c -> Fiber.zip(
+										defer(() -> mapper.apply(c.getHead().getObjectTerm())),
+										defer(() -> mapper.apply(c.getTail().getObjectTerm())))
+								.map(ht -> LList.of(ht._1, MiniKanren.<LList<Object>> castTerm(ht._2)).get())
+								.map(w -> Types.<T> castAs(w, Object.class).get())
+								.map(LVal::lval)
+								.map(MiniKanren::<T>castTerm)))
+				.orElse(() -> v.asVal()
+						.flatMap(MiniKanren::<T>asLTree)
+						.filter(not(LTree::isEmpty))
+						.map(c -> Fiber.zip(
+										defer(() -> mapper.apply(c.getValue().getObjectTerm())),
+										defer(() -> mapper.apply(c.getChildren().getObjectTerm())))
+								.map(vc -> LTree.of(vc._1, MiniKanren.<LList<LTree<Object>>> castTerm(vc._2)).get())
+								.map(w -> Types.<T> castAs(w, Object.class).get())
+								.map(LVal::lval)
+								.map(MiniKanren::<T>castTerm)))
+				.orElse(() -> v.asVal()
+						.flatMap(MiniKanren::tupleAsIterable)
+						.map(t -> MiniKanren.<T> mapTuple(t, mapper)));
+	}
+
+	private static <T> Fiber<Term<T>> mapIterable(
+			Iterable<Object> iterable,
+			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
 		Collector<Object, ?, ?> collector = MiniKanren.getCollector(iterable)
 				.getOrElseThrow(Exceptions.format(RuntimeException::new,
 						"Unsupported iterable type: %s", iterable));
 
 		return toJavaStream(iterable)
-				.map(u -> walkAll(s, wrapUnifiable(u))
-						.map(w -> (u instanceof Unifiable) ?
+				.map(u -> mapper.apply(wrapTerm(u))
+						.map(w -> (u instanceof Term) ?
 								w : w.asVal().get()))
 				.reduce(done(new ArrayList<>()),
-						(Recur<ArrayList<Object>> acc, Recur<Object> item) -> Recur.zip(acc, item)
+						(Fiber<ArrayList<Object>> acc, Fiber<Object> item) -> Fiber.zip(acc, item)
 								.map(lr -> {
 									lr._1.add(lr._2);
 									return lr._1;
 								}),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))
 				.map(r -> r.stream().collect(collector))
-				.map(MiniKanren::<T>wrapUnifiable);
+				.map(MiniKanren::<T>wrapTerm);
 	}
 
-	private static <T> Recur<Unifiable<T>> walkTuple(Package s, Iterable<Object> tuple) {
+	private static <T> Fiber<Term<T>> mapTuple(
+			Iterable<Object> tuple,
+			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
 		return toJavaStream(tuple)
-				// walkAll accepts Unifiable,
+				// the mapper accepts Term,
 				// but some elements may be regular types.
 				// We're wrapping those types in a Val
-				.map(e -> walkAll(s, wrapUnifiable(e))
-						// Here, we unwrap the Unifiable,
-						// if the original type was not Unifiable
+				.map(e -> mapper.apply(wrapTerm(e))
+						// Here, we unwrap the Term,
+						// if the original type was not Term
 						// so that we can reconstruct the original tuple
-						.map(u -> e instanceof Unifiable ?
+						.map(u -> e instanceof Term ?
 								u : u.asVal().get()))
 				.reduce(
 						done(new ArrayList<>()),
-						(acc, item) -> Recur.zip(acc, item)
+						(acc, item) -> Fiber.zip(acc, item)
 								.map(lr -> {
 									lr._1.add(lr._2);
 									return lr._1;
@@ -287,21 +311,50 @@ public class MiniKanren {
 				.map(ArrayList::toArray)
 				.map(MiniKanren::tupleFromArray)
 				.map(LVal::lval)
-				.map(MiniKanren::castUnifiable);
+				.map(MiniKanren::castTerm);
 	}
 
-	public static <T> Recur<Unifiable<T>> reify(Package s, Unifiable<T> item) {
-		return walkAll(s, item)
-				.flatMap(v -> reifyS(Package.empty(), v)
-						.flatMap(rp -> walkAll(rp, v)));
+	/**
+	 * Convert a reified term back into a solver term: canonical holes become
+	 * fresh variables — holes sharing a name share the variable — and ground
+	 * structure is preserved.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Fiber<Unifiable<T>> instantiate(Reified<T> term) {
+		return instantiateTerm(term, new java.util.concurrent.ConcurrentHashMap<>())
+				.map(t -> (Unifiable<T>) t);
+	}
+
+	private static <T> Fiber<Term<T>> instantiateTerm(
+			Term<T> u,
+			java.util.concurrent.ConcurrentMap<String, Term<Object>> fresh) {
+		return u.asReified()
+				.map(hole -> Fiber.<Term<T>> done((Term<T>) fresh.computeIfAbsent(
+						hole.getName(), name -> LVar.lvar())))
+				.orElse(() -> MiniKanren.<T> mapStructure(u, e -> instantiateTerm(e, fresh)))
+				.getOrElse(done(u));
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Recur<Package> reifyS(Package s, Unifiable<?> val) {
-		return walkAll(s, val)
+	public static <T> Fiber<Reified<T>> reify(Package s, Term<T> item) {
+		// after renaming, every node is an LVal or a ReifiedVar — both Reified
+		return walkAll(s, item)
+				.flatMap(v -> reifyS(Package.empty(), v)
+						.flatMap(rp -> walkAll(rp, v)))
+				.map(v -> (Reified<T>) v);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Fiber<Package> reifyS(Package s, Term<?> val) {
+		// shallow walk only: a deep walk would rebuild structures with rename
+		// vars substituted in, and nested calls would rename the rename vars
+		return done(walk(s, val))
 				.flatMap(v -> v.asVar()
-						.map(u -> extend(s, (LVar<Object>) u, LVar.lvar("_." + s.size())))
-						.map(Recur::done)
+						// a var that walked to something else is already renamed
+						.map(u -> u == val ?
+								extend(s, (LVar<Object>) u, ReifiedVar.of("_." + s.size())) :
+								s)
+						.map(Fiber::done)
 						.orElse(() -> v.asVal()
 								.flatMap(w -> asIterable(w)
 										.orElse(() -> tupleAsIterable(w)))
@@ -315,7 +368,7 @@ public class MiniKanren {
 						.getOrElse(done(s)));
 	}
 
-	private static Recur<Package> reifyLList(Package s, LList<?> llist) {
+	private static Fiber<Package> reifyLList(Package s, LList<?> llist) {
 		if (llist.isEmpty()) {
 			return done(s);
 		} else {
@@ -324,7 +377,7 @@ public class MiniKanren {
 		}
 	}
 
-	private static Recur<Package> reifyLTree(Package s, LTree<?> tree) {
+	private static Fiber<Package> reifyLTree(Package s, LTree<?> tree) {
 		if (tree.isEmpty()) {
 			return done(s);
 		} else {
@@ -333,18 +386,28 @@ public class MiniKanren {
 		}
 	}
 
-	private static Recur<Package> reifyIterable(Package s, Iterable<Object> l) {
+	private static Fiber<Package> reifyIterable(Package s, Iterable<Object> l) {
 		return toJavaStream(l)
-				.map(MiniKanren::wrapUnifiable)
+				.map(MiniKanren::wrapTerm)
 				.reduce(done(s),
 						(state, item) ->
 								state.flatMap(s1 -> reifyS(s1, item)),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	public static HashMap<LVar<?>, Unifiable<?>> prefixS(
-			HashMap<LVar<?>, Unifiable<?>> s,
-			HashMap<LVar<?>, Unifiable<?>> extendedS) {
+	/**
+	 * Check if two terms are alpha-equivalent (equivalent modulo variable renaming).
+	 * Reification numbers holes canonically and reified vars carry value
+	 * equality by name, so plain equality on the reified forms decides it.
+	 */
+	public static <T> Fiber<Boolean> alphaEquiv(Term<T> x, Term<T> y, Package s) {
+		return reify(s, x).flatMap(xReified ->
+			reify(s, y).map(xReified::equals));
+	}
+
+	public static HashMap<LVar<?>, Term<?>> prefixS(
+			HashMap<LVar<?>, Term<?>> s,
+			HashMap<LVar<?>, Term<?>> extendedS) {
 		return extendedS.removeAll(s.keysIterator());
 	}
 
@@ -443,8 +506,8 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> Unifiable<T> castUnifiable(Object v) {
-		return (Unifiable<T>) v;
+	private static <T> Term<T> castTerm(Object v) {
+		return (Term<T>) v;
 	}
 
 	private static java.util.stream.Stream<Object> toJavaStream(Iterable<Object> it) {

@@ -1,12 +1,12 @@
 package com.tgac.logic.goals;
 
 import static com.tgac.functional.monad.Cont.suspend;
-import static com.tgac.functional.recursion.Recur.done;
+import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.recursion.Recur;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Package;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,7 +15,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 @Value
@@ -29,13 +28,13 @@ public class Conjunction implements Goal {
 	}
 
 	@Override
-	public Recur<Goal> optimize() {
+	public Fiber<Goal> optimize() {
 		return clauses.stream()
 				.map(Goal::optimize)
 				.map(v -> v.map(g -> g instanceof com.tgac.logic.goals.Conjunction ?
 						((com.tgac.logic.goals.Conjunction) g).clauses.stream() :
 						java.util.stream.Stream.of(g)))
-				.reduce((acc, r) -> Recur.zip(acc, r)
+				.reduce((acc, r) -> Fiber.zip(acc, r)
 						.map(lr -> lr.apply(java.util.stream.Stream::concat)))
 				.map(r -> r.map(s -> s.toArray(Goal[]::new))
 						.map(new com.tgac.logic.goals.Conjunction()::and)

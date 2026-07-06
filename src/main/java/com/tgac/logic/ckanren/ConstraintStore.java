@@ -3,10 +3,17 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Store;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 
 public interface ConstraintStore extends Store {
+
+	/**
+	 * Whether the store currently holds no constraints.
+	 */
+	boolean isEmpty();
+
 	/**
 	 * <pre>
 	 *    This function is run immediately before we reify the constraints
@@ -19,7 +26,7 @@ public interface ConstraintStore extends Store {
 	 * @param x
 	 * 		- variable to enforce constraints against
 	 */
-	<T> Goal enforceConstraints(Unifiable<T> x);
+	<T> Goal enforceConstraints(Term<T> x);
 
 	/**
 	 * <pre>
@@ -36,7 +43,7 @@ public interface ConstraintStore extends Store {
 	 * @param newSubstitutions
 	 * 		- Newly added substitutions
 	 */
-	Goal processPrefix(HashMap<LVar<?>, Unifiable<?>> newSubstitutions);
+	Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions);
 
 	/**
 	 * <pre>
@@ -52,6 +59,6 @@ public interface ConstraintStore extends Store {
 	 * @param renameSubstitutions
 	 * 		- substitutions used in variable renaming
 	 */
-	<A> Unifiable<A> reify(Unifiable<A> unifiable, Package renameSubstitutions, Package p);
+	<A> Term<A> reify(Term<A> unifiable, Package renameSubstitutions, Package p);
 
 }

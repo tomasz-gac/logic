@@ -14,6 +14,8 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -137,7 +139,7 @@ public class SortingTest {
 		Unifiable<LList<Integer>> lst = LList.ofAll(1, 2, 3, 4);
 		Assertions.assertThat(LogicTest.runStream(m,
 								middle(lst, m))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactly(3);
 	}
@@ -148,7 +150,7 @@ public class SortingTest {
 		Unifiable<LList<Integer>> lst = LList.ofAll(1, 2, 3);
 		Assertions.assertThat(LogicTest.runStream(m,
 								middle(lst, m))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactly(2);
 	}
@@ -159,7 +161,7 @@ public class SortingTest {
 		Unifiable<LList<Integer>> lst = LList.ofAll();
 		Assertions.assertThat(LogicTest.runStream(m,
 								middle(lst, m))
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList()))
 				.isEmpty();
 	}
@@ -262,8 +264,8 @@ public class SortingTest {
 		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> miMa = LVar.lvar();
 		List<Tuple2<Integer, Integer>> result = LogicTest.runStream(miMa, Matche.matche(miMa, Matche.tuple((min, max) ->
 						minMax(LList.ofAll(1, 2, 3, 4, 5), min, max, Integer::compareTo))))
-				.map(Unifiable::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Unifiable::get)))
+				.map(Term::get)
+				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
 		System.out.println(result);
 		assertThat(result)
@@ -275,8 +277,8 @@ public class SortingTest {
 		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> miMa = LVar.lvar();
 		List<Tuple2<Integer, Integer>> result = LogicTest.runStream(miMa, Matche.matche(miMa, Matche.tuple((min, max) ->
 						minMax(LList.ofAll(5, 3, 1, 2, 4), min, max, Integer::compareTo))))
-				.map(Unifiable::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Unifiable::get)))
+				.map(Term::get)
+				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
 		System.out.println(result);
 		assertThat(result)
@@ -288,8 +290,8 @@ public class SortingTest {
 		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> miMa = LVar.lvar();
 		List<Tuple2<Integer, Integer>> result = LogicTest.runStream(miMa, Matche.matche(miMa, Matche.tuple((min, max) ->
 						minMax(LList.ofAll(1), min, max, Integer::compareTo))))
-				.map(Unifiable::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Unifiable::get)))
+				.map(Term::get)
+				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
 		System.out.println(result);
 		assertThat(result)
@@ -301,8 +303,8 @@ public class SortingTest {
 		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> miMa = LVar.lvar();
 		List<Tuple2<Integer, Integer>> result = LogicTest.runStream(miMa, Matche.matche(miMa, Matche.tuple((min, max) ->
 						minMax(LList.empty(), min, max, Integer::compareTo))))
-				.map(Unifiable::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Unifiable::get)))
+				.map(Term::get)
+				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
 		System.out.println(result);
 		assertThat(result)
@@ -372,7 +374,7 @@ public class SortingTest {
 				filter(LList.ofAll(1, 2, 1, 3, 1, 4),
 						filtered,
 						u -> Logic.project(u, v -> asserto(v != 1))))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(LList::toValueStream)
 				.map(l -> l.collect(Collectors.toList()))
 				.collect(Collectors.toList());
@@ -388,7 +390,7 @@ public class SortingTest {
 				filter(LList.ofAll(1, 2, 1, 3, 1, 4),
 						filtered,
 						u -> Logic.project(u, v -> asserto(v != 5))))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(LList::toValueStream)
 				.map(l -> l.collect(Collectors.toList()))
 				.collect(Collectors.toList());
@@ -404,7 +406,7 @@ public class SortingTest {
 				filter(LList.ofAll(),
 						filtered,
 						u -> Logic.project(u, v -> asserto(v != 5))))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(LList::toValueStream)
 				.map(l -> l.collect(Collectors.toList()))
 				.collect(Collectors.toList());
@@ -438,7 +440,7 @@ public class SortingTest {
 		Unifiable<LList<Integer>> r = LVar.lvar();
 		List<List<Integer>> result = runStream(r,
 				qsorto(LList.ofAll(3, 2, 1, 2, 5), r, SortingTest::cmpProjection))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream()
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
@@ -452,7 +454,7 @@ public class SortingTest {
 		Unifiable<LList<Integer>> r = LVar.lvar();
 		List<List<Integer>> result = runStream(r,
 				qsorto(LList.ofAll(1, 2, 3, 4, 5), r, SortingTest::cmpProjection))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream()
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
@@ -466,7 +468,7 @@ public class SortingTest {
 		Unifiable<LList<Integer>> r = LVar.lvar();
 		List<List<Integer>> result = runStream(r,
 				qsorto(LList.ofAll(), r, SortingTest::cmpProjection))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream()
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
@@ -480,7 +482,7 @@ public class SortingTest {
 		Unifiable<LList<Integer>> r = LVar.lvar();
 		List<List<Integer>> result = runStream(r,
 				qsorto(LList.ofAll(1, 1, 1, 1), r, SortingTest::cmpProjection))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream()
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
@@ -490,7 +492,7 @@ public class SortingTest {
 	}
 
 	private static Tuple2<List<Integer>, List<Integer>> unwrapListTuple(
-			Unifiable<Tuple2<Unifiable<LList<Integer>>, Unifiable<LList<Integer>>>> t) {
+			Term<Tuple2<Unifiable<LList<Integer>>, Unifiable<LList<Integer>>>> t) {
 		return t.get()
 				.map1(l -> l.get().toValueStream().collect(Collectors.toList()))
 				.map2(l -> l.get().toValueStream().collect(Collectors.toList()));

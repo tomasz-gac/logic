@@ -7,6 +7,8 @@ import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -30,7 +32,7 @@ public class MatcheTest {
 						Matche.llist(3, (lst, d) ->
 								i.unifies(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
 				.solve(i)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 		System.out.println(result);
 		Assertions.assertThat(result)
@@ -49,7 +51,7 @@ public class MatcheTest {
 						Matche.llist(3, (lst, d) ->
 								i.unifies(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
 				.solve(i)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 		System.out.println(result);
 		Assertions.assertThat(result)
@@ -67,7 +69,7 @@ public class MatcheTest {
 						Matche.llist(3, (lst, d) ->
 								i.unifies(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
 				.solve(i)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 		System.out.println(result);
 		Assertions.assertThat(result)
@@ -83,8 +85,8 @@ public class MatcheTest {
 		List<Tuple2<Integer, Integer>> result = Utils.collect(Matche.matche(lval(Tuple.of(lval(1), lval(2))),
 						Matche.tuple((a, b) -> i.unifies(Tuple.of(a, b))))
 				.solve(i)
-				.map(Unifiable::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Unifiable::get))));
+				.map(Term::get)
+				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get))));
 		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(Tuple.of(1, 2));
@@ -95,7 +97,7 @@ public class MatcheTest {
 		Unifiable<Integer> i = LVar.lvar();
 		List<Integer> result = Utils.collect(Matche.matche(i, Matche.variable(() -> i.unifies(123)))
 				.solve(i)
-				.map(Unifiable::get));
+				.map(Term::get));
 		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123);
@@ -108,7 +110,7 @@ public class MatcheTest {
 						j.unifies(i)
 								.and(Matche.matche(j, Matche.variable(() -> j.unifies(123)))))
 				.solve(i)
-				.map(Unifiable::get));
+				.map(Term::get));
 		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123);
@@ -122,7 +124,7 @@ public class MatcheTest {
 						Matche.variable(() -> i.unifies(124)),
 						Matche.variable(() -> i.unifies(125)))
 				.solve(i)
-				.map(Unifiable::get));
+				.map(Term::get));
 		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123, 124, 125);
@@ -135,7 +137,7 @@ public class MatcheTest {
 		List<Integer> result = Utils.collect(Matche.matche(v,
 						Matche.value(i::unifies))
 				.solve(i)
-				.map(Unifiable::get));
+				.map(Term::get));
 		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123);
@@ -149,7 +151,7 @@ public class MatcheTest {
 		List<Integer> result = Utils.collect(v2.unifies(v).and(
 						Matche.matche(v2, Matche.value(i::unifies)))
 				.solve(i)
-				.map(Unifiable::get));
+				.map(Term::get));
 		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123);
@@ -165,7 +167,7 @@ public class MatcheTest {
 								Matche.value(val -> i.unifies(val + 1)),
 								Matche.value(val -> i.unifies(val + 2)))
 						.solve(i)
-						.map(Unifiable::get));
+						.map(Term::get));
 		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123, 124, 125);

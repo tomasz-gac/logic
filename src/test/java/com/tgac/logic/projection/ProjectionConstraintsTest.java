@@ -2,6 +2,8 @@ package com.tgac.logic.projection;
 
 import static com.tgac.logic.unification.LVar.lvar;
 
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,7 +20,7 @@ public class ProjectionConstraintsTest {
 		List<Integer> results = x.unifies(3)
 				.and(ProjectionConstraints.project(x, v -> y.unifies(2 * v)))
 				.solve(y)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		Assertions.assertThat(results)
@@ -34,7 +36,7 @@ public class ProjectionConstraintsTest {
 				ProjectionConstraints.project(x, v -> y.unifies(2 * v))
 						.and(x.unifies(3))
 				.solve(y)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		Assertions.assertThat(results)
@@ -52,7 +54,7 @@ public class ProjectionConstraintsTest {
 						.and(x.unifies(y))
 						.and(y.unifies(3))
 				.solve(z)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		Assertions.assertThat(results)

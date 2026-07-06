@@ -13,6 +13,7 @@ import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
@@ -58,7 +59,7 @@ public abstract class Domain<T> {
 	 * 	since we look up variables in d only when they are not in s.)
 	 * </pre>
 	 */
-	public Goal processDom(Unifiable<T> x) {
+	public Goal processDom(Term<T> x) {
 		return a -> {
 			if (x.isVal()) {
 				return this.contains(x.get()) ?

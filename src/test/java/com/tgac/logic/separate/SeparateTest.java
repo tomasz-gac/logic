@@ -14,6 +14,8 @@ import com.tgac.logic.LogicTest;
 import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -35,7 +37,7 @@ public class SeparateTest {
 		List<Integer> result = LogicTest.runStream(out,
 						separate(out, lval(2)),
 						CKanren.unify(out, lval(3)))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 		System.out.println(result);
 		assertThat(result).containsExactly(3);
@@ -67,7 +69,7 @@ public class SeparateTest {
 										.and(separate(p, lval(Tuple.of(lval(3), lval(2)))))
 										.and(x.unifies(3))
 										.and(out.unifies(3))))
-						.map(Unifiable::get))
+						.map(Term::get))
 				.containsExactly(3);
 	}
 
@@ -103,7 +105,7 @@ public class SeparateTest {
 						Logic.<LList<Integer>> exist(l ->
 								l.unifies(LList.ofAll(3, 2, 3, 2))
 										.and(brokenRembero(l, lval(2), out))))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
 				.collect(Collectors.toList());
 		System.out.println(result.stream().map(Object::toString).collect(Collectors.joining("\n")));
@@ -130,13 +132,13 @@ public class SeparateTest {
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
 		System.out.println(result);
-		// {({(<_.3>, <_.2>)}, {(<_.2>, <_.3>)} . <_.4>)} : (<_.3> ≠ {3}) || (<_.2> ≠ {2}) || (<_.2> ≠ {8} && <_.3> ≠ {7})
+		// {({(<_.0>, <_.1>)}, {(<_.1>, <_.0>)} . <_.2>)} : (<_.0> ≠ {3}) || (<_.1> ≠ {2}) || (<_.1> ≠ {8} && <_.0> ≠ {7})
 		assertThat(result)
-				.contains("{({(<_.3>, <_.2>)}, {(<_.2>, <_.3>)} . <_.4>)}")
-				.contains("(<_.3> ≠ {3})")
-				.contains("(<_.2> ≠ {2})")
-				.contains("<_.2> ≠ {8}")
-				.contains("<_.3> ≠ {7}")
+				.contains("{({(<_.0>, <_.1>)}, {(<_.1>, <_.0>)} . <_.2>)}")
+				.contains("(<_.0> ≠ {3})")
+				.contains("(<_.1> ≠ {2})")
+				.contains("<_.1> ≠ {8}")
+				.contains("<_.0> ≠ {7}")
 				.contains("||")
 				.contains("&&");
 	}
@@ -205,7 +207,7 @@ public class SeparateTest {
 		Unifiable<LList<Integer>> out = lvar();
 		List<List<Integer>> result = runStream(out,
 				rembero(LList.ofAll(3, 2, 3, 2), lval(2), out))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
 				.collect(Collectors.toList());
 		System.out.println(result.stream().map(Object::toString).collect(Collectors.joining("\n")));
@@ -221,7 +223,7 @@ public class SeparateTest {
 						Logic.<LList<Integer>> exist(l ->
 								l.unifies(LList.ofAll(3, 2, 3, 2))
 										.and(rembero(out, lval(2), l))))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
 				.limit(10)
 				.collect(Collectors.toList());
@@ -288,7 +290,7 @@ public class SeparateTest {
 						x.unifies(1).or(x.unifies(2)),
 						x.unifies(3))
 				.solve(x)
-				.map(Unifiable::get));
+				.map(Term::get));
 
 		Assertions.assertThat(results)
 				.containsExactly(1, 2);
@@ -303,7 +305,7 @@ public class SeparateTest {
 								x.unifies(1),
 								x.unifies(3))
 						.solve(x)
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList());
 
 		Assertions.assertThat(results)
@@ -318,7 +320,7 @@ public class SeparateTest {
 							x.unifies(1).or(x.unifies(2)),
 							x.unifies(3))
 					.solve(x)
-					.map(Unifiable::get)
+					.map(Term::get)
 					.collect(Collectors.toList());
 
 			Assertions.assertThat(results)

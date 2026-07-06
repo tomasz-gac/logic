@@ -9,6 +9,8 @@ import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
@@ -49,14 +51,14 @@ public class LogicTest {
 				lst.unifies(LList.ofAll(1, 2, 3, 4)),
 				tail.unifies((LList.ofAll(2, 3, 4))),
 				lst.unifies(LList.of(head, tail)))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.flatMap(LList::toValueStream)
 				.collect(Collectors.toList());
 		assertThat(collect)
 				.containsExactly(1, 2, 3, 4);
 	}
 
-	public static <T> java.util.stream.Stream<Unifiable<T>> runStream(Unifiable<T> x, Goal... goals) {
+	public static <T> java.util.stream.Stream<Reified<T>> runStream(Unifiable<T> x, Goal... goals) {
 		return Goal.success().and(goals)
 				.solve(x);
 	}
@@ -77,7 +79,7 @@ public class LogicTest {
 		assertThat(result.get(0).get()._2.get().getHead())
 				.isEqualTo(lval(3));
 		assertThat(result.get(0).get()._2.get().getTail())
-				.matches(s -> s.asVar().isDefined());
+				.matches(s -> s.asReified().isDefined());
 	}
 
 	@Test
@@ -90,16 +92,16 @@ public class LogicTest {
 		val out = lval(Tuple.of(lst, x, res));
 		val results = runStream(out,
 				Logic.appendo(lst, x, res))
-				.map(Unifiable::asVal)
+				.map(Term::asVal)
 				.map(Option::get)
 				.limit(3)
 				.map(Object::toString)
 				.collect(Collectors.toList());
 		assertThat(results)
 				.containsExactly(
-						"({()}, <_.1>, <_.1>)",
-						"({(<_.2>)}, <_.3>, {(<_.2> . <_.3>)})",
-						"({(<_.3>, <_.4>)}, <_.5>, {(<_.3>, <_.4> . <_.5>)})");
+						"({()}, <_.0>, <_.0>)",
+						"({(<_.0>)}, <_.1>, {(<_.0> . <_.1>)})",
+						"({(<_.0>, <_.1>)}, <_.2>, {(<_.0>, <_.1> . <_.2>)})");
 		System.out.println(results.stream().map(Object::toString)
 				.collect(Collectors.joining("\n")));
 	}
@@ -118,7 +120,7 @@ public class LogicTest {
 		assertThat(result.get(0).get()
 				.stream()
 				.map(Either::get)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList()))
 				.containsExactlyElementsOf(Arrays.asList(4, 5, 6));
 	}
@@ -183,7 +185,7 @@ public class LogicTest {
 		Goal baseCase = list.unifies(LList.empty())
 				.and(accumulator.unifies(result));
 
-		// Recursive case:
+		// Fibersive case:
 		// list = [head | tail]
 		// newAccumulator = [head | accumulator]
 		// recurse with reversoAcc(tail, newAccumulator, result)
@@ -256,10 +258,10 @@ public class LogicTest {
 		assertThat(result)
 				.containsExactly(
 						"{({()}, {()})}",
-						"{({(<_.1>)}, {(<_.1>)})}",
-						"{({(<_.3>, <_.2>)}, {(<_.2>, <_.3>)})}",
-						"{({(<_.5>, <_.4>, <_.3>)}, {(<_.3>, <_.4>, <_.5>)})}",
-						"{({(<_.7>, <_.6>, <_.5>, <_.4>)}, {(<_.4>, <_.5>, <_.6>, <_.7>)})}");
+						"{({(<_.0>)}, {(<_.0>)})}",
+						"{({(<_.0>, <_.1>)}, {(<_.1>, <_.0>)})}",
+						"{({(<_.0>, <_.1>, <_.2>)}, {(<_.2>, <_.1>, <_.0>)})}",
+						"{({(<_.0>, <_.1>, <_.2>, <_.3>)}, {(<_.3>, <_.2>, <_.1>, <_.0>)})}");
 	}
 
 	@Test
@@ -274,19 +276,19 @@ public class LogicTest {
 						.map(Object::toString)
 						.collect(Collectors.joining("\n")))
 				.isEqualTo(
-						"{(<_.99>, <_.98>, <_.97>, <_.96>, <_.95>, <_.94>, <_.93>, <_.92>, "
-								+ "<_.91>, <_.90>, <_.89>, <_.88>, <_.87>, <_.86>, <_.85>, <_.84>, "
-								+ "<_.83>, <_.82>, <_.81>, <_.80>, <_.79>, <_.78>, <_.77>, <_.76>, "
-								+ "<_.75>, <_.74>, <_.73>, <_.72>, <_.71>, <_.70>, <_.69>, <_.68>, "
-								+ "<_.67>, <_.66>, <_.65>, <_.64>, <_.63>, <_.62>, <_.61>, <_.60>, "
-								+ "<_.59>, <_.58>, <_.57>, <_.56>, <_.55>, <_.54>, <_.53>, <_.52>, "
-								+ "<_.51>, <_.50>, <_.50>, <_.51>, <_.52>, <_.53>, <_.54>, <_.55>, "
-								+ "<_.56>, <_.57>, <_.58>, <_.59>, <_.60>, <_.61>, <_.62>, <_.63>, "
-								+ "<_.64>, <_.65>, <_.66>, <_.67>, <_.68>, <_.69>, <_.70>, <_.71>, "
-								+ "<_.72>, <_.73>, <_.74>, <_.75>, <_.76>, <_.77>, <_.78>, <_.79>, "
-								+ "<_.80>, <_.81>, <_.82>, <_.83>, <_.84>, <_.85>, <_.86>, <_.87>, "
-								+ "<_.88>, <_.89>, <_.90>, <_.91>, <_.92>, <_.93>, <_.94>, <_.95>, "
-								+ "<_.96>, <_.97>, <_.98>, <_.99>)}");
+						"{(<_.0>, <_.1>, <_.2>, <_.3>, <_.4>, <_.5>, <_.6>, <_.7>, "
+								+ "<_.8>, <_.9>, <_.10>, <_.11>, <_.12>, <_.13>, <_.14>, <_.15>, "
+								+ "<_.16>, <_.17>, <_.18>, <_.19>, <_.20>, <_.21>, <_.22>, <_.23>, "
+								+ "<_.24>, <_.25>, <_.26>, <_.27>, <_.28>, <_.29>, <_.30>, <_.31>, "
+								+ "<_.32>, <_.33>, <_.34>, <_.35>, <_.36>, <_.37>, <_.38>, <_.39>, "
+								+ "<_.40>, <_.41>, <_.42>, <_.43>, <_.44>, <_.45>, <_.46>, <_.47>, "
+								+ "<_.48>, <_.49>, <_.49>, <_.48>, <_.47>, <_.46>, <_.45>, <_.44>, "
+								+ "<_.43>, <_.42>, <_.41>, <_.40>, <_.39>, <_.38>, <_.37>, <_.36>, "
+								+ "<_.35>, <_.34>, <_.33>, <_.32>, <_.31>, <_.30>, <_.29>, <_.28>, "
+								+ "<_.27>, <_.26>, <_.25>, <_.24>, <_.23>, <_.22>, <_.21>, <_.20>, "
+								+ "<_.19>, <_.18>, <_.17>, <_.16>, <_.15>, <_.14>, <_.13>, <_.12>, "
+								+ "<_.11>, <_.10>, <_.9>, <_.8>, <_.7>, <_.6>, <_.5>, <_.4>, "
+								+ "<_.3>, <_.2>, <_.1>, <_.0>)}");
 	}
 
 	public <A> Goal palindromo(Unifiable<LList<A>> palindrome) {
@@ -340,7 +342,7 @@ public class LogicTest {
 		List<Integer> xs = runStream(x,
 				lst.unifies(LList.ofAll(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)),
 				Logic.membero(x, lst))
-				.map(Unifiable::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 		System.out.println(xs);
 		assertThat(xs)
@@ -368,8 +370,8 @@ public class LogicTest {
 		var result = Utils.collect(Matche.matche(out,
 						Matche.tuple(Logic::conjo))
 				.solve(out)
-				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+				.map(Term::get)
+				.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(result)
 				.allMatch(t -> (t._1 && t._2) == t._3);
@@ -381,8 +383,8 @@ public class LogicTest {
 		var result = Utils.collect(Matche.matche(out,
 						Matche.tuple(Logic::disjo))
 				.solve(out)
-				.map(Unifiable::get)
-				.map(t -> t.map(Unifiable::get, Unifiable::get, Unifiable::get)));
+				.map(Term::get)
+				.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(result)
 				.allMatch(t -> (t._1 || t._2) == t._3);
@@ -395,7 +397,7 @@ public class LogicTest {
 		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.anyo(out, lval(true)))
 				.solve(out)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
@@ -411,7 +413,7 @@ public class LogicTest {
 		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.anyo(out, lval(false)))
 				.solve(out)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
@@ -426,7 +428,7 @@ public class LogicTest {
 		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.allo(out, lval(false)))
 				.solve(out)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
@@ -442,7 +444,7 @@ public class LogicTest {
 		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.allo(out, lval(true)))
 				.solve(out)
-				.map(Unifiable::get)
+				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
 		System.out.println(result);
@@ -461,7 +463,7 @@ public class LogicTest {
 								result,
 								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l + r)))
 						.solve(result)
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactly(26);
 	}
@@ -476,7 +478,7 @@ public class LogicTest {
 								result,
 								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l - r)))
 						.solve(result)
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactly(-60);
 	}
@@ -491,7 +493,7 @@ public class LogicTest {
 								result,
 								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l - r)))
 						.solve(result)
-						.map(Unifiable::get)
+						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactly(0);
 	}

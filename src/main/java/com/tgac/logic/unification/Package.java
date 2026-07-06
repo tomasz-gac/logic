@@ -1,9 +1,7 @@
 package com.tgac.logic.unification;
 
-import com.tgac.logic.ckanren.ConstraintStore;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
-import java.util.Map;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -12,7 +10,7 @@ import lombok.Value;
 @RequiredArgsConstructor(access = AccessLevel.PUBLIC, staticName = "of")
 public class Package {
 
-	HashMap<LVar<?>, Unifiable<?>> substitutions;
+	HashMap<LVar<?>, Term<?>> substitutions;
 
 	LinkedHashMap<Class<? extends Store>, Store> constraints;
 
@@ -20,25 +18,26 @@ public class Package {
 		return new Package(HashMap.empty(), LinkedHashMap.empty());
 	}
 
-	public Package extendS(HashMap<LVar<?>, Unifiable<?>> s) {
+	public Package extendS(HashMap<LVar<?>, Term<?>> s) {
 		return new Package(substitutions.merge(s), constraints);
 	}
 
-	public Package withSubstitutions(HashMap<LVar<?>, Unifiable<?>> s) {
+	public Package withSubstitutions(HashMap<LVar<?>, Term<?>> s) {
 		return new Package(s, constraints);
 	}
 
-	<T> Package put(LVar<T> key, Unifiable<T> value) {
+	<T> Package put(LVar<T> key, Term<T> value) {
 		return Package.of(substitutions.put(key, value), constraints);
 	}
 
 	@SuppressWarnings("unchecked")
-	<T> Unifiable<T> get(LVar<T> v) {
-		return (Unifiable<T>) substitutions.getOrElse(v, null);
+	<T> Term<T> get(LVar<T> v) {
+		return (Term<T>) substitutions.getOrElse(v, null);
 	}
 
-	public <T> Unifiable<T> walk(Unifiable<T> v) {
-		if (v.asVal().isDefined()) {
+	public <T> Term<T> walk(Term<T> v) {
+		// only input vars are substitution keys; vals and reified vars walk to themselves
+		if (!v.asVar().isDefined()) {
 			return v;
 		}
 		if (get(v.getVar()) == null) {
@@ -46,22 +45,19 @@ public class Package {
 			// because we test with == to see if var is bound
 			return v;
 		}
-		Unifiable<?> result = v;
-		Unifiable<?> tmp;
-		while ((tmp = get(result.getVar())) != null) {
+		Term<?> result = v;
+		Term<?> tmp;
+		while (result.asVar().isDefined() && (tmp = get(result.getVar())) != null) {
 			result = tmp;
-			if (result.isVal()) {
-				break;
-			}
 		}
-		return (Unifiable<T>) result;
+		return (Term<T>) result;
 	}
 
 	public long size() {
 		return substitutions.size();
 	}
 
-	public Package withStore(ConstraintStore empty) {
+	public Package withStore(Store empty) {
 		if (constraints.get(empty.getClass()).isDefined()) {
 			return this;
 		} else {

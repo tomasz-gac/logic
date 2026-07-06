@@ -37,18 +37,18 @@ import lombok.Value;
 @Value
 @RequiredArgsConstructor
 public class LList<A> {
-	Unifiable<A> head;
-	Unifiable<LList<A>> tail;
+	Term<A> head;
+	Term<LList<A>> tail;
 
 	public static <A> Unifiable<LList<A>> empty() {
 		return new LList<A>(null, null).asVal();
 	}
 
-	public static <A> Unifiable<LList<A>> of(Unifiable<A> v) {
+	public static <A> Unifiable<LList<A>> of(Term<A> v) {
 		return new LList<>(v, empty()).asVal();
 	}
 
-	public static <A> Unifiable<LList<A>> of(Unifiable<A> v, Unifiable<LList<A>> c) {
+	public static <A> Unifiable<LList<A>> of(Term<A> v, Term<LList<A>> c) {
 		return new LList<>(v, c).asVal();
 	}
 
@@ -66,11 +66,11 @@ public class LList<A> {
 	}
 
 	@SafeVarargs
-	public static <A> Unifiable<LList<A>> ofAll(Unifiable<A>... items) {
+	public static <A> Unifiable<LList<A>> ofAll(Term<A>... items) {
 		return ofAll(items.length, i -> items[i]);
 	}
 
-	public static <A> Unifiable<LList<A>> ofAll(int size, IntFunction<Unifiable<A>> getter) {
+	public static <A> Unifiable<LList<A>> ofAll(int size, IntFunction<Term<A>> getter) {
 		return IntStream.range(0, size)
 				.map(i -> size - i - 1)
 				.mapToObj(getter)
@@ -89,7 +89,7 @@ public class LList<A> {
 		return LVal.lval(this);
 	}
 
-	public Stream<Either<LVar<LList<A>>, Unifiable<A>>> stream() {
+	public Stream<Either<Term<LList<A>>, Term<A>>> stream() {
 		return StreamSupport.stream(
 				Spliterators.spliteratorUnknownSize(iterator(), Spliterator.ORDERED),
 				false);
@@ -98,11 +98,11 @@ public class LList<A> {
 	public Stream<A> toValueStream() {
 		return stream()
 				.map(Either::get)
-				.map(Unifiable::get);
+				.map(Term::get);
 	}
 
-	public static <A> Collector<Unifiable<A>, ?, Unifiable<LList<A>>> collector() {
-		return Collector.<Unifiable<A>, ArrayList<Unifiable<A>>, Unifiable<LList<A>>> of(
+	public static <A> Collector<Term<A>, ?, Unifiable<LList<A>>> collector() {
+		return Collector.<Term<A>, ArrayList<Term<A>>, Unifiable<LList<A>>> of(
 				ArrayList::new,
 				ArrayList::add,
 				(lhs, rhs) -> {
@@ -172,7 +172,7 @@ public class LList<A> {
 
 	@Override
 	public String toString() {
-		List<Either<LVar<LList<A>>, Unifiable<A>>> items =
+		List<Either<Term<LList<A>>, Term<A>>> items =
 				stream()
 						.collect(Collectors.toList());
 		String delimitedItems = IntStream.range(0, items.size() - 1)
@@ -191,27 +191,25 @@ public class LList<A> {
 						.getOrElse(""));
 	}
 
-	public Iterator<Either<LVar<LList<A>>, Unifiable<A>>> iterator() {
-		Unifiable<LList<A>> that = this.asVal();
-		return new Iterator<Either<LVar<LList<A>>, Unifiable<A>>>() {
-			private Unifiable<LList<A>> tail = that;
+	public Iterator<Either<Term<LList<A>>, Term<A>>> iterator() {
+		Term<LList<A>> that = this.asVal();
+		return new Iterator<Either<Term<LList<A>>, Term<A>>>() {
+			private Term<LList<A>> tail = that;
 
 			@Override
 			public boolean hasNext() {
 				return Objects.nonNull(tail) &&
-						(tail.asVar().isDefined() ||
-								!tail.asVal().filter(LList::isEmpty).isDefined());
+						!tail.asVal().filter(LList::isEmpty).isDefined();
 			}
 
 			@Override
-			public Either<LVar<LList<A>>, Unifiable<A>> next() {
-				Either<LVar<LList<A>>, Unifiable<A>> item =
+			public Either<Term<LList<A>>, Term<A>> next() {
+				// a non-val tail is a dangling hole: the list is improper
+				Either<Term<LList<A>>, Term<A>> item =
 						tail.asVal()
 								.map(LList::getHead)
-								.map(Either::<LVar<LList<A>>, Unifiable<A>>right)
-								.getOrElse(() -> tail.asVar()
-										.map(Either::<LVar<LList<A>>, Unifiable<A>>left)
-										.get());
+								.map(Either::<Term<LList<A>>, Term<A>>right)
+								.getOrElse(() -> Either.left(tail));
 				tail = tail.asVal()
 						.map(LList::getTail)
 						.getOrElse(() -> null);

@@ -4,6 +4,7 @@ import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
+import com.tgac.logic.unification.Term;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
@@ -12,7 +13,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Stored;
-import com.tgac.logic.unification.Unifiable;
+import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,11 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
+	public boolean isEmpty() {
+		return constraints.isEmpty();
+	}
+
+	@Override
 	public ConstraintStore remove(Stored c) {
 		return NeqConstraints.of(constraints.remove((NeqConstraint) c));
 	}
@@ -57,28 +63,28 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <T> Goal enforceConstraints(Unifiable<T> x) {
+	public <T> Goal enforceConstraints(Term<T> x) {
 		return Goal.success();
 	}
 
 	@Override
 	public Goal processPrefix(
-			HashMap<LVar<?>, Unifiable<?>> newSubstitutions) {
+			HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return s -> Disequality.verifyUnify(s.withSubstitutions(newSubstitutions), s)
 				.map(Cont::<Package, Nothing>just)
 				.getOrElse(Cont.complete(Nothing.nothing()));
 	}
 
 	@Override
-	public <A> Unifiable<A> reify(Unifiable<A> unifiable, Package renamePackage, Package s) {
+	public <A> Term<A> reify(Term<A> unifiable, Package renamePackage, Package s) {
 		return walkAllConstraints(getConstraints(s), s)
 				.flatMap(c_star -> removeSubsumed(
 						purify(c_star, renamePackage),
 						List.empty())
-						.flatMap(c1 -> walkAllConstraints(c1, renamePackage)))
+						.flatMap(c1 -> Disequality.renameForDisplay(c1, renamePackage)))
 				.map(c1 -> c1.isEmpty() ?
 						unifiable :
-						Constrained.of(unifiable, c1.map(NeqConstraint::getSeparate)))
+						Constrained.of(unifiable, c1))
 				.get();
 	}
 }
