@@ -14,21 +14,16 @@ import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.debug.DebugStore;
 import com.tgac.logic.debug.Trace;
 import com.tgac.logic.tabling.Table;
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.collection.IndexedSeq;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
-import java.util.List;
 import java.util.Spliterator;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -224,38 +219,6 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 */
 	default Fiber<Goal> optimize() {
 		return done(this);
-	}
-
-	/**
-	 * Wraps this goal with debugging statements that print the state of specified variables
-	 * before and after its execution for all resulting states from this specific goal.
-	 * <pre>
-	 * Note: This method eagerly consumes the continuation produced by {@code apply(s)}
-	 * to print all states resulting from this specific goal's application. It then
-	 * returns the original continuation. If the continuation is not re-runnable or
-	 * stateful, this might affect downstream processing.
-	 * </pre>
-	 * @param name A descriptive name for this debug point.
-	 * @param vars A map of variable names to {@link Unifiable} variables whose states
-	 * should be printed.
-	 * @return A new {@link Goal} that incorporates debugging output and returns the
-	 * original continuation from this goal's application.
-	 */
-	default Goal debug(String name, IndexedSeq<Unifiable<?>> vars) {
-		return s -> {
-			System.out.println("before " + name + ": " + printVars(s, vars));
-			Cont<Package, Nothing> ss = apply(s); // Original continuation
-			List<Package> items = new ArrayList<>();
-			// Eagerly run the continuation to get all results for printing
-			ss.run(p -> {
-				items.add(p);
-				return nothing();
-			}).get(); // .get() ensures all items are processed
-			System.out.println("after " + name + ":" + items.stream()
-					.map(s1 -> "\n- " + printVars(s1, vars))
-					.collect(Collectors.joining("")));
-			return ss; // Return the original continuation
-		};
 	}
 
 	/**
@@ -462,21 +425,4 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 		return solve(out, BreadthFirstScheduler::new);
 	}
 
-	/**
-	 * A utility method to pretty-print the current bindings of specified variables
-	 * within a given state ({@link Package}).
-	 * <pre>
-	 * For each variable in the {@code vars} map, it shows its name and its fully
-	 * walked-out value in the context of the state {@code s}.
-	 * Example: "x : 1, y : [a, b]"
-	 * </pre>
-	 * @param s The current state ({@link Package}) containing variable substitutions.
-	 * @param vars A map of variable names to their {@link Unifiable} representations.
-	 * @return A string representing the current bindings.
-	 */
-	static String printVars(Package s, IndexedSeq<Unifiable<?>> vars) {
-		return vars.toJavaStream()
-				.map(v -> v.toString() + " : " + MiniKanren.walkAll(s, v).get().toString())
-				.collect(Collectors.joining(", "));
-	}
 }
