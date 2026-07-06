@@ -27,6 +27,11 @@ public class TraceTest {
 		}
 
 		@Override
+		public void onRedo(String label) {
+			ports.add("Redo " + label);
+		}
+
+		@Override
 		public void onFail(String label) {
 			ports.add("Fail " + label);
 		}
@@ -41,7 +46,7 @@ public class TraceTest {
 		long count = g.solve(x).count();
 
 		assertThat(count).isEqualTo(2);
-		assertThat(recorder.ports).containsExactly("Call g", "Exit g", "Exit g");
+		assertThat(recorder.ports).containsExactly("Call g", "Exit g", "Redo g", "Exit g");
 	}
 
 	@Test
