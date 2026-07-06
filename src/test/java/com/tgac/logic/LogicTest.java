@@ -4,7 +4,6 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.debug.Trace;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
@@ -61,7 +60,7 @@ public class LogicTest {
 
 	public static <T> java.util.stream.Stream<Reified<T>> runStream(Unifiable<T> x, Goal... goals) {
 		return Goal.success().and(goals)
-				.solve(x, Trace.printing());
+				.solve(x);
 	}
 
 	@Test
