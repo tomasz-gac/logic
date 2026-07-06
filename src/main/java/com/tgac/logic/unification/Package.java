@@ -64,4 +64,8 @@ public class Package {
 			return Package.of(substitutions, constraints.put(empty.getClass(), empty));
 		}
 	}
+
+	public Package putStore(Store store) {
+		return Package.of(substitutions, constraints.put(store.getClass(), store));
+	}
 }

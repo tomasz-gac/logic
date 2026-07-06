@@ -5,9 +5,11 @@ package com.tgac.logic.debug;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 /**
  * Wraps a goal to report the classic logic-debugger ports:
@@ -37,28 +39,38 @@ public final class Trace {
 
 		void onExit(String label, Package state);
 
-		void onRedo(String label);
+		void onRedo(String label, Package state);
 
-		void onFail(String label);
+		void onFail(String label, Package state);
 	}
 
 	private Trace() {
 	}
 
 	public static Goal traced(String label, Goal goal, Tracer tracer) {
-		return pkg -> k -> {
-			tracer.onCall(label, pkg);
+		return pkg -> tracedCont(label, goal, tracer, pkg, Function.identity());
+	}
+
+	/**
+	 * Runs {@code goal} on the {@code entered} package while reporting ports,
+	 * applying {@code restore} to each solution before handing it downstream —
+	 * the seam through which a caller restores its own spine after a box exits.
+	 */
+	public static Cont<Package, Nothing> tracedCont(String label, Goal goal, Tracer tracer,
+			Package entered, Function<Package, Package> restore) {
+		return k -> {
+			tracer.onCall(label, entered);
 			AtomicInteger exits = new AtomicInteger(0);
-			Fiber<Nothing> exploration = goal.apply(pkg).apply(answer -> {
+			Fiber<Nothing> exploration = goal.apply(entered).apply(answer -> {
 				if (exits.getAndIncrement() > 0) {
-					tracer.onRedo(label);
+					tracer.onRedo(label, entered);
 				}
 				tracer.onExit(label, answer);
-				return k.apply(answer);
+				return k.apply(restore.apply(answer));
 			});
 			return exploration.flatMap(done -> {
 				if (exits.get() == 0) {
-					tracer.onFail(label);
+					tracer.onFail(label, entered);
 				}
 				return Fiber.done(done);
 			});
@@ -72,24 +84,33 @@ public final class Trace {
 		return new Tracer() {
 			@Override
 			public void onCall(String label, Package state) {
-				out.accept("Call " + label);
+				out.accept(line("Call", label, state));
 			}
 
 			@Override
 			public void onExit(String label, Package state) {
-				out.accept("Exit " + label);
+				out.accept(line("Exit", label, state));
 			}
 
 			@Override
-			public void onRedo(String label) {
-				out.accept("Redo " + label);
+			public void onRedo(String label, Package state) {
+				out.accept(line("Redo", label, state));
 			}
 
 			@Override
-			public void onFail(String label) {
-				out.accept("Fail " + label);
+			public void onFail(String label, Package state) {
+				out.accept(line("Fail", label, state));
 			}
 		};
+	}
+
+	private static String line(String port, String label, Package state) {
+		int depth = DebugStore.from(state).map(DebugStore::depth).getOrElse(0);
+		StringBuilder indent = new StringBuilder();
+		for (int i = 1; i < depth; i++) {
+			indent.append("  ");
+		}
+		return indent + port + " " + label;
 	}
 
 	public static Tracer printing() {

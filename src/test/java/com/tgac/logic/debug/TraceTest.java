@@ -27,12 +27,12 @@ public class TraceTest {
 		}
 
 		@Override
-		public void onRedo(String label) {
+		public void onRedo(String label, Package state) {
 			ports.add("Redo " + label);
 		}
 
 		@Override
-		public void onFail(String label) {
+		public void onFail(String label, Package state) {
 			ports.add("Fail " + label);
 		}
 	}
@@ -76,6 +76,38 @@ public class TraceTest {
 		// every named goal reached reports its ports; inner nests within outer
 		assertThat(recorder.ports)
 				.containsSubsequence("Call outer", "Call inner", "Exit inner", "Exit outer");
+	}
+
+	@Test
+	public void shouldDeepenSpineForNestedGoals() {
+		java.util.Map<String, Integer> depthAtCall = new java.util.HashMap<>();
+		Tracer tracer = new Tracer() {
+			@Override
+			public void onCall(String label, Package state) {
+				depthAtCall.putIfAbsent(label,
+						DebugStore.from(state).map(DebugStore::depth).getOrElse(0));
+			}
+
+			@Override
+			public void onExit(String label, Package state) {
+			}
+
+			@Override
+			public void onRedo(String label, Package state) {
+			}
+
+			@Override
+			public void onFail(String label, Package state) {
+			}
+		};
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		Goal inner = y.unifies(10).named("inner");
+		Goal outer = x.unifies(1).and(inner).named("outer");
+		outer.solve(x, tracer).count();
+
+		assertThat(depthAtCall.get("inner")).isGreaterThan(depthAtCall.get("outer"));
 	}
 
 	@Test
