@@ -43,7 +43,6 @@ public class SummationTest {
 						.and(dom(j, Interval.of(0L, 100L)))
 						.and(dom(k, Interval.of(0L, 100L)));
 
-		System.out.println(goal);
 
 		java.util.List<Tuple3<Long, Long, Long>> result =
 				Utils.collect(goal.solve(lval(Tuple.of(i, j, k)))
@@ -53,8 +52,6 @@ public class SummationTest {
 								.map2(Term::get)
 								.map3(Term::get)));
 
-		System.out.println(Duration.between(start, Instant.now()).toMillis() / 1000.);
-		System.out.println(result.size());
 
 		Assertions.assertThat(result.stream().allMatch(t -> t._1 + t._2 == t._3))
 				.isTrue();
@@ -125,7 +122,6 @@ public class SummationTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
-		System.out.println(result);
 
 		int S = result.get(0).get(0);
 		int E = result.get(0).get(1);

@@ -87,7 +87,6 @@ public class LogicTest {
 		Unifiable<LList<Integer>> x = lvar();
 		Unifiable<LList<Integer>> lst = lvar();
 		Unifiable<LList<Integer>> res = lvar();
-		System.out.println(Logic.appendo(lst, x, res));
 
 		val out = lval(Tuple.of(lst, x, res));
 		val results = runStream(out,
@@ -102,8 +101,6 @@ public class LogicTest {
 						"({()}, <_.0>, <_.0>)",
 						"({(<_.0>)}, <_.1>, {(<_.0> . <_.1>)})",
 						"({(<_.0>, <_.1>)}, <_.2>, {(<_.0>, <_.1> . <_.2>)})");
-		System.out.println(results.stream().map(Object::toString)
-				.collect(Collectors.joining("\n")));
 	}
 
 	@Test
@@ -116,7 +113,6 @@ public class LogicTest {
 				res.unifies(LList.ofAll(1, 2, 3, 4, 5, 6)),
 				Logic.appendo(lst, x, res))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result.get(0).get()
 				.stream()
 				.map(Either::get)
@@ -135,7 +131,6 @@ public class LogicTest {
 				res.unifies(LList.ofAll(1, 2, 3, 4, 5, 6)),
 				Logic.appendo(lst, x, res))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result.get(0).get().toValueStream()
 				.collect(Collectors.toList()))
 				.containsExactlyElementsOf(Arrays.asList(1, 2, 3));
@@ -151,7 +146,6 @@ public class LogicTest {
 				lst.unifies(LList.ofAll(1, 2, 3)),
 				Logic.appendo(lst, x, res))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result.get(0).get().toValueStream()
 				.collect(Collectors.toList()))
 				.containsExactlyElementsOf(Arrays.asList(1, 2, 3, 4, 5, 6));
@@ -166,7 +160,6 @@ public class LogicTest {
 				Logic.sameLengtho(lhs, rhs))
 				.limit(10)
 				.collect(Collectors.toList());
-		System.out.println(results);
 		results.forEach(t ->
 				assertThat(t.get()._1.get().stream().count())
 						.isEqualTo(t.get()._2.get().stream().count()));
@@ -218,11 +211,6 @@ public class LogicTest {
 	@Test
 	public void shouldReverse() {
 		Unifiable<LList<Integer>> reversed = lvar();
-		System.out.println(reverso(reversed,
-				LList.ofAll(
-						IntStream.range(0, 5)
-								.boxed()
-								.collect(Collectors.toList()))));
 		val run = runStream(reversed,
 				reverso(reversed,
 						LList.ofAll(
@@ -231,7 +219,6 @@ public class LogicTest {
 										.collect(Collectors.toList()))))
 				.collect(Collectors.toList());
 
-		System.out.println(run);
 		assertThat(run.get(0))
 				.isEqualTo(lval(Stream.range(0, 5)
 						.map(i -> 5 - i - 1)
@@ -244,9 +231,6 @@ public class LogicTest {
 	public void shouldReverse2() {
 		Unifiable<LList<Integer>> normal = lvar();
 		Unifiable<LList<Integer>> reversed = lvar();
-		System.out.println(reverso(
-				normal,
-				reversed));
 		List<String> result = runStream(lval(Tuple.of(normal, reversed)),
 				reverso(
 						normal,
@@ -254,7 +238,6 @@ public class LogicTest {
 				.limit(5)
 				.map(Object::toString)
 				.collect(Collectors.toList());
-		System.out.println(String.join("\n", result));
 		assertThat(result)
 				.containsExactly(
 						"{({()}, {()})}",
@@ -326,7 +309,6 @@ public class LogicTest {
 					.stream()
 					.map(Either::get)
 					.collect(Collectors.toList());
-			System.out.println(collected);
 			for (int i = 0; i < n / 2; ++i) {
 				assertThat(collected.get(i))
 						.isEqualTo(collected.get(n - 1 - i));
@@ -344,7 +326,6 @@ public class LogicTest {
 				Logic.membero(x, lst))
 				.map(Term::get)
 				.collect(Collectors.toList());
-		System.out.println(xs);
 		assertThat(xs)
 				.containsExactly(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 	}
@@ -400,7 +381,6 @@ public class LogicTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.hasSize(7)
@@ -416,7 +396,6 @@ public class LogicTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.containsExactly(Arrays.asList(false, false, false));
@@ -431,7 +410,6 @@ public class LogicTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.hasSize(7)
@@ -447,7 +425,6 @@ public class LogicTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.containsExactly(Arrays.asList(true, true, true));

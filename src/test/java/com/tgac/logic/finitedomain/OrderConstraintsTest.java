@@ -44,7 +44,6 @@ public class OrderConstraintsTest {
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get)));
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.allMatch(t -> t._1 <= t._2);
@@ -64,7 +63,6 @@ public class OrderConstraintsTest {
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get)));
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.allMatch(t -> t._1 <= t._2);
@@ -86,7 +84,6 @@ public class OrderConstraintsTest {
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get)));
 
-		System.out.println(results);
 
 		Assertions.assertThat(results)
 				.allMatch(t -> t._1 <= 5 && t._2 <= 5);
@@ -115,7 +112,6 @@ public class OrderConstraintsTest {
 				.map(LList::toValueStream)
 				.map(s -> s.collect(Collectors.toList())));
 
-		System.out.println(result);
 		HashSet<List<Integer>> unique = new HashSet<>(result);
 		Assertions.assertThat(result)
 				.hasSameElementsAs(unique)

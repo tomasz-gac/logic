@@ -45,7 +45,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
@@ -61,7 +60,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(5L, 6L, 7L, 8L, 9L);
@@ -78,7 +76,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
@@ -95,7 +92,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
@@ -114,7 +110,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
@@ -134,7 +129,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-		System.out.println(result);
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(5L, 6L, 7L, 8L, 9L);
@@ -153,7 +147,6 @@ public class FiniteDomainTest {
 						.map(t -> t.map1(Term::get).map2(Term::get))
 						.collect(Collectors.toList());
 
-		System.out.println(results);
 
 		Assertions.assertThat(results)
 				.containsExactlyInAnyOrder(
@@ -188,7 +181,6 @@ public class FiniteDomainTest {
 		Goal goal = dom(i, Interval.of(0L, 10L))
 				.and(FiniteDomain.separate(i, lval(5L)));
 
-		System.out.println(goal);
 
 		var result = collect(goal.solve(i)
 				.map(Term::get));
@@ -243,7 +235,6 @@ public class FiniteDomainTest {
 				.map(LList::toValueStream)
 				.map(s -> s.collect(Collectors.toList())));
 
-		System.out.println(result);
 		HashSet<List<Integer>> unique = new HashSet<>(result);
 		Assertions.assertThat(result)
 				.hasSameElementsAs(unique)

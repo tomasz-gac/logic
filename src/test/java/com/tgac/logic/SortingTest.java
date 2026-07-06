@@ -67,7 +67,6 @@ public class SortingTest {
 														.and(res.unifies(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactlyInAnyOrder(Tuple.of(
 						Arrays.asList(1, 2, 3),
@@ -87,7 +86,6 @@ public class SortingTest {
 														.and(res.unifies(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactlyInAnyOrder(Tuple.of(
 						Arrays.asList(1, 2),
@@ -107,7 +105,6 @@ public class SortingTest {
 														.and(res.unifies(lval(Tuple.of(l, r)))))))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactlyInAnyOrder(Tuple.of(
 						Arrays.asList(1),
@@ -191,7 +188,6 @@ public class SortingTest {
 										l, r, SortingTest::cmpProjection))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Tuple.of(Arrays.asList(2, 1), Arrays.asList(3, 5, 4)));
 	}
@@ -210,7 +206,6 @@ public class SortingTest {
 										l, r, SortingTest::cmpProjection))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Tuple.of(Arrays.asList(1), Arrays.asList(3, 2, 4)));
 	}
@@ -224,7 +219,6 @@ public class SortingTest {
 										l, r, SortingTest::cmpProjection))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Tuple.of(Collections.emptyList(), Collections.emptyList()));
 	}
@@ -238,7 +232,6 @@ public class SortingTest {
 										l, r, SortingTest::cmpProjection))))
 				.map(SortingTest::unwrapListTuple)
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Tuple.of(Collections.emptyList(), Arrays.asList(3, 2, 1, 4)));
 	}
@@ -267,7 +260,6 @@ public class SortingTest {
 				.map(Term::get)
 				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Tuple.of(1, 5));
 	}
@@ -280,7 +272,6 @@ public class SortingTest {
 				.map(Term::get)
 				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Tuple.of(1, 5));
 	}
@@ -293,7 +284,6 @@ public class SortingTest {
 				.map(Term::get)
 				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Tuple.of(1, 1));
 	}
@@ -306,7 +296,6 @@ public class SortingTest {
 				.map(Term::get)
 				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.isEmpty();
 	}
@@ -378,7 +367,6 @@ public class SortingTest {
 				.map(LList::toValueStream)
 				.map(l -> l.collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Arrays.asList(2, 3, 4));
 	}
@@ -394,7 +382,6 @@ public class SortingTest {
 				.map(LList::toValueStream)
 				.map(l -> l.collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Arrays.asList(1, 2, 1, 3, 1, 4));
 	}
@@ -410,7 +397,6 @@ public class SortingTest {
 				.map(LList::toValueStream)
 				.map(l -> l.collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Collections.emptyList());
 	}
@@ -444,7 +430,6 @@ public class SortingTest {
 				.map(l -> l.toValueStream()
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Arrays.asList(1, 2, 2, 3, 5));
 	}
@@ -458,7 +443,6 @@ public class SortingTest {
 				.map(l -> l.toValueStream()
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Arrays.asList(1, 2, 3, 4, 5));
 	}
@@ -472,7 +456,6 @@ public class SortingTest {
 				.map(l -> l.toValueStream()
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Collections.emptyList());
 	}
@@ -486,7 +469,6 @@ public class SortingTest {
 				.map(l -> l.toValueStream()
 						.collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result)
 				.containsExactly(Arrays.asList(1, 1, 1, 1));
 	}

@@ -73,7 +73,6 @@ public class ParametersTest {
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
 								HashSet.empty()))));
 
-		System.out.println(collect);
 
 		Assertions.assertThat(collect.stream()
 						.map(p -> TestAccess.get(p, i.asVar().get()).get())
@@ -95,7 +94,6 @@ public class ParametersTest {
 										.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
 								HashSet.empty()))));
 
-		System.out.println(collect);
 
 		java.util.List<Tuple2<Long, Long>> results = collect.stream()
 				.map(p -> Tuple.of(TestAccess.get(p, i.asVar().get()).get(),
@@ -103,7 +101,6 @@ public class ParametersTest {
 				.map(t -> t.map(Term::get, Term::get))
 				.collect(Collectors.toList());
 
-		System.out.println(results);
 		Assertions.assertThat(results)
 				.containsExactlyInAnyOrder(
 						Tuple.of(0L, 0L),

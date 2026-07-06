@@ -39,7 +39,6 @@ public class SeparateTest {
 						CKanren.unify(out, lval(3)))
 				.map(Term::get)
 				.collect(Collectors.toList());
-		System.out.println(result);
 		assertThat(result).containsExactly(3);
 	}
 
@@ -108,7 +107,6 @@ public class SeparateTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result.stream().map(Object::toString).collect(Collectors.joining("\n")));
 		assertThat(result)
 				.containsExactlyInAnyOrder(
 						Arrays.asList(3, 3, 2),
@@ -131,7 +129,6 @@ public class SeparateTest {
 										.and(separate(dummy, lval(5)))))
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
-		System.out.println(result);
 		// {({(<_.0>, <_.1>)}, {(<_.1>, <_.0>)} . <_.2>)} : (<_.0> ≠ {3}) || (<_.1> ≠ {2}) || (<_.1> ≠ {8} && <_.0> ≠ {7})
 		assertThat(result)
 				.contains("{({(<_.0>, <_.1>)}, {(<_.1>, <_.0>)} . <_.2>)}")
@@ -154,7 +151,6 @@ public class SeparateTest {
 										.and(separate(z, lval(2)))))
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
-		System.out.println(result);
 		assertThat(result)
 				.isEqualTo("<_.0> : (<_.0> ≠ {3})");
 	}
@@ -173,7 +169,6 @@ public class SeparateTest {
 										.and(separate(y, lval(3)))))
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
-		System.out.println(result);
 		assertThat(result)
 				.isEqualTo("{(<_.0>, <_.1>)} : (<_.0> ≠ {3})");
 	}
@@ -210,7 +205,6 @@ public class SeparateTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
 				.collect(Collectors.toList());
-		System.out.println(result.stream().map(Object::toString).collect(Collectors.joining("\n")));
 		assertThat(result)
 				.containsExactlyInAnyOrder(
 						Arrays.asList(3, 3, 2));
@@ -227,7 +221,6 @@ public class SeparateTest {
 				.map(l -> l.toValueStream().collect(Collectors.toList()))
 				.limit(10)
 				.collect(Collectors.toList());
-		System.out.println(result.stream().map(Object::toString).collect(Collectors.joining("\n")));
 		assertThat(result)
 				.containsExactlyInAnyOrder(
 						Arrays.asList(2, 3, 2, 3, 2),

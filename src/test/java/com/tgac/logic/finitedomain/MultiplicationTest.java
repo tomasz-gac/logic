@@ -184,7 +184,6 @@ public class MultiplicationTest {
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
-		System.out.println(collect);
 
 		Assertions.assertThat(collect)
 				.containsExactlyInAnyOrder(
@@ -239,7 +238,6 @@ public class MultiplicationTest {
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get, Term::get)));
 
-		System.out.println(results);
 		Assertions.assertThat(results)
 				.containsExactlyInAnyOrder(
 						Tuple.of(-6, 3, -1, -3),

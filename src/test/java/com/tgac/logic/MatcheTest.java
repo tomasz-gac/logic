@@ -34,7 +34,6 @@ public class MatcheTest {
 				.solve(i)
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(
 						Collections.singletonList(1), // from 1
@@ -53,7 +52,6 @@ public class MatcheTest {
 				.solve(i)
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(
 						Arrays.asList(1, 2) // from 2, d=2
@@ -71,7 +69,6 @@ public class MatcheTest {
 				.solve(i)
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(
 						Arrays.asList(1, 2, 3, 4, 5), // from 2, d=2, 3, 4, 5
@@ -87,7 +84,6 @@ public class MatcheTest {
 				.solve(i)
 				.map(Term::get)
 				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get))));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(Tuple.of(1, 2));
 	}
@@ -98,7 +94,6 @@ public class MatcheTest {
 		List<Integer> result = Utils.collect(Matche.matche(i, Matche.variable(() -> i.unifies(123)))
 				.solve(i)
 				.map(Term::get));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123);
 	}
@@ -111,7 +106,6 @@ public class MatcheTest {
 								.and(Matche.matche(j, Matche.variable(() -> j.unifies(123)))))
 				.solve(i)
 				.map(Term::get));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123);
 	}
@@ -125,7 +119,6 @@ public class MatcheTest {
 						Matche.variable(() -> i.unifies(125)))
 				.solve(i)
 				.map(Term::get));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123, 124, 125);
 	}
@@ -138,7 +131,6 @@ public class MatcheTest {
 						Matche.value(i::unifies))
 				.solve(i)
 				.map(Term::get));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123);
 	}
@@ -152,7 +144,6 @@ public class MatcheTest {
 						Matche.matche(v2, Matche.value(i::unifies)))
 				.solve(i)
 				.map(Term::get));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123);
 	}
@@ -168,7 +159,6 @@ public class MatcheTest {
 								Matche.value(val -> i.unifies(val + 2)))
 						.solve(i)
 						.map(Term::get));
-		System.out.println(result);
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(123, 124, 125);
 	}

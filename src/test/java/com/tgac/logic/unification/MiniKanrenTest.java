@@ -232,12 +232,10 @@ public class MiniKanrenTest {
 
 		Tuple3<Integer, Unifiable<String>, Unifiable<Boolean>> x1 =
 				MiniKanren.walk(s, x).get();
-		System.out.println(x1);
 		assertThat(x1._1)
 				.isEqualTo(3);
 		assertThat(x1)
 				.isEqualTo(t1);
-		System.out.println(s);
 		assertThat(MiniKanren.walkAll(s, t1._2).get())
 				.isEqualTo(lval("Anthony"));
 		assertThat(MiniKanren.walk(s, t2._3).get())
@@ -260,8 +258,6 @@ public class MiniKanrenTest {
 		s = MiniKanren.unify(s, lval(m1), lval(m2)).get().get();
 
 		Term<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x1 = MiniKanren.walkAll(s, x).get();
-		System.out.println(x1);
-		System.out.println(x1.get().get("v1").get()._2.asVal());
 		assertThat(MiniKanren.walk(s, x).get())
 				.isEqualTo(m1);
 		assertThat(MiniKanren.walk(s, x).get())
@@ -391,7 +387,6 @@ public class MiniKanrenTest {
 						.or(unify(x, y), unify(x, 3))
 						.or(unify(x, y), unify(x, 3), unify(y, 3)))
 				.collect(Collectors.toList());
-		System.out.println(result);
 		Assertions.assertThat(result.get(0).get())
 				.isEqualTo(Tuple.of(lval(2), lval(2)));
 		Assertions.assertThat(result.get(1).get())
