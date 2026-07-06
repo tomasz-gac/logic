@@ -109,6 +109,23 @@ public class TraceTest {
 	}
 
 	@Test
+	public void traceSolvesAndPrints() {
+		java.io.ByteArrayOutputStream captured = new java.io.ByteArrayOutputStream();
+		java.io.PrintStream original = System.out;
+		System.setOut(new java.io.PrintStream(captured));
+		long count;
+		try {
+			Unifiable<Integer> x = lvar();
+			count = x.unifies(1).named("g").trace(x).count();
+		} finally {
+			System.setOut(original);
+		}
+
+		assertThat(count).isEqualTo(1);
+		assertThat(captured.toString()).contains("Call g").contains("Exit g");
+	}
+
+	@Test
 	public void shouldFilterPortsByLabel() {
 		Recorder recorder = new Recorder();
 		Unifiable<Integer> x = lvar();

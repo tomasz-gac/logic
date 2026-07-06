@@ -357,6 +357,16 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 				out, DepthFirstScheduler::of);
 	}
 
+	/**
+	 * Solves this goal while printing a box-model trace to standard out.
+	 * Convenience for {@code solve(out, Trace.printing())}; consume the returned
+	 * stream to drive the search. Use {@link Trace#spy} or {@link Trace.Tracer#filter}
+	 * with {@link #solve(Unifiable, Trace.Tracer)} to focus the trace.
+	 */
+	default <T> Stream<Reified<T>> trace(Unifiable<T> out) {
+		return solve(out, Trace.printing());
+	}
+
 	default <T> Stream<Reified<T>> solveFrom(
 			Package root,
 			Unifiable<T> out,
