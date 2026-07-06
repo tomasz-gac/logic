@@ -35,6 +35,10 @@ import static com.tgac.logic.unification.LVal.lval;
  * terminates, and whoever derives a new answer respawns the parked consumers
  * as detached fibers. The search reaches its fixpoint when the scheduler
  * runs out of work; parked consumers left at that point are failed branches.
+ *
+ * Committed choice (conda/condu/orElse) over tabled goals is undefined
+ * behavior: commitment depends on table state, incomplete tables never
+ * signal failure, and pruning a branch cannot undo its table effects.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Tabling {
