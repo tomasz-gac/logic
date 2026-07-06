@@ -70,6 +70,31 @@ public class StoreSupport {
 								.getOrElse(() -> null)));
 	}
 
+	/**
+	 * Re-runs every constraint store against the newly added substitutions.
+	 *
+	 * <p>Each store is handed the original package {@code p} so it computes its
+	 * prefix (and verifies) against the pre-unification substitutions, not against
+	 * a package a previous store already mutated. That keeps composed stores from
+	 * starving one another of the prefix.
+	 *
+	 * <p><b>Limitation — this is not a general constraint solver.</b> The stores
+	 * are composed as a single ordered pass ({@code Goal::and}) and each replaces
+	 * the substitution map with the new one. This is sound only for independent
+	 * domains that do not add substitutions during propagation. It is <em>not</em>
+	 * correct in general when:
+	 * <ul>
+	 *   <li>a store binds a variable during propagation (e.g. a finite domain
+	 *       narrowing to a singleton) — a later store's substitution replace can
+	 *       clobber that binding; and</li>
+	 *   <li>two domains mutually trigger each other — the single pass does not run
+	 *       propagation to a fixpoint, so a binding one domain infers may never be
+	 *       fed back to the other.</li>
+	 * </ul>
+	 * Combining domains whose propagation feeds each other is therefore not
+	 * guaranteed correct. A sound general solution is a fixpoint (worklist)
+	 * propagation loop over a single monotonic substitution.
+	 */
 	public static Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return p -> p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)

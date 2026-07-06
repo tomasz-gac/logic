@@ -117,7 +117,13 @@ public class Disequality {
 							.getConstraints(),
 					List.empty(),
 					newPackage.getSubstitutions())
-					// TODO : verify
+					// Rebuilds the package from newPackage's substitutions and stores,
+					// replacing only the disequality store with its simplified form. This
+					// is correct when disequality is the only constraint domain in play.
+					// Under multiple domains it is not sound in general: newPackage holds
+					// the substitutions this store was handed, so a binding a different
+					// store added earlier in the same processPrefix pass is not reflected
+					// here. See StoreSupport#processPrefix for the composition limitation.
 					.map(c -> Package.of(
 							newPackage.getSubstitutions(),
 							newPackage.getConstraints().put(NeqConstraints.class, NeqConstraints.of(c))));
