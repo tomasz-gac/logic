@@ -51,10 +51,21 @@ public class Tabling {
 	 * @param name display name for traces; the cache is keyed on the
 	 * 		relation's identity, so equal names do not collide
 	 * @param body the relation body, given the recursion handle and the
-	 * 		argument tuple
+	 * 		argument tuple; use {@link #define(String, Function)} when the
+	 * 		handle is not needed
 	 */
-	public static <T> Tabled<T> define(String name, Function<Tabled<T>, Function<T, Goal>> body) {
+	public static <T> Tabled<T> defineRecursive(String name, Function<Tabled<T>, Function<T, Goal>> body) {
 		return new Tabled<>(name, body);
+	}
+
+	/**
+	 * Define a tabled relation without the recursion handle: non-recursive,
+	 * or recursing through a field read at goal execution time. The relation
+	 * must still be created exactly once — a body that calls define again
+	 * mints a new cache per call.
+	 */
+	public static <T> Tabled<T> define(String name, Function<T, Goal> body) {
+		return defineRecursive(name, self -> body);
 	}
 
 	/**

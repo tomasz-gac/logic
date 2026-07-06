@@ -37,11 +37,11 @@ public class TablingTest {
 	 * ancestor(X, Y) :- parent(X, Z), ancestor(Z, Y).
 	 */
 	private final Tabled<Tuple2<Unifiable<String>, Unifiable<String>>> ancestor =
-			Tabling.define("ancestor", self -> args -> args.apply((x, y) ->
+			Tabling.define("ancestor", args -> args.apply((x, y) ->
 					parent(x, y)
 							.or(defer(() -> {
 								Unifiable<String> z = lvar();
-								return parent(x, z).and(self.apply(Tuple.of(z, y)));
+								return parent(x, z).and(ancestor(z, y));
 							}))));
 
 	private Goal ancestor(Unifiable<String> x, Unifiable<String> y) {
@@ -123,7 +123,7 @@ public class TablingTest {
 	public void testTabledGoalWithNoAnswers() {
 		// A tabled relation whose body can never succeed
 		Tabled<Tuple1<Unifiable<Integer>>> alwaysFail =
-				Tabling.define("fail", self -> args -> args.apply(x ->
+				Tabling.define("fail", args -> args.apply(x ->
 						x.unifies(1).and(x.unifies(2))));
 
 		Unifiable<Integer> x = lvar();
@@ -135,7 +135,7 @@ public class TablingTest {
 	@Test
 	public void testTabledGoalWithSingleAnswer() {
 		Tabled<Tuple1<Unifiable<Integer>>> single =
-				Tabling.define("single", self -> args -> args.apply(x ->
+				Tabling.define("single", args -> args.apply(x ->
 						x.unifies(42)));
 
 		Unifiable<Integer> x = lvar();
@@ -150,7 +150,7 @@ public class TablingTest {
 	public void testTabledGoalWithNonGroundArgs() {
 		// A call with free arguments tables on the variant key
 		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> numRel =
-				Tabling.define("numRel", self -> args -> args.apply((a, b) ->
+				Tabling.define("numRel", args -> args.apply((a, b) ->
 						a.unifies(1).and(b.unifies(2))
 								.or(a.unifies(2).and(b.unifies(3)))
 								.or(a.unifies(3).and(b.unifies(4)))));
@@ -172,7 +172,7 @@ public class TablingTest {
 	// ============================================
 
 	private final Tabled<Tuple1<Unifiable<Integer>>> even =
-			Tabling.define("even", self -> args -> args.apply(num -> {
+			Tabling.define("even", args -> args.apply(num -> {
 				// Base case: 0 is even
 				Goal base = num.unifies(0);
 
@@ -190,7 +190,7 @@ public class TablingTest {
 			}));
 
 	private final Tabled<Tuple1<Unifiable<Integer>>> odd =
-			Tabling.define("odd", self -> args -> args.apply(num -> {
+			Tabling.define("odd", args -> args.apply(num -> {
 				// Base case: 1 is odd
 				Goal base = num.unifies(1);
 
@@ -252,7 +252,7 @@ public class TablingTest {
 			}
 
 			final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> reach =
-					Tabling.define("reach", self -> args -> args.apply((x, y) ->
+					Tabling.defineRecursive("reach", self -> args -> args.apply((x, y) ->
 							link(x, y)
 									.or(defer(() -> {
 										Unifiable<Integer> z = lvar();
@@ -279,7 +279,7 @@ public class TablingTest {
 	@Test
 	public void testManyAnswers() {
 		Tabled<Tuple1<Unifiable<Integer>>> manyNumbers =
-				Tabling.define("numbers", self -> args -> args.apply(x -> {
+				Tabling.define("numbers", args -> args.apply(x -> {
 					Goal result = Goal.failure();
 					for (int i = 0; i < 100; i++) {
 						final int num = i;
@@ -332,7 +332,7 @@ public class TablingTest {
 	@Test
 	public void testTablingWithNestedStructures() {
 		Tabled<Tuple1<Unifiable<Tuple2<String, String>>>> familyPair =
-				Tabling.define("familyPair", self -> args -> args.apply(p ->
+				Tabling.define("familyPair", args -> args.apply(p ->
 						p.unifies(Tuple.of("alice", "bob"))
 								.or(p.unifies(Tuple.of("bob", "charlie")))
 								.or(p.unifies(Tuple.of("charlie", "david")))));

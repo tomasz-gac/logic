@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class TableTest {
 
 	private static <T> Tabled<T> relation(String name) {
-		return Tabling.define(name, self -> args -> Goal.success());
+		return Tabling.define(name, args -> Goal.success());
 	}
 
 	private static Call call(Tabled<?> relation, Object args) {

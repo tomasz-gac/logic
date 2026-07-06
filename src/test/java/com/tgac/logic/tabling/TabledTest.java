@@ -28,7 +28,7 @@ public class TabledTest {
 	}
 
 	private final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> path =
-			Tabling.define("path", self -> args -> args.apply((x, y) ->
+			Tabling.defineRecursive("path", self -> args -> args.apply((x, y) ->
 					edge(x, y)
 							.or(defer(() -> {
 								Unifiable<Integer> z = lvar();
@@ -68,9 +68,9 @@ public class TabledTest {
 	public void shouldNotShareCachesBetweenRelationsWithTheSameName() {
 		// two distinct relations that happen to share a display name
 		Tabled<Tuple1<Unifiable<Integer>>> constant1 =
-				Tabling.define("same", self -> args -> args.apply(x -> x.unifies(1)));
+				Tabling.define("same", args -> args.apply(x -> x.unifies(1)));
 		Tabled<Tuple1<Unifiable<Integer>>> constant2 =
-				Tabling.define("same", self -> args -> args.apply(x -> x.unifies(2)));
+				Tabling.define("same", args -> args.apply(x -> x.unifies(2)));
 
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
@@ -89,7 +89,7 @@ public class TabledTest {
 	@Test
 	public void shouldDeduplicateAlphaEquivalentAnswers() {
 		Tabled<Tuple1<Unifiable<Object>>> pairs =
-				Tabling.define("pairs", self -> args -> args.apply(q -> {
+				Tabling.define("pairs", args -> args.apply(q -> {
 					Goal first = defer(() -> {
 						Unifiable<Integer> a = lvar();
 						return q.unifies(Tuple.of(a, 1));
@@ -103,6 +103,31 @@ public class TabledTest {
 
 		Unifiable<Object> p = lvar();
 		long count = pairs.apply(Tuple.of(p)).solve(p).count();
+
+		assertThat(count).isEqualTo(1);
+	}
+
+	private final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> pathNoSelf =
+			Tabling.define("pathNoSelf", args -> args.apply((x, y) ->
+					edge(x, y)
+							.or(defer(() -> {
+								Unifiable<Integer> z = lvar();
+								return pathNoSelf(x, z).and(edge(z, y));
+							}))));
+
+	private Goal pathNoSelf(Unifiable<Integer> x, Unifiable<Integer> y) {
+		return pathNoSelf.apply(Tuple.of(x, y));
+	}
+
+	@Test(timeout = 5000)
+	public void shouldRecurseThroughAFieldWithoutTheSelfHandle() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		long count = x.unifies(1).and(y.unifies(4))
+				.and(pathNoSelf(x, y))
+				.solve(lvar())
+				.count();
 
 		assertThat(count).isEqualTo(1);
 	}
