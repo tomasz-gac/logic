@@ -122,5 +122,7 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 
 - `docs/design/constraint-propagation.md` — the propagator/fixpoint design, phased.
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
+- `docs/design/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
+  together, AND why NOT to merge them into one engine prematurely.
 - This file — architecture, landmines, workflow.
 - Commit history is descriptive; read it when a change looks surprising.
