@@ -4,7 +4,7 @@ import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
-import com.tgac.logic.ckanren.store.ConstraintStore.Revision;
+import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;

@@ -5,7 +5,7 @@
  * com.tgac.logic.ckanren.store.ConstraintStore} is one constraint domain's factor
  * of the package (finite domains, disequality, projection), living for the whole
  * derivation. When the chokepoint applies a prefix, each store returns a {@link
- * com.tgac.logic.ckanren.store.ConstraintStore.Revision} — AC-3's REVISE as a value: at most its
+ * com.tgac.logic.ckanren.store.Revision} — AC-3's REVISE as a value: at most its
  * own replaced factor plus emitted inferences; touching the substitutions or
  * another store's entry is not expressible.
  *

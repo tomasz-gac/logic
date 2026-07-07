@@ -4,7 +4,7 @@
  * The propagator protocol — the unit of scheduling. A {@link
  * com.tgac.logic.ckanren.propagator.Propagator} is one parked constraint watching
  * terms; when a watched term changes, the driver re-runs it and administers its
- * {@link com.tgac.logic.ckanren.propagator.Propagator.Verdict}: the propagator rules only on
+ * {@link com.tgac.logic.ckanren.propagator.Verdict}: the propagator rules only on
  * its own lifecycle (keep parked, subsumed, fail the branch, splice a goal) and
  * emits {@link com.tgac.logic.ckanren.propagator.Inference}s — the only vocabulary
  * for information crossing package factors ({@code bind} grows the substitution,
