@@ -71,29 +71,41 @@ public class StoreSupport {
 	}
 
 	/**
-	 * Re-runs every constraint store against the newly added substitutions.
+	 * The constraint chokepoint: applies newly inferred substitutions and lets every
+	 * constraint domain respond. This is the ONLY way substitutions may grow in
+	 * constraint-aware code — user unification ({@link CKanren#unify}), finite-domain
+	 * collapse inference and labelling all route through here, which is what makes an
+	 * inferred binding indistinguishable from a unification.
 	 *
-	 * <p>Each store is handed the original package {@code p} so it computes its
-	 * prefix (and verifies) against the pre-unification substitutions, not against
-	 * a package a previous store already mutated. That keeps composed stores from
-	 * starving one another of the prefix.
+	 * <p>Order of events:
+	 * <ol>
+	 *   <li>the extension is applied exactly once ({@code extendS}, monotonic);</li>
+	 *   <li>every {@link ConstraintStore}'s {@code processPrefix} reaction runs on the
+	 *       extended package (verify, narrow its own factor, or fail) — stores never
+	 *       touch the substitutions themselves; each receives the pre-extension
+	 *       package {@code p} to diff the prefix against;</li>
+	 *   <li>every store's suspended constraints watching a newly bound variable are
+	 *       woken (remove-and-rerun) via the cross-store {@link #pendingConstraints}
+	 *       list. A woken constraint that infers further bindings re-enters this
+	 *       method — that recursion is the propagation fixpoint, trampolined by the
+	 *       continuation substrate.</li>
+	 * </ol>
 	 *
-	 * <p><b>Limitation — this is not a general constraint solver.</b> The stores
-	 * are composed as a single ordered pass ({@code Goal::and}) and each replaces
-	 * the substitution map with the new one. This is sound only for independent
-	 * domains that do not add substitutions during propagation. It is <em>not</em>
-	 * correct in general when:
+	 * <p>Contract for callers:
 	 * <ul>
-	 *   <li>a store binds a variable during propagation (e.g. a finite domain
-	 *       narrowing to a singleton) — a later store's substitution replace can
-	 *       clobber that binding; and</li>
-	 *   <li>two domains mutually trigger each other — the single pass does not run
-	 *       propagation to a fixpoint, so a binding one domain infers may never be
-	 *       fed back to the other.</li>
+	 *   <li>call it whenever bindings are added; never extend substitutions directly.
+	 *       {@code MiniKanren.unify} alone bypasses all constraint processing — that
+	 *       is legitimate only for deliberate trial unification (disequality's check,
+	 *       on a package stripped with {@link #withoutConstraints});</li>
+	 *   <li>pass the full new substitution map — the convention of every caller
+	 *       (a pure delta happens to behave identically since the extension is a
+	 *       merge, but do not rely on it);</li>
+	 *   <li>only genuinely new pairs: a pair contradicting an existing binding is
+	 *       silently ignored (the merge keeps the old value and the prefix diff drops
+	 *       the key) — unify instead when the variable may already be bound;</li>
+	 *   <li>the package must carry a store map ({@code getConstraints() != null});
+	 *       trial unification on stripped packages stays on {@code MiniKanren.unify}.</li>
 	 * </ul>
-	 * Combining domains whose propagation feeds each other is therefore not
-	 * guaranteed correct. A sound general solution is a fixpoint (worklist)
-	 * propagation loop over a single monotonic substitution.
 	 */
 	public static Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return p -> {
