@@ -72,10 +72,11 @@ Option<Prefix> Prefix.binding(Package p, LVar<?> x, Term<?> v);
 
 ### 2.2 `Propagator` + `Verdict` — constraint bodies report, the driver administers
 
-> **DEMOTION PLANNED (July 2026):** `minimal-constraint-vocabulary.md` moves
+> **DEMOTED (July 2026, implemented):** `minimal-constraint-vocabulary.md` moved
 > this protocol from the driver boundary to a store-implementor toolkit — the
-> driver will speak only to stores. The safety analysis below still applies,
-> one level down.
+> driver speaks only to stores; `narrowed(List<Inference>)` became
+> `update(f → Revision)`. The safety analysis below still applies, one level
+> down.
 
 Today the outcome trichotomy is smeared across `remRun` (remove), the body re-running
 `constraintOperation` (re-park), and `addTo`'s guard (discharge). The framework cannot

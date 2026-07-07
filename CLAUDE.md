@@ -11,7 +11,7 @@ tests.
 1. **TDD.** Write a failing test first, watch it fail, then make it pass. For a bug, first
    write a test that reproduces it.
 2. **The test suite is your safety net.** `mvn test` must end in `BUILD SUCCESS`. Never
-   commit or merge with a red suite. Count today: ~286 tests. If the count drops, you
+   commit or merge with a red suite. Count today: ~315 tests. If the count drops, you
    deleted or emptied a test — don't.
 3. **Test output must be pristine.** No `System.out.println` in tests or in `src/main`.
    Assert results; don't print them. (One intentional exception is documented below.)
@@ -50,14 +50,19 @@ Small, local, well-tested changes elsewhere don't need to ask.
   `DepthFirstScheduler` (Prolog order, used by tracing), `RoundRobin`, `ForkJoin`,
   `UnfairBreadthFirst`. All are drivers over `FiberStep`; they differ only in which frame
   they step next.
-- **Constraint stores** implement `ConstraintStore` (`ckanren/`): `FiniteDomainConstraints`,
-  `NeqConstraints` (disequality), `ProjectionConstraints`. `StoreSupport.processPrefix`
-  re-runs them after each unification.
+- **Constraint stores** implement `ConstraintStore` (`ckanren/store/`):
+  `FiniteDomainConstraints`, `NeqConstraints` (disequality), `ProjectionConstraints`.
+  The driver (`ckanren/Propagation`) speaks to them through three triggers — `revise`
+  (bindings arrived), `changed` (a term changed; broadcast), `stated` (your item was
+  stated) — each answered by a `Revision` (own factor + consequences). How a store
+  computes it is its own business: FD/Projection schedule parked bodies with the
+  `ckanren/propagator` toolkit; Neq re-verifies its records wholesale.
 
 Key **seams** (the places behaviour is hooked):
 - `goals/NamedGoal` — the tracing hook. A named goal reports box-model ports when a tracer
   is seeded. Zero cost otherwise.
-- `ckanren/StoreSupport.processPrefix` — where constraint stores are composed.
+- `ckanren/Propagation` — the chokepoint (`resolve`/`activate`/`changed`), the agenda
+  drain, and the revision router: where constraint stores are composed.
 - `functional`'s `FiberStep` — the single step interpreter all schedulers share.
 
 ---
@@ -65,21 +70,22 @@ Key **seams** (the places behaviour is hooked):
 ## Landmines (read before editing the relevant area)
 
 - **Constraint composition works, but only through the chokepoint.**
-  `StoreSupport.processPrefix` is the ONLY way substitutions may grow in constraint-aware
+  `Propagation.resolve(Prefix)` is the ONLY way substitutions may grow in constraint-aware
   code (its javadoc is the caller contract — read it). All bindings route through it (user
-  unify, FD collapse, labelling); stores are purely reactive (never touch substitutions);
-  wakes fire across stores on binding AND on strict domain narrowing (the equal-domain guard
-  in `Domain.updateVarDomain` is the termination guard — do not remove it). Ways to break
-  it: bypass via raw `MiniKanren.unify`/`extendS` in goal code (MiniKanren.unify is
-  legitimate only for trial unification on stripped packages); a woken constraint body that
-  doesn't re-park via `constraintOperation` silently evaporates; `processPrefix` with a pair
-  contradicting an existing binding is a silent no-op — unify instead. Use a plain `Store`
-  for transport (Table pattern) — a pass-through `ConstraintStore` is pointless cost, not
-  unsoundness (the old starvation mechanism is gone). Constraint bodies now wake on
-  narrowing too — they must tolerate any mix of wide/ground args (see the mulIntervals
-  sign-guard lesson). Details: `docs/design/constraint-propagation.md` §1.1/§4.
-- **`Package.withSubstitutions` REPLACES the substitution map; `Package.extendS` MERGES.**
-  In the constraint/propagation path you almost always want monotonic extend, not replace.
+  unify, FD collapse, labelling); a `Prefix` is mintable only by the unifier
+  (`MiniKanren.unifyPrefix`) or the checked `Prefix.binding`. Stores answer triggers with
+  `Revision`s and may swap only their OWN factor; cross-store consequences ride the
+  revision payloads (inferred prefixes, changed terms, runs). Propagators are
+  store-internal (the `ckanren/propagator` toolkit) — the framework owns parking, so
+  `keep` is default-safe and evaporation is unrepresentable. The equal-domain check in
+  `finitedomain/DomainUpdate` is the termination guard of wake-on-narrowing — do not
+  remove it. Raw `MiniKanren.unify` is legitimate only inside the unifier and for
+  Disequality's trial unification. Use a plain `Store` for transport (Table pattern).
+  Constraint bodies wake on narrowing too — they must tolerate any mix of wide/ground
+  args (see the mulIntervals sign-guard lesson).
+  Details: `docs/design/minimal-constraint-vocabulary.md`.
+- **`Package.withSubstitutions` REPLACES the substitution map.** In constraint-aware code
+  never touch it directly — obtain a `Prefix` and `resolve` it.
 - **Tracing runs depth-first.** `solve(out, tracer)` uses `DepthFirstScheduler` so the trace
   reads in Prolog order. The default `solve(out)` is fair breadth-first. Don't "fix" a trace
   by changing the default scheduler.
@@ -138,10 +144,10 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
   (native debugging, simpler tabling, natural cut) as a separate experimental module; the
   completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
-- `docs/design/minimal-constraint-vocabulary.md` — PLANNED: the driver speaks only
-  to stores (revise/changed/stated → Revision); Narrowing + Inference deleted;
-  Propagator/Verdict demote to a store-implementor toolkit. Read before touching
-  Inference/Narrowing or the wake machinery.
+- `docs/design/minimal-constraint-vocabulary.md` — IMPLEMENTED (July 2026): the driver
+  speaks only to stores (revise/changed/stated → Revision); Narrowing + Inference are
+  gone; Propagator/Verdict are a store-implementor toolkit. Read before touching the
+  constraint core or the wake machinery.
 - `docs/design/suspensions.md` — parked goals woken by bindings (freeze/when): the
   concept behind Verdict.run(Goal), its reify policy, and the extraction plan gated
   on a second customer (pldb deferred lookups).

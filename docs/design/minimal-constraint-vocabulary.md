@@ -1,8 +1,14 @@
 # The minimal constraint vocabulary — the driver speaks only to stores
 
-**Status: PLANNED (July 2026, designed with Tom; the uniform store boundary is
-Tom's call: "the driver only handles cross-store interactions, never
-intra-store"). Not implemented. Supersedes §2.4 of
+**Status: IMPLEMENTED (July 2026; the uniform store boundary is Tom's call:
+"the driver only handles cross-store interactions, never intra-store").
+Deviations from the plan, all recorded in place: the FD primitive lives in its
+own class (`finitedomain/DomainUpdate` — process-δ as a value); the enqueues
+were DELETED outright rather than privatized (zero callers remained once
+stores answered with data); `Stated` dispatches by store-class equality;
+projection's update arm throws (no projection propagator updates its factor);
+the retired dedup pin became two pins on the payload routes (changed
+broadcasts exactly once; runs splice only after quiescence — suite is 315). Supersedes §2.4 of
 `capability-constraint-api.md` (the `Inference` vocabulary), DEMOTES the
 propagator protocol from driver boundary to store-implementor toolkit, and
 FORECLOSES the data-shaped Neq→FD bridge (§6) — recorded so it is not
