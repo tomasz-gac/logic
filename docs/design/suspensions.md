@@ -1,10 +1,22 @@
 # Suspensions — parked goals woken by bindings
 
-**Status:** design direction, NOT implemented. Step 2 of
-`capability-constraint-api.md` ships the interim form (`Verdict.run(Goal)` with
-mandatory deferral — §5 below); this doc specifies the concept it will be extracted
-into, so the direction survives until its second customer arrives. Do not build the
-extraction before reading §6 (when).
+**Status: the feature IS implemented — as `Verdict.run` (July 2026).** What §5
+called the interim form turned out to be semantically complete once the two-phase
+drain was pinned (runs collect during propagation, splice only after quiescence
+with the agenda removed, execute against a quiesced store with fresh synchronous
+drains inside; the hosting store's enforceConstraints is the force policy —
+Projection's final-wake-then-throw is the loud default). A suspension today is a
+propagator returning keep (parked) or run(goal) (resume), hosted by any
+ConstraintStore:
+
+    Propagator.of(HostStore.class, watchedTerms, state ->
+            ready(state) ? Verdict.run(goal(state)) : Verdict.keep());
+
+pldb's deferred lookups — the designated second customer — are expressible this way
+directly and do NOT need the §6 extraction. The extraction is therefore DEMOTED to
+an optional naming refactor (Verdict purity + a named registry instead of a vacuous
+store); do it only if the hosting pattern proves confusing in practice. §§1–4 remain
+the concept reference; §6's mechanics remain valid if the refactor ever happens.
 
 ---
 
