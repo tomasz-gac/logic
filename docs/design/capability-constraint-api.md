@@ -63,9 +63,16 @@ Today the outcome trichotomy is smeared across `remRun` (remove), the body re-ru
 observe outcomes, and forgetting to re-park silently drops a constraint.
 
 ```java
-interface Propagator {
-	/** Variables whose binding or narrowing re-runs this propagator. */
-	Set<LVar<?>> watched();
+interface Propagator extends Stored {          // Stored: routes park/remove to its store
+	/**
+	 * Watched variables resolved against the LIVE state. Today Constraint's walked
+	 * args are a cache kept fresh only by the re-park side effect of
+	 * remove-and-rerun; once the framework owns parking (keep = untouched), that
+	 * cache would go stale under aliasing (x bound to y must wake x's watchers on
+	 * y's changes). Walking at match time makes freshness structural. Constraint is
+	 * then DELETED — it was a Propagator plus this cache plus Stored routing.
+	 */
+	Set<LVar<?>> watched(Package state);
 
 	/** Re-examine against the current state. Reads anything, mutates nothing. */
 	Verdict propagate(Package state);
