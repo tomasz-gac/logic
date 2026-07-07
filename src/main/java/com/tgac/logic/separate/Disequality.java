@@ -10,7 +10,6 @@ import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
@@ -36,34 +35,13 @@ public class Disequality {
 			// trial unification: the prefix IS the disequality's meaning — the exact
 			// simultaneous bindings that must never all hold
 			return Cont.defer(() -> MiniKanren.unifyPrefix(s, lhs, rhs)
-					.map(prefix -> {
-						if (prefix.isEmpty()) {
+					.map(prefix -> prefix.isEmpty() ?
 							// they already unify: the disequality is violated
-							return Cont.<Package, Nothing> complete(Nothing.nothing());
-						}
-						return bridgeToFiniteDomain(s, prefix.toMap())
-								.map(exclude -> exclude.apply(s))
-								.getOrElse(() -> Cont.just(s.withStored(
-										NeqConstraint.of(prefix.toMap()))));
-					})
+							Cont.<Package, Nothing> complete(Nothing.nothing()) :
+							Cont.<Package, Nothing> just(s.withStored(NeqConstraint.of(prefix.toMap()))))
 					// they cannot unify: already separate, nothing to record
 					.getOrElse(() -> Cont.just(s)));
 		};
-	}
-
-	/**
-	 * The Neq half of the disequality bridge: a single-pair prefix against a ground
-	 * value, on a variable with a finite domain, becomes a domain exclusion instead
-	 * of a stored record (cKanren's FD/≠ integration). Applies only at record
-	 * creation — a disequality stated before the domain exists keeps its record,
-	 * which stays correct through verification.
-	 */
-	private static Option<Goal> bridgeToFiniteDomain(Package s, HashMap<LVar<?>, Term<?>> prefix) {
-		return Option.of(prefix)
-				.filter(pf -> pf.size() == 1)
-				.map(pf -> pf.iterator().next())
-				.filter(binding -> binding._2.isVal())
-				.flatMap(binding -> FiniteDomain.excludeFromDomain(s, binding._1, binding._2.get()));
 	}
 
 	public static <T> Goal separate(Unifiable<T> lhs, T rhs) {
