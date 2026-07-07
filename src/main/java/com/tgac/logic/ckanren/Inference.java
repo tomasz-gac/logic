@@ -74,7 +74,13 @@ public abstract class Inference {
 		@Override
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		public Goal toGoal() {
-			return s -> ((Domain) domain).processDom((Term) target).apply(s);
+			// walk at APPLICATION time: the target may have been bound meanwhile (by an
+			// earlier inference of the same verdict, or captured pre-walk by the emitter);
+			// narrowing a stale var object would re-bind a bound variable — exactly the
+			// violation the chokepoint's full-map contract forbids
+			return s -> ((Domain) domain)
+					.processDom(com.tgac.logic.unification.MiniKanren.walk(s, (Term) target))
+					.apply(s);
 		}
 
 		@Override

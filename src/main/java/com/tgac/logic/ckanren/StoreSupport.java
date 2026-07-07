@@ -109,14 +109,22 @@ public class StoreSupport {
 	 */
 	public static Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return p -> {
-			// the chokepoint applies the extension exactly once; stores only react
-			Package extended = p.extendS(newSubstitutions);
-			Goal reactions = p.getConstraints().values().toJavaStream()
+			// the chokepoint applies the extension exactly once; stores only react.
+			// newSubstitutions is the FULL new map — a superset of p's, per the caller
+			// contract above — so replacing IS extending, in O(1); a merge walks the
+			// whole map and turns every unification quadratic over a derivation
+			Package extended = p.withSubstitutions(newSubstitutions);
+			java.util.List<ConstraintStore> stores = p.getConstraints().values().toJavaStream()
 					.filter(ConstraintStore.class::isInstance)
 					.map(ConstraintStore.class::cast)
+					.collect(java.util.stream.Collectors.toList());
+			if (stores.isEmpty()) {
+				// pure-relational fast path: no reactions, no prefix diff, no wake
+				return Cont.just(extended);
+			}
+			Goal reactions = stores.stream()
 					.map(cs -> cs.processPrefix(newSubstitutions, p))
-					.reduce(Goal::and)
-					.orElseGet(Goal::success);
+					.reduce(Goal.success(), Goal::and);
 			// wake EVERY store's suspended constraints watching a newly bound variable;
 			// read the stores from the live package, since earlier wakes re-park constraints
 			Goal wake = MiniKanren.prefixS(p.getSubstitutions(), newSubstitutions)

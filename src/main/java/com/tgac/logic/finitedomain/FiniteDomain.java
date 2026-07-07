@@ -368,7 +368,7 @@ public class FiniteDomain {
 								.map(Arithmetic::ofCasted)
 								.map(Singleton::of))
 						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get())))
-						.processDom(to)
+						.processDom(MiniKanren.walk(s, to))
 						.apply(s))
 				.named(pkg -> String.format("copyDom(%s, %s)", MiniKanren.format(pkg, from), MiniKanren.format(pkg, to)));
 	}

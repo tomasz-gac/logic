@@ -26,6 +26,7 @@ bitten at least once:
 | never wake on a no-change (equal-domain guard) | required for termination; guard lives in one method by discipline |
 | `processPrefix` with a pair contradicting an existing binding is a silent no-op | discovered while documenting; callers must know to unify instead |
 | trial unification must use a stripped package; `processPrefix` NPEs on a null store map | latent |
+| narrow targets must be walked before `processDom` (a stale var object re-binds a bound variable) | bit during the chokepoint perf fix: `separateFDC`'s raw-target narrow violated the full-map contract, silently swallowed by the old merge, exposed by O(1) replace |
 
 The redesign makes each of these either impossible to write or safe by default.
 
