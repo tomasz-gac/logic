@@ -259,15 +259,21 @@ bodies (§2.2's leq example). `constraintOperation`, `remRun`, `Constraint.addTo
 into the driver's `narrow` case. Labeling (`EnforceConstraintsFD`) emits
 `Inference.bind` per candidate instead of calling `processPrefix`.
 
-### 5.3 Projection — the honest wrinkle (DECISION NEEDED)
+### 5.3 Projection — DECIDED (Tom, July 2026): option 1 now, extraction later
 Projection's "constraints" are user goals — arbitrary, branching search. A `Verdict`
-is a deterministic report and cannot express "explore two alternatives". Options:
-1. **`Verdict.run(Goal)`** — the framework splices the goal into the search at the
-   wake point. Keeps Projection in the framework; the escape hatch is explicit in the
-   type instead of hidden inside "everything is a Goal".
-2. **Evict Projection from the store framework** — it is a search trigger wearing a
-   constraint costume; reimplement as a goal combinator over the wake mechanism.
-Ask Tom before implementing either. Default assumption for sizing: option 1.
+is a deterministic report and cannot express "explore two alternatives".
+
+**Decision:** implement `Verdict.run(Goal)` — with one NON-OPTIONAL driver
+requirement: run-goals are COLLECTED during the propagation drain and spliced into
+the search only AFTER quiescence. An arbitrary goal run mid-fixpoint breaks the
+drain's confluence (it is not contracting). The projections become propagators
+returning `keep` (not ground) or `run(goal)` (ground).
+
+The concept this hides — a parked coroutine, distinct from a constraint — is
+specified in `suspensions.md`, including the mechanical extraction (delete
+`ProjectionConstraints`, restore `Verdict` to pure propagation outcomes) to be done
+when the second customer arrives (pldb's deferred lookups are Suspensions, not
+propagators).
 
 ---
 

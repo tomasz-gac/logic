@@ -138,5 +138,8 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
   (native debugging, simpler tabling, natural cut) as a separate experimental module; the
   completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
+- `docs/design/suspensions.md` — parked goals woken by bindings (freeze/when): the
+  concept behind Verdict.run(Goal), its reify policy, and the extraction plan gated
+  on a second customer (pldb deferred lookups).
 - This file — architecture, landmines, workflow.
 - Commit history is descriptive; read it when a change looks surprising.
