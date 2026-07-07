@@ -1,6 +1,20 @@
 # The capability constraint API — design and migration plan
 
-**Status:** design, NOT implemented. This is the concrete shape of
+**Status: Steps 1 AND 2 IMPLEMENTED (July 2026, branch `capability-api`); Step 3
+(Prefix + the visibility lock) and Step 4 (sweep) remain.** Implementation deviations
+from this doc, all recorded in place: watch matching is `watches(state, changed)`
+with CHAIN-INCLUSION (the changed variable may be the watched term, an alias link,
+or the chain end — a plain live walk steps THROUGH a just-bound variable and misses
+the primary match; found when projections stopped waking); `onPrefix` receives the
+precomputed prefix delta and the live state (the oldPackage parameter died early);
+the Neq→FD bridge stays call-shaped for now (data-shaping needs a vocabulary-growth
+decision per rule B); `Verdict.run` defers via a transient PendingRuns store drained
+after the OUTERMOST pass (statement-time runs splice inline at the goal's own
+position); ground leq/addo constraints discharge exactly (the addTo all-bound guard
+is gone with Constraint). `Constraint`, `buildWalkedConstraint`, `runConstraints`,
+`remRun` and the `anyRelevantVar` family are deleted.
+
+This was the concrete shape of
 `constraint-propagation.md`'s Phase 3 — but its primary motivation is **type safety**,
 not performance: restructure the constraint API so the breaking actions documented in
 the machinery notes become unrepresentable, with the explicit worklist driver falling
