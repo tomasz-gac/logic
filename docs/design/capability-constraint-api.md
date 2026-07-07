@@ -399,12 +399,12 @@ last (lock the door after the furniture is arranged):
   inserts a null store when the class is absent (updateC's latent behavior — it
   now leaves the package unchanged); `isAssociated` became `Disequality.isBound`;
   the folds live in `CKanren` as private `enforce`/`reifyConstraints`. Follow-up
-  (Tom, July 2026): `Verdict` NESTS in `Propagator` and `Revision` in
-  `ConstraintStore` — ownership as declaration-site fact; call sites still read
-  `Verdict.keep()` via nested-type imports. Rejected: verdict factories ON
-  `Propagator` (`Propagator.subsumed()` returning a Verdict breaks the
-  static-factory-makes-its-own-type convention and mixes the implement-surface
-  with the return vocabulary).** The refactor
+  (Tom, July 2026): nesting `Verdict` in `Propagator` and `Revision` in
+  `ConstraintStore` was TRIED AND REVERTED — Tom preferred the top-level files;
+  the packages + imports carry the ownership story. Also rejected: verdict
+  factories ON `Propagator` (`Propagator.subsumed()` returning a Verdict breaks
+  the static-factory-makes-its-own-type convention and mixes the
+  implement-surface with the return vocabulary).** The refactor
   introduced six new nouns; this step settles their names against the literature,
   dissolves the `StoreSupport` grab-bag, and makes type ownership structural.
   Provenance audit: `Propagator` (Gecode/Schulte-Tack; Radul-Sussman), `Prefix`
