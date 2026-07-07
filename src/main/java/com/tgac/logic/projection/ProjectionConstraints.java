@@ -78,7 +78,10 @@ public class ProjectionConstraints implements ConstraintStore {
 						remaining[0] = remaining[0].remove(p);
 						return false;
 					},
-					infs -> false,
+					f -> {
+						throw new UnsupportedOperationException(
+								"projection propagators do not update their factor");
+					},
 					goal -> {
 						remaining[0] = remaining[0].remove(p);
 						runs.add(goal);

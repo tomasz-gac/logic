@@ -1,9 +1,9 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.Propagation;
-import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.propagator.Verdict;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
@@ -35,16 +35,31 @@ public class FiniteDomain {
 
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
 		return fdGoal()
-				.and(Goal.goal(s -> d.processDom(MiniKanren.walk(s, u)).apply(s)))
+				.and(applyDom(u, d))
 				.named(pkg -> MiniKanren.format(pkg, u) + " ⊂ " + MiniKanren.format(pkg, d));
+	}
+
+	/**
+	 * Statement-position domain update: walk the target, apply against the live
+	 * FD factor, and route the outcome through the public entries — resolve for a
+	 * collapse, changed for a strict narrowing.
+	 */
+	private static Goal applyDom(Term<?> target, Domain<?> d) {
+		return s -> DomainUpdate
+				.apply(s, FiniteDomainConstraints.getFDStore(s), s.walk(target), d)
+				.<Cont<Package, Nothing>> match(
+						() -> Cont.complete(Nothing.nothing()),
+						() -> Cont.just(s),
+						(factor, x) -> Propagation.changed(x).apply(s.putStore(factor)),
+						prefix -> Propagation.resolve(prefix).apply(s));
 	}
 
 	/**
 	 * The FD half of the disequality bridge (cKanren's FD/≠ integration): when
 	 * {@code x} has a finite domain and {@code value} is representable in it, the
 	 * disequality {@code x ≠ value} is fully expressed by excluding the value from
-	 * the domain, and the caller may drop its record. The returned goal rides
-	 * {@code processDom}, so an exclusion that collapses the domain binds the
+	 * the domain, and the caller may drop its record. The returned goal rides the
+	 * domain-update primitive, so an exclusion that collapses the domain binds the
 	 * variable, and one that empties it fails. None when {@code x} has no domain
 	 * or the value is not arithmetic — the caller keeps the disequality.
 	 */
@@ -58,10 +73,8 @@ public class FiniteDomain {
 			return Option.none();
 		}
 		return FiniteDomainConstraints.getDom(p, (LVar) x)
-				.map(d -> (Goal) s -> ((Domain) d)
-						.difference(Singleton.of(Arithmetic.ofCasted(value)))
-						.processDom(MiniKanren.walk(s, (LVar) x))
-						.apply(s));
+				.map(d -> applyDom(x, ((Domain) d)
+						.difference(Singleton.of(Arithmetic.ofCasted(value)))));
 	}
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
@@ -154,9 +167,11 @@ public class FiniteDomain {
 			// ground and consistent: nothing left to watch
 			return Verdict.subsumed();
 		}
-		return Verdict.narrowed(Arrays.asList(
-				Inference.narrow(lss.getUnifiable(), lessDom),
-				Inference.narrow(mor.getUnifiable(), moreDom)));
+		return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
+				(FiniteDomainConstraints) store,
+				Arrays.<VarWithDomain<?>> asList(
+						VarWithDomain.of(lss.getUnifiable(), lessDom),
+						VarWithDomain.of(mor.getUnifiable(), moreDom))));
 	}
 
 	public static <T> Goal addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
@@ -203,10 +218,12 @@ public class FiniteDomain {
 				wMin.subtract(vMax),
 				wMax.subtract(vMin).next());
 
-		return Verdict.narrowed(Arrays.asList(
-				Inference.narrow(w.getUnifiable(), wi),
-				Inference.narrow(v.getUnifiable(), vi),
-				Inference.narrow(u.getUnifiable(), ui)));
+		return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
+				(FiniteDomainConstraints) store,
+				Arrays.<VarWithDomain<?>> asList(
+						VarWithDomain.of(w.getUnifiable(), wi),
+						VarWithDomain.of(v.getUnifiable(), vi),
+						VarWithDomain.of(u.getUnifiable(), ui))));
 	}
 
 	public static <T> Goal multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
@@ -261,8 +278,11 @@ public class FiniteDomain {
 
 		// result is zero, so we cannot infer any u or v bounds information
 		if (wi.min().equals(wi.max()) && wi.min().isZero()) {
-			return Verdict.narrowed(Collections.singletonList(
-					Inference.narrow(w.getUnifiable(), wi)));
+			Domain<T> wiZero = wi;
+			return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
+					(FiniteDomainConstraints) store,
+					Collections.<VarWithDomain<?>> singletonList(
+							VarWithDomain.of(w.getUnifiable(), wiZero))));
 		}
 
 		// quotient bounds are meaningless when the divisor interval spans zero
@@ -270,10 +290,13 @@ public class FiniteDomain {
 		ui = quotientBounds(wMin, wMax, vMin, vMax).getOrElse(() -> u.<T> getDomain());
 		vi = quotientBounds(wMin, wMax, uMin, uMax).getOrElse(() -> v.<T> getDomain());
 
-		return Verdict.narrowed(Arrays.asList(
-				Inference.narrow(w.getUnifiable(), wi),
-				Inference.narrow(u.getUnifiable(), ui),
-				Inference.narrow(v.getUnifiable(), vi)));
+		Domain<T> wiF = wi, uiF = ui, viF = vi;
+		return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
+				(FiniteDomainConstraints) store,
+				Arrays.<VarWithDomain<?>> asList(
+						VarWithDomain.of(w.getUnifiable(), wiF),
+						VarWithDomain.of(u.getUnifiable(), uiF),
+						VarWithDomain.of(v.getUnifiable(), viF))));
 	}
 
 	/**
@@ -321,12 +344,18 @@ public class FiniteDomain {
 								return Verdict.subsumed();
 							}
 							if (ld.getDomain() instanceof Singleton) {
-								return Verdict.narrowed(Collections.singletonList(
-										Inference.narrow(r, rd.<T> getDomain().difference(ld.getDomain()))));
+								return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
+										(FiniteDomainConstraints) store,
+										Collections.<VarWithDomain<?>> singletonList(VarWithDomain.of(
+												rd.getUnifiable(),
+												rd.<T> getDomain().difference(ld.getDomain())))));
 							}
 							if (rd.getDomain() instanceof Singleton) {
-								return Verdict.narrowed(Collections.singletonList(
-										Inference.narrow(l, ld.<T> getDomain().difference(rd.getDomain()))));
+								return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
+										(FiniteDomainConstraints) store,
+										Collections.<VarWithDomain<?>> singletonList(VarWithDomain.of(
+												ld.getUnifiable(),
+												ld.<T> getDomain().difference(rd.getDomain())))));
 							}
 							return Verdict.keep();
 						}))
@@ -359,13 +388,12 @@ public class FiniteDomain {
 
 	public static <T> Goal copyDomain(Unifiable<T> from, Unifiable<T> to) {
 		return fdGoal()
-				.and(s -> from.asVar()
-						.flatMap(l -> FiniteDomainConstraints.getDom(s, l))
+				.and(s -> applyDom(to, from.asVar()
+						.flatMap(l -> FiniteDomainConstraints.<T> getDom(s, l))
 						.orElse(() -> s.walk(from).asVal()
 								.map(Arithmetic::ofCasted)
 								.map(Singleton::of))
-						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get())))
-						.processDom(MiniKanren.walk(s, to))
+						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get()))))
 						.apply(s))
 				.named(pkg -> String.format("copyDom(%s, %s)", MiniKanren.format(pkg, from), MiniKanren.format(pkg, to)));
 	}

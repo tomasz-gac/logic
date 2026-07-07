@@ -3,8 +3,11 @@ package com.tgac.logic.ckanren.propagator;
 // ABOUTME: The outcome a propagator reports after re-examining its constraint — the
 // ABOUTME: framework administers the parked lifecycle; bodies only ever report.
 
+import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
-import java.util.List;
+import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Store;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -36,9 +39,14 @@ public abstract class Verdict {
 		return Subsumed.INSTANCE;
 	}
 
-	/** Stay parked AND apply what I inferred, in list order. */
-	public static Verdict narrowed(List<Inference> inferences) {
-		return new Narrowed(inferences);
+	/**
+	 * Stay parked AND apply this update to my OWN store's factor. Administered by
+	 * the owning store, never the driver: the function receives the live state and
+	 * the store's current factor and answers a {@link Revision} — which cannot
+	 * express touching anyone else's factor.
+	 */
+	public static Verdict update(BiFunction<Package, Store, Revision> f) {
+		return new Update(f);
 	}
 
 	/**
@@ -55,7 +63,7 @@ public abstract class Verdict {
 			Supplier<R> onFail,
 			Supplier<R> onKeep,
 			Supplier<R> onSubsumed,
-			Function<List<Inference>, R> onNarrowed,
+			Function<BiFunction<Package, Store, Revision>, R> onUpdate,
 			Function<Goal, R> onRun);
 
 	private static final class Fail extends Verdict {
@@ -63,7 +71,7 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
+				Function<BiFunction<Package, Store, Revision>, R> onUpdate, Function<Goal, R> onRun) {
 			return onFail.get();
 		}
 
@@ -78,7 +86,7 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
+				Function<BiFunction<Package, Store, Revision>, R> onUpdate, Function<Goal, R> onRun) {
 			return onKeep.get();
 		}
 
@@ -93,7 +101,7 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
+				Function<BiFunction<Package, Store, Revision>, R> onUpdate, Function<Goal, R> onRun) {
 			return onSubsumed.get();
 		}
 
@@ -112,7 +120,7 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
+				Function<BiFunction<Package, Store, Revision>, R> onUpdate, Function<Goal, R> onRun) {
 			return onRun.apply(goal);
 		}
 
@@ -122,22 +130,22 @@ public abstract class Verdict {
 		}
 	}
 
-	private static final class Narrowed extends Verdict {
-		private final List<Inference> inferences;
+	private static final class Update extends Verdict {
+		private final BiFunction<Package, Store, Revision> f;
 
-		private Narrowed(List<Inference> inferences) {
-			this.inferences = inferences;
+		private Update(BiFunction<Package, Store, Revision> f) {
+			this.f = f;
 		}
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
-			return onNarrowed.apply(inferences);
+				Function<BiFunction<Package, Store, Revision>, R> onUpdate, Function<Goal, R> onRun) {
+			return onUpdate.apply(f);
 		}
 
 		@Override
 		public String toString() {
-			return "narrowed" + inferences;
+			return "update";
 		}
 	}
 }

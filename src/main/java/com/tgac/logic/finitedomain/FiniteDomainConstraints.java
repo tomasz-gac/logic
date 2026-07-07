@@ -1,7 +1,6 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
@@ -85,25 +84,45 @@ class FiniteDomainConstraints implements ConstraintStore {
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public Revision revise(Prefix prefix, Package state) {
-		// this store's reaction: each newly bound value must lie in its variable's
-		// domain; a var-var binding aliases the two, so the domain follows the
-		// representative as a narrow inference
-		List<Inference> narrows = new ArrayList<>();
+		// each newly bound value must lie in its variable's domain; a var-var
+		// binding aliases the two, so the domain follows the representative
+		FiniteDomainConstraints[] factor = {this};
+		List<LVar<?>> changed = new ArrayList<>();
+		List<Prefix> inferred = new ArrayList<>();
 		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
-			Domain dom = (Domain) getDomain((LVar) binding._1).getOrNull();
+			Domain dom = (Domain) factor[0].getDomain((LVar) binding._1).getOrNull();
 			if (dom == null) {
 				continue;
 			}
-			Term<?> v = binding._2;
-			if (v.isVal()) {
-				if (!dom.contains(v.get())) {
-					return Revision.fail();
-				}
-			} else {
-				narrows.add(Inference.narrow(v, dom));
+			boolean dead = DomainUpdate
+					.apply(state, factor[0], state.walk(binding._2), dom)
+					.match(
+							() -> true,
+							() -> false,
+							(narrowedFactor, x) -> {
+								factor[0] = narrowedFactor;
+								changed.add(x);
+								return false;
+							},
+							p -> {
+								inferred.add(p);
+								return false;
+							});
+			if (dead) {
+				return Revision.fail();
 			}
 		}
-		return narrows.isEmpty() ? Revision.unchanged() : Revision.updated(this, narrows);
+		if (factor[0] == this && changed.isEmpty() && inferred.isEmpty()) {
+			return Revision.unchanged();
+		}
+		Revision.Updated result = Revision.updated(factor[0]);
+		for (LVar<?> x : changed) {
+			result = result.withChanged(x);
+		}
+		for (Prefix p : inferred) {
+			result = result.withInferred(p);
+		}
+		return result;
 	}
 
 	@Override
@@ -125,35 +144,40 @@ class FiniteDomainConstraints implements ConstraintStore {
 	/**
 	 * Runs the given parked propagators against the live state and administers
 	 * their verdicts into one revision: fail kills the branch, keep stays parked,
-	 * subsumed unparks, narrowed hands its inferences to the driver, run unparks
-	 * and joins the run lane. Each propagator sees the factor as left by the
-	 * verdicts before it.
+	 * subsumed unparks, update applies to the current factor (narrowed domains,
+	 * inferred collapses), run unparks and joins the run lane. Each propagator
+	 * sees the factor as left by the verdicts before it.
 	 */
-	@SuppressWarnings("unchecked")
 	private Revision administer(List<Propagator> candidates, Package state) {
-		HashSet<Propagator>[] remaining = new HashSet[] {constraints};
-		List<Inference> inferences = new ArrayList<>();
+		FiniteDomainConstraints[] factor = {this};
+		List<Prefix> inferred = new ArrayList<>();
+		List<Term<?>> changed = new ArrayList<>();
 		List<Goal> runs = new ArrayList<>();
 		for (Propagator p : candidates) {
-			if (!remaining[0].contains(p)) {
+			if (!factor[0].contains(p)) {
 				// an earlier verdict of this same trigger removed it
 				continue;
 			}
-			Package live = state.putStore(FiniteDomainConstraints.of(domains, remaining[0]));
-			Verdict verdict = p.propagate(live);
-			boolean dead = verdict.match(
+			Package live = state.putStore(factor[0]);
+			boolean dead = p.propagate(live).match(
 					() -> true,
 					() -> false,
 					() -> {
-						remaining[0] = remaining[0].remove(p);
+						factor[0] = (FiniteDomainConstraints) factor[0].remove(p);
 						return false;
 					},
-					infs -> {
-						inferences.addAll(infs);
-						return false;
-					},
+					f -> f.apply(live, factor[0]).match(
+							() -> true,
+							() -> false,
+							upd -> {
+								factor[0] = (FiniteDomainConstraints) upd.factor();
+								inferred.addAll(upd.inferred());
+								changed.addAll(upd.changed());
+								runs.addAll(upd.runs());
+								return false;
+							}),
 					goal -> {
-						remaining[0] = remaining[0].remove(p);
+						factor[0] = (FiniteDomainConstraints) factor[0].remove(p);
 						runs.add(goal);
 						return false;
 					});
@@ -161,11 +185,16 @@ class FiniteDomainConstraints implements ConstraintStore {
 				return Revision.fail();
 			}
 		}
-		if (remaining[0] == constraints && inferences.isEmpty() && runs.isEmpty()) {
+		if (factor[0] == this && inferred.isEmpty() && changed.isEmpty() && runs.isEmpty()) {
 			return Revision.unchanged();
 		}
-		Revision.Updated result = Revision.updated(
-				FiniteDomainConstraints.of(domains, remaining[0]), inferences);
+		Revision.Updated result = Revision.updated(factor[0]);
+		for (Term<?> x : changed) {
+			result = result.withChanged(x);
+		}
+		for (Prefix p : inferred) {
+			result = result.withInferred(p);
+		}
 		for (Goal run : runs) {
 			result = result.withRun(run);
 		}
