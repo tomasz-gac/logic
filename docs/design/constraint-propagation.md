@@ -287,10 +287,25 @@ only (gap 1).
   vector (mid-search states become consistent).
 
 - **Phase 2 (close gaps 1 and 3 — where genuinely NEW behaviour appears).**
+
+  *Two constraint protocols coexist and BOTH stay.* FD and Projection use suspended
+  `Constraint` goals (woken per-variable by `runConstraints`, re-suspended by
+  `addTo`). Neq is Byrd's `=/=` design: NO `Constraint` objects — it stores prefix
+  maps (`NeqConstraint`) and re-verifies them wholesale in its `processPrefix`
+  (`verifyUnify`: re-attempt the stored unification; no-extension = violated →
+  fail; can't-unify = discharged → drop; extension = simplified → keep). **Do NOT
+  rewrite Neq into `Constraint` objects** — it participates in every wake through
+  its store-level `processPrefix`, which the chokepoint already calls. Neq is a
+  pure filter (never binds), so the reactive contract is trivially satisfied; its
+  only change in this redesign is Phase 1's bookkeeping (stop building
+  `withSubstitutions` itself).
+
   1. **Cross-store wake (gap 1):** the chokepoint wakes, per newly bound var, the
-     union of all stores' pending constraints. `runConstraints`/`remRun` are
-     already store-agnostic (each `Constraint` carries its `storeClass`) — only the
-     call sites' constraint lists widen.
+     union of the `Constraint`-protocol stores' pending constraints (FD,
+     Projection, future pldb parked lookups). `runConstraints`/`remRun` are
+     already store-agnostic (each `Constraint` carries its `storeClass`) — only
+     the call sites' constraint lists widen. Wholesale-verify stores (Neq) are
+     woken by having their `processPrefix` run, as today.
   2. **Wake on narrowing (gap 3):** `Domain.extendD` (non-singleton shrink)
      additionally wakes the watchers of the narrowed variable. This is what turns
      `x<y ∧ y<z` interval chains into immediate propagation and gives cross-domain
@@ -301,6 +316,10 @@ only (gap 1).
 
   Acceptance: `x ∈ {1..10} ∧ x ≠ 5` prunes 5 from the domain BEFORE labelling;
   `FiniteDomainTest#shouldMixMultipleConstraintSystems` gains a real assertion.
+  The pruning is a small bridging reaction (a singleton-prefix Neq record consults
+  the FD store and excludes its value from the domain) — this is exactly the
+  cKanren paper's own FD/=/= integration, so follow the paper, don't invent. It is
+  an optimisation, not a prerequisite: Neq is correct without it, just later.
   Side effect: pldb's deferred lookups (`pldb/docs/design/deferred-lookups.md`)
   unblock with zero extra machinery — a parked lookup is just a `Constraint` in its
   own store, woken by the cross-store registry, flushed by `enforceConstraints`.
