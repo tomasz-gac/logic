@@ -7,8 +7,8 @@ with CHAIN-INCLUSION (the changed variable may be the watched term, an alias lin
 or the chain end — a plain live walk steps THROUGH a just-bound variable and misses
 the primary match; found when projections stopped waking); `onPrefix` receives the
 precomputed prefix delta and the live state (the oldPackage parameter died early);
-the Neq→FD bridge stays call-shaped for now (data-shaping needs a vocabulary-growth
-decision per rule B); `Verdict.run` defers via a transient PendingRuns store drained
+the Neq→FD bridge stays call-shaped (data-shaping is FORECLOSED —
+minimal-constraint-vocabulary.md §6); `Verdict.run` defers via a transient PendingRuns store drained
 after the OUTERMOST pass (statement-time runs splice inline at the goal's own
 position); ground leq/addo constraints discharge exactly (the addTo all-bound guard
 is gone with Constraint). `Constraint`, `buildWalkedConstraint`, `runConstraints`,
@@ -141,6 +141,12 @@ A revision physically cannot touch substitutions or another store's entry. The
 chokepoint assembles the package from returned factors.
 
 ### 2.4 `Inference` — cross-factor information as data
+
+> **SUPERSEDED (July 2026):** the narrow audit showed this vocabulary carries
+> zero cross-domain traffic — see `minimal-constraint-vocabulary.md`, which
+> plans the removal of `Inference` and `Narrowing` and shrinks the shared
+> language to `Prefix` + changed-`Term`. This section stays as the record of
+> what was built and why.
 
 The shared vocabulary of the system — the only way information crosses factors:
 
