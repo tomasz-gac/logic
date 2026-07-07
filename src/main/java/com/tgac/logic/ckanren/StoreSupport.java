@@ -109,10 +109,10 @@ public class StoreSupport {
 	 */
 	public static Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return p -> {
-			// the chokepoint applies the extension exactly once; stores only react.
-			// newSubstitutions is the FULL new map — a superset of p's, per the caller
-			// contract above — so replacing IS extending, in O(1); a merge walks the
-			// whole map and turns every unification quadratic over a derivation
+			// newSubstitutions is the full new map (a superset of p's, per the caller
+			// contract), so this replace is the extension — O(1). Do not use a
+			// map-merge here: it walks the whole map per binding, making every
+			// derivation quadratic.
 			Package extended = p.withSubstitutions(newSubstitutions);
 			java.util.List<ConstraintStore> stores = p.getConstraints().values().toJavaStream()
 					.filter(ConstraintStore.class::isInstance)

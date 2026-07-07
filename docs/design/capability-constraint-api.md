@@ -315,6 +315,18 @@ last (lock the door after the furniture is arranged):
   §5.3 first (Tom decision). This is the big step — treat it like Phase 1/2: pin
   tests first (contradiction-between-inferences is loud; unroutable inference fails
   the emitting reaction; dedup of identical narrowings).
+- **Step 2.5 — the explicit agenda (optional, before or with Step 3).** The
+  implemented fixpoint is RECURSION-HIDDEN: a pass is linear, and cascades re-enter
+  the chokepoint (collapse → nested pass; narrowing → inline wake; bind → nested
+  pass), trampolined by the continuation substrate — stack-safe but uninspectable.
+  To make it literal, generalize PendingRuns into an Agenda store (work items:
+  Inference, Wake(term), Run(goal)); the re-entry points APPEND instead of
+  recursing, and the outermost chokepoint drains one item at a time
+  (`drain = pop.apply(s).and(drain)` — a flat loop through the trampoline). Buys:
+  cascade-wide dedup and contradiction detection (today per-verdict only), a single
+  quiescence point (the outermost-marker trick for runs disappears), and an
+  inspectable agenda for propagation tracing.
+
 - **Step 3 — Prefix + the visibility lock.** `MiniKanren.unify` returns
   `Option<Prefix>` over a `Substitutions` view; `CKanren.unify` = mint + drive;
   Neq's trial unification inspects the prefix; delete `withoutConstraints`;
