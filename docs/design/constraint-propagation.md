@@ -20,8 +20,10 @@ labelling, inferring bindings on collapse, failing on empty. `FiniteDomain
 its record (correct via verification; converting that order would need a
 domain-assignment hook — do it only if it ever matters).
 
-**Still open:** Phase 3's explicit worklist, only if propagation cost is ever
-measured to matter.
+**Still open:** Phase 3 — now specified as `capability-constraint-api.md`: the
+explicit worklist driver arrived at from type safety (Prefix/Verdict/Reaction/
+Inference), not from performance. If Phase 3 ever happens, it happens THAT way; a
+bolt-on queue without the capability types forfeits the point.
 
 En route, the pin work exposed and fixed an unrelated FD soundness bug: `leq` lost
 boundary solutions because `copyBefore`/`dropBefore` disagreed about inclusivity
@@ -354,11 +356,11 @@ only (gap 1).
   unblock with zero extra machinery — a parked lookup is just a `Constraint` in its
   own store, woken by the cross-store registry, flushed by `enforceConstraints`.
 
-- **Phase 3 (performance, only if measured):** replace the recursive cascade with an
-  explicit AC-3 worklist + var→watchers index if recursion depth or redundant
-  re-runs matter in practice; likewise a watcher index for Neq's wholesale
-  re-verify (currently O(constraints) per binding — fine at present scale). No
-  result changes.
+- **Phase 3 — specified in `capability-constraint-api.md`.** The explicit worklist
+  driver, motivated by type safety (making the documented breakage modes
+  unrepresentable: Prefix/Verdict/Reaction/Inference) with the AC-3 worklist and
+  watcher index as consequences rather than goals. No result changes. Do NOT build
+  a bolt-on queue without those types.
 
 **What deliberately does not change:** `Package` immutability (it is what makes
 reactions confluent and backtracking free), `MiniKanren.unify` itself, the

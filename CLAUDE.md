@@ -64,15 +64,20 @@ Key **seams** (the places behaviour is hooked):
 
 ## Landmines (read before editing the relevant area)
 
-- **Constraint composition is NOT a general solver.** `StoreSupport.processPrefix` runs the
-  stores in one ordered pass, and each applies substitutions with `withSubstitutions` (which
-  **replaces** the map). This is sound only for a *single* domain, or independent domains
-  that don't add bindings. Combining disequality + finite-domain works only for the cases
-  covered by `NeqFiniteDomainTest`; in general it is unsound (a store that binds a variable
-  can be clobbered; mutual triggering isn't run to a fixpoint). **Do not** add a pass-through
-  `ConstraintStore`, and **do not** rely on arbitrary domain composition. The real fix is a
-  fixpoint/propagator engine — see `docs/design/constraint-propagation.md`. `FiniteDomainTest#shouldMixMultipleConstraintSystems`
-  is deliberately a printing test (no assertion) because it exercises this broken area.
+- **Constraint composition works, but only through the chokepoint.**
+  `StoreSupport.processPrefix` is the ONLY way substitutions may grow in constraint-aware
+  code (its javadoc is the caller contract — read it). All bindings route through it (user
+  unify, FD collapse, labelling); stores are purely reactive (never touch substitutions);
+  wakes fire across stores on binding AND on strict domain narrowing (the equal-domain guard
+  in `Domain.updateVarDomain` is the termination guard — do not remove it). Ways to break
+  it: bypass via raw `MiniKanren.unify`/`extendS` in goal code (MiniKanren.unify is
+  legitimate only for trial unification on stripped packages); a woken constraint body that
+  doesn't re-park via `constraintOperation` silently evaporates; `processPrefix` with a pair
+  contradicting an existing binding is a silent no-op — unify instead. Use a plain `Store`
+  for transport (Table pattern) — a pass-through `ConstraintStore` is pointless cost, not
+  unsoundness (the old starvation mechanism is gone). Constraint bodies now wake on
+  narrowing too — they must tolerate any mix of wide/ground args (see the mulIntervals
+  sign-guard lesson). Details: `docs/design/constraint-propagation.md` §1.1/§4.
 - **`Package.withSubstitutions` REPLACES the substitution map; `Package.extendS` MERGES.**
   In the constraint/propagation path you almost always want monotonic extend, not replace.
 - **Tracing runs depth-first.** `solve(out, tracer)` uses `DepthFirstScheduler` so the trace
@@ -109,9 +114,10 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - **`functional` release-prep** — de-SNAPSHOT, bump vavr (0.10.0), doc the public surface.
   Open decision for the human: promote `fibers` to its own Maven module (it's cleanly
   isolated — depends only on `category`) vs. leave it.
-- **Constraint-propagation redesign** — HIGH risk, touches the core. Follow
-  `docs/design/constraint-propagation.md`; do the Phase 0 "fail loud on multi-domain" guard
-  first. Don't start without the human's go-ahead.
+- **Constraint-propagation redesign** — DONE through Phase 2 + the Neq→FD bridge
+  (July 2026). Remaining: Phase 3, respecified as the capability API — see
+  `docs/design/capability-constraint-api.md`. HIGH risk, big; don't start without the
+  human's go-ahead and the §5.3 (Projection) decision.
 - **Semiring-weighted inference** — turn the engine into a weighted-inference machine
   (counting, probability, shortest-path, MAP, provenance, learning) via one small `Semiring`
   abstraction. Follow `docs/design/semiring-inference.md`; Phase 1 (refactor `aggregate`
@@ -120,7 +126,12 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 
 ## Where knowledge lives
 
-- `docs/design/constraint-propagation.md` — the propagator/fixpoint design, phased.
+- `docs/design/constraint-propagation.md` — the propagator/fixpoint design; Phases 1–2
+  and the Neq→FD bridge are IMPLEMENTED, read it before touching the constraint core.
+- `docs/design/capability-constraint-api.md` — Phase 3 as a type-safety refactor
+  (Prefix/Verdict/Reaction/Inference + the explicit driver): makes the constraint
+  API's breaking actions unrepresentable. Planned, not implemented; big; needs the
+  human's go-ahead and a §5.3 decision (Projection) first.
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
 - `docs/design/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
   together, AND why NOT to merge them into one engine prematurely.
