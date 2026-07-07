@@ -12,9 +12,16 @@ soundness bug in `mulIntervals` (quotient trims with a zero-spanning divisor int
 produced garbage bounds — fixed by sign-guarding). Multi-domain FD+Neq queries
 (`shouldMixMultipleConstraintSystems`) now produce complete correct answer sets.
 
-**Still open:** the optional Neq→FD bridge (`x ≠ 5` excluding 5 from x's FD domain
-before labelling — the cKanren paper's FD/=/= integration); Phase 3's explicit
-worklist if propagation cost is ever measured to matter.
+**Also implemented: the Neq→FD bridge** (cKanren's FD/=/= integration, gated by
+`NeqFdBridgeTest`): a ground arithmetic disequality on a domained variable becomes a
+domain exclusion (discharging the record) at record-creation time — pruning before
+labelling, inferring bindings on collapse, failing on empty. `FiniteDomain
+.excludeFromDomain` is the public seam; a disequality stated BEFORE its domain keeps
+its record (correct via verification; converting that order would need a
+domain-assignment hook — do it only if it ever matters).
+
+**Still open:** Phase 3's explicit worklist, only if propagation cost is ever
+measured to matter.
 
 En route, the pin work exposed and fixed an unrelated FD soundness bug: `leq` lost
 boundary solutions because `copyBefore`/`dropBefore` disagreed about inclusivity
