@@ -1,7 +1,7 @@
 # The capability constraint API — design and migration plan
 
-**Status: Steps 1, 2 AND 3 IMPLEMENTED (July 2026, branch `capability-api`); Step 4
-(sweep) remains.** Implementation deviations
+**Status: Steps 1, 2 AND 3 IMPLEMENTED (July 2026, branch `capability-api`);
+Step 3.5 (naming and structure, decided with Tom) and Step 4 (sweep) remain.** Implementation deviations
 from this doc, all recorded in place: watch matching is `watches(state, changed)`
 with CHAIN-INCLUSION (the changed variable may be the watched term, an alias link,
 or the chain end — a plain live walk steps THROUGH a just-bound variable and misses
@@ -394,6 +394,66 @@ last (lock the door after the furniture is arranged):
   it is the documented door; its three remaining callers are the chokepoint's
   two `Prefix.appliedTo` applications and Disequality's bare trial-package seed. After this step the scorecard's "unrepresentable"
   rows are unrepresentable up to that one documented residual.
+- **Step 3.5 — naming and structure (decided with Tom, July 2026).** The refactor
+  introduced six new nouns; this step settles their names against the literature,
+  dissolves the `StoreSupport` grab-bag, and makes type ownership structural.
+  Provenance audit: `Propagator` (Gecode/Schulte-Tack; Radul-Sussman), `Prefix`
+  (cKanren's prefix-S), `Agenda` (AC-3 / propagator networks), `Narrowing`
+  (narrowing operators, interval CP) are literature-grounded and stay. `Verdict`,
+  `Reaction`, `Inference` were coined here; `Verdict` and `Inference` stay
+  (`Status`/`Outcome` are anemic; `Tell` (Saraswat ask/tell) is opaque without CCP
+  background), `Reaction` goes. Four commits, suite green after each:
+  1. **Renames.** `Reaction` → `Revision` (the value IS the store's revised
+     factor; AC-3's REVISE); `ConstraintStore.onPrefix` → `revise` (verb→noun,
+     self-linking); `Verdict.discharge` → `subsumed` (Gecode `ES_SUBSUMED`);
+     `ConstraintStore.enforceConstraints` → `enforce` (the `Constraints` suffix is
+     noise on an interface named `Constraint*`). Rewrite the two javadocs that
+     still QUOTE the cKanren paper as evergreen contracts citing it as provenance.
+     Explicitly rejected: `ConstraintStore` → `PropagatorStore` (wrong for Neq —
+     it holds no propagators; wholesale records participate through `revise`) and
+     → `ConstraintDomain` (overloads "domain" against `finitedomain.Domain`).
+  2. **`Inference` becomes pure data.** Add `match(bindHandler, narrowHandler)`;
+     the driver interprets inferences (as it already does verdicts and revisions)
+     instead of `Inference.Bind.toGoal` calling UP into the driver's
+     `enqueueBind`. `toGoal` dies. This unknots the data→driver cycle that would
+     otherwise cut across the package split in commit 4.
+  3. **`StoreSupport` dissolves.** It is three things sharing a namespace and a
+     name that says nothing: (a) store-map edits (`withConstraint`,
+     `withoutConstraint`, `getConstraintStore`, `updateC`) → methods on `Package`
+     (which already owns `putStore`/`withoutStore`; `Store`/`Stored` live in
+     `unification`, so no new dependency); (b) hook folds (`enforceConstraints`,
+     `reify`) → `CKanren`, next to their only caller (the reification path);
+     `isAssociated` → its caller (Disequality's purify) under a truthful name
+     (its javadoc still apologizes "Original name: anyVar"); (c) the engine
+     (`resolve`, `enqueue*`, `drain`, `wake`, `activate`, `interpret`,
+     `pendingPropagators`) merges WITH `Agenda` into one class: **`Propagation`**
+     — data and its only interpreter in one file. `Agenda.Item` gains polymorphic
+     `apply()` (`Bind.apply` absorbs `applyBind`; `Wake.apply` wraps `wake`),
+     killing the instanceof dispatch — safe because nesting keeps the whole
+     interpreter in one class, preserving the closed-data-one-interpreter design
+     language. INVARIANT to preserve: `drain` pops ONE item per deferred step
+     (scheduler fairness / bottom-avoidance).
+  4. **Package moves.** Layered, acyclic (commit 2 is what makes this true):
+     `ckanren.propagator` = `Propagator`, `Verdict`, `Inference`, `Narrowing`
+     (bottom; `Inference` lives here as the price of acyclicity — both levels
+     emit inferences, so it must sit below both); `ckanren.store` =
+     `ConstraintStore`, `Revision` (depends on `propagator`: `pendingPropagators`,
+     `Revision.updated` carries inferences); `ckanren` root = `CKanren` +
+     `Propagation` (the driver, depends on both). The layering states a design
+     fact the flat package hid: the store protocol knows about propagators; the
+     propagator protocol has no idea stores exist. Add `package-info.java` per
+     package. (Subpackage named `propagator`, not `propagation` — that word now
+     names the driver class.)
+
+  Deferred, recorded here so it isn't relitigated: the Verdict/Revision mirror is
+  two types for a reason (unit of scheduling vs unit of persistence; each level
+  can only affect what it owns — merging would re-open the doors this API
+  closed). BUT the mirror exists because Neq predates propagators. Rewriting Neq
+  as one propagator per record (watched terms = the record's vars; verdicts:
+  `subsumed` when redundant, `fail` when violated, plus a new `replace` verdict
+  for simplification) would leave `revise` without a real implementor — one
+  protocol, one response type, store level shrinks to container duties
+  (hold/enforce/reify). Feature work with risk; backlog, not now.
 - **Step 4 — sweep.** Update `constraint-propagation.md` (Phase 3 = done, this way),
   the machinery doc's contracts section (rules become signatures), CLAUDE.md, and the
   chokepoint javadoc.
