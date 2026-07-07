@@ -1,6 +1,8 @@
 package com.tgac.logic.ckanren;
 
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.category.Functor;
+import com.tgac.functional.category.Monad;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
@@ -168,6 +170,11 @@ public class StoreSupport {
 		return enqueue(p, new Agenda.Wake(changed));
 	}
 
+	/** Queue an inferred-bindings delta — the bind producer's entry. */
+	public static Cont<Package, Nothing> enqueueBind(HashMap<LVar<?>, Term<?>> delta, Package p) {
+		return enqueue(p, new Agenda.Bind(delta));
+	}
+
 	private static Goal applyItem(Agenda.Item item) {
 		return item instanceof Agenda.Bind ?
 				applyBind(((Agenda.Bind) item).delta) :
@@ -261,7 +268,7 @@ public class StoreSupport {
 	 * in flight.
 	 */
 	public static Cont<Package, Nothing> interpret(Propagator p, Package s) {
-		return p.propagate(s).match(
+		return p.propagate(s).<Cont<Package, Nothing>>match(
 				() -> Cont.complete(Nothing.nothing()),
 				() -> Cont.just(s),
 				() -> Cont.just(withoutConstraint(s, p)),

@@ -366,7 +366,14 @@ last (lock the door after the furniture is arranged):
   diagnosable (agenda-size watermark; propagation tracing), which the opaque
   recursion is not.
 
-- **Step 3 — Prefix + the visibility lock.** `MiniKanren.unify` returns
+- **Step 3 — Prefix + the visibility lock.** Consolidation note: prefix-vs-
+  substitutions revalidation exists twice — `Disequality.verificationStep` (prefix
+  forbidden: holds→fail, clashes→discharge, open→simplify) and
+  `StoreSupport.applyBind` (prefix asserted: holds→drop, clashes→fail, open→bind).
+  Same trichotomy, dual polarity, because a Neq record and a Bind delta are both
+  prefix maps. The Prefix type is the natural home for one shared
+  `unifyPrefix(prefix, substitutions) → Trichotomy` consumed by both readings and
+  by trial unification. `MiniKanren.unify` returns
   `Option<Prefix>` over a `Substitutions` view; `CKanren.unify` = mint + drive;
   Neq's trial unification inspects the prefix; delete `withoutConstraints`;
   make `extendS`/`withSubstitutions`/`Package.of`-with-substitutions inaccessible

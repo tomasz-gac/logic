@@ -5,6 +5,7 @@ package com.tgac.logic.ckanren;
 
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
@@ -57,31 +58,12 @@ public abstract class Inference {
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
 		public Goal toGoal() {
-			return s -> {
-				HashMap<LVar<?>, Term<?>> kept = HashMap.empty();
-				for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : delta) {
-					Term<?> walked = com.tgac.logic.unification.MiniKanren.walk(s, binding._1);
-					if (walked.asVar().isDefined()) {
-						// still open — bind the live representative
-						kept = kept.put((LVar<?>) walked.asVar().get(), binding._2);
-					} else if (!walked.equals(binding._2)) {
-						// two domains inferred different values: the branch is inconsistent
-						return com.tgac.functional.monad.Cont.complete(
-								com.tgac.functional.category.Nothing.nothing());
-					}
-					// bound to the same value: already known, drop
-				}
-				if (kept.isEmpty()) {
-					return com.tgac.functional.monad.Cont.just(s);
-				}
-				HashMap<LVar<?>, Term<?>> full = s.getSubstitutions();
-				for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : kept) {
-					full = full.put(binding._1, binding._2);
-				}
-				return StoreSupport.processPrefix(full).apply(s);
-			};
+			// queue the delta; the agenda's Bind application performs the single
+			// revalidation (open -> bind the representative, same -> drop,
+			// different -> the branch dies) — the same trichotomy Disequality's
+			// record verification reads with the opposite polarity
+			return s -> StoreSupport.enqueueBind(delta, s);
 		}
 
 		@Override
@@ -115,7 +97,7 @@ public abstract class Inference {
 			// earlier inference of the same verdict, or captured pre-walk by the emitter);
 			// narrowing a stale var object would re-bind a bound variable — exactly the
 			// violation the chokepoint's full-map contract forbids
-			return s -> narrowing.applyTo(com.tgac.logic.unification.MiniKanren.walk(s, target))
+			return s -> narrowing.applyTo(MiniKanren.walk(s, target))
 					.apply(s);
 		}
 
