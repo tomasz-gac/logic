@@ -5,7 +5,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.CKanren;
-import com.tgac.logic.ckanren.StoreSupport;
+import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.ckanren.Inference;
 import com.tgac.logic.ckanren.Propagator;
 import com.tgac.logic.ckanren.Verdict;
@@ -87,7 +87,7 @@ public class FiniteDomain {
 	 */
 	private static <T> Goal fdConstraint(Array<Unifiable<T>> us,
 			Function<Package, Verdict> body) {
-		return p -> StoreSupport.activate(
+		return p -> Propagation.activate(
 				Propagator.of(FiniteDomainConstraints.class, us.toJavaList(), body),
 				FiniteDomainConstraints.register(p));
 	}

@@ -1,11 +1,9 @@
 package com.tgac.logic.ckanren;
 
 import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.logic.ckanren.StoreSupport.enforce;
-import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
-import static com.tgac.logic.ckanren.StoreSupport.resolve;
-import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
+import static com.tgac.logic.ckanren.Propagation.resolve;
 
+import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
@@ -20,6 +18,7 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
+import io.vavr.control.Try;
 import java.util.Collection;
 import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
@@ -64,7 +63,7 @@ public class CKanren {
 														.map(result ->
 																s1.getConstraints() == null ?
 																		result :
-																		StoreSupport.reify(s1, result, vr._2))))
+																		reifyConstraints(s1, result, vr._2))))
 								.map(t -> (Reified<T>) t)
 								.map(Cont::just)));
 	}
@@ -73,6 +72,28 @@ public class CKanren {
 		return MiniKanren.walkAll(s1, x)
 				.flatMap(v -> MiniKanren.reifyS(Package.empty(), v)
 						.map(r -> Tuple.of(v, r)));
+	}
+
+	/** Every store commits its constraints before {@code x} is reified. */
+	private static <T> Goal enforce(Package p, Term<T> x) {
+		return p.getConstraints().values().toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
+				.map(ConstraintStore.class::cast)
+				.map(cs -> cs.enforce(x))
+				.reduce(Goal::and)
+				.orElseGet(Goal::success);
+	}
+
+	/** Every store renders its residual constraints into the reified answer. */
+	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Package renameSubstitutions) {
+		return p.getConstraints().values()
+				.toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
+				.map(ConstraintStore.class::cast)
+				.reduce(Try.success(unifiable),
+						(l, cs) -> l.flatMap(u -> Try.of(() -> cs.reify(u, renameSubstitutions, p))),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new))
+				.get();
 	}
 
 }

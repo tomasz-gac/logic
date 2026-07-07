@@ -2,6 +2,7 @@ package com.tgac.logic.unification;
 
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
+import java.util.function.UnaryOperator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -67,5 +68,38 @@ public class Package {
 
 	public Package withoutStore(Class<? extends Store> cls) {
 		return Package.of(substitutions, constraints.remove(cls));
+	}
+
+	/** The store registered under {@code cls}; throws when absent. */
+	@SuppressWarnings("unchecked")
+	public <T extends Store> T getStore(Class<T> cls) {
+		return (T) constraints.get(cls)
+				.getOrElseThrow(() -> new IllegalStateException(
+						"No store associated with package"));
+	}
+
+	/** Prepends {@code c} into its store; unchanged when the store is absent. */
+	public Package withStored(Stored c) {
+		return constraints.get(c.getStoreClass())
+				.map(cs -> cs.prepend(c))
+				.map(cs -> Package.of(substitutions, constraints.put(c.getStoreClass(), cs)))
+				.getOrElse(this);
+	}
+
+	/** Removes {@code c} from its store; unchanged when the store is absent. */
+	public Package withoutStored(Stored c) {
+		return constraints.get(c.getStoreClass())
+				.map(cs -> cs.remove(c))
+				.map(cs -> Package.of(substitutions, constraints.put(c.getStoreClass(), cs)))
+				.getOrElse(this);
+	}
+
+	/** Applies {@code f} to the store registered under {@code cls}; unchanged when absent. */
+	@SuppressWarnings("unchecked")
+	public <T extends Store> Package updateStore(Class<T> cls, UnaryOperator<T> f) {
+		return constraints.get(cls)
+				.map(s -> (Store) f.apply((T) s))
+				.map(s -> Package.of(substitutions, constraints.put(cls, s)))
+				.getOrElse(this);
 	}
 }

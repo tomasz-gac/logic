@@ -5,7 +5,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.Propagator;
-import com.tgac.logic.ckanren.StoreSupport;
+import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.LList;
@@ -70,7 +70,7 @@ class EnforceConstraintsFD {
 	}
 
 	private static Goal rerunConstraints(Term<?> x) {
-		return StoreSupport.wake(x);
+		return Propagation.wake(x);
 	}
 
 	private static <T> Goal unifyWithAllDomainValues(Term<T> x, Domain<T> d) {
@@ -83,7 +83,7 @@ class EnforceConstraintsFD {
 	// because of ambiguity in CKanren
 	private static <T> Goal unifyTerms(Term<T> u, Unifiable<T> v) {
 		return s -> Cont.defer(() -> MiniKanren.unifyPrefix(s, u, v)
-				.map(prefix -> StoreSupport.resolve(prefix).apply(s))
+				.map(prefix -> Propagation.resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(Nothing.nothing())));
 	}
 

@@ -1,7 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
-
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.Propagator;
 import com.tgac.logic.ckanren.ConstraintStore;
@@ -73,7 +71,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	public static FiniteDomainConstraints getFDStore(Package p) {
-		return (FiniteDomainConstraints) getConstraintStore(p, FiniteDomainConstraints.class);
+		return p.getStore(FiniteDomainConstraints.class);
 	}
 
 	public static <T> Option<Domain<T>> getDom(Package p, LVar<T> x) {

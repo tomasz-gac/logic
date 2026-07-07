@@ -6,7 +6,7 @@ import static io.vavr.Predicates.not;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.Narrowing;
-import com.tgac.logic.ckanren.StoreSupport;
+import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;
 import com.tgac.logic.finitedomain.domains.Singleton;
@@ -125,19 +125,19 @@ public abstract class Domain<T> implements Narrowing {
 				// updateVarDomain only resolves open variables, so the mint succeeds;
 				// the defensive branch mirrors the old already-bound no-op
 				return Prefix.binding(a, x, lval(v))
-						.map(prefix -> StoreSupport.enqueueBind(prefix, a))
+						.map(prefix -> Propagation.enqueueBind(prefix, a))
 						.getOrElse(() -> Cont.just(a));
 			} else {
 				// a narrowed (but not collapsed) domain wakes the propagators watching x,
 				// so narrowing cascades like x≤y≤z propagate without waiting for a
 				// binding; the wake is agenda work — appended to a drain in flight, or
 				// a fresh drain at statement time
-				return StoreSupport.enqueueWake(x, extendD(x, this, a));
+				return Propagation.enqueueWake(x, extendD(x, this, a));
 			}
 		};
 	}
 
 	private static Package extendD(LVar<?> x, Domain<?> xd, Package a) {
-		return StoreSupport.updateC(a, FiniteDomainConstraints.class, cs -> cs.withDomain(x, xd));
+		return a.updateStore(FiniteDomainConstraints.class, cs -> cs.withDomain(x, xd));
 	}
 }

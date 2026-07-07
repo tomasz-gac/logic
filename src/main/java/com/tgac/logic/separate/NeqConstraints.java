@@ -1,6 +1,5 @@
 package com.tgac.logic.separate;
 
-import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
@@ -29,7 +28,7 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	public static NeqConstraints get(Package p) {
-		return (NeqConstraints) getConstraintStore(p, NeqConstraints.class);
+		return p.getStore(NeqConstraints.class);
 	}
 
 	public static List<NeqConstraint> getConstraints(Package p) {

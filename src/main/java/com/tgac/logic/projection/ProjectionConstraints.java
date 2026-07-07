@@ -9,7 +9,7 @@ import com.tgac.logic.ckanren.Propagator;
 import com.tgac.logic.ckanren.Verdict;
 import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.Revision;
-import com.tgac.logic.ckanren.StoreSupport;
+import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -36,8 +36,8 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public <T> Goal enforce(Term<T> x) {
-		return StoreSupport.wake(x)
-				.and(s1 -> StoreSupport.getConstraintStore(s1, ProjectionConstraints.class)
+		return Propagation.wake(x)
+				.and(s1 -> s1.getStore(ProjectionConstraints.class)
 						.projections
 						.isEmpty() ?
 						Cont.just(s1) :
@@ -96,7 +96,7 @@ public class ProjectionConstraints implements ConstraintStore {
 		// parks a suspension-shaped propagator: keep until x is deep-ground, then
 		// hand the projected goal to the driver, which splices it after the pass
 		// quiesces (docs/design/suspensions.md §5)
-		return s -> StoreSupport.activate(
+		return s -> Propagation.activate(
 				Propagator.of(ProjectionConstraints.class,
 						Collections.singletonList(x),
 						state -> MiniKanren.walkAll(state, x).get()

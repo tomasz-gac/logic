@@ -2,8 +2,6 @@ package com.tgac.logic.separate;
 
 import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.ckanren.CKanren.unify;
-import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
-import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
 import static com.tgac.logic.unification.MiniKanren.format;
 import static com.tgac.logic.unification.MiniKanren.walkAll;
@@ -45,7 +43,7 @@ public class Disequality {
 						}
 						return bridgeToFiniteDomain(s, prefix.toMap())
 								.map(exclude -> exclude.apply(s))
-								.getOrElse(() -> Cont.just(withConstraint(s,
+								.getOrElse(() -> Cont.just(s.withStored(
 										NeqConstraint.of(prefix.toMap()))));
 					})
 					// they cannot unify: already separate, nothing to record
@@ -229,12 +227,19 @@ public class Disequality {
 				.collect(List.collector());
 	}
 
+	/** Whether the term denotes something in {@code p}: a value, or a bound variable. */
+	private static boolean isBound(Package p, Term<?> v) {
+		return v.asVar()
+				.map(lvar -> MiniKanren.walk(p, lvar) != lvar)
+				.getOrElse(true);
+	}
+
 	private static NeqConstraint purifySingle(
 			NeqConstraint constraints,
 			Package r) {
 		return NeqConstraint.of(
 				constraints.getSeparate().toJavaStream()
-						.filter(c -> isAssociated(r, c._1) && isAssociated(r, c._2))
+						.filter(c -> isBound(r, c._1) && isBound(r, c._2))
 						.reduce(HashMap.empty(), (c, head) -> head.apply(c::put),
 								Exceptions.throwingBiOp(UnsupportedOperationException::new)));
 	}

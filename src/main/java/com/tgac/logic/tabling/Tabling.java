@@ -6,7 +6,6 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.ConstraintStore;
-import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.TableEntry.Registration;
 import com.tgac.logic.unification.MiniKanren;
@@ -89,7 +88,7 @@ public class Tabling {
 			assertNoConstraints(pkg, "at a tabled call");
 			return MiniKanren.reify(pkg, argsTerm).flatMap(reifiedArgs -> {
 			Call key = Call.of(relation, reifiedArgs);
-			Table table = StoreSupport.getConstraintStore(pkg, Table.class);
+			Table table = pkg.getStore(Table.class);
 			TableEntry entry = table.getOrCreateEntry(key);
 				return entry.tryBecomeMaster() ?
 						produce(entry, body.get(), pkg, argsTerm, k) :

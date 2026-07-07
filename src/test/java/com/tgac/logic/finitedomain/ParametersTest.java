@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.category.Nothing;
 import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.Propagator;
-import com.tgac.logic.ckanren.StoreSupport;
+import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.ckanren.Verdict;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
@@ -49,7 +49,7 @@ public class ParametersTest {
 		Package pkg = Package.of(HashMap.empty(),
 				LinkedHashMap.of(FiniteDomainConstraints.class,
 						FiniteDomainConstraints.empty().prepend(constraint)));
-		StoreSupport.resolve(TestAccess.prefix(prefix))
+		Propagation.resolve(TestAccess.prefix(prefix))
 				.apply(pkg)
 				.run(v -> {
 					box[0] = v;
