@@ -263,7 +263,7 @@ public class FiniteDomainTest {
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();
 
-		System.out.println(collect(
+		lombok.val result = collect(
 				addo(a, b, c)
 						.and(dom(a, Interval.of(0, 5)))
 						.and(dom(b, Interval.of(0, 5)))
@@ -271,7 +271,18 @@ public class FiniteDomainTest {
 						.and(Disequality.separate(str, lval("123")))
 						.solve(lval(Tuple.of(a, b, c, str)))
 						.map(Term::get)
-						.map(t -> t.map(Term::get, Term::get, Term::get, Function.identity()))
-		));
+						.map(t -> t.map(Term::get, Term::get, Term::get, Function.identity())));
+
+		// complete: every a+b=c combination over the domains (6×6 = 36), none lost
+		// to the untouched disequality on str
+		org.assertj.core.api.Assertions.assertThat(result).hasSize(36);
+		org.assertj.core.api.Assertions.assertThat(result)
+				.allMatch(t -> t._1 + t._2 == t._3)
+				.allMatch(t -> t._1 >= 0 && t._1 <= 5 && t._2 >= 0 && t._2 <= 5);
+		org.assertj.core.api.Assertions.assertThat(result.stream()
+				.map(t -> Tuple.of(t._1, t._2, t._3))
+				.distinct()
+				.count())
+				.isEqualTo(36L);
 	}
 }
