@@ -124,8 +124,10 @@ public abstract class Domain<T> implements com.tgac.logic.ckanren.Narrowing {
 						.apply(a);
 			} else {
 				// a narrowed (but not collapsed) domain wakes the propagators watching x,
-				// so narrowing cascades like x≤y≤z propagate without waiting for a binding
-				return StoreSupport.wake(x).apply(extendD(x, this, a));
+				// so narrowing cascades like x≤y≤z propagate without waiting for a
+				// binding; the wake is agenda work — appended to a drain in flight, or
+				// a fresh drain at statement time
+				return StoreSupport.enqueueWake(x, extendD(x, this, a));
 			}
 		};
 	}

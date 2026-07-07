@@ -315,7 +315,12 @@ last (lock the door after the furniture is arranged):
   §5.3 first (Tom decision). This is the big step — treat it like Phase 1/2: pin
   tests first (contradiction-between-inferences is loud; unroutable inference fails
   the emitting reaction; dedup of identical narrowings).
-- **Step 2.5 — the explicit agenda (optional, before or with Step 3).** The
+- **Step 2.5 — the explicit agenda: IMPLEMENTED (July 2026).** Items are Bind(delta)
+  and Wake(term) (narrow inferences apply inline — bounded once their cascades
+  append); the run lane replaced PendingRuns; `enqueue` is the single propagation
+  entry (present → append, absent → install + drain + splice); `drain` pops one
+  item per deferred step; phase 2 removes the agenda before chaining runs. Original
+  rationale below. The
   implemented fixpoint is RECURSION-HIDDEN: a pass is linear, and cascades re-enter
   the chokepoint (collapse → nested pass; narrowing → inline wake; bind → nested
   pass), trampolined by the continuation substrate — stack-safe but uninspectable.

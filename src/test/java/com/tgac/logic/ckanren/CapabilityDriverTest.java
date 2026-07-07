@@ -127,6 +127,34 @@ public class CapabilityDriverTest {
 	}
 
 	@Test(timeout = 5000)
+	public void agendaNeverLeaksIntoAnswers() {
+		LVar<Long> q = com.tgac.logic.unification.LVar.<Long> lvar().asVar().get();
+		Package[] answer = new Package[1];
+		Goal probe = s -> {
+			answer[0] = s;
+			return com.tgac.functional.monad.Cont.just(s);
+		};
+
+		Package root = root(
+				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
+						Arrays.asList(Inference.bind(HashMap.of(q, lval(1L)))))));
+
+		com.tgac.logic.unification.Unifiable<Long> x = lvar();
+		long count = x.unifies(0L)
+				.and(probe)
+				.solveFrom(root, x, BreadthFirstScheduler::new)
+				.count();
+
+		assertThat(count).isEqualTo(1);
+		// quiescence removes the agenda; a leaked store would ride every
+		// subsequent package of the branch
+		assertThat(answer[0].getConstraints().keySet().toJavaStream()
+				.anyMatch(c -> c.getSimpleName().equals("Agenda")))
+				.as("the agenda must be removed at quiescence")
+				.isFalse();
+	}
+
+	@Test(timeout = 5000)
 	public void identicalNarrowingsApplyOnce() {
 		AtomicInteger applications = new AtomicInteger();
 		Narrowing counting = target -> {

@@ -109,27 +109,104 @@ public class StoreSupport {
 	 */
 	public static Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
 		return p -> {
-			// newSubstitutions is the full new map (a superset of p's, per the caller
-			// contract), so this replace is the extension — O(1). Do not use a
-			// map-merge here: it walks the whole map per binding, making every
-			// derivation quadratic.
-			Package extended = p.withSubstitutions(newSubstitutions);
-			java.util.List<ConstraintStore> stores = p.getConstraints().values().toJavaStream()
-					.filter(ConstraintStore.class::isInstance)
-					.map(ConstraintStore.class::cast)
-					.collect(java.util.stream.Collectors.toList());
-			if (stores.isEmpty()) {
-				// pure-relational fast path: no reactions, no prefix diff, no wake
-				return Cont.just(extended);
+			if (constraintStores(p).isEmpty()) {
+				// pure-relational fast path: no reactions, no prefix diff, no agenda.
+				// newSubstitutions is the full new map (a superset of p's, per the
+				// caller contract), so this replace is the extension — O(1). Do not
+				// use a map-merge here: it walks the whole map per binding, making
+				// every derivation quadratic.
+				return Cont.just(p.withSubstitutions(newSubstitutions));
 			}
-			HashMap<LVar<?>, Term<?>> prefix = MiniKanren.prefixS(p.getSubstitutions(), newSubstitutions);
-			// reactions are DATA: fold them synchronously — each store swaps at most
-			// its own factor and hands inferences to the chokepoint for routing
+			return enqueue(p, new Agenda.Bind(
+					MiniKanren.prefixS(p.getSubstitutions(), newSubstitutions)));
+		};
+	}
+
+	private static java.util.List<ConstraintStore> constraintStores(Package p) {
+		return p.getConstraints().values().toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
+				.map(ConstraintStore.class::cast)
+				.collect(java.util.stream.Collectors.toList());
+	}
+
+	/**
+	 * The single entry to propagation work. A drain in flight (agenda present)?
+	 * Append — the running loop will reach the item. Otherwise this is a trigger:
+	 * install the agenda, drain to quiescence, then splice the collected runs.
+	 */
+	static Cont<Package, Nothing> enqueue(Package p, Agenda.Item item) {
+		return p.getConstraints().get(Agenda.class)
+				.map(a -> Cont.<Package, Nothing> just(p.putStore(((Agenda) a).append(item))))
+				.getOrElse(() -> drain().apply(p.putStore(Agenda.seeded(item))));
+	}
+
+	/**
+	 * The explicit propagation loop. Pops ONE item per deferred step, so the
+	 * scheduler interleaves other fibers between items (a native loop would make an
+	 * entire cascade a single scheduler step and break bottom-avoidance). Phase 2:
+	 * when the items are exhausted, the agenda is REMOVED and the collected run
+	 * goals splice as plain search — every trigger inside them starts a fresh drain.
+	 */
+	private static Goal drain() {
+		return Goal.defer(() -> s -> {
+			Agenda agenda = (Agenda) s.getConstraints().get(Agenda.class).get();
+			if (agenda.itemsExhausted()) {
+				Package cleared = s.withoutStore(Agenda.class);
+				return agenda.runs()
+						.foldLeft(Goal.success(), Goal::and)
+						.apply(cleared);
+			}
+			io.vavr.Tuple2<Agenda.Item, Agenda> popped = agenda.pop();
+			return applyItem(popped._1)
+					.and(drain())
+					.apply(s.putStore(popped._2));
+		});
+	}
+
+	/** Queue a watcher wake for {@code changed} — the narrowing producer's entry. */
+	public static Cont<Package, Nothing> enqueueWake(Term<?> changed, Package p) {
+		return enqueue(p, new Agenda.Wake(changed));
+	}
+
+	private static Goal applyItem(Agenda.Item item) {
+		return item instanceof Agenda.Bind ?
+				applyBind(((Agenda.Bind) item).delta) :
+				wake(((Agenda.Wake) item).changed);
+	}
+
+	/**
+	 * Applies an inferred-bindings delta: revalidate against the live package (a
+	 * pair for a still-open variable binds its walked representative; one bound to
+	 * the same value is dropped; one bound to a DIFFERENT value is a contradiction
+	 * between constraint domains and the branch dies), extend, run store reactions,
+	 * apply their inferences, and queue wakes for the newly bound variables.
+	 */
+	private static Goal applyBind(HashMap<LVar<?>, Term<?>> delta) {
+		return s -> {
+			HashMap<LVar<?>, Term<?>> kept = HashMap.empty();
+			for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : delta) {
+				Term<?> walked = MiniKanren.walk(s, binding._1);
+				if (walked.asVar().isDefined()) {
+					kept = kept.put((LVar<?>) walked.asVar().get(), binding._2);
+				} else if (!walked.equals(binding._2)) {
+					return Cont.complete(Nothing.nothing());
+				}
+			}
+			if (kept.isEmpty()) {
+				return Cont.just(s);
+			}
+			HashMap<LVar<?>, Term<?>> full = s.getSubstitutions();
+			for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : kept) {
+				full = full.put(binding._1, binding._2);
+			}
+			Package extended = s.withSubstitutions(full);
+			// reactions are DATA: fold them; each swaps at most its own factor and
+			// hands inferences back for routing
 			Package reacted = extended;
 			java.util.List<Inference> inferred = new java.util.ArrayList<>();
-			for (ConstraintStore cs : stores) {
+			for (ConstraintStore cs : constraintStores(reacted)) {
 				Package before = reacted;
-				Package after = cs.onPrefix(prefix, reacted).match(
+				Package after = cs.onPrefix(kept, reacted).match(
 						() -> null,
 						() -> before,
 						(store, inferences) -> {
@@ -141,30 +218,17 @@ public class StoreSupport {
 				}
 				reacted = after;
 			}
-			Goal applyInferred = inferred.stream()
+			// queue wakes for the newly bound vars, then apply reaction inferences
+			// inline (bounded: their cascades append rather than recurse)
+			Agenda agenda = (Agenda) reacted.getConstraints().get(Agenda.class).get();
+			for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : kept) {
+				agenda = agenda.append(new Agenda.Wake(binding._1));
+			}
+			return inferred.stream()
 					.distinct()
 					.map(Inference::toGoal)
-					.reduce(Goal.success(), Goal::and);
-			// wake EVERY store's suspended propagators watching a newly bound variable
-			Goal wake = prefix
-					.keySet().toJavaStream()
-					.<Goal> map(StoreSupport::wake)
-					.reduce(Goal.success(), Goal::and);
-			// Verdict.run goals collected during the pass are spliced only after the
-			// OUTERMOST pass quiesces; the PendingRuns store's presence marks in-flight
-			boolean outermost = !p.getConstraints().get(PendingRuns.class).isDefined();
-			if (!outermost) {
-				return applyInferred.and(wake).apply(reacted);
-			}
-			Goal drain = s -> {
-				PendingRuns pending = (PendingRuns) s.getConstraints().get(PendingRuns.class).get();
-				Package cleared = s.withoutStore(PendingRuns.class);
-				return pending.runs
-						.foldLeft(Goal.success(), Goal::and)
-						.apply(cleared);
-			};
-			return applyInferred.and(wake).and(drain)
-					.apply(reacted.putStore(PendingRuns.empty()));
+					.reduce(Goal.success(), Goal::and)
+					.apply(reacted.putStore(agenda));
 		};
 	}
 
@@ -192,9 +256,9 @@ public class StoreSupport {
 	 * Runs the propagator and administers its verdict: fail kills the branch, keep
 	 * leaves it parked untouched, discharge removes it, narrowed applies the
 	 * deduplicated inferences with the propagator still parked, and run discharges
-	 * it and defers the goal — appended to the in-flight pass's PendingRuns for
-	 * splicing after quiescence, or run inline at statement time when no pass is in
-	 * flight.
+	 * it and defers the goal — collected in the in-flight drain's run lane for
+	 * splicing after quiescence, or run inline at statement time when no drain is
+	 * in flight.
 	 */
 	public static Cont<Package, Nothing> interpret(Propagator p, Package s) {
 		return p.propagate(s).match(
@@ -208,9 +272,12 @@ public class StoreSupport {
 						.apply(s),
 				goal -> {
 					Package discharged = withoutConstraint(s, p);
-					return discharged.getConstraints().get(PendingRuns.class)
-							.map(pr -> Cont.<Package, Nothing> just(discharged.putStore(
-									((PendingRuns) pr).with(goal))))
+					// a drain in flight collects the run for the post-quiescence
+					// splice; at statement time it runs inline at the goal's own
+					// position in the search
+					return discharged.getConstraints().get(Agenda.class)
+							.map(a -> Cont.<Package, Nothing> just(discharged.putStore(
+									((Agenda) a).appendRun(goal))))
 							.getOrElse(() -> goal.apply(discharged));
 				});
 	}
