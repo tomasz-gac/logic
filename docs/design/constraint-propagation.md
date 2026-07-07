@@ -1,10 +1,20 @@
 # Constraint propagation redesign — design sketch
 
-**Status:** design sketch, NOT implemented. The current constraint composition is
-patched (stores no longer starve each other of the prefix) but is not a general
-constraint solver. This document specifies the target design in enough detail to
-implement it later. Nothing here needs to be done to keep the library working for
-single-domain queries.
+**Status: Phase 1 IMPLEMENTED (July 2026, branch `propagation`); Phases 2–3 not.**
+Phase 0 (the multi-domain guard) was deliberately skipped — obsolete once Phase 1
+landed. Implemented: collapse-bindings route through the chokepoint (Phase 1a) and
+the chokepoint applies the prefix once with stores purely reactive (Phase 1b), gated
+by `PropagationPinTest` (the committed-choice pin: red before, green after, verified
+both ways). The Phase 2 pin (`narrowingPropagatesToConstraintsStatedEarlier`) is
+`@Ignore`d — removing that @Ignore is Phase 2's first step.
+
+En route, the pin work exposed and fixed an unrelated FD soundness bug: `leq` lost
+boundary solutions because `copyBefore`/`dropBefore` disagreed about inclusivity
+across domain types (strictly-before on Interval/Enumerated, inclusive on Singleton)
+and the Enumerated miss-case did not narrow at all. Replaced by the inclusive
+`atMost`/`atLeast` (see `DomainNarrowingTest`). Lesson recorded: the pre-existing
+e2e tests were soundness-only (`allMatch`), blind to LOST solutions — new constraint
+tests must also assert completeness.
 
 ---
 
@@ -66,7 +76,10 @@ fixpoint engine":
    inferred bindings mid-search. This is rescued LATE: at reify time,
    `EnforceConstraintsFD` re-runs `StoreSupport.processPrefix` over the full
    substitution map, which is why `separate(x,1) ∧ dom(x,{1})` correctly fails
-   today (verified empirically — do not "re-fix" it). Consequences of the lateness:
+   today (verified empirically — do not "re-fix" it; note also that a one-element
+   domain built by `EnumeratedDomain.range` is NOT a `Singleton`, so it never
+   collapse-binds — only domain INTERSECTION normalises to `Singleton` and takes
+   the collapse path). Consequences of the lateness:
    wasted search (violated branches are pruned only at the end), and a real
    unsoundness risk under committed choice — `conda`/`condu` can commit on a
    mid-search package that enforcement would later reject.
@@ -264,9 +277,11 @@ only (gap 1).
      runConstraints(x, FiniteDomainConstraints.getFDStore(a).getConstraints())
              .apply(a.extendS(HashMap.of(x, lval(v))));
      ```
-     Target:
+     Target (note: `processPrefix` takes the FULL new substitution map — CKanren.unify
+     passes `s1.getSubstitutions()` — not just the delta; passing only the delta would
+     lose every other binding):
      ```java
-     StoreSupport.processPrefix(HashMap.of(x, lval(v))).apply(a);
+     StoreSupport.processPrefix(a.getSubstitutions().put(x, lval(v))).apply(a);
      ```
      An FD-inferred binding becomes indistinguishable from a unification: Neq
      verifies immediately, projections fire, FD's own wake-up happens inside its
