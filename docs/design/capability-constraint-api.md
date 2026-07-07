@@ -72,6 +72,11 @@ Option<Prefix> Prefix.binding(Package p, LVar<?> x, Term<?> v);
 
 ### 2.2 `Propagator` + `Verdict` — constraint bodies report, the driver administers
 
+> **DEMOTION PLANNED (July 2026):** `minimal-constraint-vocabulary.md` moves
+> this protocol from the driver boundary to a store-implementor toolkit — the
+> driver will speak only to stores. The safety analysis below still applies,
+> one level down.
+
 Today the outcome trichotomy is smeared across `remRun` (remove), the body re-running
 `constraintOperation` (re-park), and `addTo`'s guard (discharge). The framework cannot
 observe outcomes, and forgetting to re-park silently drops a constraint.
@@ -461,7 +466,10 @@ last (lock the door after the furniture is arranged):
      package. (Subpackage named `propagator`, not `propagation` — that word now
      names the driver class.)
 
-  Deferred, recorded here so it isn't relitigated: the Verdict/Revision mirror is
+  SUPERSEDED (July 2026): the mirror question is resolved the OTHER way by
+  `minimal-constraint-vocabulary.md` — the store boundary is THE protocol and
+  propagators demote to store-internal machinery; nothing gets converted TO
+  propagators. Kept for the record: the Verdict/Revision mirror is
   two types for a reason (unit of scheduling vs unit of persistence; each level
   can only affect what it owns — merging would re-open the doors this API
   closed). BUT the mirror exists because Neq predates propagators. Rewriting Neq

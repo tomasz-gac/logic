@@ -1,208 +1,228 @@
-# The minimal constraint vocabulary — removing Narrowing and Inference
+# The minimal constraint vocabulary — the driver speaks only to stores
 
-**Status: PLANNED (July 2026, designed with Tom). Not implemented. Supersedes
-§2.4 of `capability-constraint-api.md` (the `Inference` vocabulary) and
-FORECLOSES the data-shaped Neq→FD bridge idea deferred there — see §6 for the
-reasoning, recorded so it is not resurrected.**
+**Status: PLANNED (July 2026, designed with Tom; the uniform store boundary is
+Tom's call: "the driver only handles cross-store interactions, never
+intra-store"). Not implemented. Supersedes §2.4 of
+`capability-constraint-api.md` (the `Inference` vocabulary), DEMOTES the
+propagator protocol from driver boundary to store-implementor toolkit, and
+FORECLOSES the data-shaped Neq→FD bridge (§6) — recorded so it is not
+resurrected. Also supersedes the Step 3.5 "Neq-as-propagators" backlog entry:
+under this design Neq's wholesale store is the model citizen, not the legacy
+oddball.**
 
-Prerequisite reading: `capability-constraint-api.md` (the implemented Steps 1–3.5:
-Propagator/Verdict, ConstraintStore/Revision, Prefix, the agenda drain).
+Prerequisite reading: `capability-constraint-api.md` (the implemented Steps
+1–3.5: Propagator/Verdict, ConstraintStore/Revision, Prefix, the agenda drain).
 
 ---
 
-## 1. Why: the shared narrow vocabulary carries no cross-domain traffic
+## 1. Why
 
-`Inference.narrow(Term, Narrowing)` was designed as cross-factor vocabulary —
-rule B of the composition model: domains shrink, so "shrink this term" is a
-shared concept. The audit (July 2026) says otherwise. Every `Inference.narrow`
-emission in the codebase:
+### 1.1 The narrow audit: the shared vocabulary carries no cross-domain traffic
 
-- FD propagator verdicts: `leq`, `addo`, `mulo`, `separateFDC` (via
-  `FiniteDomain.updates`);
-- the FD store's own `revise` on var–var aliasing (domain copy/intersect).
+`Inference.narrow(Term, Narrowing)` was designed as cross-factor vocabulary.
+The audit (July 2026) found every emission is FD talking to FD — propagator
+verdicts (`leq`, `addo`, `mulo`, `separateFDC`) and the FD store's aliasing
+revise. The emitter's owning store is always the consumer; the round-trip
+through the driver exists only to arrive back home. The one real cross-domain
+deduction (the Neq→FD bridge) bypasses `Narrowing` entirely — it is
+call-shaped. The literature agrees: single-solver systems have no cross-domain
+problem, and systems with separate domains (SWI `dif/2` vs clpfd) interact
+through the substitution only. No known CLP system has a shared narrowing
+vocabulary between independent constraint domains.
 
-Every one is FD talking to FD. The round-trip through the driver's shared
-vocabulary exists only to arrive back home: the emitter's owning store is the
-consumer. The one real piece of cross-domain deduction in the system — the
-Neq→FD bridge — bypasses `Narrowing` entirely (it is call-shaped:
-`Disequality.separate` → `FiniteDomain.excludeFromDomain`).
+### 1.2 The protocol asymmetry: binds are store-level, wakes are propagator-level
 
-The literature agrees. Single-solver systems (Gecode, Choco, CLP(FD) where
-`#\=` is a native propagator) have no cross-domain problem. Systems with
-genuinely separate constraint domains keep them siloed and let them interact
-through the substitution only (SWI's `dif/2` and clpfd do not prune each
-other). cKanren's `=/=`-to-FD exclusion — our bridge's ancestor — is a direct
-call there too. We know of no system with a shared narrowing vocabulary between
-independent constraint domains.
+When a prefix arrives, the driver asks the STORE (`revise`) and the store
+updates its own factor. When a term changes, the driver bypasses the store and
+runs individual PROPAGATORS — read-only reporters that must relay factor
+updates back through driver vocabulary (`Inference.narrow`, and the escape
+hatches `Domain` needs to apply them). The asymmetry is the sole reason the
+shared narrow vocabulary — and the relay machinery — exists.
 
-So `Narrowing` is speculative generality (YAGNI), and it is not free:
+The fix is Tom's principle: **the driver handles cross-store interactions
+only, never intra-store.** Wakes become store-level triggers like binds
+already are. The store runs its own propagators internally, updates its own
+factor directly, and answers with data. Nothing intra-domain ever crosses the
+boundary again.
 
-- its `Goal`-shape is the escape hatch — applying a narrow hands control to
-  `Domain`, which makes driver decisions (collapse vs narrow vs no-op) inside
-  an opaque goal and calls the engine's enqueues itself;
-- it forces the driver to execute code it cannot inspect mid-drain;
-- as cross-domain vocabulary it would *invite* constraint implementors to
-  hardcode dependencies on other domains for speed — the thing rule B exists
-  to prevent — in exchange for deduction that is optimization-only (the record
-  verification already guarantees the same answer set).
+## 2. The target boundary
 
-## 2. The target vocabulary
+The driver understands exactly two values — **`Prefix`** (bindings grow) and
+**`Term`** (this changed; re-examine) — and one answer shape.
 
-The cross-boundary language shrinks to the two values the driver genuinely
-owns and understands:
-
-- **`Prefix`** — bindings (substitutions grow);
-- **`Term`** — a changed-term announcement (wake its watchers).
-
-Propagators speak `Verdict`; stores speak `Revision`; both carry only those
-two values across the boundary. Domain updates never cross the boundary at
-all — they are a private conversation between a propagator and its own store.
-
-### 2.1 `Verdict` (revised set)
+### 2.1 `ConstraintStore` — three triggers, one answer
 
 ```java
-Verdict.fail()                 // violated — the branch dies
-Verdict.keep()                 // undecided — stay parked
-Verdict.subsumed()             // entailed — forget me
-Verdict.update(f)              // stay parked; apply f to MY OWN store's factor
-Verdict.run(Goal)              // unchanged (the suspension feature)
+interface ConstraintStore extends Store {
+	boolean isEmpty();
+
+	/** Bindings arrived. Revise your factor against them. */
+	Revision revise(Prefix prefix, Package state);
+
+	/** A term changed (bound or narrowed). Re-examine whatever watches it. */
+	default Revision changed(Term<?> x, Package state) { return Revision.unchanged(); }
+
+	/** One of your items was just stated. First examination. */
+	default Revision stated(Stored item, Package state) { return Revision.unchanged(); }
+
+	<T> Goal enforce(Term<T> x);      // as today
+	<A> Term<A> reify(...);           // as today
+}
 ```
 
-`Verdict.narrowed(List<Inference>)` is REPLACED by `Verdict.update(f)` where
-`f : (Package, Store) -> Revision` — the driver fetches the propagator's own
-factor (it knows it: `getStoreClass()`), applies `f` to it against the live
-package, and routes the returned `Revision`. Touching another store's factor
-remains unrepresentable: the driver only ever hands a propagator its own.
+`revise` and `changed` broadcast to every store; `stated` goes to the item's
+owning store only (`getStoreClass`). `pendingPropagators` is DELETED from the
+interface — the cross-store wake union was the driver reaching into store
+internals; the broadcast replaces it.
 
-### 2.2 `Revision` (grows the payload `Inference` used to carry)
+### 2.2 `Revision` — the single answer
 
 ```java
-Revision.fail()
-Revision.unchanged()
-Revision.updated(Store myFactor)
-Revision.updated(Store myFactor, List<Term> changed)          // strict narrowings
-Revision.updated(Store myFactor, Prefix inferred, List<Term> changed)  // + collapses
+Revision.fail()                      // the branch dies
+Revision.unchanged()                 // nothing to do
+Revision.updated(Store myFactor)     // swap my factor
+    // payloads (exact factory shape decided at implementation, §8):
+    //   Prefix inferred      — collapses and other inferred bindings
+    //   List<Term> changed   — strict narrowings: wake the watchers
+    //   List<Goal> runs      — suspension bodies (projection), spliced
+    //                          after quiescence via the run lane
 ```
 
-The driver's routing, in one place: swap the factor, queue a Bind for the
-prefix, queue a Wake per changed term. `Revision` becomes the single answer
-shape for BOTH triggers — a store revising against a prefix and a store
-absorbing its own propagator's update.
+The driver's routing, in ONE place: swap the factor, queue a Bind for the
+prefix, queue a Wake per changed term, append runs to the run lane. It never
+executes store code and never inspects a domain.
 
-### 2.3 What dissolves
-
-- **`Narrowing`** — deleted. `Domain` stops implementing anything from
-  `ckanren` and stops calling the engine; it becomes pure domain lattice plus
-  statement-goal helpers.
-- **`Inference`** — deleted. Its bind arm becomes `Revision`'s prefix payload;
-  its narrow arm becomes `Verdict.update`'s private function.
-- **The public enqueues** — `enqueueBind`/`enqueueWake` go private. The
-  public surface of `Propagation` becomes exactly three goal-shaped,
-  mode-oblivious entries:
+### 2.3 `Propagation` — the public surface
 
 ```java
-Propagation.resolve(Prefix)    // statement: these unify / this was inferred
-Propagation.activate(Propagator)  // statement: this constraint holds
-Propagation.changed(Term)      // announcement: x changed, re-examine watchers
+Propagation.resolve(Prefix)     // statement: these unify / this was inferred
+Propagation.activate(Stored)    // statement: park this item + first examination
+Propagation.changed(Term)       // announcement: x changed, re-examine watchers
 ```
 
-  (`changed` is required by the statement-position survivors, §4. A spurious
-  call is harmless: watchers re-run and answer `keep`.)
+All three are goal-shaped and mode-oblivious (drain in flight → append;
+otherwise → install and drain). `activate(item)` = `withStored(item)` + queue
+`Stated(item)`. `enqueueBind`/`enqueueWake` go PRIVATE. The agenda's item
+kinds become Bind(Prefix) / Changed(Term) / Stated(Stored); the
+one-item-per-deferred-step fairness invariant and the run-lane phase-2 splice
+are unchanged.
 
-## 3. What the atomicity buys
+### 2.4 What dissolves, what demotes
 
-Today a `narrowed` verdict's inferences apply **sequentially**: applying
-inference 1 can change the package under inference 2's feet — the staleness
-class that produced the separateFDC raw-target rebind bug, patched by
-walk-at-application-time. Under `Verdict.update` the whole domain update is
-one function producing one `Revision` against one state snapshot: the
-staleness class is REMOVED, not guarded against. Consequences:
+- **`Narrowing`, `Inference` — deleted.** `Domain` implements nothing from
+  `ckanren` and never calls the engine; binds and changed-announcements ride
+  `Revision` payloads.
+- **`Propagator`/`Verdict` — demoted, not deleted.** They stop being driver
+  citizens and become the `ckanren.propagator` TOOLKIT: a library for stores
+  that schedule parked bodies (FD, Projection). The evaporation-safety
+  argument (keep-is-default, framework owns parking) protects constraint
+  AUTHORS, and authors write against this toolkit — the protection moves with
+  them. The store administers its own propagators' verdicts inside
+  `changed`/`stated` (the logic of today's `Propagation.interpret`/`wake`,
+  including chain-inclusive watch matching, moves into the stores). The
+  toolkit's `Verdict.narrowed(List<Inference>)` is replaced by a store-local
+  update shape (recommended: `Verdict.update(f)` with
+  `f : (Package, S) -> Revision`, administered by the owning store — the
+  driver never sees it); `fail`/`keep`/`subsumed`/`run` keep their semantics.
 
-- the walk-at-application invariant (Inference.Narrow's javadoc) disappears
-  with its type;
-- the inference `.distinct()` dedup — and CapabilityDriverTest's
-  "identical narrowings dedup" pin — retire with it (one atomic revision has
-  nothing to dedup); the pin is REPLACED, not deleted silently: its concern
-  becomes "one update, one factor swap", asserted on the new shape;
-- the termination guard (equal-domain short-circuit) stays FD-side, where
-  domain equality belongs, but becomes *visible* to the driver as "no changed
-  terms in the revision" — the fixpoint argument reads off the vocabulary.
+## 3. What the uniform boundary buys
+
+- **The escape hatches close.** No store or domain code calls the engine
+  mid-drain; the only engine callers left are statement-position goals
+  (`dom`, the bridge, enforce hooks) on the three public entries.
+- **The staleness class is removed, not guarded.** Today a narrowed verdict's
+  inferences apply sequentially — applying one can invalidate the next's
+  captured target (the separateFDC raw-target bug, patched by
+  walk-at-application). Now a store's whole response to a trigger is one
+  `Revision` computed against one state snapshot. The walk-at-application
+  invariant retires with `Inference`; CapabilityDriverTest's dedup pin is
+  REWORKED (atomic revisions have nothing to dedup), not silently dropped.
+- **Termination becomes vocabulary-visible.** The equal-domain guard stays
+  FD-side (domain equality is domain semantics) but the driver sees its
+  effect as "no changed terms in the revision" — the fixpoint argument reads
+  off the boundary: substitutions only grow, and stores that report no change
+  cause no work.
+- **The two-level mirror resolves.** Store-level `Revision` is THE protocol;
+  propagators are one store-internal scheduling strategy among possible
+  others. Neq (wholesale revise, parks nothing) needs no conversion — it was
+  the uniform shape all along.
 
 ## 4. Statement-position survivors
 
-Three call sites announce work from goal position (no drain in flight) and
-stay on the public API:
+Goal-position code that announces work, all on the public API, no hatches:
 
-- **`FiniteDomain.dom`** (register/tighten a domain as a goal): updates the FD
-  factor via `Package.updateStore`, then `changed(x)` on strict narrowing, or
-  `resolve(prefix)` on collapse.
-- **The call-shaped bridge** (`excludeFromDomain`, reached from `separate`'s
-  goal body): same statement-position pattern; it keeps working through the
-  public API without any hatch. Whether to keep the bridge at all is a
-  SEPARATE, purely behavioral decision (dropping it loses pre-labelling
-  pruning and the `x∈{4,5} ∧ x≠5 ⊢ x=4` collapse inference; NeqFdBridgeTest
-  pins both; the answer set is identical either way). Tom decides explicitly;
-  this design neither requires nor performs it.
-- **The enforce hooks** (`rerunConstraints`, projection's wake-then-check):
-  goal-shaped forever — labelling IS search — and `changed` is their entry.
+- **`FiniteDomain.dom`**: update the FD factor (`Package.updateStore`), then
+  `changed(x)` on strict narrowing or `resolve(prefix)` on collapse.
+- **The call-shaped bridge** (`excludeFromDomain` from `separate`'s body):
+  same pattern. Keeping it is a SEPARATE behavioral decision (dropping loses
+  pre-labelling pruning and the `x∈{4,5} ∧ x≠5 ⊢ x=4` collapse;
+  NeqFdBridgeTest pins both; final answer sets identical). Tom decides
+  explicitly; this design neither requires nor performs it.
+- **The enforce hooks** (labelling's re-run, projection's wake-then-check):
+  goal-shaped forever — labelling IS search; `changed` is their entry.
 
 ## 5. Relationship to the other designs
 
-- `capability-constraint-api.md`: §2.4 (Inference) is superseded by this doc.
-  Everything else stands; the scorecard improves (the "woken constraint body
-  makes driver decisions" row becomes unrepresentable).
-- **Neq-as-propagators** (deferred in Step 3.5): compatible and slightly
-  easier after this — records-as-propagators would answer `Verdict.update`
-  on their own store like everyone else.
-- `suspensions.md`: unaffected; `Verdict.run` is untouched.
+- `capability-constraint-api.md`: §2.4 superseded; §2.2's propagator protocol
+  demotes to toolkit (its safety analysis still applies, one level down); the
+  scorecard improves — "woken constraint body makes driver decisions" becomes
+  unrepresentable.
+- **Neq-as-propagators** (Step 3.5 backlog): SUPERSEDED, inverted — the
+  store boundary is the protocol; nothing should be converted TO propagators.
+- `suspensions.md`: the feature survives as `Verdict.run` in the toolkit,
+  surfacing through `Revision`'s runs payload; semantics (spliced after
+  quiescence; inline-at-statement becomes after-a-trivial-drain) essentially
+  unchanged.
 
 ## 6. Foreclosed: the data-shaped Neq→FD bridge
 
-Deferred in `constraint-propagation.md`-era notes as "needs a vocabulary-growth
-decision per rule B", the idea was to replace the call-shaped bridge with an
-emitted "x may not be v" inference. This design forecloses it deliberately:
+The idea (emit "x may not be v" as vocabulary) is deliberately dead:
 
-1. it is optimization-only (record verification already guarantees the same
-   answers — pruning earlier, never pruning differently);
-2. it requires exactly the cross-domain narrow vocabulary whose only effect is
-   to invite inter-domain coupling;
+1. optimization-only — record verification already guarantees the same
+   answer set; the bridge prunes earlier, never differently;
+2. it requires exactly the cross-domain narrow vocabulary whose only effect
+   is to invite inter-domain coupling (rule B's failure mode);
 3. no CLP system we know of has such a channel — the substitution is the
-   universal inter-domain medium, and we already have it.
+   universal inter-domain medium, and we have it.
 
-If a future need for genuine cross-domain narrowing appears, this section is
-the argument it must overcome.
+A future need for genuine cross-domain narrowing must overcome this section.
 
 ## 7. Migration plan (each step lands green on the full suite)
 
-1. **`Propagation.changed(Term)`** public entry; convert the enforce hooks and
-   `Domain`'s statement-position wake to it. (Small; behavior identical.)
-2. **`Revision` grows payloads** (changed terms, prefix), additively; the
-   driver routes wakes/binds from revisions. Existing `updated(Store)` and
-   `updated(Store, List<Inference>)` callers untouched.
-3. **`Verdict.update(f)`** added; the driver interprets it (fetch own factor,
-   apply, route). Convert FD propagators one at a time (`leq`, `addo`, `mulo`,
-   `separateFDC`), then the FD store's aliasing revise. `Verdict.narrowed`
-   deleted when the last emitter converts; the dedup pin is reworked here.
-4. **Statement-position conversion**: `dom` and the bridge onto
-   `resolve`/`changed` + `Package.updateStore`; `Domain` sheds the `Narrowing`
-   implementation and every `Propagation` call.
-5. **Deletions**: `Narrowing`, `Inference`; `enqueueBind`/`enqueueWake` go
-   private. Public surface = `resolve`, `activate`, `changed`.
-6. **Sweep**: this doc's status, `capability-constraint-api.md` §2.4 pointer,
-   CLAUDE.md, memory.
+1. **`Revision` grows payloads** (prefix, changed, runs) additively; the
+   driver routes them wherever revisions are already folded. Existing callers
+   untouched.
+2. **Store-level wakes.** Add `ConstraintStore.changed` (default unchanged);
+   move the interpret/wake/watch machinery from `Propagation` into
+   `FiniteDomainConstraints.changed` and `ProjectionConstraints.changed`;
+   Wake items fold `changed` over stores; DELETE `pendingPropagators` and the
+   driver's propagator handling. The watches lesson applies verbatim: the
+   chain-inclusive matching must move intact (a plain live walk steps THROUGH
+   a just-bound variable and misses the primary match).
+3. **Store-level statements.** `Stated` items + `ConstraintStore.stated`;
+   `activate(Stored)` reworked as park+queue; convert `fdConstraint` and
+   `project`.
+4. **FD internals.** Toolkit `Verdict` update-shape replaces
+   `narrowed(List<Inference>)`; convert `leq`, `addo`, `mulo`, `separateFDC`,
+   the aliasing revise; `dom` and the bridge onto `resolve`/`changed` +
+   `updateStore`; `Domain` sheds `Narrowing`.
+5. **Deletions.** `Narrowing`, `Inference`; enqueues private;
+   `ckanren.propagator` package-info rewritten as the toolkit ("used BY
+   stores, unknown to the driver").
+6. **Sweep.** This doc's status, capability doc pointers, CLAUDE.md, memory.
 
-Sizing: comparable to Step 2 of the capability migration (it touches every FD
-propagator body), smaller than the propagation redesign. Risk concentrates in
-step 3 (the FD conversions — expect it to surface latent bugs the way Phase 2
-surfaced `mulIntervals`); steps 1–2 are additive and safe.
+Sizing: propagation-redesign-shaped — steps 2 and 4 touch every FD propagator
+body and the wake machinery; expect them to surface latent bugs the way
+Phase 2 surfaced `mulIntervals`. Steps 1 and 3 are additive. Do not start
+without failing-pin discipline: identify the behavior-sensitive tests per
+step before moving code.
 
-## 8. Open naming decisions (Tom)
+## 8. Open decisions (Tom)
 
-- `Verdict.update` vs `Verdict.revise` (symmetry with the store hook) vs
-  another verb. `update` recommended: the propagator requests an update of its
-  own factor; `revise` would overload the store-hook name for a different
-  speaker.
-- `Propagation.changed` vs `touched` vs `narrowed`. `changed` recommended:
-  it names the fact announced, not the mechanism.
-- `Revision.updated(Store, Prefix, List<Term>)` arity vs a small builder.
-  Decide at implementation against real call-site shapes.
+- Names: `changed` vs `touched` (trigger + public entry); `stated` vs
+  `examined`; the `Revision` payload factories (arities vs builder) — decide
+  at implementation against real call-site shapes.
+- Whether `Stated` is a distinct agenda item kind (recommended: yes — exact
+  statement semantics, single-store dispatch) or faked via `changed` on
+  watched terms (rejected: multi-wake, wakes on ground values, inexact).
+- The bridge keep/drop decision (§4) — independent of this design.
