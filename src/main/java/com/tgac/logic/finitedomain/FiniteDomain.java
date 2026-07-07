@@ -169,7 +169,7 @@ public class FiniteDomain {
 	public static <T> Goal multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return fdGoal()
 				.and(mulFD(a, b, c))
-				.named(pkg -> MiniKanren.format(pkg, a) + " + " + MiniKanren.format(pkg, b) + " = " + MiniKanren.format(pkg, c));
+				.named(pkg -> MiniKanren.format(pkg, a) + " * " + MiniKanren.format(pkg, b) + " = " + MiniKanren.format(pkg, c));
 	}
 
 	public static <T> Goal divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {

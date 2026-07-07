@@ -1,12 +1,20 @@
 # Constraint propagation redesign — design sketch
 
-**Status: Phase 1 IMPLEMENTED (July 2026, branch `propagation`); Phases 2–3 not.**
-Phase 0 (the multi-domain guard) was deliberately skipped — obsolete once Phase 1
-landed. Implemented: collapse-bindings route through the chokepoint (Phase 1a) and
-the chokepoint applies the prefix once with stores purely reactive (Phase 1b), gated
-by `PropagationPinTest` (the committed-choice pin: red before, green after, verified
-both ways). The Phase 2 pin (`narrowingPropagatesToConstraintsStatedEarlier`) is
-`@Ignore`d — removing that @Ignore is Phase 2's first step.
+**Status: Phases 1 AND 2 IMPLEMENTED (July 2026, branch `propagation`); Phase 3 not
+(worklist optimisation — only if measured).** Phase 0 (the multi-domain guard) was
+deliberately skipped — obsolete once Phase 1 landed. Implemented: collapse-bindings
+route through the chokepoint (1a); the chokepoint applies the prefix once with stores
+purely reactive (1b); cross-store wake via `ConstraintStore.pendingConstraints` (2a);
+wake-on-narrowing with the equal-domain termination guard in `updateVarDomain` (2b).
+All gated by `PropagationPinTest` (every pin verified red-before/green-after). The
+Phase 2 idempotence audit earned its keep: wake-on-narrowing exposed a latent
+soundness bug in `mulIntervals` (quotient trims with a zero-spanning divisor interval
+produced garbage bounds — fixed by sign-guarding). Multi-domain FD+Neq queries
+(`shouldMixMultipleConstraintSystems`) now produce complete correct answer sets.
+
+**Still open:** the optional Neq→FD bridge (`x ≠ 5` excluding 5 from x's FD domain
+before labelling — the cKanren paper's FD/=/= integration); Phase 3's explicit
+worklist if propagation cost is ever measured to matter.
 
 En route, the pin work exposed and fixed an unrelated FD soundness bug: `leq` lost
 boundary solutions because `copyBefore`/`dropBefore` disagreed about inclusivity
