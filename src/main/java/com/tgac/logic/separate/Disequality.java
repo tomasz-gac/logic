@@ -4,11 +4,8 @@ import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.ckanren.CKanren.unify;
 import static com.tgac.logic.ckanren.StoreSupport.isAssociated;
 import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
-import static com.tgac.logic.ckanren.StoreSupport.withoutConstraints;
 import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
 import static com.tgac.logic.unification.MiniKanren.format;
-import static com.tgac.logic.unification.MiniKanren.prefixS;
-import static com.tgac.logic.unification.MiniKanren.unify;
 import static com.tgac.logic.unification.MiniKanren.walkAll;
 
 import com.tgac.functional.Exceptions;
@@ -22,9 +19,12 @@ import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -34,27 +34,21 @@ public class Disequality {
 	public static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return a -> {
 			Package s = NeqConstraints.register(a);
-			return Cont.defer(() ->
-					unify(withoutConstraints(s), lhs, rhs)
-							.getFiber()
-							.map(unificationResult -> {
-								switch (verifySeparate(unificationResult, s)) {
-									case UNIFIED:
-										return Cont.complete(Nothing.nothing());
-									case ALREADY_SEPARATE:
-										return Cont.just(s);
-									case SEPARATE_FOR_NOW:
-										HashMap<LVar<?>, Term<?>> prefix = prefixS(
-												s.getSubstitutions(),
-												unificationResult.get().getSubstitutions());
-										return bridgeToFiniteDomain(s, prefix)
-												.map(exclude -> exclude.apply(s))
-												.getOrElse(() -> Cont.just(withConstraint(s,
-														NeqConstraint.of(prefix))));
-									default:
-										throw new UnsupportedOperationException();
-								}
-							}));
+			// trial unification: the prefix IS the disequality's meaning — the exact
+			// simultaneous bindings that must never all hold
+			return Cont.defer(() -> MiniKanren.unifyPrefix(s, lhs, rhs)
+					.map(prefix -> {
+						if (prefix.isEmpty()) {
+							// they already unify: the disequality is violated
+							return Cont.<Package, Nothing> complete(Nothing.nothing());
+						}
+						return bridgeToFiniteDomain(s, prefix.toMap())
+								.map(exclude -> exclude.apply(s))
+								.getOrElse(() -> Cont.just(withConstraint(s,
+										NeqConstraint.of(prefix.toMap()))));
+					})
+					// they cannot unify: already separate, nothing to record
+					.getOrElse(() -> Cont.just(s)));
 		};
 	}
 
@@ -99,32 +93,6 @@ public class Disequality {
 				.named(pkg -> "distincto(" + Logic.formatLList(pkg, distinct) + ")");
 	}
 
-	private enum VerificationResult {
-		ALREADY_SEPARATE,
-		UNIFIED,
-		SEPARATE_FOR_NOW
-	}
-
-	private static VerificationResult verifySeparate(
-			Option<Package> sepSubstitutions,
-			Package origSubst) {
-		if (sepSubstitutions.isEmpty()) {
-			// unification failed, so lhs and rhs are already separate
-			return VerificationResult.ALREADY_SEPARATE;
-		} else {
-			Package result = sepSubstitutions.get();
-			if (result.getSubstitutions() == origSubst.getSubstitutions()) {
-				// unification succeeded without extending S,
-				// so it is already satisfied and we fail
-				return VerificationResult.UNIFIED;
-			} else {
-				// New substitutions added, so there are some
-				// constraints to check on every unification
-				return VerificationResult.SEPARATE_FOR_NOW;
-			}
-		}
-	}
-
 	/**
 	 * Re-verifies every record against the given substitutions: none = some record
 	 * is violated (all its pairs hold simultaneously); otherwise the surviving
@@ -151,19 +119,18 @@ public class Disequality {
 			HashMap<LVar<?>, Term<?>> substitutions,
 			List<NeqConstraint> newConstraints,
 			NeqConstraint constraint) {
-		Option<HashMap<LVar<?>, Term<?>>> unification = unifyConstraints(constraint, substitutions);
+		Option<HashMap<LVar<?>, Term<?>>> delta = unifyConstraints(constraint, substitutions);
 
-		if (unification.isDefined()) {
-			return unification
-					// if unification succeeds without extending substitutions
-					// then all simultaneous separateness constraints
-					// are violated, so we fail the substitution
-					.filter(s1 -> substitutions != s1)
-					// if unification succeeds by extending substitutions,
-					// then some simultaneous constraints are not violated,
-					// and we append these constraints to list.
+		if (delta.isDefined()) {
+			return delta
+					// an empty delta means the pairs all hold already — all
+					// simultaneous separateness constraints are violated,
+					// so we fail the substitution
+					.filter(d -> !d.isEmpty())
+					// a non-empty delta is exactly the bindings still needed
+					// for the record to be violated — the simplified record.
 					// This way, we simplify constraint store on the fly
-					.map(s1 -> newConstraints.append(NeqConstraint.of(prefixS(substitutions, s1))));
+					.map(d -> newConstraints.append(NeqConstraint.of(d)));
 		} else {
 			// if unification fails, then constraint is redundant
 			// because substitutions already contain bound values
@@ -173,26 +140,31 @@ public class Disequality {
 	}
 
 	/**
-	 * Checks whether all constraints unify within s simultaneously.
+	 * Checks whether all of the constraint's pairs unify within s simultaneously.
 	 *
 	 * @param simultaneousConstraints List of constraints that must be simultaneously true
 	 * @param s current substitution map
-	 * @return s after unification
+	 * @return the collected delta of bindings the pairs still need to all hold —
+	 * 		empty means they hold already; none means some pair cannot
 	 */
 	private static Option<HashMap<LVar<?>, Term<?>>> unifyConstraints(
 			NeqConstraint simultaneousConstraints,
 			HashMap<LVar<?>, Term<?>> s) {
 		return simultaneousConstraints.getSeparate().toJavaStream()
 				.map(t -> t.map(applyOnBoth(u -> (Term<Object>) u)))
-				.reduce(Option.of(s),
-						(acc, lr) -> acc.flatMap(s1 ->
-								// This cannot recurse deeply via verifyUnify
-								// because there are no constraints in the package
-								unify(Package.empty().withSubstitutions(s1),
-										lr._1, lr._2)
+				.reduce(Option.of(Tuple.of(s, HashMap.<LVar<?>, Term<?>> empty())),
+						(acc, lr) -> acc.flatMap(sd ->
+								// unification on a bare package cannot recurse into
+								// constraint processing — it only collects the prefix
+								MiniKanren.unifyPrefix(
+												Package.empty().withSubstitutions(sd._1),
+												lr._1, lr._2)
 										.get()
-										.map(Package::getSubstitutions)),
-						Exceptions.throwingBiOp(UnsupportedOperationException::new));
+										.map(prefix -> Tuple.of(
+												prefix.appliedTo(sd._1),
+												prefix.appliedTo(sd._2)))),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new))
+				.map(Tuple2::_2);
 	}
 
 	static Fiber<List<NeqConstraint>> walkAllConstraints(
@@ -272,7 +244,7 @@ public class Disequality {
 		return accConstraints.toJavaStream()
 				.reduce(false,
 						(r, v) -> r || unifyConstraints(v, constraints.getSeparate())
-								.filter(c -> c == constraints.getSeparate())
+								.filter(HashMap::isEmpty)
 								.map(__ -> true)
 								.getOrElse(() -> false),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));

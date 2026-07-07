@@ -13,4 +13,9 @@ public class TestAccess {
 	public static <T> Option<Unifiable<T>> get(Package s, LVar<T> v) {
 		return s.getSubstitutions().get(v).map(w -> (Unifiable<T>) w);
 	}
+
+	/** White-box prefix mint — production code gets prefixes only from unification. */
+	public static Prefix prefix(io.vavr.collection.HashMap<LVar<?>, Term<?>> delta) {
+		return new Prefix(delta);
+	}
 }

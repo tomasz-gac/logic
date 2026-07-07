@@ -35,12 +35,11 @@ public interface ConstraintStore extends Store {
 	 * factor — a whole package is not expressible in the return type.
 	 *
 	 * @param prefix
-	 * 		- exactly the newly added associations (the delta, precomputed by the
-	 * 		chokepoint)
+	 * 		- exactly the newly applied bindings
 	 * @param state
 	 * 		- the extended live package to verify and read domains against
 	 */
-	Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state);
+	Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state);
 
 	/**
 	 * The suspended {@link Propagator}s this store holds, exposed for the

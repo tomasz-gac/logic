@@ -78,10 +78,8 @@ class EnforceConstraintsFD {
 
 	// because of ambiguity in CKanren
 	private static <T> Goal unifyTerms(Term<T> u, Unifiable<T> v) {
-		return s -> com.tgac.functional.monad.Cont.defer(() -> MiniKanren.unify(s, u, v)
-				.map(s1 -> s == s1 ?
-						com.tgac.functional.monad.Cont.<com.tgac.logic.unification.Package, com.tgac.functional.category.Nothing> just(s1) :
-						com.tgac.logic.ckanren.StoreSupport.processPrefix(s1.getSubstitutions()).apply(s))
+		return s -> com.tgac.functional.monad.Cont.defer(() -> MiniKanren.unifyPrefix(s, u, v)
+				.map(prefix -> com.tgac.logic.ckanren.StoreSupport.resolve(prefix).apply(s))
 				.getOrElse(() -> com.tgac.functional.monad.Cont.complete(com.tgac.functional.category.Nothing.nothing())));
 	}
 

@@ -119,9 +119,12 @@ public abstract class Domain<T> implements com.tgac.logic.ckanren.Narrowing {
 			if (this instanceof Singleton) {
 				T v = ((Singleton<T>) this).getValue().getValue();
 				// an inferred binding goes through the same chokepoint as a unification,
-				// so every store hears it — not just the FD store's own constraints
-				return StoreSupport.processPrefix(a.getSubstitutions().put(x, lval(v)))
-						.apply(a);
+				// so every store hears it — not just the FD store's own constraints.
+				// updateVarDomain only resolves open variables, so the mint succeeds;
+				// the defensive branch mirrors the old already-bound no-op
+				return com.tgac.logic.unification.Prefix.binding(a, x, lval(v))
+						.map(prefix -> StoreSupport.enqueueBind(prefix, a))
+						.getOrElse(() -> Cont.just(a));
 			} else {
 				// a narrowed (but not collapsed) domain wakes the propagators watching x,
 				// so narrowing cascades like x≤y≤z propagate without waiting for a

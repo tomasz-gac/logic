@@ -28,14 +28,14 @@ public class CapabilityDriverTest {
 
 	/** A test-only constraint domain that emits configured inferences on every prefix. */
 	private static abstract class EmittingStore implements ConstraintStore {
-		final BiFunction<HashMap<LVar<?>, Term<?>>, Package, Reaction> reaction;
+		final BiFunction<com.tgac.logic.unification.Prefix, Package, Reaction> reaction;
 
-		EmittingStore(BiFunction<HashMap<LVar<?>, Term<?>>, Package, Reaction> reaction) {
+		EmittingStore(BiFunction<com.tgac.logic.unification.Prefix, Package, Reaction> reaction) {
 			this.reaction = reaction;
 		}
 
 		@Override
-		public Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state) {
+		public Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state) {
 			return reaction.apply(prefix, state);
 		}
 
@@ -72,13 +72,13 @@ public class CapabilityDriverTest {
 
 	// two distinct classes: the store map is keyed by class
 	private static final class StoreA extends EmittingStore {
-		StoreA(BiFunction<HashMap<LVar<?>, Term<?>>, Package, Reaction> r) {
+		StoreA(BiFunction<com.tgac.logic.unification.Prefix, Package, Reaction> r) {
 			super(r);
 		}
 	}
 
 	private static final class StoreB extends EmittingStore {
-		StoreB(BiFunction<HashMap<LVar<?>, Term<?>>, Package, Reaction> r) {
+		StoreB(BiFunction<com.tgac.logic.unification.Prefix, Package, Reaction> r) {
 			super(r);
 		}
 	}
@@ -104,9 +104,11 @@ public class CapabilityDriverTest {
 
 		Package root = root(
 				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
-						Arrays.asList(Inference.bind(HashMap.of(q, lval(1L)))))),
+						Arrays.asList(Inference.bind(
+								com.tgac.logic.unification.Prefix.binding(state, q, lval(1L)).get())))),
 				new StoreB((prefix, state) -> Reaction.updated(new StoreB((pf, st) -> Reaction.unchanged()),
-						Arrays.asList(Inference.bind(HashMap.of(q, lval(2L)))))));
+						Arrays.asList(Inference.bind(
+								com.tgac.logic.unification.Prefix.binding(state, q, lval(2L)).get())))));
 
 		// two stores infer q=1 and q=2 in one pass: the branch is inconsistent and
 		// must DIE — the silent keep-first would instead emit a wrong answer
@@ -119,9 +121,11 @@ public class CapabilityDriverTest {
 
 		Package root = root(
 				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
-						Arrays.asList(Inference.bind(HashMap.of(q, lval(1L)))))),
+						Arrays.asList(Inference.bind(
+								com.tgac.logic.unification.Prefix.binding(state, q, lval(1L)).get())))),
 				new StoreB((prefix, state) -> Reaction.updated(new StoreB((pf, st) -> Reaction.unchanged()),
-						Arrays.asList(Inference.bind(HashMap.of(q, lval(1L)))))));
+						Arrays.asList(Inference.bind(
+								com.tgac.logic.unification.Prefix.binding(state, q, lval(1L)).get())))));
 
 		assertThat(solutions(root)).isEqualTo(1);
 	}
@@ -137,7 +141,8 @@ public class CapabilityDriverTest {
 
 		Package root = root(
 				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
-						Arrays.asList(Inference.bind(HashMap.of(q, lval(1L)))))));
+						Arrays.asList(Inference.bind(
+								com.tgac.logic.unification.Prefix.binding(state, q, lval(1L)).get())))));
 
 		com.tgac.logic.unification.Unifiable<Long> x = lvar();
 		long count = x.unifies(0L)

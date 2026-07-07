@@ -3,7 +3,7 @@ package com.tgac.logic.ckanren;
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.logic.ckanren.StoreSupport.enforceConstraints;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
-import static com.tgac.logic.ckanren.StoreSupport.processPrefix;
+import static com.tgac.logic.ckanren.StoreSupport.resolve;
 import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
 
 import com.tgac.functional.category.Nothing;
@@ -30,19 +30,15 @@ import lombok.var;
 public class CKanren {
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> Cont.defer(() -> MiniKanren.unify(s, u, v)
-				.map(s1 -> s == s1 ?
-						Cont.<Package, Nothing> just(s1) :
-						processPrefix(s1.getSubstitutions()).apply(s))
+		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefix(s, u, v)
+				.map(prefix -> resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
 		return goal.named(pkg -> MiniKanren.format(pkg, u) + " ≣ " + MiniKanren.format(pkg, v));
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyUnsafe(s, u, v)
-				.map(s1 -> s == s1 ?
-						Cont.<Package, Nothing> just(s1) :
-						processPrefix(s1.getSubstitutions()).apply(s))
+		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefixUnsafe(s, u, v)
+				.map(prefix -> resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
 		return goal.named(pkg -> MiniKanren.format(pkg, u) + " ≣_nc " + MiniKanren.format(pkg, v));
 	}

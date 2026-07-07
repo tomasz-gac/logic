@@ -1,7 +1,7 @@
 # The capability constraint API — design and migration plan
 
-**Status: Steps 1 AND 2 IMPLEMENTED (July 2026, branch `capability-api`); Step 3
-(Prefix + the visibility lock) and Step 4 (sweep) remain.** Implementation deviations
+**Status: Steps 1, 2 AND 3 IMPLEMENTED (July 2026, branch `capability-api`); Step 4
+(sweep) remains.** Implementation deviations
 from this doc, all recorded in place: watch matching is `watches(state, changed)`
 with CHAIN-INCLUSION (the changed variable may be the watched term, an alias link,
 or the chain end — a plain live walk steps THROUGH a just-bound variable and misses
@@ -373,12 +373,27 @@ last (lock the door after the furniture is arranged):
   Same trichotomy, dual polarity, because a Neq record and a Bind delta are both
   prefix maps. The Prefix type is the natural home for one shared
   `unifyPrefix(prefix, substitutions) → Trichotomy` consumed by both readings and
-  by trial unification. `MiniKanren.unify` returns
-  `Option<Prefix>` over a `Substitutions` view; `CKanren.unify` = mint + drive;
-  Neq's trial unification inspects the prefix; delete `withoutConstraints`;
-  make `extendS`/`withSubstitutions`/`Package.of`-with-substitutions inaccessible
-  outside the chokepoint (see §7). After this step the scorecard's "unrepresentable"
-  rows are actually unrepresentable.
+  by trial unification. IMPLEMENTED, with deviations: the mint is
+  `MiniKanren.unifyPrefix(Package, Term, Term) → MFiber<Prefix>` — a collecting
+  `Extender` records each extension as the unifier makes it, so the delta costs
+  O(delta) and the post-hoc `prefixS` full-map diff is DELETED (the O(n)-per-unify
+  class of the perf landmine is gone, not just avoided). Gotcha found by the suite:
+  the unifier's var–var aliasing arm called `extendNoCheck` directly and bypassed
+  the threaded extender — collection missed every alias binding (`u=v` through
+  structure yielded an empty prefix) until it was routed through `extend.apply`.
+  `Prefix` construction is package-private in `unification`; the two mints are the
+  unifier and the checked `Prefix.binding(Package, LVar, Term)` (none when bound —
+  the silent-no-op trap made unrepresentable). `Prefix.revalidate` is the shared
+  asserted-polarity trichotomy consumed by `applyBind`; Disequality's forbidden
+  polarity reads the same delta through `unifyConstraints`, which now returns the
+  collected delta directly (empty = violated, none = redundant) instead of an
+  extended map for callers to diff. Deleted doors: `Package.extendS`,
+  `StoreSupport.withoutConstraints`, `Disequality.verifySeparate` +
+  `VerificationResult`, `MiniKanren.prefixS`. Residual (§7): `withSubstitutions`
+  stays public — Java 8 has no way to scope it to the chokepoint across packages;
+  it is the documented door; its three remaining callers are the chokepoint's
+  two `Prefix.appliedTo` applications and Disequality's bare trial-package seed. After this step the scorecard's "unrepresentable"
+  rows are unrepresentable up to that one documented residual.
 - **Step 4 — sweep.** Update `constraint-propagation.md` (Phase 3 = done, this way),
   the machinery doc's contracts section (rules become signatures), CLAUDE.md, and the
   chokepoint javadoc.

@@ -10,6 +10,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
@@ -57,10 +58,6 @@ public class StoreSupport {
 						.getOrElse(p::getConstraints));
 	}
 
-	public static Package withoutConstraints(Package p) {
-		return Package.of(p.getSubstitutions(), null);
-	}
-
 	public static <T extends ConstraintStore> Package updateC(Package p, Class<T> cls, UnaryOperator<T> f) {
 		return Package.of(
 				p.getSubstitutions(),
@@ -73,54 +70,40 @@ public class StoreSupport {
 	}
 
 	/**
-	 * The constraint chokepoint: applies newly inferred substitutions and lets every
+	 * The constraint chokepoint: applies a unification's {@link Prefix} and lets every
 	 * constraint domain respond. This is the ONLY way substitutions may grow in
 	 * constraint-aware code — user unification ({@link CKanren#unify}), finite-domain
 	 * collapse inference and labelling all route through here, which is what makes an
 	 * inferred binding indistinguishable from a unification.
 	 *
-	 * <p>Order of events:
-	 * <ol>
-	 *   <li>the extension is applied exactly once ({@code extendS}, monotonic);</li>
-	 *   <li>every {@link ConstraintStore}'s {@code processPrefix} reaction runs on the
-	 *       extended package (verify, narrow its own factor, or fail) — stores never
-	 *       touch the substitutions themselves; each receives the pre-extension
-	 *       package {@code p} to diff the prefix against;</li>
-	 *   <li>every store's suspended constraints watching a newly bound variable are
-	 *       woken (remove-and-rerun) via the cross-store {@link #pendingConstraints}
-	 *       list. A woken constraint that infers further bindings re-enters this
-	 *       method — that recursion is the propagation fixpoint, trampolined by the
-	 *       continuation substrate.</li>
-	 * </ol>
+	 * <p>An empty prefix is a no-op success; a package with no constraint stores takes
+	 * the pure-relational fast path (apply the delta, skip all machinery). Otherwise
+	 * the prefix enters the {@link Agenda} as a Bind item: if an agenda is already
+	 * riding the package a drain is in flight and the item merely queues; if not, this
+	 * call is the outermost trigger and drains to fixpoint. Applying a Bind
+	 * revalidates the prefix against the live package (open variables bind their
+	 * walked representatives, agreeing pairs drop, contradicting pairs fail the
+	 * branch), extends the substitution once, folds every {@link ConstraintStore}'s
+	 * {@code onPrefix} reaction, then queues a Wake per bound variable — woken
+	 * propagators' verdicts feed further items, and that queue-until-empty loop is the
+	 * propagation fixpoint, one item per deferred step.
 	 *
-	 * <p>Contract for callers:
-	 * <ul>
-	 *   <li>call it whenever bindings are added; never extend substitutions directly.
-	 *       {@code MiniKanren.unify} alone bypasses all constraint processing — that
-	 *       is legitimate only for deliberate trial unification (disequality's check,
-	 *       on a package stripped with {@link #withoutConstraints});</li>
-	 *   <li>pass the full new substitution map — the convention of every caller
-	 *       (a pure delta happens to behave identically since the extension is a
-	 *       merge, but do not rely on it);</li>
-	 *   <li>only genuinely new pairs: a pair contradicting an existing binding is
-	 *       silently ignored (the merge keeps the old value and the prefix diff drops
-	 *       the key) — unify instead when the variable may already be bound;</li>
-	 *   <li>the package must carry a store map ({@code getConstraints() != null});
-	 *       trial unification on stripped packages stays on {@code MiniKanren.unify}.</li>
-	 * </ul>
+	 * <p>Contract for callers: never extend substitutions directly — obtain a
+	 * {@link Prefix} (from {@code MiniKanren.unifyPrefix} or
+	 * {@code Prefix.binding}) and resolve it. Raw {@code MiniKanren.unify} bypasses
+	 * all constraint processing and is legitimate only inside the unifier itself.
 	 */
-	public static Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions) {
+	public static Goal resolve(com.tgac.logic.unification.Prefix prefix) {
 		return p -> {
-			if (constraintStores(p).isEmpty()) {
-				// pure-relational fast path: no reactions, no prefix diff, no agenda.
-				// newSubstitutions is the full new map (a superset of p's, per the
-				// caller contract), so this replace is the extension — O(1). Do not
-				// use a map-merge here: it walks the whole map per binding, making
-				// every derivation quadratic.
-				return Cont.just(p.withSubstitutions(newSubstitutions));
+			if (prefix.isEmpty()) {
+				return Cont.just(p);
 			}
-			return enqueue(p, new Agenda.Bind(
-					MiniKanren.prefixS(p.getSubstitutions(), newSubstitutions)));
+			if (constraintStores(p).isEmpty()) {
+				// pure-relational fast path: no reactions, no agenda — the prefix is
+				// already the delta, so extension is a put per binding
+				return Cont.just(p.withSubstitutions(prefix.appliedTo(p.getSubstitutions())));
+			}
+			return enqueue(p, new Agenda.Bind(prefix));
 		};
 	}
 
@@ -170,14 +153,14 @@ public class StoreSupport {
 		return enqueue(p, new Agenda.Wake(changed));
 	}
 
-	/** Queue an inferred-bindings delta — the bind producer's entry. */
-	public static Cont<Package, Nothing> enqueueBind(HashMap<LVar<?>, Term<?>> delta, Package p) {
-		return enqueue(p, new Agenda.Bind(delta));
+	/** Queue an inferred-bindings prefix — the bind producer's entry. */
+	public static Cont<Package, Nothing> enqueueBind(com.tgac.logic.unification.Prefix prefix, Package p) {
+		return enqueue(p, new Agenda.Bind(prefix));
 	}
 
 	private static Goal applyItem(Agenda.Item item) {
 		return item instanceof Agenda.Bind ?
-				applyBind(((Agenda.Bind) item).delta) :
+				applyBind(((Agenda.Bind) item).prefix) :
 				wake(((Agenda.Wake) item).changed);
 	}
 
@@ -188,25 +171,18 @@ public class StoreSupport {
 	 * between constraint domains and the branch dies), extend, run store reactions,
 	 * apply their inferences, and queue wakes for the newly bound variables.
 	 */
-	private static Goal applyBind(HashMap<LVar<?>, Term<?>> delta) {
+	private static Goal applyBind(com.tgac.logic.unification.Prefix prefix) {
 		return s -> {
-			HashMap<LVar<?>, Term<?>> kept = HashMap.empty();
-			for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : delta) {
-				Term<?> walked = MiniKanren.walk(s, binding._1);
-				if (walked.asVar().isDefined()) {
-					kept = kept.put((LVar<?>) walked.asVar().get(), binding._2);
-				} else if (!walked.equals(binding._2)) {
-					return Cont.complete(Nothing.nothing());
-				}
+			// the asserted prefix trichotomy: open binds its representative, same
+			// drops, different is a contradiction between domains — the branch dies
+			com.tgac.logic.unification.Prefix kept = prefix.revalidate(s).getOrNull();
+			if (kept == null) {
+				return Cont.complete(Nothing.nothing());
 			}
 			if (kept.isEmpty()) {
 				return Cont.just(s);
 			}
-			HashMap<LVar<?>, Term<?>> full = s.getSubstitutions();
-			for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : kept) {
-				full = full.put(binding._1, binding._2);
-			}
-			Package extended = s.withSubstitutions(full);
+			Package extended = s.withSubstitutions(kept.appliedTo(s.getSubstitutions()));
 			// reactions are DATA: fold them; each swaps at most its own factor and
 			// hands inferences back for routing
 			Package reacted = extended;
@@ -228,7 +204,7 @@ public class StoreSupport {
 			// queue wakes for the newly bound vars, then apply reaction inferences
 			// inline (bounded: their cascades append rather than recurse)
 			Agenda agenda = (Agenda) reacted.getConstraints().get(Agenda.class).get();
-			for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : kept) {
+			for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : kept.bindings()) {
 				agenda = agenda.append(new Agenda.Wake(binding._1));
 			}
 			return inferred.stream()

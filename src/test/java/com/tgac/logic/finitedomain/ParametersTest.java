@@ -45,7 +45,7 @@ public class ParametersTest {
 		Package pkg = Package.of(HashMap.empty(),
 				LinkedHashMap.of(FiniteDomainConstraints.class,
 						FiniteDomainConstraints.empty().prepend(constraint)));
-		com.tgac.logic.ckanren.StoreSupport.processPrefix(prefix)
+		com.tgac.logic.ckanren.StoreSupport.resolve(TestAccess.prefix(prefix))
 				.apply(pkg)
 				.run(v -> {
 					box[0] = v;

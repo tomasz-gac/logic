@@ -43,7 +43,7 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state) {
+	public Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state) {
 		// projections are woken by the chokepoint's cross-store wake
 		return Reaction.unchanged();
 	}

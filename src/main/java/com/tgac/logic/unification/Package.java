@@ -18,10 +18,6 @@ public class Package {
 		return new Package(HashMap.empty(), LinkedHashMap.empty());
 	}
 
-	public Package extendS(HashMap<LVar<?>, Term<?>> s) {
-		return new Package(substitutions.merge(s), constraints);
-	}
-
 	public Package withSubstitutions(HashMap<LVar<?>, Term<?>> s) {
 		return new Package(s, constraints);
 	}

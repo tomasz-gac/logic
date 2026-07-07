@@ -67,7 +67,7 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state) {
+	public Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state) {
 		return Disequality.verifyAndSimplify(constraints, state.getSubstitutions())
 				.map(c -> (Reaction) Reaction.updated(NeqConstraints.of(c)))
 				.getOrElse(Reaction::fail);

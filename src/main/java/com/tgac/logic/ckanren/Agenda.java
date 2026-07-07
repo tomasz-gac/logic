@@ -10,7 +10,6 @@ import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 
 /**
@@ -27,17 +26,17 @@ final class Agenda implements Store {
 		}
 	}
 
-	/** Inferred bindings — a delta, revalidated against the live package at pop. */
+	/** Inferred bindings — a prefix, revalidated against the live package at pop. */
 	static final class Bind extends Item {
-		final HashMap<LVar<?>, Term<?>> delta;
+		final com.tgac.logic.unification.Prefix prefix;
 
-		Bind(HashMap<LVar<?>, Term<?>> delta) {
-			this.delta = delta;
+		Bind(com.tgac.logic.unification.Prefix prefix) {
+			this.prefix = prefix;
 		}
 
 		@Override
 		public String toString() {
-			return "bind" + delta;
+			return prefix.toString();
 		}
 	}
 

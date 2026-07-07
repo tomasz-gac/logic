@@ -141,7 +141,10 @@ public class MiniKanren {
 		}
 
 		return l.asVar().map(lVar -> r.asVar()
-						.map(rVar -> extendNoCheck(s, lVar, rVar))
+						// route through the extender even though two distinct walked
+						// vars cannot fail the occurs check — prefix collection
+						// observes every extension
+						.map(rVar -> extend.apply(s, lVar, (Term<T>) rVar))
 						.map(MFiber::mdone)
 						.getOrElse(() -> mdone(extend.apply(s, lVar, r))))
 				.orElse(() -> r.asVar()
@@ -228,6 +231,36 @@ public class MiniKanren {
 
 	public static <T> MFiber<Package> unifyUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
 		return unify(MiniKanren::extendNoCheck, s, lhs, rhs);
+	}
+
+	/**
+	 * Unification as a {@link Prefix} mint: computes exactly the newly added
+	 * bindings without applying them — none = the terms cannot unify, an empty
+	 * prefix = they already unify. The delta is collected as the unifier extends,
+	 * so no post-hoc map diff is needed.
+	 */
+	public static <T> MFiber<Prefix> unifyPrefix(Package s, Term<T> lhs, Term<T> rhs) {
+		return unifyPrefix(MiniKanren::extend, s, lhs, rhs);
+	}
+
+	public static <T> MFiber<Prefix> unifyPrefixUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
+		return unifyPrefix(MiniKanren::extendNoCheck, s, lhs, rhs);
+	}
+
+	private static <T> MFiber<Prefix> unifyPrefix(Extender extend, Package s, Term<T> lhs, Term<T> rhs) {
+		java.util.List<io.vavr.Tuple2<LVar<?>, Term<?>>> collected = new java.util.ArrayList<>();
+		Extender collecting = new Extender() {
+			@Override
+			public <U> Package apply(Package p, LVar<U> l, Term<U> r) {
+				Package extended = extend.apply(p, l, r);
+				if (extended != p) {
+					collected.add(io.vavr.Tuple.of(l, r));
+				}
+				return extended;
+			}
+		};
+		return unify(collecting, s, lhs, rhs)
+				.map(s1 -> new Prefix(HashMap.ofEntries(collected)));
 	}
 
 	public static <T> Fiber<Term<T>> walkAll(Package s, Term<T> u) {
@@ -412,12 +445,6 @@ public class MiniKanren {
 	public static <T> Fiber<Boolean> alphaEquiv(Term<T> x, Term<T> y, Package s) {
 		return reify(s, x).flatMap(xReified ->
 			reify(s, y).map(xReified::equals));
-	}
-
-	public static HashMap<LVar<?>, Term<?>> prefixS(
-			HashMap<LVar<?>, Term<?>> s,
-			HashMap<LVar<?>, Term<?>> extendedS) {
-		return extendedS.removeAll(s.keysIterator());
 	}
 
 	public static <A, B> BiFunction<A, A, Tuple2<B, B>> applyOnBoth(Function<A, B> f) {

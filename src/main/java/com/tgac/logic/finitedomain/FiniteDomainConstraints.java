@@ -84,12 +84,12 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state) {
+	public Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state) {
 		// this store's reaction: each newly bound value must lie in its variable's
 		// domain; a var-var binding aliases the two, so the domain follows the
 		// representative as a narrow inference
 		java.util.List<Inference> narrows = new java.util.ArrayList<>();
-		for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : prefix) {
+		for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
 			Domain dom = (Domain) getDomain((LVar) binding._1).getOrNull();
 			if (dom == null) {
 				continue;

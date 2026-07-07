@@ -30,8 +30,8 @@ public abstract class Inference {
 	 * contradiction between constraint domains — the branch fails (never the silent
 	 * keep-first of the raw substitution merge).
 	 */
-	public static Inference bind(HashMap<LVar<?>, Term<?>> delta) {
-		return new Bind(delta);
+	public static Inference bind(com.tgac.logic.unification.Prefix prefix) {
+		return new Bind(prefix);
 	}
 
 	/**
@@ -51,10 +51,10 @@ public abstract class Inference {
 	public abstract Goal toGoal();
 
 	private static final class Bind extends Inference {
-		private final HashMap<LVar<?>, Term<?>> delta;
+		private final com.tgac.logic.unification.Prefix prefix;
 
-		private Bind(HashMap<LVar<?>, Term<?>> delta) {
-			this.delta = delta;
+		private Bind(com.tgac.logic.unification.Prefix prefix) {
+			this.prefix = prefix;
 		}
 
 		@Override
@@ -63,22 +63,22 @@ public abstract class Inference {
 			// revalidation (open -> bind the representative, same -> drop,
 			// different -> the branch dies) — the same trichotomy Disequality's
 			// record verification reads with the opposite polarity
-			return s -> StoreSupport.enqueueBind(delta, s);
+			return s -> StoreSupport.enqueueBind(prefix, s);
 		}
 
 		@Override
 		public boolean equals(Object o) {
-			return o instanceof Bind && delta.equals(((Bind) o).delta);
+			return o instanceof Bind && prefix.equals(((Bind) o).prefix);
 		}
 
 		@Override
 		public int hashCode() {
-			return delta.hashCode();
+			return prefix.hashCode();
 		}
 
 		@Override
 		public String toString() {
-			return "bind" + delta;
+			return prefix.toString();
 		}
 	}
 
