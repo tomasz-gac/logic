@@ -1,6 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.ckanren.CKanren.runConstraints;
 import static com.tgac.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
@@ -15,7 +14,6 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 import java.util.stream.Stream;
 import lombok.EqualsAndHashCode;
@@ -110,9 +108,10 @@ public abstract class Domain<T> {
 		return a -> {
 			if (this instanceof Singleton) {
 				T v = ((Singleton<T>) this).getValue().getValue();
-				return runConstraints(x,
-						FiniteDomainConstraints.getFDStore(a).getConstraints())
-						.apply(a.extendS(HashMap.of(x, lval(v))));
+				// an inferred binding goes through the same chokepoint as a unification,
+				// so every store hears it — not just the FD store's own constraints
+				return StoreSupport.processPrefix(a.getSubstitutions().put(x, lval(v)))
+						.apply(a);
 			} else {
 				return Cont.just(extendD(x, this, a));
 			}
