@@ -120,10 +120,10 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - **`functional` release-prep** — de-SNAPSHOT, bump vavr (0.10.0), doc the public surface.
   Open decision for the human: promote `fibers` to its own Maven module (it's cleanly
   isolated — depends only on `category`) vs. leave it.
-- **Constraint-propagation redesign** — DONE through Phase 2 + the Neq→FD bridge
-  (July 2026). Remaining: Phase 3, respecified as the capability API — see
-  `docs/design/capability-constraint-api.md`. HIGH risk, big; don't start without the
-  human's go-ahead and the §5.3 (Projection) decision.
+- **Constraint-propagation redesign** — DONE, all of it (July 2026): Phases 1–2,
+  the capability API (Steps 1–3.5), and the uniform store boundary
+  (`minimal-constraint-vocabulary.md`). The Neq→FD bridge was DROPPED (optimization-
+  only). Nothing remains on this line.
 - **Semiring-weighted inference** — turn the engine into a weighted-inference machine
   (counting, probability, shortest-path, MAP, provenance, learning) via one small `Semiring`
   abstraction. Follow `docs/design/semiring-inference.md`; Phase 1 (refactor `aggregate`
@@ -132,12 +132,12 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 
 ## Where knowledge lives
 
-- `docs/design/constraint-propagation.md` — the propagator/fixpoint design; Phases 1–2
-  and the Neq→FD bridge are IMPLEMENTED, read it before touching the constraint core.
-- `docs/design/capability-constraint-api.md` — Phase 3 as a type-safety refactor
-  (Prefix/Verdict/Reaction/Inference + the explicit driver): makes the constraint
-  API's breaking actions unrepresentable. Planned, not implemented; big; needs the
-  human's go-ahead and a §5.3 decision (Projection) first.
+- `docs/design/constraint-propagation.md` — HISTORICAL: the propagator/fixpoint
+  reasoning record (all phases since completed; names have moved on).
+- `docs/design/capability-constraint-api.md` — IMPLEMENTED (Steps 1–3.5, July 2026):
+  the type-safety refactor that made the constraint API's breaking actions
+  unrepresentable (Prefix, Verdict, Revision, the explicit driver). Its §2.4
+  vocabulary was later superseded by `minimal-constraint-vocabulary.md`.
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
 - `docs/design/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
   together, AND why NOT to merge them into one engine prematurely.

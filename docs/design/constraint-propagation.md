@@ -1,7 +1,16 @@
 # Constraint propagation redesign — design sketch
 
-**Status: Phases 1 AND 2 IMPLEMENTED (July 2026, branch `propagation`); Phase 3 not
-(worklist optimisation — only if measured).** Phase 0 (the multi-domain guard) was
+**Status: HISTORICAL RECORD — all phases complete (July 2026). Phases 1–2 landed
+as described below; Phase 3 happened as `capability-constraint-api.md` (the
+explicit worklist arrived at from type safety) and was then superseded by
+`minimal-constraint-vocabulary.md` (the uniform store boundary) — read THOSE for
+the current engine. Names have moved since this was written: `processPrefix` →
+`Propagation.resolve(Prefix)`, `pendingConstraints` → gone (stores administer
+their own propagators; `changed` broadcasts), the equal-domain guard lives in
+`finitedomain/DomainUpdate`, and the Neq→FD bridge described below was DROPPED
+(Tom, July 2026 — optimization-only; `NeqFdTest` pins the answer-set
+equivalence). This doc remains the reasoning record for WHY the propagation
+design is what it is.** Phase 0 (the multi-domain guard) was
 deliberately skipped — obsolete once Phase 1 landed. Implemented: collapse-bindings
 route through the chokepoint (1a); the chokepoint applies the prefix once with stores
 purely reactive (1b); cross-store wake via `ConstraintStore.pendingConstraints` (2a);
