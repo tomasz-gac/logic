@@ -5,7 +5,8 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.transformer.OptionT;
 import com.tgac.logic.ckanren.CKanren;
-import com.tgac.logic.ckanren.Constraint;
+import com.tgac.logic.ckanren.Propagator;
+import com.tgac.logic.ckanren.Verdict;
 import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.Reaction;
 import com.tgac.logic.ckanren.StoreSupport;
@@ -29,11 +30,11 @@ import lombok.Value;
 public class ProjectionConstraints implements ConstraintStore {
 	private static final ProjectionConstraints EMPTY = new ProjectionConstraints(LinkedHashSet.empty());
 
-	LinkedHashSet<Constraint> projections;
+	LinkedHashSet<Propagator> projections;
 
 	@Override
 	public <T> Goal enforceConstraints(Term<T> x) {
-		return CKanren.runConstraints(x, projections)
+		return StoreSupport.wake(x)
 				.and(s1 -> StoreSupport.getConstraintStore(s1, ProjectionConstraints.class)
 						.projections
 						.isEmpty() ?
@@ -48,7 +49,7 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Iterable<Constraint> pendingConstraints() {
+	public Iterable<Propagator> pendingPropagators() {
 		return projections;
 	}
 
@@ -64,8 +65,8 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public Store remove(Stored c) {
-		if (c instanceof Constraint) {
-			return new ProjectionConstraints(projections.remove((Constraint) c));
+		if (c instanceof Propagator) {
+			return new ProjectionConstraints(projections.remove((Propagator) c));
 		} else {
 			return this;
 		}
@@ -73,8 +74,8 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public Store prepend(Stored c) {
-		if (c instanceof Constraint) {
-			return new ProjectionConstraints(projections.add((Constraint) c));
+		if (c instanceof Propagator) {
+			return new ProjectionConstraints(projections.add((Propagator) c));
 		} else {
 			return this;
 		}
@@ -82,33 +83,24 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public boolean contains(Stored c) {
-		if (c instanceof Constraint) {
-			return projections.contains((Constraint) c);
+		if (c instanceof Propagator) {
+			return projections.contains((Propagator) c);
 		} else {
 			return false;
 		}
 	}
 
 	public static <T> Goal project(Unifiable<T> x, Function<T, Goal> f) {
-		return Goal.goal(s -> Cont.just(s.withStore(EMPTY)))
-				.and(Goal.goal(s -> Cont.defer(() -> getVal(s, x)
-						.map(f)
-						.map(g -> g.apply(s))
-						.getValue()
-						// Add projection to CS
-						.map(o -> o.orElseGet(() -> Cont.just(
-								CKanren.buildWalkedConstraint(
-										s1 -> project(x, f).apply(s1),
-										Array.of(x),
-										ProjectionConstraints.class,
-										s).addTo(s))))
-						.cast())));
-	}
-
-	private static <T> OptionT<Fiber<?>, T> getVal(Package s, Unifiable<T> x) {
-		return OptionT.just(MiniKanren.walkAll(s, x))
-				.flatMap(u -> u.asVal()
-						.map(v -> OptionT.just(Fiber.done(v)))
-						.getOrElse(OptionT.<Fiber<?>, T> none(Fiber::done)));
+		// parks a suspension-shaped propagator: keep until x is deep-ground, then
+		// hand the projected goal to the driver, which splices it after the pass
+		// quiesces (docs/design/suspensions.md §5)
+		return s -> StoreSupport.activate(
+				Propagator.of(ProjectionConstraints.class,
+						java.util.Collections.singletonList(x),
+						state -> MiniKanren.walkAll(state, x).get()
+								.asVal()
+								.map(v -> Verdict.run(f.apply(v)))
+								.getOrElse(Verdict::keep)),
+				s.withStore(EMPTY));
 	}
 }

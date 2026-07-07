@@ -55,30 +55,6 @@ public class CKanren {
 		return unifyNc(u, LVal.lval(v));
 	}
 
-	public static <T> Constraint buildWalkedConstraint(
-			Goal constraintOp,
-			Array<Unifiable<T>> us,
-			Class<? extends ConstraintStore> csc,
-			Package p) {
-		return Constraint.of(constraintOp, csc,
-				us.map(u -> MiniKanren.<Object> walk(p, u.getObjectUnifiable()))
-						.toJavaList());
-	}
-
-	public static Goal runConstraints(Term<?> xs, Iterable<Constraint> c) {
-		return StreamSupport.stream(c.spliterator(), false)
-				.map(constraint -> anyRelevantVar(xs, constraint) ?
-						remRun(constraint) :
-						Goal.success())
-				.reduce(Goal.success(), Goal::and);
-	}
-
-	public static Goal remRun(Constraint c) {
-		return p -> getConstraintStore(p, c.getStoreClass()).contains(c) ?
-				c.apply(withoutConstraint(p, c)) :
-				Cont.just(p);
-	}
-
 	@SuppressWarnings("unchecked")
 	public static <T> Cont<Reified<T>, Nothing> reify(Package s, Term<T> x) {
 		// after renaming every node is an LVal, a ReifiedVar, or a Constrained wrapper
@@ -103,60 +79,4 @@ public class CKanren {
 						.map(r -> Tuple.of(v, r)));
 	}
 
-	private static boolean anyRelevantVar(Term<?> xs, Constraint c) {
-		return isVarRelevant(xs, c)
-				|| isAnyItemRelevantCollection(xs, c)
-				|| isAnyItemRelevantLList(xs, c);
-	}
-
-	private static boolean isAnyItemRelevantLList(Term<?> xs, Constraint c) {
-		return xs.isVal() &&
-				MiniKanren.asLList(xs)
-						.filter(l -> l.stream()
-								.anyMatch(e -> e.fold(
-										c.getArgs()::contains,
-										c.getArgs()::contains)))
-						.isDefined();
-	}
-
-	private static Option<Iterable<Object>> asIterable(Object w) {
-		return MiniKanren.asIterable(w)
-				.orElse(() -> MiniKanren.tupleAsIterable(w));
-	}
-
-	private static boolean isAnyItemRelevantCollection(Term<?> xs, Constraint c) {
-		if (!xs.isVal()) {
-			return false;
-		}
-		Object w = xs.get();
-
-		if (w instanceof Collection) {
-			return processCollection((Collection<?>) w, c);
-		} else {
-			return processIterable(w, c);
-		}
-	}
-
-	private static boolean processIterable(Object w, Constraint c) {
-		return asIterable(w)
-				.filter(it -> StreamSupport.stream(it.spliterator(), false)
-						.map(MiniKanren::wrapTerm)
-						.anyMatch(c.getArgs()::contains))
-				.isDefined();
-	}
-
-	private static boolean processCollection(Collection<?> collection, Constraint c) {
-		for (var arg : c.getArgs()) {
-			if (collection.contains(arg)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private static boolean isVarRelevant(Term<?> xs, Constraint c) {
-		return xs.asVar()
-				.filter(c.getArgs()::contains)
-				.isDefined();
-	}
 }

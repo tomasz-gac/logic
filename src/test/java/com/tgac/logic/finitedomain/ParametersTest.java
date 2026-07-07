@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.logic.Utils;
-import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
@@ -37,10 +36,10 @@ public class ParametersTest {
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
 
-		Constraint constraint = Constraint.of(
-				Goal.success(),
+		com.tgac.logic.ckanren.Propagator constraint = com.tgac.logic.ckanren.Propagator.of(
 				FiniteDomainConstraints.class,
-				Arrays.asList(prefix.get()._1));
+				Arrays.asList(prefix.get()._1),
+				st -> com.tgac.logic.ckanren.Verdict.keep());
 
 		Package[] box = new Package[1];
 		Package pkg = Package.of(HashMap.empty(),

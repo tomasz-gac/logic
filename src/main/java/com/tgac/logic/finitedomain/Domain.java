@@ -123,12 +123,9 @@ public abstract class Domain<T> implements com.tgac.logic.ckanren.Narrowing {
 				return StoreSupport.processPrefix(a.getSubstitutions().put(x, lval(v)))
 						.apply(a);
 			} else {
-				// a narrowed (but not collapsed) domain wakes the constraints watching x,
+				// a narrowed (but not collapsed) domain wakes the propagators watching x,
 				// so narrowing cascades like x≤y≤z propagate without waiting for a binding
-				Package narrowed = extendD(x, this, a);
-				return com.tgac.logic.ckanren.CKanren
-						.runConstraints(x, StoreSupport.pendingConstraints(narrowed))
-						.apply(narrowed);
+				return StoreSupport.wake(x).apply(extendD(x, this, a));
 			}
 		};
 	}

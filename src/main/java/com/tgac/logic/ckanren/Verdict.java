@@ -3,6 +3,7 @@ package com.tgac.logic.ckanren;
 // ABOUTME: The outcome a propagator reports after re-examining its constraint — the
 // ABOUTME: framework administers the parked lifecycle; bodies only ever report.
 
+import com.tgac.logic.goals.Goal;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -40,18 +41,29 @@ public abstract class Verdict {
 		return new Narrowed(inferences);
 	}
 
+	/**
+	 * Discharge me AND splice this goal into the search — the suspension escape
+	 * hatch (docs/design/suspensions.md §5). The goal may branch arbitrarily, so
+	 * the driver must NOT run it mid-propagation: it is collected and spliced only
+	 * after the pass quiesces.
+	 */
+	public static Verdict run(Goal goal) {
+		return new Run(goal);
+	}
+
 	public abstract <R> R match(
 			Supplier<R> onFail,
 			Supplier<R> onKeep,
 			Supplier<R> onDischarge,
-			Function<List<Inference>, R> onNarrowed);
+			Function<List<Inference>, R> onNarrowed,
+			Function<Goal, R> onRun);
 
 	private static final class Fail extends Verdict {
 		static final Fail INSTANCE = new Fail();
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
-				Function<List<Inference>, R> onNarrowed) {
+				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
 			return onFail.get();
 		}
 
@@ -66,7 +78,7 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
-				Function<List<Inference>, R> onNarrowed) {
+				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
 			return onKeep.get();
 		}
 
@@ -81,13 +93,32 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
-				Function<List<Inference>, R> onNarrowed) {
+				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
 			return onDischarge.get();
 		}
 
 		@Override
 		public String toString() {
 			return "discharge";
+		}
+	}
+
+	private static final class Run extends Verdict {
+		private final Goal goal;
+
+		private Run(Goal goal) {
+			this.goal = goal;
+		}
+
+		@Override
+		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
+				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
+			return onRun.apply(goal);
+		}
+
+		@Override
+		public String toString() {
+			return "run(" + goal + ")";
 		}
 	}
 
@@ -100,7 +131,7 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
-				Function<List<Inference>, R> onNarrowed) {
+				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
 			return onNarrowed.apply(inferences);
 		}
 

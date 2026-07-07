@@ -5,6 +5,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.ckanren.Inference;
 import com.tgac.logic.ckanren.Propagator;
 import com.tgac.logic.ckanren.Verdict;
@@ -79,32 +80,18 @@ public class FiniteDomain {
 	}
 
 	/**
-	 * The step-1 adapter (capability-constraint-api.md §6): parks the constraint
-	 * under today's protocol, asks the propagator for a verdict and administers it —
-	 * fail kills the branch, keep stays parked, discharge returns the un-parked
-	 * package, narrowed stays parked and applies the inferences in order. addTo's
-	 * all-args-bound guard still decides parking, exactly as before.
+	 * Statement-time entry: parks a propagator watching {@code us} in the FD store
+	 * and interprets its first verdict; wakes re-interpret the same parked object
+	 * against the live state (capability-constraint-api.md §2.2).
 	 */
-	private static <T> Goal propagatorOperation(Goal constraintOp, Array<Unifiable<T>> us, Propagator prop) {
-		return p -> {
-			Package registered = FiniteDomainConstraints.register(p);
-			Package parked = CKanren.buildWalkedConstraint(
-							constraintOp, us,
-							FiniteDomainConstraints.class,
-							registered)
-					.addTo(registered);
-			return prop.propagate(parked).match(
-					() -> Cont.complete(Nothing.nothing()),
-					() -> Cont.just(parked),
-					() -> Cont.just(registered),
-					inferences -> inferences.stream()
-							.map(Inference::toGoal)
-							.reduce(Goal.success(), Goal::and)
-							.apply(parked));
-		};
+	private static <T> Goal fdConstraint(Array<Unifiable<T>> us,
+			java.util.function.Function<Package, Verdict> body) {
+		return p -> StoreSupport.activate(
+				Propagator.of(FiniteDomainConstraints.class, us.toJavaList(), body),
+				FiniteDomainConstraints.register(p));
 	}
 
-	private static <T> Propagator gated(Array<Unifiable<T>> us,
+	private static <T> java.util.function.Function<Package, Verdict> gated(Array<Unifiable<T>> us,
 			java.util.function.Function<Array<VarWithDomain<T>>, Verdict> verdict) {
 		return s -> letDomain(s, us)
 				.filter(uds -> uds.toJavaStream()
@@ -152,16 +139,26 @@ public class FiniteDomain {
 	}
 
 	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
-		return propagatorOperation(
-				p -> leqFD(less, more).apply(p),
+		return fdConstraint(
 				Array.of(less, more),
 				gated(Array.of(less, more), vds ->
 						Tuple.of(vds.get(0), vds.get(1))
-								.apply((lss, mor) -> Verdict.narrowed(Arrays.asList(
-										Inference.narrow(lss.getUnifiable(),
-												lss.<T> getDomain().atMost(mor.<T> getDomain().max())),
-										Inference.narrow(mor.getUnifiable(),
-												mor.<T> getDomain().atLeast(lss.<T> getDomain().min())))))));
+								.apply(FiniteDomain::leqVerdict)));
+	}
+
+	private static <T> Verdict leqVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
+		Domain<T> lessDom = lss.<T> getDomain().atMost(mor.<T> getDomain().max());
+		Domain<T> moreDom = mor.<T> getDomain().atLeast(lss.<T> getDomain().min());
+		if (lessDom.isEmpty() || moreDom.isEmpty()) {
+			return Verdict.fail();
+		}
+		if (lss.getUnifiable().isVal() && mor.getUnifiable().isVal()) {
+			// ground and consistent: nothing left to watch
+			return Verdict.discharge();
+		}
+		return Verdict.narrowed(Arrays.asList(
+				Inference.narrow(lss.getUnifiable(), lessDom),
+				Inference.narrow(mor.getUnifiable(), moreDom)));
 	}
 
 	public static <T> Goal addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
@@ -176,8 +173,7 @@ public class FiniteDomain {
 	}
 
 	static <T> Goal addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return propagatorOperation(
-				p -> addoFD(a, b, rhs).apply(p),
+		return fdConstraint(
 				Array.of(a, b, rhs),
 				gated(Array.of(a, b, rhs), vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
@@ -191,6 +187,11 @@ public class FiniteDomain {
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
 			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
+
+		if (u.getUnifiable().isVal() && v.getUnifiable().isVal() && w.getUnifiable().isVal()) {
+			// ground: check the sum exactly, nothing left to watch
+			return uMin.add(vMin).compareTo(wMin) == 0 ? Verdict.discharge() : Verdict.fail();
+		}
 
 		Interval<T> wi = Interval.of(
 				uMin.add(vMin),
@@ -222,8 +223,7 @@ public class FiniteDomain {
 	}
 
 	static <T> Goal mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return propagatorOperation(
-				p -> mulFD(a, b, rhs).apply(p),
+		return fdConstraint(
 				Array.of(a, b, rhs),
 				gated(Array.of(a, b, rhs), vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
@@ -308,8 +308,7 @@ public class FiniteDomain {
 	}
 
 	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
-		return propagatorOperation(
-				p -> separateFDC(l, r).apply(p),
+		return fdConstraint(
 				Array.of(l, r),
 				s -> letDomain(s, Array.of(l, r))
 						.map(ds -> Tuple.of(ds.get(0), ds.get(1)))

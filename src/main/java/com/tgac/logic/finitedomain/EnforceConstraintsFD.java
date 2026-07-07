@@ -4,7 +4,6 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
-import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -67,8 +66,7 @@ class EnforceConstraintsFD {
 	}
 
 	private static Goal rerunConstraints(Term<?> x) {
-		return a -> CKanren.runConstraints(x, getFDStore(a).getConstraints())
-				.apply(a);
+		return com.tgac.logic.ckanren.StoreSupport.wake(x);
 	}
 
 	private static <T> Goal unifyWithAllDomainValues(Term<T> x, Domain<T> d) {
@@ -105,9 +103,9 @@ class EnforceConstraintsFD {
 		}
 	}
 
-	private static void verifyAllConstrainedHaveDomain(Iterable<Constraint> constraints, Collection<LVar<?>> boundVariables) {
+	private static void verifyAllConstrainedHaveDomain(Iterable<com.tgac.logic.ckanren.Propagator> constraints, Collection<LVar<?>> boundVariables) {
 		StreamSupport.stream(constraints.spliterator(), false)
-				.flatMap(c -> c.getArgs().stream())
+				.flatMap(c -> StreamSupport.stream(c.watchedTerms().spliterator(), false))
 				.filter(u -> u.asVal().isDefined())
 				.filter(x -> x.asVar()
 						.filter(v -> !boundVariables.contains(v))

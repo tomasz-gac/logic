@@ -145,26 +145,92 @@ public class StoreSupport {
 					.distinct()
 					.map(Inference::toGoal)
 					.reduce(Goal.success(), Goal::and);
-			// wake EVERY store's suspended constraints watching a newly bound variable;
-			// read the stores from the live package, since earlier wakes re-park constraints
+			// wake EVERY store's suspended propagators watching a newly bound variable
 			Goal wake = prefix
 					.keySet().toJavaStream()
-					.<Goal> map(x -> s -> CKanren.runConstraints(x, pendingConstraints(s)).apply(s))
+					.<Goal> map(StoreSupport::wake)
 					.reduce(Goal.success(), Goal::and);
-			return applyInferred.and(wake).apply(reacted);
+			// Verdict.run goals collected during the pass are spliced only after the
+			// OUTERMOST pass quiesces; the PendingRuns store's presence marks in-flight
+			boolean outermost = !p.getConstraints().get(PendingRuns.class).isDefined();
+			if (!outermost) {
+				return applyInferred.and(wake).apply(reacted);
+			}
+			Goal drain = s -> {
+				PendingRuns pending = (PendingRuns) s.getConstraints().get(PendingRuns.class).get();
+				Package cleared = s.withoutStore(PendingRuns.class);
+				return pending.runs
+						.foldLeft(Goal.success(), Goal::and)
+						.apply(cleared);
+			};
+			return applyInferred.and(wake).and(drain)
+					.apply(reacted.putStore(PendingRuns.empty()));
 		};
 	}
 
 	/**
-	 * The union of every store's suspended constraints — the cross-store wake list.
+	 * The union of every store's suspended propagators — the cross-store wake list.
 	 */
-	public static Iterable<Constraint> pendingConstraints(Package p) {
+	public static Iterable<Propagator> pendingPropagators(Package p) {
 		return p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
 				.flatMap(cs -> java.util.stream.StreamSupport.stream(
-						cs.pendingConstraints().spliterator(), false))
+						cs.pendingPropagators().spliterator(), false))
 				.collect(java.util.stream.Collectors.toList());
+	}
+
+	/**
+	 * Parks the propagator in its store and immediately interprets its first
+	 * verdict — the statement-time entry (a constraint goal's body).
+	 */
+	public static Cont<Package, Nothing> activate(Propagator p, Package s) {
+		return interpret(p, withConstraint(s, p));
+	}
+
+	/**
+	 * Runs the propagator and administers its verdict: fail kills the branch, keep
+	 * leaves it parked untouched, discharge removes it, narrowed applies the
+	 * deduplicated inferences with the propagator still parked, and run discharges
+	 * it and defers the goal — appended to the in-flight pass's PendingRuns for
+	 * splicing after quiescence, or run inline at statement time when no pass is in
+	 * flight.
+	 */
+	public static Cont<Package, Nothing> interpret(Propagator p, Package s) {
+		return p.propagate(s).match(
+				() -> Cont.complete(Nothing.nothing()),
+				() -> Cont.just(s),
+				() -> Cont.just(withoutConstraint(s, p)),
+				inferences -> inferences.stream()
+						.distinct()
+						.map(Inference::toGoal)
+						.reduce(Goal.success(), Goal::and)
+						.apply(s),
+				goal -> {
+					Package discharged = withoutConstraint(s, p);
+					return discharged.getConstraints().get(PendingRuns.class)
+							.map(pr -> Cont.<Package, Nothing> just(discharged.putStore(
+									((PendingRuns) pr).with(goal))))
+							.getOrElse(() -> goal.apply(discharged));
+				});
+	}
+
+	/**
+	 * Wakes every store's propagators watching {@code changed}: each still-parked
+	 * match is re-interpreted against the live package (an earlier wake in the same
+	 * chain may have discharged it).
+	 */
+	public static Goal wake(Term<?> changed) {
+		return s -> {
+			Goal chain = java.util.stream.StreamSupport
+					.stream(pendingPropagators(s).spliterator(), false)
+					.filter(p -> p.watches(s, changed))
+					.<Goal> map(p -> st -> getConstraintStore(st, p.getStoreClass()).contains(p) ?
+							interpret(p, st) :
+							Cont.just(st))
+					.reduce(Goal.success(), Goal::and);
+			return chain.apply(s);
+		};
 	}
 
 	public static <T> Goal enforceConstraints(Package p, Term<T> x) {

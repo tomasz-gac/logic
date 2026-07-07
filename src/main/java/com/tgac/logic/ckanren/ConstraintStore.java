@@ -43,13 +43,13 @@ public interface ConstraintStore extends Store {
 	Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state);
 
 	/**
-	 * The suspended {@link Constraint} goals this store holds, exposed for the
+	 * The suspended {@link Propagator}s this store holds, exposed for the
 	 * chokepoint's cross-store wake: when a variable is bound or narrowed, every
-	 * store's constraints watching it are re-run, not only the store that caused
+	 * store's propagators watching it are re-run, not only the store that caused
 	 * the change. Stores using wholesale verification (disequality) have none —
-	 * they participate through {@link #processPrefix} instead.
+	 * they participate through {@link #onPrefix} instead.
 	 */
-	default Iterable<Constraint> pendingConstraints() {
+	default Iterable<Propagator> pendingPropagators() {
 		return java.util.Collections.emptyList();
 	}
 

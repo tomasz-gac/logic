@@ -3,7 +3,7 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.ckanren.Constraint;
+import com.tgac.logic.ckanren.Propagator;
 import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.Inference;
 import com.tgac.logic.ckanren.Reaction;
@@ -38,7 +38,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	LinkedHashMap<LVar<?>, Domain<?>> domains;
 
 	// cKanren constraints
-	HashSet<Constraint> constraints;
+	HashSet<Propagator> constraints;
 
 	public static FiniteDomainConstraints empty() {
 		return EMPTY;
@@ -51,18 +51,22 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	@Override
 	public ConstraintStore remove(Stored c) {
-		return FiniteDomainConstraints.of(domains, constraints.remove((Constraint) c));
+		return c instanceof Propagator ?
+				FiniteDomainConstraints.of(domains, constraints.remove((Propagator) c)) :
+				this;
 	}
 
 	@Override
 	public ConstraintStore prepend(Stored c) {
-		return FiniteDomainConstraints.of(domains, constraints.add((Constraint) c));
+		return c instanceof Propagator ?
+				FiniteDomainConstraints.of(domains, constraints.add((Propagator) c)) :
+				this;
 	}
 
 	@Override
 	public boolean contains(Stored c) {
-		return c instanceof Constraint &&
-				constraints.contains((Constraint) c);
+		return c instanceof Propagator &&
+				constraints.contains((Propagator) c);
 	}
 
 	public static FiniteDomainConstraints getFDStore(Package p) {
@@ -103,7 +107,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Iterable<Constraint> pendingConstraints() {
+	public Iterable<Propagator> pendingPropagators() {
 		return constraints;
 	}
 
@@ -115,8 +119,8 @@ class FiniteDomainConstraints implements ConstraintStore {
 				.collect(Collectors.toSet());
 
 		Set<LVar<?>> constrainedVarsWithoutDomains = constraints.toJavaStream()
-				.map(Constraint::getArgs)
-				.flatMap(List::stream)
+				.map(Propagator::watchedTerms)
+				.flatMap(ts -> java.util.stream.StreamSupport.stream(ts.spliterator(), false))
 				.map(p::walk)
 				.flatMap(u -> u.asVar().toJavaStream())
 				.filter(Predicates.not(varsWithDomains::contains))
@@ -138,12 +142,4 @@ class FiniteDomainConstraints implements ConstraintStore {
 		return FiniteDomainConstraints.of(domains.put(x, xd), constraints);
 	}
 
-	public <A> boolean constrains(Term<A> u) {
-		return domains.toJavaStream()
-				.map(Tuple2::_1)
-				.anyMatch(u::equals) ||
-				constraints.toJavaStream()
-						.map(Constraint::getArgs)
-						.anyMatch(u::equals);
-	}
 }

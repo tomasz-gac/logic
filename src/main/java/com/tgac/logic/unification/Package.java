@@ -68,4 +68,8 @@ public class Package {
 	public Package putStore(Store store) {
 		return Package.of(substitutions, constraints.put(store.getClass(), store));
 	}
+
+	public Package withoutStore(Class<? extends Store> cls) {
+		return Package.of(substitutions, constraints.remove(cls));
+	}
 }
