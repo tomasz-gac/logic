@@ -16,6 +16,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
@@ -43,16 +44,33 @@ public class Disequality {
 									case ALREADY_SEPARATE:
 										return Cont.just(s);
 									case SEPARATE_FOR_NOW:
-										return Cont.just(withConstraint(s,
-												NeqConstraint.of(
-														prefixS(
-																s.getSubstitutions(),
-																unificationResult.get().getSubstitutions()))));
+										HashMap<LVar<?>, Term<?>> prefix = prefixS(
+												s.getSubstitutions(),
+												unificationResult.get().getSubstitutions());
+										return bridgeToFiniteDomain(s, prefix)
+												.map(exclude -> exclude.apply(s))
+												.getOrElse(() -> Cont.just(withConstraint(s,
+														NeqConstraint.of(prefix))));
 									default:
 										throw new UnsupportedOperationException();
 								}
 							}));
 		};
+	}
+
+	/**
+	 * The Neq half of the disequality bridge: a single-pair prefix against a ground
+	 * value, on a variable with a finite domain, becomes a domain exclusion instead
+	 * of a stored record (cKanren's FD/≠ integration). Applies only at record
+	 * creation — a disequality stated before the domain exists keeps its record,
+	 * which stays correct through verification.
+	 */
+	private static Option<Goal> bridgeToFiniteDomain(Package s, HashMap<LVar<?>, Term<?>> prefix) {
+		return Option.of(prefix)
+				.filter(pf -> pf.size() == 1)
+				.map(pf -> pf.iterator().next())
+				.filter(binding -> binding._2.isVal())
+				.flatMap(binding -> FiniteDomain.excludeFromDomain(s, binding._1, binding._2.get()));
 	}
 
 	public static <T> Goal separate(Unifiable<T> lhs, T rhs) {

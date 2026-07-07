@@ -11,6 +11,7 @@ import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Term;
@@ -35,6 +36,31 @@ public class FiniteDomain {
 		return fdGoal()
 				.and(Goal.goal(s -> d.processDom(MiniKanren.walk(s, u)).apply(s)))
 				.named(pkg -> MiniKanren.format(pkg, u) + " ⊂ " + MiniKanren.format(pkg, d));
+	}
+
+	/**
+	 * The FD half of the disequality bridge (cKanren's FD/≠ integration): when
+	 * {@code x} has a finite domain and {@code value} is representable in it, the
+	 * disequality {@code x ≠ value} is fully expressed by excluding the value from
+	 * the domain, and the caller may discharge its record. The returned goal rides
+	 * {@code processDom}, so an exclusion that collapses the domain binds the
+	 * variable, and one that empties it fails. None when {@code x} has no domain
+	 * or the value is not arithmetic — the caller keeps the disequality.
+	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public static Option<Goal> excludeFromDomain(Package p, LVar<?> x, Object value) {
+		if (!(value instanceof Integer || value instanceof Long || value instanceof java.math.BigInteger)) {
+			return Option.none();
+		}
+		if (p.getConstraints() == null
+				|| !p.getConstraints().get(FiniteDomainConstraints.class).isDefined()) {
+			return Option.none();
+		}
+		return FiniteDomainConstraints.getDom(p, (LVar) x)
+				.map(d -> (Goal) s -> ((Domain) d)
+						.difference(Singleton.of(Arithmetic.ofCasted(value)))
+						.processDom(MiniKanren.walk(s, (LVar) x))
+						.apply(s));
 	}
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
