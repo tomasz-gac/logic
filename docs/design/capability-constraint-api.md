@@ -1,7 +1,7 @@
 # The capability constraint API — design and migration plan
 
-**Status: Steps 1, 2 AND 3 IMPLEMENTED (July 2026, branch `capability-api`);
-Step 3.5 (naming and structure, decided with Tom) and Step 4 (sweep) remain.** Implementation deviations
+**Status: Steps 1, 2, 3 AND 3.5 IMPLEMENTED (July 2026, branch `capability-api`);
+Step 4 (sweep) remains.** Implementation deviations
 from this doc, all recorded in place: watch matching is `watches(state, changed)`
 with CHAIN-INCLUSION (the changed variable may be the watched term, an alias link,
 or the chain end — a plain live walk steps THROUGH a just-bound variable and misses
@@ -394,7 +394,11 @@ last (lock the door after the furniture is arranged):
   it is the documented door; its three remaining callers are the chokepoint's
   two `Prefix.appliedTo` applications and Disequality's bare trial-package seed. After this step the scorecard's "unrepresentable"
   rows are unrepresentable up to that one documented residual.
-- **Step 3.5 — naming and structure (decided with Tom, July 2026).** The refactor
+- **Step 3.5 — naming and structure (decided with Tom, July 2026). IMPLEMENTED
+  as specified, four commits; deviations: `Package.updateStore` no longer
+  inserts a null store when the class is absent (updateC's latent behavior — it
+  now leaves the package unchanged); `isAssociated` became `Disequality.isBound`;
+  the folds live in `CKanren` as private `enforce`/`reifyConstraints`.** The refactor
   introduced six new nouns; this step settles their names against the literature,
   dissolves the `StoreSupport` grab-bag, and makes type ownership structural.
   Provenance audit: `Propagator` (Gecode/Schulte-Tack; Radul-Sussman), `Prefix`
