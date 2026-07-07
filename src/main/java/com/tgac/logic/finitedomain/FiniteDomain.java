@@ -46,7 +46,7 @@ public class FiniteDomain {
 	 * The FD half of the disequality bridge (cKanren's FD/≠ integration): when
 	 * {@code x} has a finite domain and {@code value} is representable in it, the
 	 * disequality {@code x ≠ value} is fully expressed by excluding the value from
-	 * the domain, and the caller may discharge its record. The returned goal rides
+	 * the domain, and the caller may drop its record. The returned goal rides
 	 * {@code processDom}, so an exclusion that collapses the domain binds the
 	 * variable, and one that empties it fails. None when {@code x} has no domain
 	 * or the value is not arithmetic — the caller keeps the disequality.
@@ -155,7 +155,7 @@ public class FiniteDomain {
 		}
 		if (lss.getUnifiable().isVal() && mor.getUnifiable().isVal()) {
 			// ground and consistent: nothing left to watch
-			return Verdict.discharge();
+			return Verdict.subsumed();
 		}
 		return Verdict.narrowed(Arrays.asList(
 				Inference.narrow(lss.getUnifiable(), lessDom),
@@ -191,7 +191,7 @@ public class FiniteDomain {
 
 		if (u.getUnifiable().isVal() && v.getUnifiable().isVal() && w.getUnifiable().isVal()) {
 			// ground: check the sum exactly, nothing left to watch
-			return uMin.add(vMin).compareTo(wMin) == 0 ? Verdict.discharge() : Verdict.fail();
+			return uMin.add(vMin).compareTo(wMin) == 0 ? Verdict.subsumed() : Verdict.fail();
 		}
 
 		Interval<T> wi = Interval.of(
@@ -240,7 +240,7 @@ public class FiniteDomain {
 			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
 		// all are numbers -> check multiplication
 		if (uMin.equals(uMax) && vMin.equals(vMax) && wMin.equals(wMax)) {
-			return uMin.mul(vMin).compareTo(wMin) == 0 ? Verdict.discharge() : Verdict.fail();
+			return uMin.mul(vMin).compareTo(wMin) == 0 ? Verdict.subsumed() : Verdict.fail();
 		}
 
 		// some are numbers -> do nothing until all generated
@@ -321,7 +321,7 @@ public class FiniteDomain {
 								return Verdict.fail();
 							}
 							if (ld.getDomain().isDisjoint(rd.getDomain())) {
-								return Verdict.discharge();
+								return Verdict.subsumed();
 							}
 							if (ld.getDomain() instanceof Singleton) {
 								return Verdict.narrowed(Collections.singletonList(

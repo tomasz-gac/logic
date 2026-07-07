@@ -8,7 +8,7 @@ import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.Propagator;
 import com.tgac.logic.ckanren.Verdict;
 import com.tgac.logic.ckanren.ConstraintStore;
-import com.tgac.logic.ckanren.Reaction;
+import com.tgac.logic.ckanren.Revision;
 import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
@@ -35,7 +35,7 @@ public class ProjectionConstraints implements ConstraintStore {
 	LinkedHashSet<Propagator> projections;
 
 	@Override
-	public <T> Goal enforceConstraints(Term<T> x) {
+	public <T> Goal enforce(Term<T> x) {
 		return StoreSupport.wake(x)
 				.and(s1 -> StoreSupport.getConstraintStore(s1, ProjectionConstraints.class)
 						.projections
@@ -45,9 +45,9 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Reaction onPrefix(Prefix prefix, Package state) {
+	public Revision revise(Prefix prefix, Package state) {
 		// projections are woken by the chokepoint's cross-store wake
-		return Reaction.unchanged();
+		return Revision.unchanged();
 	}
 
 	@Override

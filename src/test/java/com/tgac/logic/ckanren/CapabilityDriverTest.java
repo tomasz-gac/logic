@@ -31,19 +31,19 @@ public class CapabilityDriverTest {
 
 	/** A test-only constraint domain that emits configured inferences on every prefix. */
 	private static abstract class EmittingStore implements ConstraintStore {
-		final BiFunction<Prefix, Package, Reaction> reaction;
+		final BiFunction<Prefix, Package, Revision> reaction;
 
-		EmittingStore(BiFunction<Prefix, Package, Reaction> reaction) {
+		EmittingStore(BiFunction<Prefix, Package, Revision> reaction) {
 			this.reaction = reaction;
 		}
 
 		@Override
-		public Reaction onPrefix(Prefix prefix, Package state) {
+		public Revision revise(Prefix prefix, Package state) {
 			return reaction.apply(prefix, state);
 		}
 
 		@Override
-		public <T> Goal enforceConstraints(Term<T> x) {
+		public <T> Goal enforce(Term<T> x) {
 			return Goal.success();
 		}
 
@@ -75,13 +75,13 @@ public class CapabilityDriverTest {
 
 	// two distinct classes: the store map is keyed by class
 	private static final class StoreA extends EmittingStore {
-		StoreA(BiFunction<Prefix, Package, Reaction> r) {
+		StoreA(BiFunction<Prefix, Package, Revision> r) {
 			super(r);
 		}
 	}
 
 	private static final class StoreB extends EmittingStore {
-		StoreB(BiFunction<Prefix, Package, Reaction> r) {
+		StoreB(BiFunction<Prefix, Package, Revision> r) {
 			super(r);
 		}
 	}
@@ -106,10 +106,10 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
+				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()),
 						Arrays.asList(Inference.bind(
 								Prefix.binding(state, q, lval(1L)).get())))),
-				new StoreB((prefix, state) -> Reaction.updated(new StoreB((pf, st) -> Reaction.unchanged()),
+				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()),
 						Arrays.asList(Inference.bind(
 								Prefix.binding(state, q, lval(2L)).get())))));
 
@@ -123,10 +123,10 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
+				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()),
 						Arrays.asList(Inference.bind(
 								Prefix.binding(state, q, lval(1L)).get())))),
-				new StoreB((prefix, state) -> Reaction.updated(new StoreB((pf, st) -> Reaction.unchanged()),
+				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()),
 						Arrays.asList(Inference.bind(
 								Prefix.binding(state, q, lval(1L)).get())))));
 
@@ -143,7 +143,7 @@ public class CapabilityDriverTest {
 		};
 
 		Package root = root(
-				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
+				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()),
 						Arrays.asList(Inference.bind(
 								Prefix.binding(state, q, lval(1L)).get())))));
 
@@ -173,7 +173,7 @@ public class CapabilityDriverTest {
 		Inference narrow = Inference.narrow(t, counting);
 
 		Package root = root(
-				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
+				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()),
 						Arrays.asList(narrow, narrow))));
 
 		assertThat(solutions(root)).isEqualTo(1);

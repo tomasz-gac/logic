@@ -95,7 +95,7 @@ interface Propagator extends Stored {          // Stored: routes park/remove to 
 // the closed verdict set:
 Verdict.fail()                    // violated — kill the branch
 Verdict.keep()                    // undecided — stay parked (THE DEFAULT-SAFE CASE)
-Verdict.discharge()               // permanently satisfied — remove me
+Verdict.subsumed()                // entailed, can never be violated again — remove me
 Verdict.narrowed(List<Inference>) // stay parked AND apply these inferences
 Verdict.run(Goal)                 // escape hatch for search-triggering stores (§5.3)
 ```
@@ -110,7 +110,7 @@ walking inside `propagate` instead of re-parking walked copies.
 public Verdict propagate(Package s) {
 	Term<T> u = walk(s, x), v = walk(s, y);
 	if (u.isVal() && v.isVal())
-		return leq(u, v) ? Verdict.discharge() : Verdict.fail();
+		return leq(u, v) ? Verdict.subsumed() : Verdict.fail();
 	Option<Domain<T>> du = domainOf(s, u), dv = domainOf(s, v);
 	if (!du.isDefined() || !dv.isDefined())
 		return Verdict.keep();                       // was letDomain's silent skip
@@ -122,22 +122,22 @@ public Verdict propagate(Package s) {
 }
 ```
 
-### 2.3 `Reaction` — store hooks return their factor, not the world
+### 2.3 `Revision` — store hooks return their factor, not the world
 
 ```java
 interface ConstraintStore extends Store {
-	/** React to newly applied bindings. Read anything; change only your own factor. */
-	Reaction onPrefix(Prefix prefix, Package state);
-	// enforceConstraints / reify / pendingPropagators as today (adapted)
+	/** Revise against newly applied bindings. Read anything; change only your own factor. */
+	Revision revise(Prefix prefix, Package state);
+	// enforce / reify / pendingPropagators as today (adapted)
 }
 
-Reaction.fail()
-Reaction.unchanged()
-Reaction.updated(Store myNewFactor)
-Reaction.updated(Store myNewFactor, List<Inference> inferences)
+Revision.fail()
+Revision.unchanged()
+Revision.updated(Store myNewFactor)
+Revision.updated(Store myNewFactor, List<Inference> inferences)
 ```
 
-A reaction physically cannot touch substitutions or another store's entry. The
+A revision physically cannot touch substitutions or another store's entry. The
 chokepoint assembles the package from returned factors.
 
 ### 2.4 `Inference` — cross-factor information as data

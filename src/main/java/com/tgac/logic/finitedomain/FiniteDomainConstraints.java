@@ -6,7 +6,7 @@ import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.Propagator;
 import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.Inference;
-import com.tgac.logic.ckanren.Reaction;
+import com.tgac.logic.ckanren.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
@@ -81,13 +81,13 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <T> Goal enforceConstraints(Term<T> x) {
+	public <T> Goal enforce(Term<T> x) {
 		return EnforceConstraintsFD.enforceConstraints(x);
 	}
 
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public Reaction onPrefix(Prefix prefix, Package state) {
+	public Revision revise(Prefix prefix, Package state) {
 		// this store's reaction: each newly bound value must lie in its variable's
 		// domain; a var-var binding aliases the two, so the domain follows the
 		// representative as a narrow inference
@@ -100,13 +100,13 @@ class FiniteDomainConstraints implements ConstraintStore {
 			Term<?> v = binding._2;
 			if (v.isVal()) {
 				if (!dom.contains(v.get())) {
-					return Reaction.fail();
+					return Revision.fail();
 				}
 			} else {
 				narrows.add(Inference.narrow(v, dom));
 			}
 		}
-		return narrows.isEmpty() ? Reaction.unchanged() : Reaction.updated(this, narrows);
+		return narrows.isEmpty() ? Revision.unchanged() : Revision.updated(this, narrows);
 	}
 
 	@Override

@@ -6,7 +6,7 @@ import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
 import com.tgac.logic.ckanren.ConstraintStore;
-import com.tgac.logic.ckanren.Reaction;
+import com.tgac.logic.ckanren.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
@@ -62,15 +62,15 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <T> Goal enforceConstraints(Term<T> x) {
+	public <T> Goal enforce(Term<T> x) {
 		return Goal.success();
 	}
 
 	@Override
-	public Reaction onPrefix(Prefix prefix, Package state) {
+	public Revision revise(Prefix prefix, Package state) {
 		return Disequality.verifyAndSimplify(constraints, state.getSubstitutions())
-				.map(c -> (Reaction) Reaction.updated(NeqConstraints.of(c)))
-				.getOrElse(Reaction::fail);
+				.map(c -> (Revision) Revision.updated(NeqConstraints.of(c)))
+				.getOrElse(Revision::fail);
 	}
 
 	@Override

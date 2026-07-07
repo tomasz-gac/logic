@@ -1,7 +1,7 @@
 package com.tgac.logic.ckanren;
 
 import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.logic.ckanren.StoreSupport.enforceConstraints;
+import static com.tgac.logic.ckanren.StoreSupport.enforce;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.ckanren.StoreSupport.resolve;
 import static com.tgac.logic.ckanren.StoreSupport.withoutConstraint;
@@ -54,7 +54,7 @@ public class CKanren {
 	@SuppressWarnings("unchecked")
 	public static <T> Cont<Reified<T>, Nothing> reify(Package s, Term<T> x) {
 		// after renaming every node is an LVal, a ReifiedVar, or a Constrained wrapper
-		return enforceConstraints(s, x).apply(s)
+		return enforce(s, x).apply(s)
 				.flatMap(s1 -> Cont.defer(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->

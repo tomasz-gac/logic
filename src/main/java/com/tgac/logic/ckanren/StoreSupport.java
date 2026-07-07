@@ -89,7 +89,7 @@ public class StoreSupport {
 	 * revalidates the prefix against the live package (open variables bind their
 	 * walked representatives, agreeing pairs drop, contradicting pairs fail the
 	 * branch), extends the substitution once, folds every {@link ConstraintStore}'s
-	 * {@code onPrefix} reaction, then queues a Wake per bound variable — woken
+	 * {@code revise} revision, then queues a Wake per bound variable — woken
 	 * propagators' verdicts feed further items, and that queue-until-empty loop is the
 	 * propagation fixpoint, one item per deferred step.
 	 *
@@ -104,7 +104,7 @@ public class StoreSupport {
 				return Cont.just(p);
 			}
 			if (constraintStores(p).isEmpty()) {
-				// pure-relational fast path: no reactions, no agenda — the prefix is
+				// pure-relational fast path: no revisions, no agenda — the prefix is
 				// already the delta, so extension is a put per binding
 				return Cont.just(p.withSubstitutions(prefix.appliedTo(p.getSubstitutions())));
 			}
@@ -173,7 +173,7 @@ public class StoreSupport {
 	 * Applies an inferred-bindings delta: revalidate against the live package (a
 	 * pair for a still-open variable binds its walked representative; one bound to
 	 * the same value is dropped; one bound to a DIFFERENT value is a contradiction
-	 * between constraint domains and the branch dies), extend, run store reactions,
+	 * between constraint domains and the branch dies), extend, revise every store,
 	 * apply their inferences, and queue wakes for the newly bound variables.
 	 */
 	private static Goal applyBind(Prefix prefix) {
@@ -188,13 +188,13 @@ public class StoreSupport {
 				return Cont.just(s);
 			}
 			Package extended = s.withSubstitutions(kept.appliedTo(s.getSubstitutions()));
-			// reactions are DATA: fold them; each swaps at most its own factor and
+			// revisions are DATA: fold them; each swaps at most its own factor and
 			// hands inferences back for routing
 			Package reacted = extended;
 			List<Inference> inferred = new ArrayList<>();
 			for (ConstraintStore cs : constraintStores(reacted)) {
 				Package before = reacted;
-				Package after = cs.onPrefix(kept, reacted).match(
+				Package after = cs.revise(kept, reacted).match(
 						() -> null,
 						() -> before,
 						(store, inferences) -> {
@@ -206,7 +206,7 @@ public class StoreSupport {
 				}
 				reacted = after;
 			}
-			// queue wakes for the newly bound vars, then apply reaction inferences
+			// queue wakes for the newly bound vars, then apply revision inferences
 			// inline (bounded: their cascades append rather than recurse)
 			Agenda agenda = (Agenda) reacted.getConstraints().get(Agenda.class).get();
 			for (Tuple2<LVar<?>, Term<?>> binding : kept.bindings()) {
@@ -242,8 +242,8 @@ public class StoreSupport {
 
 	/**
 	 * Runs the propagator and administers its verdict: fail kills the branch, keep
-	 * leaves it parked untouched, discharge removes it, narrowed applies the
-	 * deduplicated inferences with the propagator still parked, and run discharges
+	 * leaves it parked untouched, subsumed removes it, narrowed applies the
+	 * deduplicated inferences with the propagator still parked, and run removes
 	 * it and defers the goal — collected in the in-flight drain's run lane for
 	 * splicing after quiescence, or run inline at statement time when no drain is
 	 * in flight.
@@ -259,21 +259,21 @@ public class StoreSupport {
 						.reduce(Goal.success(), Goal::and)
 						.apply(s),
 				goal -> {
-					Package discharged = withoutConstraint(s, p);
+					Package removed = withoutConstraint(s, p);
 					// a drain in flight collects the run for the post-quiescence
 					// splice; at statement time it runs inline at the goal's own
 					// position in the search
-					return discharged.getConstraints().get(Agenda.class)
-							.map(a -> Cont.<Package, Nothing> just(discharged.putStore(
+					return removed.getConstraints().get(Agenda.class)
+							.map(a -> Cont.<Package, Nothing> just(removed.putStore(
 									((Agenda) a).appendRun(goal))))
-							.getOrElse(() -> goal.apply(discharged));
+							.getOrElse(() -> goal.apply(removed));
 				});
 	}
 
 	/**
 	 * Wakes every store's propagators watching {@code changed}: each still-parked
 	 * match is re-interpreted against the live package (an earlier wake in the same
-	 * chain may have discharged it).
+	 * chain may have removed it).
 	 */
 	public static Goal wake(Term<?> changed) {
 		return s -> {
@@ -288,11 +288,11 @@ public class StoreSupport {
 		};
 	}
 
-	public static <T> Goal enforceConstraints(Package p, Term<T> x) {
+	public static <T> Goal enforce(Package p, Term<T> x) {
 		return p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
-				.map(cs -> cs.enforceConstraints(x))
+				.map(cs -> cs.enforce(x))
 				.reduce(Goal::and)
 				.orElseGet(Goal::success);
 	}

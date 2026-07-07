@@ -20,7 +20,7 @@ import org.junit.Test;
 /**
  * The Neq→FD bridge (cKanren's FD/≠ integration): a disequality against a ground
  * value, on a variable with a finite domain, is expressed by excluding the value
- * from the domain and discharging the record — pruning before labelling instead
+ * from the domain and dropping the record — pruning before labelling instead
  * of generate-and-reject.
  */
 public class NeqFdBridgeTest {

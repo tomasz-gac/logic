@@ -31,9 +31,9 @@ public abstract class Verdict {
 		return Keep.INSTANCE;
 	}
 
-	/** Permanently satisfied — forget me. */
-	public static Verdict discharge() {
-		return Discharge.INSTANCE;
+	/** Entailed — can never be violated again (Gecode's ES_SUBSUMED); forget me. */
+	public static Verdict subsumed() {
+		return Subsumed.INSTANCE;
 	}
 
 	/** Stay parked AND apply what I inferred, in list order. */
@@ -42,7 +42,7 @@ public abstract class Verdict {
 	}
 
 	/**
-	 * Discharge me AND splice this goal into the search — the suspension escape
+	 * Remove me AND splice this goal into the search — the suspension escape
 	 * hatch (docs/design/suspensions.md §5). The goal may branch arbitrarily, so
 	 * the driver must NOT run it mid-propagation: it is collected and spliced only
 	 * after the pass quiesces.
@@ -54,7 +54,7 @@ public abstract class Verdict {
 	public abstract <R> R match(
 			Supplier<R> onFail,
 			Supplier<R> onKeep,
-			Supplier<R> onDischarge,
+			Supplier<R> onSubsumed,
 			Function<List<Inference>, R> onNarrowed,
 			Function<Goal, R> onRun);
 
@@ -62,7 +62,7 @@ public abstract class Verdict {
 		static final Fail INSTANCE = new Fail();
 
 		@Override
-		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
+		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
 				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
 			return onFail.get();
 		}
@@ -77,7 +77,7 @@ public abstract class Verdict {
 		static final Keep INSTANCE = new Keep();
 
 		@Override
-		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
+		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
 				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
 			return onKeep.get();
 		}
@@ -88,18 +88,18 @@ public abstract class Verdict {
 		}
 	}
 
-	private static final class Discharge extends Verdict {
-		static final Discharge INSTANCE = new Discharge();
+	private static final class Subsumed extends Verdict {
+		static final Subsumed INSTANCE = new Subsumed();
 
 		@Override
-		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
+		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
 				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
-			return onDischarge.get();
+			return onSubsumed.get();
 		}
 
 		@Override
 		public String toString() {
-			return "discharge";
+			return "subsumed";
 		}
 	}
 
@@ -111,7 +111,7 @@ public abstract class Verdict {
 		}
 
 		@Override
-		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
+		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
 				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
 			return onRun.apply(goal);
 		}
@@ -130,7 +130,7 @@ public abstract class Verdict {
 		}
 
 		@Override
-		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onDischarge,
+		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
 				Function<List<Inference>, R> onNarrowed, Function<Goal, R> onRun) {
 			return onNarrowed.apply(inferences);
 		}
