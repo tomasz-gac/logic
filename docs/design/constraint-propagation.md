@@ -102,6 +102,14 @@ cannot shrink below empty.
 
 ## 3. Target design for this codebase
 
+> **How to read this section after §1.1:** §3.1's monotonicity invariant is binding.
+> §3.2–3.4 are the CONCEPTUAL model (what a propagator is, why the loop terminates) —
+> do NOT implement them as new classes. The concrete implementation path (§4) reuses
+> the existing machinery: `Constraint` is already the propagator, `runConstraints` is
+> already the wake-up, and recursion through the CPS/`Cont.defer` substrate is already
+> the (stack-safe, trampolined) fixpoint loop. Only §3.4's explicit worklist would be
+> genuinely new code, and it is deferred until measured (Phase 3).
+
 ### 3.1 State = a product lattice carried in `Package`
 
 `Package` already is `substitutions (HashMap<LVar,Term>) × constraints
@@ -222,29 +230,92 @@ still holds its un-narrowed package; there is no trail to undo.
 ## 4. Migration phases
 
 Given §1.1, the shape of the work is **completing the existing `runConstraints`
-machinery**, not building a new engine. `Constraint` already is the propagator;
-the recursive cascade already is the fixpoint for binding-driven propagation.
+machinery**, not building a new engine. The whole target fits in one invariant:
+
+> **One chokepoint through which every binding flows; stores may only REACT
+> (narrow domains, verify, fail) — never extend or replace the substitution
+> themselves; wake-ups reach all stores' watchers; recursion is the fixpoint.**
+
+Conceptually the chokepoint is:
+
+```
+bind(pkg, newBindings):                      // the ONLY way substitutions grow
+    pkg' = pkg.extendS(newBindings)          // monotonic; applied ONCE, centrally
+    for each newly bound var x:
+        runConstraints(x, union of ALL stores' pending constraints)   // cross-store wake
+    run store-level reactions (Neq verify, FD domain-membership check)
+    // reactions that infer bindings call bind() again → recursion = the fixpoint,
+    // stack-safe because everything is Cont.defer'd on the fiber substrate
+```
+
+`StoreSupport.processPrefix` essentially IS this function already — it just is not
+the only door (gap 2), does not extend centrally (clobber), and wakes intra-store
+only (gap 1).
 
 - **Phase 0 (interim, cheap, do regardless):** in `StoreSupport`, detect more than one
   *substitution-mutating* `ConstraintStore` active in a package and fail loudly (or log)
   rather than returning a silently wrong answer. Whitelist the combinations already
-  verified. Documents the real contract in code.
-- **Phase 1 (close gap 2 — the chokepoint bypass):** route `Domain.resolveStorableDom`'s
-  singleton-collapse binding through the same path as unification (run
-  `StoreSupport.processPrefix` for the new binding, or equivalently wake ALL stores'
-  watchers, not just FD's). This turns the late (reify-time) cross-store rescue into
-  immediate propagation — earlier pruning, and it removes the committed-choice
-  unsoundness vector. Also ban `withSubstitutions`-replace in the constraint path
-  (use `extendS`; monotonic substitution). Re-validate every FD/Neq/Projection test.
-- **Phase 2 (close gaps 1 and 3 — cross-store and narrowing-driven wake):** give
-  `runConstraints` call sites access to all stores' pending constraints (a per-var
-  watcher registry across stores), and fire wake-ups on domain *narrowing*, not only
-  on binding (`extendD` should wake watchers of the narrowed var). This enables true
-  cross-domain propagation — e.g. disequality removing a value from an FD domain —
-  the first behaviour the old design could not produce; add tests that require it.
-- **Phase 3 (performance):** replace the recursive cascade with an explicit AC-3
-  worklist + dependency index if (and only if) the recursion depth or redundant
-  re-runs are measured to matter. No result changes.
+  verified. Documents the real contract in code. (Becomes obsolete after Phase 1.)
+
+- **Phase 1 (close gap 2 + kill the clobber class).** Two concrete moves:
+  1. `Domain.resolveStorableDom`, singleton branch — route the inferred binding
+     through the chokepoint. Today:
+     ```java
+     runConstraints(x, FiniteDomainConstraints.getFDStore(a).getConstraints())
+             .apply(a.extendS(HashMap.of(x, lval(v))));
+     ```
+     Target:
+     ```java
+     StoreSupport.processPrefix(HashMap.of(x, lval(v))).apply(a);
+     ```
+     An FD-inferred binding becomes indistinguishable from a unification: Neq
+     verifies immediately, projections fire, FD's own wake-up happens inside its
+     `processPrefix`. The reify-time rescue (`EnforceConstraintsFD` re-running
+     processPrefix) becomes a redundant safety net — KEEP it initially and add a
+     test asserting it discovers nothing new.
+  2. **Stores stop touching substitutions.** The chokepoint applies
+     `extendS(prefix)` once; every store's `processPrefix(prefix, oldPackage)`
+     becomes purely reactive — it receives the already-extended package plus the
+     prefix as data, and may narrow domains / verify / fail, but never calls
+     `withSubstitutions`. Mechanical sweep across `FiniteDomainConstraints`,
+     `NeqConstraints` (its `verifyUnify` already takes `(newPackage, oldPackage)`
+     — it just stops building `newPackage` itself), and `ProjectionConstraints`.
+
+  Validation: full suite green; `SummationTest`, `MultiplicationTest` and
+  `OrderConstraintsTest` are the most likely to catch semantic drift. Days of work,
+  small diffs, big re-validation burden. Removes the committed-choice unsoundness
+  vector (mid-search states become consistent).
+
+- **Phase 2 (close gaps 1 and 3 — where genuinely NEW behaviour appears).**
+  1. **Cross-store wake (gap 1):** the chokepoint wakes, per newly bound var, the
+     union of all stores' pending constraints. `runConstraints`/`remRun` are
+     already store-agnostic (each `Constraint` carries its `storeClass`) — only the
+     call sites' constraint lists widen.
+  2. **Wake on narrowing (gap 3):** `Domain.extendD` (non-singleton shrink)
+     additionally wakes the watchers of the narrowed variable. This is what turns
+     `x<y ∧ y<z` interval chains into immediate propagation and gives cross-domain
+     hooks (a Neq watcher reacting to a domain shrink). Termination is safe —
+     domains only shrink (DCC) — but **audit every FD constraint body for
+     idempotence under narrowing-wakes**: they were written assuming re-runs happen
+     only on binding. This audit is the real design risk of the whole redesign.
+
+  Acceptance: `x ∈ {1..10} ∧ x ≠ 5` prunes 5 from the domain BEFORE labelling;
+  `FiniteDomainTest#shouldMixMultipleConstraintSystems` gains a real assertion.
+  Side effect: pldb's deferred lookups (`pldb/docs/design/deferred-lookups.md`)
+  unblock with zero extra machinery — a parked lookup is just a `Constraint` in its
+  own store, woken by the cross-store registry, flushed by `enforceConstraints`.
+
+- **Phase 3 (performance, only if measured):** replace the recursive cascade with an
+  explicit AC-3 worklist + var→watchers index if recursion depth or redundant
+  re-runs matter in practice; likewise a watcher index for Neq's wholesale
+  re-verify (currently O(constraints) per binding — fine at present scale). No
+  result changes.
+
+**What deliberately does not change:** `Package` immutability (it is what makes
+reactions confluent and backtracking free), `MiniKanren.unify` itself, the
+search/scheduler substrate, the reify/labelling structure, and the inert stores
+(`Table`, `DebugStore`). Blast radius: `StoreSupport`, the three stores'
+`processPrefix` bodies, and `Domain.resolveStorableDom`/`extendD`.
 
 Phases 1–3 touch the constraint core that FD, Neq, Projection (and, transitively,
 aggregate) sit on. Treat each as its own reviewed change with the full suite green.
@@ -268,13 +339,22 @@ aggregate) sit on. Treat each as its own reviewed change with the full suite gre
 
 ## 6. Acceptance tests to add
 
-1. The known-broken compositions, as *failing* tests first (they bound the work):
-   - FD var narrowed to a singleton **+** a disequality on it — assert the binding
-     survives and the disequality is honoured.
+1. The known-broken/risky compositions, as *failing* tests first (they bound the work).
+   NOTE: `separate(x,1) ∧ dom(x,{1})` already fails correctly TODAY via the reify-time
+   rescue (verified July 2026) — do not use it as the failing case. The genuinely
+   unpinned cases are:
+   - committed choice over an inconsistent mid-search state: `conda`/`condu` whose
+     first clause produces a package carrying an FD-collapse binding that violates a
+     Neq constraint — assert the commit does not select the doomed branch (this fails
+     before Phase 1, passes after);
    - two mutually narrowing FD constraints whose fixpoint needs ≥2 sweeps — assert the
-     result is independent of the order the constraints are stated.
-2. Cross-domain: `x ∈ {1..10} ∧ x ≠ 5` — assert `5` is removed from the domain before
+     result is independent of the order the constraints are stated (fails before
+     Phase 2's wake-on-narrowing).
+2. After Phase 1: assert the reify-time rescue is a no-op — `EnforceConstraintsFD`'s
+   re-run of processPrefix discovers no new violations, because the chokepoint already
+   caught them mid-search.
+3. Cross-domain: `x ∈ {1..10} ∧ x ≠ 5` — assert `5` is removed from the domain before
    labelling (Phase 2), not merely filtered during enumeration.
-3. Regression: the entire existing constraint suite (`FiniteDomainTest`, `SummationTest`,
+4. Regression: the entire existing constraint suite (`FiniteDomainTest`, `SummationTest`,
    `MultiplicationTest`, `OrderConstraintsTest`, `SeparateTest`, `ParametersTest`,
    `NeqFiniteDomainTest`) stays green at every phase.
