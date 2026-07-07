@@ -41,12 +41,13 @@ interface Suspension {
 	Option<Goal> resume(Package state);
 
 	/**
-	 * Called at answer time (the enforceConstraints analogue) when still parked.
-	 * Default: fail LOUDLY — an answer emitted while a suspension is pending is
-	 * unsound (its goal never constrained anything). Kinds that can force
-	 * themselves override: a deferred database lookup enumerates now; a safe
-	 * negation with ground args checks now, with non-ground args it is a program
-	 * error and stays loud.
+	 * Called at answer time (the enforceConstraints analogue) when still parked
+	 * after a final resume attempt. Default: fail LOUDLY — an answer emitted while
+	 * a suspension is pending is unsound (its goal never constrained anything).
+	 * This is Projection's existing enforce policy ("Unbound variables during
+	 * projection") generalized into the API. Kinds that can force themselves
+	 * override: a deferred database lookup enumerates now; a safe negation with
+	 * ground args checks now, with non-ground args it stays loud.
 	 */
 	default Option<Goal> force(Package state) {
 		throw new IllegalStateException("unresolved suspension at answer time: " + this);
@@ -65,20 +66,21 @@ knows by name, next to the substitution and the constraint stores).
 2. collect suspensions whose resume() is defined     // remove from the registry
 3. splice their goals into the search, in park order // branching happens HERE
    (their execution may bind more → re-enter 1)
-4. at reify: force() every remaining suspension      // loud by default
+4. at reify: one final resume attempt, then force()  // loud by default
 ```
 
 Park order makes the splice deterministic. Note the loop: a resumed goal that binds
 variables re-enters propagation; termination comes from the search itself (a resumed
 goal is ordinary search work, not propagation).
 
-## 4. What the reify policy fixes
+## 4. The reify policy — Projection's existing one, generalized
 
-Today a projection whose variables never become ground stays parked forever and the
-answer is emitted anyway — the projected goal silently never ran. That is the same
-species of hole as FD's constrained-variable-without-domain, which *throws*. The
-`force` default makes it loud; kinds that have a meaningful completion (lookup
-enumeration) override it instead.
+Projection already implements the loud policy: its `enforceConstraints` gives parked
+projections one final wake and THROWS ("Unbound variables during projection") when
+any remain — the same discipline as FD's constrained-variable-without-domain check.
+`force`'s loud default is that policy lifted into the API, not a behaviour change;
+kinds with a meaningful completion (lookup enumeration) override it instead of
+inheriting the error.
 
 ## 5. The interim form (what Step 2 actually ships)
 
@@ -105,8 +107,8 @@ that earned `Narrowing` its existence applies: do not extract for one user.
    the collect-and-splice code already exists, it only changes its source;
 4. remove `Verdict.run`, restoring `Verdict` to pure propagation outcomes
    (fail/keep/discharge/narrowed) and the confluence story to a one-line argument;
-5. reify: wire `force` (loud default; project has no override — a still-parked
-   projection at answer time becomes an error, which is a behaviour CHANGE to flag).
+5. reify: wire `force` (loud default; project keeps it — identical to today's
+   "Unbound variables during projection" throw, no behaviour change).
 
 ## 7. Non-goals
 
