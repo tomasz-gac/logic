@@ -5,13 +5,13 @@
  * surface (constraint-aware unification and reification); {@link
  * com.tgac.logic.ckanren.Propagation} is the engine — the chokepoint every
  * binding routes through, the agenda worklist that makes the propagation
- * fixpoint explicit, and the interpreter of verdicts, revisions and inferences.
+ * fixpoint explicit, and the router of revisions.
  *
- * <p>Layering: this package depends on both protocol packages —
- * {@code com.tgac.logic.ckanren.propagator} (the item protocol, bottom) and
- * {@code com.tgac.logic.ckanren.store} (the factor protocol, which knows the
- * item protocol but not this driver). Concrete stores live with their domains
+ * <p>Layering: the driver speaks ONLY to stores —
+ * {@code com.tgac.logic.ckanren.store} is its entire constraint boundary; the
+ * {@code com.tgac.logic.ckanren.propagator} toolkit is store-internal machinery
+ * the driver never sees. Concrete stores live with their domains
  * ({@code finitedomain}, {@code separate}, {@code projection}).
- * Design: docs/design/capability-constraint-api.md.
+ * Design: docs/design/minimal-constraint-vocabulary.md.
  */
 package com.tgac.logic.ckanren;

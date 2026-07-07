@@ -1,20 +1,17 @@
-// ABOUTME: The item-level constraint protocol: a Propagator watches terms and rules
-// ABOUTME: on its own lifecycle; Inference is the cross-factor vocabulary it emits.
+// ABOUTME: The propagator toolkit: a library stores use INTERNALLY to schedule parked
+// ABOUTME: constraint bodies. The driver never sees a propagator or a verdict.
 /**
- * The propagator protocol — the unit of scheduling. A {@link
- * com.tgac.logic.ckanren.propagator.Propagator} is one parked constraint watching
- * terms; when a watched term changes, the driver re-runs it and administers its
- * {@link com.tgac.logic.ckanren.propagator.Verdict}: the propagator rules only on
- * its own lifecycle (keep parked, subsumed, fail the branch, splice a goal) and
- * emits {@link com.tgac.logic.ckanren.propagator.Inference}s — the only vocabulary
- * for information crossing package factors ({@code bind} grows the substitution,
- * {@code narrow} shrinks a term through the {@link
- * com.tgac.logic.ckanren.propagator.Narrowing} seam).
+ * The propagator toolkit — used BY stores, unknown to the driver
+ * (docs/design/minimal-constraint-vocabulary.md §2.4). A {@link
+ * com.tgac.logic.ckanren.propagator.Propagator} is one parked constraint body
+ * watching terms; the store that owns it runs it from its {@code changed} and
+ * {@code stated} hooks and administers the {@link
+ * com.tgac.logic.ckanren.propagator.Verdict} itself: keep parked (the
+ * default-safe case — forgetting to re-park is not expressible), subsumed, fail
+ * the branch, update the owning factor, or hand a goal to the run lane. The
+ * administration folds into the one {@code Revision} the store answers, so
+ * nothing intra-store ever crosses the driver boundary.
  *
- * <p>This package is the bottom layer of the constraint machinery: it knows
- * nothing of stores or the driver. The store protocol
- * ({@code com.tgac.logic.ckanren.store}) and the engine
- * ({@code com.tgac.logic.ckanren.Propagation}) depend on it, never the reverse.
- * Design: docs/design/capability-constraint-api.md §2.2, §2.4.
+ * <p>Stores with nothing parked (disequality) never touch this package.
  */
 package com.tgac.logic.ckanren.propagator;

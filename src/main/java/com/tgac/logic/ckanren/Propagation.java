@@ -5,7 +5,6 @@ package com.tgac.logic.ckanren;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -70,16 +69,6 @@ public final class Propagation {
 		};
 	}
 
-	/** Queue a watcher wake for {@code changed} — the narrowing producer's entry. */
-	public static Cont<Package, Nothing> enqueueWake(Term<?> changed, Package p) {
-		return enqueue(p, new Agenda.Changed(changed));
-	}
-
-	/** Queue an inferred-bindings prefix — the bind producer's entry. */
-	public static Cont<Package, Nothing> enqueueBind(Prefix prefix, Package p) {
-		return enqueue(p, new Agenda.Bind(prefix));
-	}
-
 	/**
 	 * The statement entry for store items: parks {@code item} in its store (which
 	 * must already be registered) and queues its first examination — the owning
@@ -99,33 +88,15 @@ public final class Propagation {
 	}
 
 	/**
-	 * Interprets one inference: a bind queues its delta (the agenda's Bind
-	 * application performs the single revalidation — the same trichotomy
-	 * Disequality's record verification reads with the opposite polarity); a
-	 * narrow walks its target at APPLICATION time (the target may have been bound
-	 * meanwhile — by an earlier inference of the same verdict, or captured
-	 * pre-walk by the emitter; narrowing a stale var object would re-bind a bound
-	 * variable) and applies the narrowing to the live term.
-	 */
-	private static Goal apply(Inference inference) {
-		return inference.match(
-				prefix -> s -> enqueueBind(prefix, s),
-				(target, narrowing) -> s -> narrowing.applyTo(MiniKanren.walk(s, target))
-						.apply(s));
-	}
-
-	/**
 	 * Folds a trigger over the constraint stores: each answers a {@link Revision} —
 	 * at most its own factor swapped — and the driver routes the payloads: changed
-	 * terms and inferred prefixes queue as agenda items, runs join the run lane,
-	 * legacy inferences apply inline.
+	 * terms and inferred prefixes queue as agenda items, runs join the run lane.
 	 */
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
 			java.util.function.BiFunction<ConstraintStore, Package, Revision> trigger,
 			java.util.List<Term<?>> alsoChanged) {
 		Package current = s;
-		java.util.List<Inference> legacy = new ArrayList<>();
 		java.util.List<Prefix> inferred = new ArrayList<>();
 		java.util.List<Term<?>> changed = new ArrayList<>(alsoChanged);
 		java.util.List<Goal> runs = new ArrayList<>();
@@ -135,7 +106,6 @@ public final class Propagation {
 					() -> null,
 					() -> before,
 					upd -> {
-						legacy.addAll(upd.inferences());
 						inferred.addAll(upd.inferred());
 						changed.addAll(upd.changed());
 						runs.addAll(upd.runs());
@@ -156,11 +126,7 @@ public final class Propagation {
 		for (Goal run : runs) {
 			agenda = agenda.appendRun(run);
 		}
-		return legacy.stream()
-				.distinct()
-				.map(Propagation::apply)
-				.reduce(Goal.success(), Goal::and)
-				.apply(current.putStore(agenda));
+		return Cont.just(current.putStore(agenda));
 	}
 
 	private static java.util.List<ConstraintStore> constraintStores(Package p) {

@@ -1,19 +1,20 @@
-// ABOUTME: The factor-level constraint protocol: a ConstraintStore holds one domain's
-// ABOUTME: constraints and revises only its own factor when bindings arrive.
+// ABOUTME: THE constraint protocol: a ConstraintStore answers the driver's three
+// ABOUTME: triggers with a Revision — its own factor plus cross-store consequences.
 /**
- * The store protocol — the unit of persistence. A {@link
+ * The store protocol — the driver's entire constraint boundary
+ * (docs/design/minimal-constraint-vocabulary.md §2.1). A {@link
  * com.tgac.logic.ckanren.store.ConstraintStore} is one constraint domain's factor
  * of the package (finite domains, disequality, projection), living for the whole
- * derivation. When the chokepoint applies a prefix, each store returns a {@link
- * com.tgac.logic.ckanren.store.Revision} — AC-3's REVISE as a value: at most its
- * own replaced factor plus emitted inferences; touching the substitutions or
- * another store's entry is not expressible.
+ * derivation. Three triggers — {@code revise} (bindings arrived), {@code changed}
+ * (a term changed; broadcast), {@code stated} (your item was stated; dispatched to
+ * the owner) — all answer a {@link com.tgac.logic.ckanren.store.Revision}: at
+ * most the store's own replaced factor, plus consequences in the driver's
+ * two-word vocabulary (inferred {@code Prefix}es, changed {@code Term}s) and run
+ * goals for the post-quiescence splice. Touching the substitutions or another
+ * store's entry is not expressible.
  *
- * <p>This package knows the propagator protocol (stores expose their parked
- * propagators for the cross-store wake; revisions carry inferences) but not the
- * driver — the layering the flat package used to hide. Stores that park
- * propagators (FD, projection) mostly delegate to them; disequality participates
- * wholesale through {@code revise} and parks none.
- * Design: docs/design/capability-constraint-api.md §2.3.
+ * <p>How a store computes its revision is its own business — FD and projection
+ * schedule parked bodies with the {@code ckanren.propagator} toolkit; disequality
+ * re-verifies its records wholesale.
  */
 package com.tgac.logic.ckanren.store;

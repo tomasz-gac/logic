@@ -6,8 +6,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.propagator.Inference;
-import com.tgac.logic.ckanren.propagator.Narrowing;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -19,16 +17,16 @@ import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import org.junit.Test;
 
 /**
- * Pins the driver's inference-routing guarantees
- * (docs/design/capability-constraint-api.md §8): contradictory inferred bindings
- * fail the branch instead of silently keeping the first, agreeing bindings apply
- * once, and duplicate narrowings are deduplicated before application.
+ * Pins the driver's revision-routing guarantees
+ * (docs/design/minimal-constraint-vocabulary.md §2.2): contradictory inferred
+ * bindings fail the branch instead of silently keeping the first, agreeing
+ * bindings apply once, changed payloads broadcast to every store, runs splice
+ * only after quiescence, and the agenda never leaks into answers.
  */
 public class CapabilityDriverTest {
 
@@ -83,7 +81,7 @@ public class CapabilityDriverTest {
 		}
 	}
 
-	private static final class StoreB extends EmittingStore {
+	private static class StoreB extends EmittingStore {
 		StoreB(BiFunction<Prefix, Package, Revision> r) {
 			super(r);
 		}
@@ -109,12 +107,10 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()),
-						Arrays.asList(Inference.bind(
-								Prefix.binding(state, q, lval(1L)).get())))),
-				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()),
-						Arrays.asList(Inference.bind(
-								Prefix.binding(state, q, lval(2L)).get())))));
+				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+						.withInferred(Prefix.binding(state, q, lval(1L)).get())),
+				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()))
+						.withInferred(Prefix.binding(state, q, lval(2L)).get())));
 
 		// two stores infer q=1 and q=2 in one pass: the branch is inconsistent and
 		// must DIE — the silent keep-first would instead emit a wrong answer
@@ -126,12 +122,10 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()),
-						Arrays.asList(Inference.bind(
-								Prefix.binding(state, q, lval(1L)).get())))),
-				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()),
-						Arrays.asList(Inference.bind(
-								Prefix.binding(state, q, lval(1L)).get())))));
+				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+						.withInferred(Prefix.binding(state, q, lval(1L)).get())),
+				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()))
+						.withInferred(Prefix.binding(state, q, lval(1L)).get())));
 
 		assertThat(solutions(root)).isEqualTo(1);
 	}
@@ -146,9 +140,8 @@ public class CapabilityDriverTest {
 		};
 
 		Package root = root(
-				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()),
-						Arrays.asList(Inference.bind(
-								Prefix.binding(state, q, lval(1L)).get())))));
+				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+						.withInferred(Prefix.binding(state, q, lval(1L)).get())));
 
 		Unifiable<Long> x = lvar();
 		long count = x.unifies(0L)
@@ -166,22 +159,50 @@ public class CapabilityDriverTest {
 	}
 
 	@Test(timeout = 5000)
-	public void identicalNarrowingsApplyOnce() {
-		AtomicInteger applications = new AtomicInteger();
-		Narrowing counting = target -> {
-			applications.incrementAndGet();
-			return Goal.success();
-		};
+	public void changedPayloadBroadcastsToEveryStore() {
+		AtomicInteger examinations = new AtomicInteger();
 		Term<Long> t = lvar();
-		Inference narrow = Inference.narrow(t, counting);
 
+		StoreB listening = new StoreB((prefix, state) -> Revision.unchanged()) {
+			@Override
+			public Revision changed(Term<?> x, Package state) {
+				if (x == t) {
+					examinations.incrementAndGet();
+				}
+				return Revision.unchanged();
+			}
+		};
 		Package root = root(
-				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()),
-						Arrays.asList(narrow, narrow))));
+				new StoreA((prefix, state) ->
+						Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+								.withChanged(t)),
+				listening);
 
 		assertThat(solutions(root)).isEqualTo(1);
-		assertThat(applications.get())
-				.as("duplicate narrowings must be deduplicated before application")
+		assertThat(examinations.get())
+				.as("one changed payload: every store re-examines exactly once")
 				.isEqualTo(1);
+	}
+
+	@Test(timeout = 5000)
+	public void runPayloadSplicesAfterQuiescence() {
+		Package[] seen = new Package[1];
+		Goal probe = s -> {
+			seen[0] = s;
+			return Cont.just(s);
+		};
+
+		Package root = root(
+				new StoreA((prefix, state) ->
+						Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+								.withRun(probe)));
+
+		assertThat(solutions(root)).isEqualTo(1);
+		assertThat(seen[0]).as("the run goal must execute").isNotNull();
+		// runs splice only after the drain quiesces and the agenda is removed
+		assertThat(seen[0].getConstraints().keySet().toJavaStream()
+				.anyMatch(c -> c.getSimpleName().equals("Agenda")))
+				.as("a spliced run sees no agenda")
+				.isFalse();
 	}
 }
