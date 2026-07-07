@@ -214,10 +214,26 @@ public class StoreSupport {
 			}
 			return inferred.stream()
 					.distinct()
-					.map(Inference::toGoal)
+					.map(StoreSupport::apply)
 					.reduce(Goal.success(), Goal::and)
 					.apply(reacted.putStore(agenda));
 		};
+	}
+
+	/**
+	 * Interprets one inference: a bind queues its delta (the agenda's Bind
+	 * application performs the single revalidation — the same trichotomy
+	 * Disequality's record verification reads with the opposite polarity); a
+	 * narrow walks its target at APPLICATION time (the target may have been bound
+	 * meanwhile — by an earlier inference of the same verdict, or captured
+	 * pre-walk by the emitter; narrowing a stale var object would re-bind a bound
+	 * variable) and applies the narrowing to the live term.
+	 */
+	private static Goal apply(Inference inference) {
+		return inference.match(
+				prefix -> s -> enqueueBind(prefix, s),
+				(target, narrowing) -> s -> narrowing.applyTo(MiniKanren.walk(s, target))
+						.apply(s));
 	}
 
 	/**
@@ -255,7 +271,7 @@ public class StoreSupport {
 				() -> Cont.just(withoutConstraint(s, p)),
 				inferences -> inferences.stream()
 						.distinct()
-						.map(Inference::toGoal)
+						.map(StoreSupport::apply)
 						.reduce(Goal.success(), Goal::and)
 						.apply(s),
 				goal -> {

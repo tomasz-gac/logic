@@ -3,13 +3,10 @@ package com.tgac.logic.ckanren;
 // ABOUTME: The shared cross-factor vocabulary: information a propagator or store has
 // ABOUTME: inferred but may not apply itself — bindings grow, domains shrink.
 
-import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.LVar;
-import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
-import io.vavr.collection.HashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * A message addressed to a factor of the {@link Package}, never to a store
@@ -44,12 +41,10 @@ public abstract class Inference {
 		return new Narrow(target, narrowing);
 	}
 
-	/**
-	 * The step-1 applier: interpret this inference under the current protocol. The
-	 * capability driver (step 2) will pattern-match instead, so it can dedup and
-	 * detect contradictions before applying.
-	 */
-	public abstract Goal toGoal();
+	/** Pure data: the driver interprets inferences, as it does verdicts and revisions. */
+	public abstract <R> R match(
+			Function<Prefix, R> onBind,
+			BiFunction<Term<?>, Narrowing, R> onNarrow);
 
 	private static final class Bind extends Inference {
 		private final Prefix prefix;
@@ -59,12 +54,9 @@ public abstract class Inference {
 		}
 
 		@Override
-		public Goal toGoal() {
-			// queue the delta; the agenda's Bind application performs the single
-			// revalidation (open -> bind the representative, same -> drop,
-			// different -> the branch dies) — the same trichotomy Disequality's
-			// record verification reads with the opposite polarity
-			return s -> StoreSupport.enqueueBind(prefix, s);
+		public <R> R match(Function<Prefix, R> onBind,
+				BiFunction<Term<?>, Narrowing, R> onNarrow) {
+			return onBind.apply(prefix);
 		}
 
 		@Override
@@ -93,13 +85,9 @@ public abstract class Inference {
 		}
 
 		@Override
-		public Goal toGoal() {
-			// walk at APPLICATION time: the target may have been bound meanwhile (by an
-			// earlier inference of the same verdict, or captured pre-walk by the emitter);
-			// narrowing a stale var object would re-bind a bound variable — exactly the
-			// violation the chokepoint's full-map contract forbids
-			return s -> narrowing.applyTo(MiniKanren.walk(s, target))
-					.apply(s);
+		public <R> R match(Function<Prefix, R> onBind,
+				BiFunction<Term<?>, Narrowing, R> onNarrow) {
+			return onNarrow.apply(target, narrowing);
 		}
 
 		@Override
