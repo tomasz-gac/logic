@@ -1,12 +1,11 @@
 package com.tgac.logic.ckanren.store;
 
-import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
+import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
-import java.util.Collections;
 
 public interface ConstraintStore extends Store {
 
@@ -39,14 +38,23 @@ public interface ConstraintStore extends Store {
 	Revision revise(Prefix prefix, Package state);
 
 	/**
-	 * The suspended {@link Propagator}s this store holds, exposed for the
-	 * chokepoint's cross-store wake: when a variable is bound or narrowed, every
-	 * store's propagators watching it are re-run, not only the store that caused
-	 * the change. Stores using wholesale verification (disequality) have none —
-	 * they participate through {@link #revise} instead.
+	 * A term changed — bound or narrowed. Re-examine whatever this store has
+	 * watching it; the trigger broadcasts to every store, so cross-store waking
+	 * needs no other machinery. Stores with nothing parked (disequality) keep the
+	 * default — they participate through {@link #revise} instead.
 	 */
-	default Iterable<Propagator> pendingPropagators() {
-		return Collections.emptyList();
+	default Revision changed(Term<?> x, Package state) {
+		return Revision.unchanged();
+	}
+
+	/**
+	 * One of this store's items was just stated ({@code Propagation.activate}
+	 * parked it already). First examination: a constraint over already-ground
+	 * terms will never be woken, so whatever can be decided or narrowed at
+	 * statement time must be decided here.
+	 */
+	default Revision stated(Stored item, Package state) {
+		return Revision.unchanged();
 	}
 
 	/**

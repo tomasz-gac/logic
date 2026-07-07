@@ -11,6 +11,7 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.ckanren.propagator.Verdict;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
@@ -106,8 +107,69 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Iterable<Propagator> pendingPropagators() {
-		return constraints;
+	public Revision changed(Term<?> x, Package state) {
+		return administer(
+				constraints.toJavaStream()
+						.filter(p -> p.watches(state, x))
+						.collect(Collectors.toList()),
+				state);
+	}
+
+	@Override
+	public Revision stated(Stored item, Package state) {
+		return item instanceof Propagator ?
+				administer(java.util.Collections.singletonList((Propagator) item), state) :
+				Revision.unchanged();
+	}
+
+	/**
+	 * Runs the given parked propagators against the live state and administers
+	 * their verdicts into one revision: fail kills the branch, keep stays parked,
+	 * subsumed unparks, narrowed hands its inferences to the driver, run unparks
+	 * and joins the run lane. Each propagator sees the factor as left by the
+	 * verdicts before it.
+	 */
+	@SuppressWarnings("unchecked")
+	private Revision administer(List<Propagator> candidates, Package state) {
+		HashSet<Propagator>[] remaining = new HashSet[] {constraints};
+		List<Inference> inferences = new ArrayList<>();
+		List<Goal> runs = new ArrayList<>();
+		for (Propagator p : candidates) {
+			if (!remaining[0].contains(p)) {
+				// an earlier verdict of this same trigger removed it
+				continue;
+			}
+			Package live = state.putStore(FiniteDomainConstraints.of(domains, remaining[0]));
+			Verdict verdict = p.propagate(live);
+			boolean dead = verdict.match(
+					() -> true,
+					() -> false,
+					() -> {
+						remaining[0] = remaining[0].remove(p);
+						return false;
+					},
+					infs -> {
+						inferences.addAll(infs);
+						return false;
+					},
+					goal -> {
+						remaining[0] = remaining[0].remove(p);
+						runs.add(goal);
+						return false;
+					});
+			if (dead) {
+				return Revision.fail();
+			}
+		}
+		if (remaining[0] == constraints && inferences.isEmpty() && runs.isEmpty()) {
+			return Revision.unchanged();
+		}
+		Revision.Updated result = Revision.updated(
+				FiniteDomainConstraints.of(domains, remaining[0]), inferences);
+		for (Goal run : runs) {
+			result = result.withRun(run);
+		}
+		return result;
 	}
 
 	@Override

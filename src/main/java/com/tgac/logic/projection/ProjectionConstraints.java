@@ -30,8 +30,7 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public <T> Goal enforce(Term<T> x) {
-		Goal wakeWatchers = s -> Propagation.enqueueWake(x, s);
-		return wakeWatchers
+		return Propagation.changed(x)
 				.and(s1 -> s1.getStore(ProjectionConstraints.class)
 						.projections
 						.isEmpty() ?
@@ -46,8 +45,57 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Iterable<Propagator> pendingPropagators() {
-		return projections;
+	public Revision changed(Term<?> x, Package state) {
+		return administer(
+				projections.filter(p -> p.watches(state, x)),
+				state);
+	}
+
+	@Override
+	public Revision stated(Stored item, Package state) {
+		return item instanceof Propagator ?
+				administer(LinkedHashSet.of((Propagator) item), state) :
+				Revision.unchanged();
+	}
+
+	/**
+	 * Projection verdicts are keep (not ground yet) or run (ground: unpark and
+	 * splice the projected goal after quiescence); fail and subsumed are honored
+	 * for completeness.
+	 */
+	private Revision administer(Iterable<Propagator> candidates, Package state) {
+		@SuppressWarnings("unchecked")
+		LinkedHashSet<Propagator>[] remaining = new LinkedHashSet[] {projections};
+		java.util.List<Goal> runs = new java.util.ArrayList<>();
+		for (Propagator p : candidates) {
+			if (!remaining[0].contains(p)) {
+				continue;
+			}
+			boolean dead = p.propagate(state).match(
+					() -> true,
+					() -> false,
+					() -> {
+						remaining[0] = remaining[0].remove(p);
+						return false;
+					},
+					infs -> false,
+					goal -> {
+						remaining[0] = remaining[0].remove(p);
+						runs.add(goal);
+						return false;
+					});
+			if (dead) {
+				return Revision.fail();
+			}
+		}
+		if (remaining[0] == projections && runs.isEmpty()) {
+			return Revision.unchanged();
+		}
+		Revision.Updated result = Revision.updated(new ProjectionConstraints(remaining[0]));
+		for (Goal run : runs) {
+			result = result.withRun(run);
+		}
+		return result;
 	}
 
 	@Override
@@ -89,15 +137,15 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	public static <T> Goal project(Unifiable<T> x, Function<T, Goal> f) {
 		// parks a suspension-shaped propagator: keep until x is deep-ground, then
-		// hand the projected goal to the driver, which splices it after the pass
-		// quiesces (docs/design/suspensions.md §5)
+		// hand the projected goal to the store's revision, which splices it after
+		// the pass quiesces (docs/design/suspensions.md §5)
 		return s -> Propagation.activate(
-				Propagator.of(ProjectionConstraints.class,
-						Collections.singletonList(x),
-						state -> MiniKanren.walkAll(state, x).get()
-								.asVal()
-								.map(v -> Verdict.run(f.apply(v)))
-								.getOrElse(Verdict::keep)),
-				s.withStore(EMPTY));
+						Propagator.of(ProjectionConstraints.class,
+								Collections.singletonList(x),
+								state -> MiniKanren.walkAll(state, x).get()
+										.asVal()
+										.map(v -> Verdict.run(f.apply(v)))
+										.getOrElse(Verdict::keep)))
+				.apply(s.withStore(EMPTY));
 	}
 }

@@ -6,7 +6,6 @@ package com.tgac.logic.ckanren;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.propagator.Inference;
-import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -22,7 +21,6 @@ import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 /**
  * Data and its only interpreter in one class: the {@link Agenda} worklist — what
@@ -74,7 +72,7 @@ public final class Propagation {
 
 	/** Queue a watcher wake for {@code changed} — the narrowing producer's entry. */
 	public static Cont<Package, Nothing> enqueueWake(Term<?> changed, Package p) {
-		return enqueue(p, new Agenda.Wake(changed));
+		return enqueue(p, new Agenda.Changed(changed));
 	}
 
 	/** Queue an inferred-bindings prefix — the bind producer's entry. */
@@ -83,71 +81,21 @@ public final class Propagation {
 	}
 
 	/**
-	 * Parks the propagator in its store and immediately interprets its first
-	 * verdict — the statement-time entry (a constraint goal's body).
+	 * The statement entry for store items: parks {@code item} in its store (which
+	 * must already be registered) and queues its first examination — the owning
+	 * store's {@code stated} hook decides everything decidable at statement time.
 	 */
-	public static Cont<Package, Nothing> activate(Propagator p, Package s) {
-		return interpret(p, s.withStored(p));
+	public static Goal activate(Stored item) {
+		return s -> enqueue(s.withStored(item), new Agenda.Stated(item));
 	}
 
 	/**
-	 * Runs the propagator and administers its verdict: fail kills the branch, keep
-	 * leaves it parked untouched, subsumed removes it, narrowed applies the
-	 * deduplicated inferences with the propagator still parked, and run removes
-	 * it and defers the goal — collected in the in-flight drain's run lane for
-	 * splicing after quiescence, or run inline at statement time when no drain is
-	 * in flight.
+	 * The announcement entry: {@code x} changed — bound or narrowed — so every
+	 * store re-examines whatever it has watching {@code x}. Mode-oblivious like
+	 * the other entries; a spurious announcement is harmless.
 	 */
-	private static Cont<Package, Nothing> interpret(Propagator p, Package s) {
-		return p.propagate(s).<Cont<Package, Nothing>> match(
-				() -> Cont.complete(Nothing.nothing()),
-				() -> Cont.just(s),
-				() -> Cont.just(s.withoutStored(p)),
-				inferences -> inferences.stream()
-						.distinct()
-						.map(Propagation::apply)
-						.reduce(Goal.success(), Goal::and)
-						.apply(s),
-				goal -> {
-					Package removed = s.withoutStored(p);
-					// a drain in flight collects the run for the post-quiescence
-					// splice; at statement time it runs inline at the goal's own
-					// position in the search
-					return removed.getConstraints().get(Agenda.class)
-							.map(a -> Cont.<Package, Nothing> just(removed.putStore(
-									((Agenda) a).appendRun(goal))))
-							.getOrElse(() -> goal.apply(removed));
-				});
-	}
-
-	/**
-	 * Wakes every store's propagators watching {@code changed}: each still-parked
-	 * match is re-interpreted against the live package (an earlier wake in the same
-	 * chain may have removed it).
-	 */
-	private static Goal wake(Term<?> changed) {
-		return s -> {
-			Goal chain = StreamSupport
-					.stream(pendingPropagators(s).spliterator(), false)
-					.filter(p -> p.watches(s, changed))
-					.<Goal> map(p -> st -> st.getStore(p.getStoreClass()).contains(p) ?
-							interpret(p, st) :
-							Cont.just(st))
-					.reduce(Goal.success(), Goal::and);
-			return chain.apply(s);
-		};
-	}
-
-	/**
-	 * The union of every store's suspended propagators — the cross-store wake list.
-	 */
-	private static Iterable<Propagator> pendingPropagators(Package p) {
-		return p.getConstraints().values().toJavaStream()
-				.filter(ConstraintStore.class::isInstance)
-				.map(ConstraintStore.class::cast)
-				.flatMap(cs -> StreamSupport.stream(
-						cs.pendingPropagators().spliterator(), false))
-				.collect(Collectors.toList());
+	public static Goal changed(Term<?> x) {
+		return s -> enqueue(s, new Agenda.Changed(x));
 	}
 
 	/**
@@ -200,7 +148,7 @@ public final class Propagation {
 		}
 		Agenda agenda = (Agenda) current.getConstraints().get(Agenda.class).get();
 		for (Term<?> x : changed) {
-			agenda = agenda.append(new Agenda.Wake(x));
+			agenda = agenda.append(new Agenda.Changed(x));
 		}
 		for (Prefix prefix : inferred) {
 			agenda = agenda.append(new Agenda.Bind(prefix));
@@ -318,22 +266,47 @@ public final class Propagation {
 			}
 		}
 
-		/** Wake the propagators watching a changed term. */
-		static final class Wake extends Item {
+		/** A term changed — every store re-examines its watchers. */
+		static final class Changed extends Item {
 			final Term<?> changed;
 
-			Wake(Term<?> changed) {
+			Changed(Term<?> changed) {
 				this.changed = changed;
 			}
 
 			@Override
 			Goal apply() {
-				return wake(changed);
+				return s -> reviseAll(s,
+						(cs, p) -> cs.changed(changed, p),
+						java.util.Collections.emptyList());
 			}
 
 			@Override
 			public String toString() {
-				return "wake(" + changed + ")";
+				return "changed(" + changed + ")";
+			}
+		}
+
+		/** A store item was just stated — its owning store examines it. */
+		static final class Stated extends Item {
+			final Stored item;
+
+			Stated(Stored item) {
+				this.item = item;
+			}
+
+			@Override
+			Goal apply() {
+				return s -> reviseAll(s,
+						(cs, p) -> item.getStoreClass() == cs.getClass() ?
+								cs.stated(item, p) :
+								Revision.unchanged(),
+						java.util.Collections.emptyList());
+			}
+
+			@Override
+			public String toString() {
+				return "stated(" + item + ")";
 			}
 		}
 
