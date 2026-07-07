@@ -159,11 +159,12 @@ Goal-position code that announces work, all on the public API, no hatches:
 
 - **`FiniteDomain.dom`**: update the FD factor (`Package.updateStore`), then
   `changed(x)` on strict narrowing or `resolve(prefix)` on collapse.
-- **The call-shaped bridge** (`excludeFromDomain` from `separate`'s body):
-  same pattern. Keeping it is a SEPARATE behavioral decision (dropping loses
-  pre-labelling pruning and the `x∈{4,5} ∧ x≠5 ⊢ x=4` collapse;
-  NeqFdBridgeTest pins both; final answer sets identical). Tom decides
-  explicitly; this design neither requires nor performs it.
+- **The call-shaped bridge** — DECIDED AND DROPPED (Tom, July 2026):
+  optimization-only (identical answer sets via record verification +
+  labelling), and it was the last inter-domain named dependency (`separate`
+  no longer imports `finitedomain`). `NeqFdTest` pins the answer-set
+  equivalence that made the drop safe. Disequality and FD now compose through
+  the substitution alone — the way every CLP system we surveyed does (§1.1).
 - **The enforce hooks** (labelling's re-run, projection's wake-then-check):
   goal-shaped forever — labelling IS search; `changed` is their entry.
 

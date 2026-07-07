@@ -7,8 +7,8 @@ with CHAIN-INCLUSION (the changed variable may be the watched term, an alias lin
 or the chain end — a plain live walk steps THROUGH a just-bound variable and misses
 the primary match; found when projections stopped waking); `onPrefix` receives the
 precomputed prefix delta and the live state (the oldPackage parameter died early);
-the Neq→FD bridge stays call-shaped (data-shaping is FORECLOSED —
-minimal-constraint-vocabulary.md §6); `Verdict.run` defers via a transient PendingRuns store drained
+the Neq→FD bridge was DROPPED entirely (Tom, July 2026 —
+minimal-constraint-vocabulary.md §4; data-shaping had been foreclosed by §6); `Verdict.run` defers via a transient PendingRuns store drained
 after the OUTERMOST pass (statement-time runs splice inline at the goal's own
 position); ground leq/addo constraints discharge exactly (the addTo all-bound guard
 is gone with Constraint). `Constraint`, `buildWalkedConstraint`, `runConstraints`,
