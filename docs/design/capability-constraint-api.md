@@ -327,6 +327,18 @@ last (lock the door after the furniture is arranged):
   quiescence point (the outermost-marker trick for runs disappears), and an
   inspectable agenda for propagation tracing.
 
+  **The producer map** — during a drain, appends come from exactly four paths, all
+  inside applyOneItem: (1) VERDICTS — a Wake runs parked propagators; narrowed
+  appends Narrow/Bind items, run appends Run items; (2) REACTIONS — a Bind runs
+  every store's onPrefix, whose inferences are appends; (3) DOMAIN OUTCOMES — a
+  Narrow strictly shrinking appends Wake(x), collapsing appends Bind{x→v} (a
+  binding minted by propagation, no unification involved); (4) UNIFICATION, but
+  ONLY inside spliced Run goals — unify's trigger code sees the agenda present and
+  appends a Bind instead of starting a second drain. Corollary: pure propagation
+  never invokes unification — the driver applies Bind items primitively
+  (revalidated delta, direct extension); do NOT route Bind application through
+  unify "for consistency", that would put a trigger inside the loop.
+
   **HARD REQUIREMENT (Tom): the drain must NOT be a native Java loop.** Each
   iteration must pass through a deferred step (`Goal.defer`), so one propagation
   item ≈ one scheduler step and the trampoline yields between items — exactly the
