@@ -8,7 +8,9 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 
 public class TraceTest {
@@ -140,7 +142,7 @@ public class TraceTest {
 
 	@Test
 	public void shouldDeepenSpineForNestedGoals() {
-		java.util.Map<String, Integer> depthAtCall = new java.util.HashMap<>();
+		Map<String, Integer> depthAtCall = new HashMap<>();
 		Tracer tracer = new Tracer() {
 			@Override
 			public void onCall(String label, Package state) {

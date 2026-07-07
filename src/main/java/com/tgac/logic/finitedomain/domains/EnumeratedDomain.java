@@ -4,6 +4,7 @@ import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Array;
 import io.vavr.collection.Iterator;
 import io.vavr.control.Option;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +40,7 @@ public class EnumeratedDomain<T> extends Domain<T> {
 	}
 
 	@Override
-	public java.util.stream.Stream<T> stream() {
+	public Stream<T> stream() {
 		return elements.map(Arithmetic::getValue).toJavaStream();
 	}
 

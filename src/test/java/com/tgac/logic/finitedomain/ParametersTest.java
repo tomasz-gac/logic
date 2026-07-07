@@ -5,6 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.logic.Utils;
+import com.tgac.logic.ckanren.Propagator;
+import com.tgac.logic.ckanren.StoreSupport;
+import com.tgac.logic.ckanren.Verdict;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
@@ -20,6 +23,7 @@ import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.Stream;
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
@@ -36,16 +40,16 @@ public class ParametersTest {
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
 
-		com.tgac.logic.ckanren.Propagator constraint = com.tgac.logic.ckanren.Propagator.of(
+		Propagator constraint = Propagator.of(
 				FiniteDomainConstraints.class,
 				Arrays.asList(prefix.get()._1),
-				st -> com.tgac.logic.ckanren.Verdict.keep());
+				st -> Verdict.keep());
 
 		Package[] box = new Package[1];
 		Package pkg = Package.of(HashMap.empty(),
 				LinkedHashMap.of(FiniteDomainConstraints.class,
 						FiniteDomainConstraints.empty().prepend(constraint)));
-		com.tgac.logic.ckanren.StoreSupport.resolve(TestAccess.prefix(prefix))
+		StoreSupport.resolve(TestAccess.prefix(prefix))
 				.apply(pkg)
 				.run(v -> {
 					box[0] = v;
@@ -61,7 +65,7 @@ public class ParametersTest {
 	public void shouldForceAnswer() {
 		Unifiable<Long> i = LVar.lvar();
 
-		java.util.List<Package> collect = Utils.collect(EnforceConstraintsFD.forceAns(i)
+		List<Package> collect = Utils.collect(EnforceConstraintsFD.forceAns(i)
 				.apply(Package.empty().withStore(
 						FiniteDomainConstraints.of(
 								LinkedHashMap.<LVar<?>, Domain<?>> empty()
@@ -81,7 +85,7 @@ public class ParametersTest {
 		Unifiable<Long> i = LVar.lvar();
 		Unifiable<Long> j = LVar.lvar();
 
-		java.util.List<Package> collect = Utils.collect(
+		List<Package> collect = Utils.collect(
 				EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
 						.apply(Package.empty().withStore(FiniteDomainConstraints.of(
 								LinkedHashMap.<LVar<?>, Domain<?>> empty()
@@ -90,7 +94,7 @@ public class ParametersTest {
 								HashSet.empty()))));
 
 
-		java.util.List<Tuple2<Long, Long>> results = collect.stream()
+		List<Tuple2<Long, Long>> results = collect.stream()
 				.map(p -> Tuple.of(TestAccess.get(p, i.asVar().get()).get(),
 						TestAccess.get(p, j.asVar().get()).get()))
 				.map(t -> t.map(Term::get, Term::get))

@@ -1,7 +1,11 @@
 package com.tgac.logic.finitedomain;
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
+import com.tgac.logic.ckanren.Propagator;
+import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.LList;
@@ -66,7 +70,7 @@ class EnforceConstraintsFD {
 	}
 
 	private static Goal rerunConstraints(Term<?> x) {
-		return com.tgac.logic.ckanren.StoreSupport.wake(x);
+		return StoreSupport.wake(x);
 	}
 
 	private static <T> Goal unifyWithAllDomainValues(Term<T> x, Domain<T> d) {
@@ -78,9 +82,9 @@ class EnforceConstraintsFD {
 
 	// because of ambiguity in CKanren
 	private static <T> Goal unifyTerms(Term<T> u, Unifiable<T> v) {
-		return s -> com.tgac.functional.monad.Cont.defer(() -> MiniKanren.unifyPrefix(s, u, v)
-				.map(prefix -> com.tgac.logic.ckanren.StoreSupport.resolve(prefix).apply(s))
-				.getOrElse(() -> com.tgac.functional.monad.Cont.complete(com.tgac.functional.category.Nothing.nothing())));
+		return s -> Cont.defer(() -> MiniKanren.unifyPrefix(s, u, v)
+				.map(prefix -> StoreSupport.resolve(prefix).apply(s))
+				.getOrElse(() -> Cont.complete(Nothing.nothing())));
 	}
 
 	private static Goal forceAnsIterable(Iterable<Object> iterable) {
@@ -101,7 +105,7 @@ class EnforceConstraintsFD {
 		}
 	}
 
-	private static void verifyAllConstrainedHaveDomain(Iterable<com.tgac.logic.ckanren.Propagator> constraints, Collection<LVar<?>> boundVariables) {
+	private static void verifyAllConstrainedHaveDomain(Iterable<Propagator> constraints, Collection<LVar<?>> boundVariables) {
 		StreamSupport.stream(constraints.spliterator(), false)
 				.flatMap(c -> StreamSupport.stream(c.watchedTerms().spliterator(), false))
 				.filter(u -> u.asVal().isDefined())

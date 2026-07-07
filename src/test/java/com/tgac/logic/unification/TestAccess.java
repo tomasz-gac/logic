@@ -1,4 +1,5 @@
 package com.tgac.logic.unification;
+import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 public class TestAccess {
 	public static <T> LVar<T> lvarUnsafe() {
@@ -15,7 +16,7 @@ public class TestAccess {
 	}
 
 	/** White-box prefix mint — production code gets prefixes only from unification. */
-	public static Prefix prefix(io.vavr.collection.HashMap<LVar<?>, Term<?>> delta) {
+	public static Prefix prefix(HashMap<LVar<?>, Term<?>> delta) {
 		return new Prefix(delta);
 	}
 }

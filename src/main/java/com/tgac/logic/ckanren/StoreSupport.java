@@ -15,10 +15,15 @@ import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -93,7 +98,7 @@ public class StoreSupport {
 	 * {@code Prefix.binding}) and resolve it. Raw {@code MiniKanren.unify} bypasses
 	 * all constraint processing and is legitimate only inside the unifier itself.
 	 */
-	public static Goal resolve(com.tgac.logic.unification.Prefix prefix) {
+	public static Goal resolve(Prefix prefix) {
 		return p -> {
 			if (prefix.isEmpty()) {
 				return Cont.just(p);
@@ -107,11 +112,11 @@ public class StoreSupport {
 		};
 	}
 
-	private static java.util.List<ConstraintStore> constraintStores(Package p) {
+	private static List<ConstraintStore> constraintStores(Package p) {
 		return p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
-				.collect(java.util.stream.Collectors.toList());
+				.collect(Collectors.toList());
 	}
 
 	/**
@@ -141,7 +146,7 @@ public class StoreSupport {
 						.foldLeft(Goal.success(), Goal::and)
 						.apply(cleared);
 			}
-			io.vavr.Tuple2<Agenda.Item, Agenda> popped = agenda.pop();
+			Tuple2<Agenda.Item, Agenda> popped = agenda.pop();
 			return applyItem(popped._1)
 					.and(drain())
 					.apply(s.putStore(popped._2));
@@ -154,7 +159,7 @@ public class StoreSupport {
 	}
 
 	/** Queue an inferred-bindings prefix — the bind producer's entry. */
-	public static Cont<Package, Nothing> enqueueBind(com.tgac.logic.unification.Prefix prefix, Package p) {
+	public static Cont<Package, Nothing> enqueueBind(Prefix prefix, Package p) {
 		return enqueue(p, new Agenda.Bind(prefix));
 	}
 
@@ -171,11 +176,11 @@ public class StoreSupport {
 	 * between constraint domains and the branch dies), extend, run store reactions,
 	 * apply their inferences, and queue wakes for the newly bound variables.
 	 */
-	private static Goal applyBind(com.tgac.logic.unification.Prefix prefix) {
+	private static Goal applyBind(Prefix prefix) {
 		return s -> {
 			// the asserted prefix trichotomy: open binds its representative, same
 			// drops, different is a contradiction between domains — the branch dies
-			com.tgac.logic.unification.Prefix kept = prefix.revalidate(s).getOrNull();
+			Prefix kept = prefix.revalidate(s).getOrNull();
 			if (kept == null) {
 				return Cont.complete(Nothing.nothing());
 			}
@@ -186,7 +191,7 @@ public class StoreSupport {
 			// reactions are DATA: fold them; each swaps at most its own factor and
 			// hands inferences back for routing
 			Package reacted = extended;
-			java.util.List<Inference> inferred = new java.util.ArrayList<>();
+			List<Inference> inferred = new ArrayList<>();
 			for (ConstraintStore cs : constraintStores(reacted)) {
 				Package before = reacted;
 				Package after = cs.onPrefix(kept, reacted).match(
@@ -204,7 +209,7 @@ public class StoreSupport {
 			// queue wakes for the newly bound vars, then apply reaction inferences
 			// inline (bounded: their cascades append rather than recurse)
 			Agenda agenda = (Agenda) reacted.getConstraints().get(Agenda.class).get();
-			for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : kept.bindings()) {
+			for (Tuple2<LVar<?>, Term<?>> binding : kept.bindings()) {
 				agenda = agenda.append(new Agenda.Wake(binding._1));
 			}
 			return inferred.stream()
@@ -222,9 +227,9 @@ public class StoreSupport {
 		return p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
-				.flatMap(cs -> java.util.stream.StreamSupport.stream(
+				.flatMap(cs -> StreamSupport.stream(
 						cs.pendingPropagators().spliterator(), false))
-				.collect(java.util.stream.Collectors.toList());
+				.collect(Collectors.toList());
 	}
 
 	/**
@@ -272,7 +277,7 @@ public class StoreSupport {
 	 */
 	public static Goal wake(Term<?> changed) {
 		return s -> {
-			Goal chain = java.util.stream.StreamSupport
+			Goal chain = StreamSupport
 					.stream(pendingPropagators(s).spliterator(), false)
 					.filter(p -> p.watches(s, changed))
 					.<Goal> map(p -> st -> getConstraintStore(st, p.getStoreClass()).contains(p) ?

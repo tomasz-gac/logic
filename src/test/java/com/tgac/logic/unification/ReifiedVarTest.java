@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.vavr.Tuple;
+import io.vavr.collection.HashMap;
 import org.junit.Test;
 
 public class ReifiedVarTest {
@@ -53,7 +54,7 @@ public class ReifiedVarTest {
 		Unifiable<Integer> x = lvar();
 		ReifiedVar<Integer> hole = ReifiedVar.of("_.0");
 		Package s = Package.empty()
-				.withSubstitutions(io.vavr.collection.HashMap.of(x.getVar(), hole));
+				.withSubstitutions(HashMap.of(x.getVar(), hole));
 
 		assertThat(s.walk(x)).isSameAs(hole);
 	}

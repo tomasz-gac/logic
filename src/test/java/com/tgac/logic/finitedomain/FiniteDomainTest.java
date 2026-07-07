@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import lombok.var;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
@@ -40,7 +41,7 @@ public class FiniteDomainTest {
 	@Test
 	public void shouldAssignDomain() {
 		Unifiable<Long> i = lvar();
-		java.util.List<Long> result =
+		List<Long> result =
 				solve(i, dom(i, EnumeratedDomain.range(0L, 10L)))
 						.map(Term::get)
 						.collect(Collectors.toList());
@@ -54,7 +55,7 @@ public class FiniteDomainTest {
 	public void shouldIntersectDomains() {
 		Unifiable<Long> i = lvar();
 
-		java.util.List<Long> result =
+		List<Long> result =
 				solve(i, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(dom(i, EnumeratedDomain.range(5L, 15L))))
 						.map(Term::get)
@@ -70,7 +71,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> i = lvar();
 		Unifiable<Long> j = lvar();
 
-		java.util.List<Long> result =
+		List<Long> result =
 				solve(j, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(CKanren.unify(i, j)))
 						.map(Term::get)
@@ -86,7 +87,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> i = lvar();
 		Unifiable<Long> j = lvar();
 
-		java.util.List<Long> result =
+		List<Long> result =
 				solve(j, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(CKanren.unify(j, i)))
 						.map(Term::get)
@@ -103,7 +104,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> j = lvar();
 		Unifiable<Long> k = lvar();
 
-		java.util.List<Long> result =
+		List<Long> result =
 				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(k.unifies(j))
 						.and(CKanren.unify(k, i)))
@@ -121,7 +122,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> j = lvar();
 		Unifiable<Long> k = lvar();
 
-		java.util.List<Long> result =
+		List<Long> result =
 				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(k.unifies(j))
 						.and(CKanren.unify(k, i))
@@ -139,7 +140,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> i = lvar();
 		Unifiable<Long> j = lvar();
 
-		java.util.List<Tuple2<Long, Long>> results =
+		List<Tuple2<Long, Long>> results =
 				solve(lval(Tuple.of(i, j)),
 						dom(i, EnumeratedDomain.range(0L, 3L))
 								.and(dom(j, EnumeratedDomain.range(0L, 3L))))
@@ -252,7 +253,7 @@ public class FiniteDomainTest {
 				);
 	}
 
-	static <T> java.util.stream.Stream<Reified<T>> solve(Unifiable<T> out, Goal g) {
+	static <T> Stream<Reified<T>> solve(Unifiable<T> out, Goal g) {
 		return g.solve(out);
 	}
 

@@ -7,11 +7,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
 import io.vavr.Tuple2;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
 
@@ -76,7 +78,7 @@ public class TabledTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		java.util.List<Tuple2<Integer, Integer>> results =
+		List<Tuple2<Integer, Integer>> results =
 				constant1.apply(Tuple.of(x))
 						.and(constant2.apply(Tuple.of(y)))
 						.solve(lval(Tuple.of(x, y)))
@@ -119,7 +121,7 @@ public class TabledTest {
 		Unifiable<Integer> x = lvar();
 
 		assertThatThrownBy(() ->
-				com.tgac.logic.separate.Disequality.separate(constrained, lval(3))
+				Disequality.separate(constrained, lval(3))
 						.and(anything.apply(Tuple.of(x)))
 						.solve(x)
 						.count())
@@ -133,7 +135,7 @@ public class TabledTest {
 		// as an unconstrained template and replayed too generally
 		Tabled<Tuple1<Unifiable<Integer>>> notThree =
 				Tabling.define(args -> args.apply(x ->
-						com.tgac.logic.separate.Disequality.separate(x, lval(3))));
+						Disequality.separate(x, lval(3))));
 
 		Unifiable<Integer> x = lvar();
 

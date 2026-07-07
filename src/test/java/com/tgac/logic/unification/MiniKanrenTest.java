@@ -614,8 +614,8 @@ public class MiniKanrenTest {
 
 		Unifiable<?> instantiated = MiniKanren.instantiate(template).get();
 
-		io.vavr.Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>> tuple =
-				(io.vavr.Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>>) instantiated.get();
+		Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>> tuple =
+				(Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>>) instantiated.get();
 		Term<?> firstHead = tuple._1.get().getHead();
 		Term<?> consHead = tuple._3.get().getHead();
 		Term<?> consTail = tuple._3.get().getTail();

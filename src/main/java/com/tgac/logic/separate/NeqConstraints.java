@@ -4,13 +4,13 @@ import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
-import com.tgac.logic.unification.Term;
 
 import com.tgac.logic.ckanren.ConstraintStore;
 import com.tgac.logic.ckanren.Reaction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
@@ -67,7 +67,7 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state) {
+	public Reaction onPrefix(Prefix prefix, Package state) {
 		return Disequality.verifyAndSimplify(constraints, state.getSubstitutions())
 				.map(c -> (Reaction) Reaction.updated(NeqConstraints.of(c)))
 				.getOrElse(Reaction::fail);

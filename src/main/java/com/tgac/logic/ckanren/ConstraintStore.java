@@ -2,10 +2,12 @@ package com.tgac.logic.ckanren;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
+import java.util.Collections;
 
 public interface ConstraintStore extends Store {
 
@@ -39,7 +41,7 @@ public interface ConstraintStore extends Store {
 	 * @param state
 	 * 		- the extended live package to verify and read domains against
 	 */
-	Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state);
+	Reaction onPrefix(Prefix prefix, Package state);
 
 	/**
 	 * The suspended {@link Propagator}s this store holds, exposed for the
@@ -49,7 +51,7 @@ public interface ConstraintStore extends Store {
 	 * they participate through {@link #onPrefix} instead.
 	 */
 	default Iterable<Propagator> pendingPropagators() {
-		return java.util.Collections.emptyList();
+		return Collections.emptyList();
 	}
 
 	/**

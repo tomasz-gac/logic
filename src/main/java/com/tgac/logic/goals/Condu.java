@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.Value;
@@ -68,7 +69,7 @@ public class Condu implements Goal {
 				.map(v -> v.map(g ->
 						g instanceof Condu ?
 								((Condu) g).clauses.stream() :
-								java.util.stream.Stream.of(g)))
+								Stream.of(g)))
 				.reduce(done(new Condu()),
 						(l, r) -> Fiber.zip(l, r).map(t -> t._1
 								.orElse(t._2.toArray(Goal[]::new))),

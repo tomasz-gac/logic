@@ -10,6 +10,7 @@ import com.tgac.logic.ckanren.Reaction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -20,8 +21,10 @@ import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
@@ -84,12 +87,12 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state) {
+	public Reaction onPrefix(Prefix prefix, Package state) {
 		// this store's reaction: each newly bound value must lie in its variable's
 		// domain; a var-var binding aliases the two, so the domain follows the
 		// representative as a narrow inference
-		java.util.List<Inference> narrows = new java.util.ArrayList<>();
-		for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
+		List<Inference> narrows = new ArrayList<>();
+		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
 			Domain dom = (Domain) getDomain((LVar) binding._1).getOrNull();
 			if (dom == null) {
 				continue;
@@ -120,7 +123,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 		Set<LVar<?>> constrainedVarsWithoutDomains = constraints.toJavaStream()
 				.map(Propagator::watchedTerms)
-				.flatMap(ts -> java.util.stream.StreamSupport.stream(ts.spliterator(), false))
+				.flatMap(ts -> StreamSupport.stream(ts.spliterator(), false))
 				.map(p::walk)
 				.flatMap(u -> u.asVar().toJavaStream())
 				.filter(Predicates.not(varsWithDomains::contains))

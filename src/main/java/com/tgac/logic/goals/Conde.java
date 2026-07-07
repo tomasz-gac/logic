@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.Value;
@@ -34,7 +35,7 @@ public class Conde implements Goal {
 	}
 
 	@Override
-	public Cont<com.tgac.logic.unification.Package, Nothing> apply(Package s) {
+	public Cont<Package, Nothing> apply(Package s) {
 		return k -> Fiber.fork(
 				clauses.stream()
 						.map(g -> g.apply(s).apply(k))
@@ -50,7 +51,7 @@ public class Conde implements Goal {
 				.map(v -> v.map(g ->
 						g instanceof Conde ?
 								((Conde) g).clauses.stream() :
-								java.util.stream.Stream.of(g)))
+								Stream.of(g)))
 				.reduce(done(new Conde()),
 						(l, r) -> Fiber.zip(l, r).map(t -> t._1
 								.or(t._2.toArray(Goal[]::new))),

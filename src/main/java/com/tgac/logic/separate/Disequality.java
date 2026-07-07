@@ -28,6 +28,7 @@ import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
+import java.util.stream.Stream;
 
 public class Disequality {
 
@@ -172,10 +173,10 @@ public class Disequality {
 			Package s) {
 		return constraints.toJavaStream()
 				.map(c -> walkAllConstraint(s, c.getSeparate())
-						.map(java.util.stream.Stream::of))
+						.map(Stream::of))
 				.reduce((l, r) -> Fiber.zip(l, r)
-						.map(lr -> lr.apply(java.util.stream.Stream::concat)))
-				.orElseGet(() -> done(java.util.stream.Stream.empty()))
+						.map(lr -> lr.apply(Stream::concat)))
+				.orElseGet(() -> done(Stream.empty()))
 				.map(stream -> stream
 						.map(NeqConstraint::of)
 						.collect(List.collector()));
@@ -200,10 +201,10 @@ public class Disequality {
 			Package renamePackage) {
 		return constraints.toJavaStream()
 				.map(c -> renameConstraint(renamePackage, c.getSeparate())
-						.map(java.util.stream.Stream::of))
+						.map(Stream::of))
 				.reduce((l, r) -> Fiber.zip(l, r)
-						.map(lr -> lr.apply(java.util.stream.Stream::concat)))
-				.orElseGet(() -> done(java.util.stream.Stream.empty()))
+						.map(lr -> lr.apply(Stream::concat)))
+				.orElseGet(() -> done(Stream.empty()))
 				.map(stream -> stream.collect(List.collector()));
 	}
 
@@ -221,9 +222,9 @@ public class Disequality {
 	static List<NeqConstraint> purify(List<NeqConstraint> c, Package r) {
 		return c.toJavaStream()
 				.map(cc -> purifySingle(cc, r))
-				.map(java.util.stream.Stream::of)
-				.reduce(java.util.stream.Stream::concat)
-				.orElseGet(java.util.stream.Stream::empty)
+				.map(Stream::of)
+				.reduce(Stream::concat)
+				.orElseGet(Stream::empty)
 				.filter(cs -> !cs.getSeparate().isEmpty())
 				.collect(List.collector());
 	}

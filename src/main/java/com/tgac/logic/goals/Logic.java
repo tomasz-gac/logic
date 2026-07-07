@@ -280,10 +280,10 @@ public class Logic {
 		return s -> Cont.defer(() ->
 				goals.toJavaStream()
 						.map(v -> MiniKanren.walkAll(s, v)
-								.map(java.util.stream.Stream::of))
+								.map(Stream::of))
 						.reduce((l, r) -> Fiber.zip(l, r)
-								.map(lr -> lr.apply(java.util.stream.Stream::concat)))
-						.orElseGet(() -> Fiber.done(java.util.stream.Stream.empty()))
+								.map(lr -> lr.apply(Stream::concat)))
+						.orElseGet(() -> Fiber.done(Stream.empty()))
 						.map(u -> u.map(t -> (Term<Object>) t)
 								.collect(Array.collector()))
 						.map(f)

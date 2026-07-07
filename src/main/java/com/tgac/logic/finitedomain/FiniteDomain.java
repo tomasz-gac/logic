@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.function.BinaryOperator;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -85,14 +86,14 @@ public class FiniteDomain {
 	 * against the live state (capability-constraint-api.md §2.2).
 	 */
 	private static <T> Goal fdConstraint(Array<Unifiable<T>> us,
-			java.util.function.Function<Package, Verdict> body) {
+			Function<Package, Verdict> body) {
 		return p -> StoreSupport.activate(
 				Propagator.of(FiniteDomainConstraints.class, us.toJavaList(), body),
 				FiniteDomainConstraints.register(p));
 	}
 
-	private static <T> java.util.function.Function<Package, Verdict> gated(Array<Unifiable<T>> us,
-			java.util.function.Function<Array<VarWithDomain<T>>, Verdict> verdict) {
+	private static <T> Function<Package, Verdict> gated(Array<Unifiable<T>> us,
+			Function<Array<VarWithDomain<T>>, Verdict> verdict) {
 		return s -> letDomain(s, us)
 				.filter(uds -> uds.toJavaStream()
 						.noneMatch(ud -> ud.getDomain().isEmpty()))

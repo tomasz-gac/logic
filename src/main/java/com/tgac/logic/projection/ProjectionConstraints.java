@@ -14,6 +14,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
@@ -21,6 +22,7 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashSet;
+import java.util.Collections;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -43,7 +45,7 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state) {
+	public Reaction onPrefix(Prefix prefix, Package state) {
 		// projections are woken by the chokepoint's cross-store wake
 		return Reaction.unchanged();
 	}
@@ -96,7 +98,7 @@ public class ProjectionConstraints implements ConstraintStore {
 		// quiesces (docs/design/suspensions.md §5)
 		return s -> StoreSupport.activate(
 				Propagator.of(ProjectionConstraints.class,
-						java.util.Collections.singletonList(x),
+						Collections.singletonList(x),
 						state -> MiniKanren.walkAll(state, x).get()
 								.asVal()
 								.map(v -> Verdict.run(f.apply(v)))

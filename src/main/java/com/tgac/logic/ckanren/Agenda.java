@@ -5,6 +5,7 @@ package com.tgac.logic.ckanren;
 
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
@@ -28,9 +29,9 @@ final class Agenda implements Store {
 
 	/** Inferred bindings — a prefix, revalidated against the live package at pop. */
 	static final class Bind extends Item {
-		final com.tgac.logic.unification.Prefix prefix;
+		final Prefix prefix;
 
-		Bind(com.tgac.logic.unification.Prefix prefix) {
+		Bind(Prefix prefix) {
 			this.prefix = prefix;
 		}
 

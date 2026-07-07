@@ -7,6 +7,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
 
@@ -30,7 +31,7 @@ public abstract class Inference {
 	 * contradiction between constraint domains — the branch fails (never the silent
 	 * keep-first of the raw substitution merge).
 	 */
-	public static Inference bind(com.tgac.logic.unification.Prefix prefix) {
+	public static Inference bind(Prefix prefix) {
 		return new Bind(prefix);
 	}
 
@@ -51,9 +52,9 @@ public abstract class Inference {
 	public abstract Goal toGoal();
 
 	private static final class Bind extends Inference {
-		private final com.tgac.logic.unification.Prefix prefix;
+		private final Prefix prefix;
 
-		private Bind(com.tgac.logic.unification.Prefix prefix) {
+		private Bind(Prefix prefix) {
 			this.prefix = prefix;
 		}
 

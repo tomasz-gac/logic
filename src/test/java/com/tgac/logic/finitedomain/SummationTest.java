@@ -44,7 +44,7 @@ public class SummationTest {
 						.and(dom(k, Interval.of(0L, 100L)));
 
 
-		java.util.List<Tuple3<Long, Long, Long>> result =
+		List<Tuple3<Long, Long, Long>> result =
 				Utils.collect(goal.solve(lval(Tuple.of(i, j, k)))
 						.map(Term::get)
 						.map(t -> t

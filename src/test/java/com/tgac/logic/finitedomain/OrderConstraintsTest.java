@@ -36,7 +36,7 @@ public class OrderConstraintsTest {
 		Unifiable<Long> j = lvar();
 
 		// completeness, not just soundness: the boundary pair (2,2) must be found
-		java.util.List<Tuple2<Long, Long>> result =
+		List<Tuple2<Long, Long>> result =
 				Utils.collect(Goal.success()
 						.and(dom(i, EnumeratedDomain.range(1L, 3L)))
 						.and(dom(j, EnumeratedDomain.range(1L, 3L)))
@@ -57,7 +57,7 @@ public class OrderConstraintsTest {
 		Unifiable<Long> i = lvar();
 		Unifiable<Long> j = lvar();
 
-		java.util.List<Tuple2<Long, Long>> result =
+		List<Tuple2<Long, Long>> result =
 				Utils.collect(Goal.success()
 						.and((FiniteDomain.leq(i, j)))
 						.and(dom(i, EnumeratedDomain.range(0L, 4L)))
@@ -76,7 +76,7 @@ public class OrderConstraintsTest {
 		Unifiable<Long> i = lvar();
 		Unifiable<Long> j = lvar();
 
-		java.util.List<Tuple2<Long, Long>> result =
+		List<Tuple2<Long, Long>> result =
 				Utils.collect(Goal.success()
 						.and(dom(i, EnumeratedDomain.range(0L, 4L)))
 						.and(dom(j, EnumeratedDomain.range(0L, 4L)))

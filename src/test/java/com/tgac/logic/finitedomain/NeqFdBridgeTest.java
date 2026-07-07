@@ -6,6 +6,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.separate.Disequality;
@@ -102,7 +103,7 @@ public class NeqFdBridgeTest {
 		Unifiable<String> s = lvar();
 
 		assertThat(Disequality.separate(s, lval("no"))
-				.and(com.tgac.logic.ckanren.CKanren.unify(s, lval("yes")))
+				.and(CKanren.unify(s, lval("yes")))
 				.solve(s)
 				.map(Term::get)
 				.collect(Collectors.toList()))

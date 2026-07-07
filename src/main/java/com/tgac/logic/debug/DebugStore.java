@@ -4,6 +4,7 @@ package com.tgac.logic.debug;
 // ABOUTME: derived state can report box-model ports. A plain Store, inert to constraint solving.
 
 import com.tgac.logic.debug.Trace.Tracer;
+import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
@@ -14,8 +15,8 @@ import lombok.Value;
 
 /**
  * Transport for the active {@link Tracer} and the current goal spine. Like
- * {@link com.tgac.logic.tabling.Table} it is a plain {@link Store} — constraint
- * processing ignores it; the store map is only its carrier, so every state
+ * {@link Table} it is a plain {@link Store} — constraint processing ignores
+ * it; the store map is only its carrier, so every state
  * derived during a solve shares the tracer, and each branch carries its own
  * spine (the path of open boxes from the root query to the current goal).
  */

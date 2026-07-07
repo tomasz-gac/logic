@@ -42,6 +42,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Spliterators;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -248,13 +250,13 @@ public class MiniKanren {
 	}
 
 	private static <T> MFiber<Prefix> unifyPrefix(Extender extend, Package s, Term<T> lhs, Term<T> rhs) {
-		java.util.List<io.vavr.Tuple2<LVar<?>, Term<?>>> collected = new java.util.ArrayList<>();
+		ArrayList<Tuple2<LVar<?>, Term<?>>> collected = new ArrayList<>();
 		Extender collecting = new Extender() {
 			@Override
 			public <U> Package apply(Package p, LVar<U> l, Term<U> r) {
 				Package extended = extend.apply(p, l, r);
 				if (extended != p) {
-					collected.add(io.vavr.Tuple.of(l, r));
+					collected.add(Tuple.of(l, r));
 				}
 				return extended;
 			}
@@ -363,13 +365,13 @@ public class MiniKanren {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Unifiable<T>> instantiate(Reified<T> term) {
-		return instantiateTerm(term, new java.util.concurrent.ConcurrentHashMap<>())
+		return instantiateTerm(term, new ConcurrentHashMap<>())
 				.map(t -> (Unifiable<T>) t);
 	}
 
 	private static <T> Fiber<Term<T>> instantiateTerm(
 			Term<T> u,
-			java.util.concurrent.ConcurrentMap<String, Term<Object>> fresh) {
+			ConcurrentMap<String, Term<Object>> fresh) {
 		return u.asReified()
 				.map(hole -> Fiber.<Term<T>> done((Term<T>) fresh.computeIfAbsent(
 						hole.getName(), name -> LVar.lvar())))

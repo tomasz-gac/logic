@@ -5,13 +5,16 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,14 +31,14 @@ public class CapabilityDriverTest {
 
 	/** A test-only constraint domain that emits configured inferences on every prefix. */
 	private static abstract class EmittingStore implements ConstraintStore {
-		final BiFunction<com.tgac.logic.unification.Prefix, Package, Reaction> reaction;
+		final BiFunction<Prefix, Package, Reaction> reaction;
 
-		EmittingStore(BiFunction<com.tgac.logic.unification.Prefix, Package, Reaction> reaction) {
+		EmittingStore(BiFunction<Prefix, Package, Reaction> reaction) {
 			this.reaction = reaction;
 		}
 
 		@Override
-		public Reaction onPrefix(com.tgac.logic.unification.Prefix prefix, Package state) {
+		public Reaction onPrefix(Prefix prefix, Package state) {
 			return reaction.apply(prefix, state);
 		}
 
@@ -72,13 +75,13 @@ public class CapabilityDriverTest {
 
 	// two distinct classes: the store map is keyed by class
 	private static final class StoreA extends EmittingStore {
-		StoreA(BiFunction<com.tgac.logic.unification.Prefix, Package, Reaction> r) {
+		StoreA(BiFunction<Prefix, Package, Reaction> r) {
 			super(r);
 		}
 	}
 
 	private static final class StoreB extends EmittingStore {
-		StoreB(BiFunction<com.tgac.logic.unification.Prefix, Package, Reaction> r) {
+		StoreB(BiFunction<Prefix, Package, Reaction> r) {
 			super(r);
 		}
 	}
@@ -92,7 +95,7 @@ public class CapabilityDriverTest {
 	}
 
 	private static long solutions(Package root) {
-		com.tgac.logic.unification.Unifiable<Long> x = lvar();
+		Unifiable<Long> x = lvar();
 		return x.unifies(0L)
 				.solveFrom(root, x, BreadthFirstScheduler::new)
 				.count();
@@ -100,15 +103,15 @@ public class CapabilityDriverTest {
 
 	@Test(timeout = 5000)
 	public void contradictoryInferredBindingsFailTheBranch() {
-		LVar<Long> q = com.tgac.logic.unification.LVar.<Long> lvar().asVar().get();
+		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
 				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
 						Arrays.asList(Inference.bind(
-								com.tgac.logic.unification.Prefix.binding(state, q, lval(1L)).get())))),
+								Prefix.binding(state, q, lval(1L)).get())))),
 				new StoreB((prefix, state) -> Reaction.updated(new StoreB((pf, st) -> Reaction.unchanged()),
 						Arrays.asList(Inference.bind(
-								com.tgac.logic.unification.Prefix.binding(state, q, lval(2L)).get())))));
+								Prefix.binding(state, q, lval(2L)).get())))));
 
 		// two stores infer q=1 and q=2 in one pass: the branch is inconsistent and
 		// must DIE — the silent keep-first would instead emit a wrong answer
@@ -117,34 +120,34 @@ public class CapabilityDriverTest {
 
 	@Test(timeout = 5000)
 	public void agreeingInferredBindingsApplyOnce() {
-		LVar<Long> q = com.tgac.logic.unification.LVar.<Long> lvar().asVar().get();
+		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
 				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
 						Arrays.asList(Inference.bind(
-								com.tgac.logic.unification.Prefix.binding(state, q, lval(1L)).get())))),
+								Prefix.binding(state, q, lval(1L)).get())))),
 				new StoreB((prefix, state) -> Reaction.updated(new StoreB((pf, st) -> Reaction.unchanged()),
 						Arrays.asList(Inference.bind(
-								com.tgac.logic.unification.Prefix.binding(state, q, lval(1L)).get())))));
+								Prefix.binding(state, q, lval(1L)).get())))));
 
 		assertThat(solutions(root)).isEqualTo(1);
 	}
 
 	@Test(timeout = 5000)
 	public void agendaNeverLeaksIntoAnswers() {
-		LVar<Long> q = com.tgac.logic.unification.LVar.<Long> lvar().asVar().get();
+		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 		Package[] answer = new Package[1];
 		Goal probe = s -> {
 			answer[0] = s;
-			return com.tgac.functional.monad.Cont.just(s);
+			return Cont.just(s);
 		};
 
 		Package root = root(
 				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
 						Arrays.asList(Inference.bind(
-								com.tgac.logic.unification.Prefix.binding(state, q, lval(1L)).get())))));
+								Prefix.binding(state, q, lval(1L)).get())))));
 
-		com.tgac.logic.unification.Unifiable<Long> x = lvar();
+		Unifiable<Long> x = lvar();
 		long count = x.unifies(0L)
 				.and(probe)
 				.solveFrom(root, x, BreadthFirstScheduler::new)

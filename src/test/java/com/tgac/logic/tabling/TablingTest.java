@@ -12,6 +12,7 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
 import io.vavr.Tuple2;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.Test;
@@ -74,7 +75,7 @@ public class TablingTest {
 
 		Goal query = x.unifies("alice").and(ancestor(x, y));
 
-		java.util.List<String> descendants = query.solve(y)
+		List<String> descendants = query.solve(y)
 				.map(Term::get)
 				.collect(Collectors.toList());
 
@@ -90,7 +91,7 @@ public class TablingTest {
 			Unifiable<String> x = lvar();
 			Unifiable<String> y = lvar();
 
-			java.util.List<String> descendants = x.unifies("alice").and(ancestor(x, y))
+			List<String> descendants = x.unifies("alice").and(ancestor(x, y))
 					.solveParallel(y)
 					.map(Term::get)
 					.collect(Collectors.toList());
@@ -138,7 +139,7 @@ public class TablingTest {
 
 		Goal query = y.unifies("david").and(ancestor(x, y));
 
-		java.util.List<String> ancestors = query.solve(x)
+		List<String> ancestors = query.solve(x)
 				.map(Term::get)
 				.collect(Collectors.toList());
 
@@ -154,7 +155,7 @@ public class TablingTest {
 			Unifiable<String> x = lvar();
 			Unifiable<String> y = lvar();
 
-			java.util.List<String> descendants = x.unifies("alice").and(ancestor(x, y))
+			List<String> descendants = x.unifies("alice").and(ancestor(x, y))
 					.solve(y)
 					.map(Term::get)
 					.collect(Collectors.toList());
@@ -187,7 +188,7 @@ public class TablingTest {
 						x.unifies(42)));
 
 		Unifiable<Integer> x = lvar();
-		java.util.List<Integer> results = single.apply(Tuple.of(x)).solve(x)
+		List<Integer> results = single.apply(Tuple.of(x)).solve(x)
 				.map(Term::get)
 				.collect(Collectors.toList());
 
@@ -206,7 +207,7 @@ public class TablingTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		java.util.List<Tuple2<Integer, Integer>> results = numRel.apply(Tuple.of(x, y))
+		List<Tuple2<Integer, Integer>> results = numRel.apply(Tuple.of(x, y))
 				.solve(lval(Tuple.of(x, y)))
 				.map(Term::get)
 				.map(t -> t.map1(Term::get).map2(Term::get))
@@ -337,7 +338,7 @@ public class TablingTest {
 				}));
 
 		Unifiable<Integer> x = lvar();
-		java.util.List<Integer> results = manyNumbers.apply(Tuple.of(x)).solve(x)
+		List<Integer> results = manyNumbers.apply(Tuple.of(x)).solve(x)
 				.map(Term::get)
 				.collect(Collectors.toList());
 
@@ -386,7 +387,7 @@ public class TablingTest {
 								.or(p.unifies(Tuple.of("charlie", "david")))));
 
 		Unifiable<Tuple2<String, String>> pair = lvar();
-		java.util.List<Tuple2<String, String>> results = familyPair.apply(Tuple.of(pair))
+		List<Tuple2<String, String>> results = familyPair.apply(Tuple.of(pair))
 				.solve(pair)
 				.map(Term::get)
 				.collect(Collectors.toList());

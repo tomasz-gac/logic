@@ -5,6 +5,7 @@ import static io.vavr.Predicates.not;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.ckanren.Narrowing;
 import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;
@@ -12,6 +13,7 @@ import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.control.Option;
@@ -19,7 +21,7 @@ import java.util.stream.Stream;
 import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode
-public abstract class Domain<T> implements com.tgac.logic.ckanren.Narrowing {
+public abstract class Domain<T> implements Narrowing {
 
 	@Override
 	@SuppressWarnings("unchecked")
@@ -122,7 +124,7 @@ public abstract class Domain<T> implements com.tgac.logic.ckanren.Narrowing {
 				// so every store hears it — not just the FD store's own constraints.
 				// updateVarDomain only resolves open variables, so the mint succeeds;
 				// the defensive branch mirrors the old already-bound no-op
-				return com.tgac.logic.unification.Prefix.binding(a, x, lval(v))
+				return Prefix.binding(a, x, lval(v))
 						.map(prefix -> StoreSupport.enqueueBind(prefix, a))
 						.getOrElse(() -> Cont.just(a));
 			} else {

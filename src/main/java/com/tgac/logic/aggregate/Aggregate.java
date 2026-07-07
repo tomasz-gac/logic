@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.IntBinaryOperator;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -100,7 +101,7 @@ public class Aggregate {
 			Goal goal,
 			Unifiable<Integer> result,
 			Integer initial,
-			java.util.function.IntBinaryOperator combine,
+			IntBinaryOperator combine,
 			boolean failWhenEmpty) {
 		return pkg -> k -> {
 			AtomicReference<Integer> acc = new AtomicReference<>(initial);

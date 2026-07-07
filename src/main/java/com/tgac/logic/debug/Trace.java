@@ -9,6 +9,7 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -121,7 +122,7 @@ public final class Trace {
 	/**
 	 * A tracer that prints each port to the given sink.
 	 */
-	public static Tracer printing(java.util.function.Consumer<String> out) {
+	public static Tracer printing(Consumer<String> out) {
 		return new Tracer() {
 			@Override
 			public void onCall(String label, Package state) {

@@ -17,7 +17,7 @@ class NamedGoal implements Goal {
 	Goal goal;
 
 	@Override
-	public Cont<com.tgac.logic.unification.Package, Nothing> apply(Package aPackage) {
+	public Cont<Package, Nothing> apply(Package aPackage) {
 		return DebugStore.from(aPackage)
 				.map(store -> Trace.tracedCont(label, goal, store.getTracer(),
 						aPackage.putStore(store.push(label.apply(aPackage))),
