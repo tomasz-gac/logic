@@ -327,6 +327,17 @@ last (lock the door after the furniture is arranged):
   quiescence point (the outermost-marker trick for runs disappears), and an
   inspectable agenda for propagation tracing.
 
+  **HARD REQUIREMENT (Tom): the drain must NOT be a native Java loop.** Each
+  iteration must pass through a deferred step (`Goal.defer`), so one propagation
+  item ≈ one scheduler step and the trampoline yields between items — exactly the
+  granularity the recursive implementation gets from its Cont.defer points. A
+  native while-loop would make an entire cascade a single scheduler step: a bugged
+  (DCC-violating) cascade would hog the CPU, fair schedulers could not interleave
+  other branches, and bottom-avoidance would be lost. Written correctly, a
+  divergent cascade behaves exactly as today under every scheduler — and becomes
+  diagnosable (agenda-size watermark; propagation tracing), which the opaque
+  recursion is not.
+
 - **Step 3 — Prefix + the visibility lock.** `MiniKanren.unify` returns
   `Option<Prefix>` over a `Substitutions` view; `CKanren.unify` = mint + drive;
   Neq's trial unification inspects the prefix; delete `withoutConstraints`;
