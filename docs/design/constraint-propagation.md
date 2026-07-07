@@ -22,23 +22,66 @@ That has two defects that make combining constraint domains unsound:
    then does `s.withSubstitutions(newSubstitutions)` and overwrites the whole
    substitution map, dropping the first store's binding.
 
-2. **Single pass, no fixpoint.** Independent domains trigger each other: an FD
-   narrowing can bind a variable, which should re-fire a disequality check, which
-   can bind another variable, which should re-fire FD narrowing. A single ordered
-   `and`-pass never loops, so cascades are missed.
+2. **Incomplete wake-up.** Independent domains trigger each other: an FD narrowing
+   can bind a variable, which should re-fire a disequality check, which can bind
+   another variable, which should re-fire FD narrowing. The cross-domain cascade is
+   incomplete (see §1.1 for exactly where — it is NOT entirely absent).
 
 Evidence: `com.tgac.logic.ckanren.NeqFiniteDomainTest` reproduced the starvation
 symptom (`x ∈ {0,1,2} ∧ x ≠ 1` returned `{0,1,2}` instead of `{0,2}`). The patch
 (passing the original package to each store so it diffs/verifies against the right
-base) fixed *that* case. It did **not** fix the two defects above. Known still-broken
-combinations to pin with failing tests before starting:
-
-- an FD variable narrowed to a singleton **and** a disequality on the same variable
-  (replace-clobbering);
-- two FD constraints that only converge after several mutual narrowings (needs the
-  fixpoint), combined so ordering matters.
+base) fixed *that* case. It did **not** fix the two defects above.
 
 See `StoreSupport#processPrefix` javadoc for the in-code statement of the limitation.
+
+## 1.1 What ALREADY exists — cKanren's `runConstraints` (read before designing)
+
+Do not design from scratch: the wake-up half of AC-3 is already implemented in
+`CKanren.runConstraints`, and it maps 1:1 onto §3.2's propagator concept:
+
+| §3.2 concept | existing code |
+|---|---|
+| propagator | `Constraint` (`constraintOp` = the propagate function, `args` = watched vars) |
+| watched-variable check | `CKanren.anyRelevantVar(x, c)` — does constraint c watch changed var x |
+| wake on binding | `CKanren.runConstraints(x, constraints)` — called after x gets bound |
+| run = remove + re-run | `CKanren.remRun(c)` — take c out of the store, re-run its goal |
+| re-suspend if undecided | `Constraint.addTo` — the goal re-adds itself while args remain unbound |
+
+A **fixpoint-by-recursion** also already exists for binding-driven propagation:
+bind → `runConstraints` → constraint goals re-run → they narrow domains → a domain
+collapses to a singleton → bind → wake again… and constraint bodies that bind via
+`CKanren.unify` re-enter `StoreSupport.processPrefix`, which reaches ALL stores.
+
+The precise gaps (each verified in code, July 2026) — this is what the redesign
+actually has to fix, and it is "complete the existing machinery", not "build a
+fixpoint engine":
+
+1. **Wake lists are intra-store.** Every `runConstraints` call site passes only its
+   own store's constraints (`FiniteDomainConstraints.processPrefix` and
+   `Domain.resolveStorableDom` pass the FD store's; `ProjectionConstraints` passes
+   projections). A binding never wakes another store's watchers directly.
+2. **Singleton-collapse binds bypass the chokepoint.** `Domain.resolveStorableDom`
+   binds a collapsed variable via `Package.extendS` directly — NOT via `unify` — so
+   `StoreSupport.processPrefix` never runs and other stores do not hear FD's
+   inferred bindings mid-search. This is rescued LATE: at reify time,
+   `EnforceConstraintsFD` re-runs `StoreSupport.processPrefix` over the full
+   substitution map, which is why `separate(x,1) ∧ dom(x,{1})` correctly fails
+   today (verified empirically — do not "re-fix" it). Consequences of the lateness:
+   wasted search (violated branches are pruned only at the end), and a real
+   unsoundness risk under committed choice — `conda`/`condu` can commit on a
+   mid-search package that enforcement would later reject.
+3. **Domain-only narrowing wakes nobody.** The non-singleton branch (`extendD`)
+   just stores the smaller domain; constraints watching that variable are not
+   re-run until labelling. No bounds-propagation cascade mid-search.
+4. **The base-package bookkeeping bug** — fixed (the `oldPackage` parameter).
+
+Known still-broken/risky combinations to pin with tests before starting:
+
+- committed choice (`conda`/`condu`) over a subgoal whose mid-search package
+  carries an FD-inferred binding that violates a Neq constraint (gap 2's
+  unsoundness vector);
+- two FD constraints that only converge after several mutual narrowings (gap 3),
+  combined so ordering matters.
 
 ---
 
@@ -178,17 +221,30 @@ still holds its un-narrowed package; there is no trail to undo.
 
 ## 4. Migration phases
 
+Given §1.1, the shape of the work is **completing the existing `runConstraints`
+machinery**, not building a new engine. `Constraint` already is the propagator;
+the recursive cascade already is the fixpoint for binding-driven propagation.
+
 - **Phase 0 (interim, cheap, do regardless):** in `StoreSupport`, detect more than one
   *substitution-mutating* `ConstraintStore` active in a package and fail loudly (or log)
   rather than returning a silently wrong answer. Whitelist the combinations already
   verified. Documents the real contract in code.
-- **Phase 1 (correctness):** monotonic substitution (ban `withSubstitutions`-replace in
-  the constraint path; use `extendS`) + naive `propagateToFixpoint` replacing the
-  `and`-chain in `StoreSupport.processPrefix`. Re-validate every FD/Neq/Projection test.
-- **Phase 2 (cross-domain):** add propagators that read one factor and narrow another
-  (disequality removing a value from an FD domain). This is the first behaviour the old
-  design could not produce; add tests that require it.
-- **Phase 3 (performance):** AC-3 worklist + dependency index. No result changes.
+- **Phase 1 (close gap 2 — the chokepoint bypass):** route `Domain.resolveStorableDom`'s
+  singleton-collapse binding through the same path as unification (run
+  `StoreSupport.processPrefix` for the new binding, or equivalently wake ALL stores'
+  watchers, not just FD's). This turns the late (reify-time) cross-store rescue into
+  immediate propagation — earlier pruning, and it removes the committed-choice
+  unsoundness vector. Also ban `withSubstitutions`-replace in the constraint path
+  (use `extendS`; monotonic substitution). Re-validate every FD/Neq/Projection test.
+- **Phase 2 (close gaps 1 and 3 — cross-store and narrowing-driven wake):** give
+  `runConstraints` call sites access to all stores' pending constraints (a per-var
+  watcher registry across stores), and fire wake-ups on domain *narrowing*, not only
+  on binding (`extendD` should wake watchers of the narrowed var). This enables true
+  cross-domain propagation — e.g. disequality removing a value from an FD domain —
+  the first behaviour the old design could not produce; add tests that require it.
+- **Phase 3 (performance):** replace the recursive cascade with an explicit AC-3
+  worklist + dependency index if (and only if) the recursion depth or redundant
+  re-runs are measured to matter. No result changes.
 
 Phases 1–3 touch the constraint core that FD, Neq, Projection (and, transitively,
 aggregate) sit on. Treat each as its own reviewed change with the full suite green.
