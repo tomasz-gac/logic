@@ -47,7 +47,7 @@ public class ProjectionConstraints implements ConstraintStore {
 				.map(sub -> sub.apply((x, v) ->
 						CKanren.runConstraints(x, projections)))
 				.reduce(Goal.success(), Goal::and)
-				.apply(s.withSubstitutions(newSubstitutions));
+				.apply(s);
 	}
 
 	@Override

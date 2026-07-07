@@ -70,7 +70,8 @@ class NeqConstraints implements ConstraintStore {
 	@Override
 	public Goal processPrefix(
 			HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
-		return s -> Disequality.verifyUnify(s.withSubstitutions(newSubstitutions), oldPackage)
+		// s already carries the new substitutions; the chokepoint applied them
+		return s -> Disequality.verifyUnify(s, oldPackage)
 				.map(Cont::<Package, Nothing>just)
 				.getOrElse(Cont.complete(Nothing.nothing()));
 	}

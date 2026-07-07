@@ -24,16 +24,9 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
 
 @SuppressWarnings("unchecked")
-@RunWith(MockitoJUnitRunner.class)
 public class ParametersTest {
-
-	@Mock
-	Goal accessor;
 
 	@Test
 	public void shouldNotBlowStackWhenProcessingPrefix() {
@@ -45,16 +38,15 @@ public class ParametersTest {
 						(m, t) -> m.put(t._1, t._2));
 
 		Constraint constraint = Constraint.of(
-				accessor,
+				Goal.success(),
 				FiniteDomainConstraints.class,
 				Arrays.asList(prefix.get()._1));
 
 		Package[] box = new Package[1];
 		Package pkg = Package.of(HashMap.empty(),
-				LinkedHashMap.of(FiniteDomainConstraints.class, FiniteDomainConstraints.empty()));
-		FiniteDomainConstraints.empty()
-				.prepend(constraint)
-				.processPrefix(prefix, pkg)
+				LinkedHashMap.of(FiniteDomainConstraints.class,
+						FiniteDomainConstraints.empty().prepend(constraint)));
+		com.tgac.logic.ckanren.StoreSupport.processPrefix(prefix)
 				.apply(pkg)
 				.run(v -> {
 					box[0] = v;
