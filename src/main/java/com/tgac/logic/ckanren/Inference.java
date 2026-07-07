@@ -22,9 +22,15 @@ public abstract class Inference {
 	private Inference() {
 	}
 
-	/** Inferred bindings — the full new substitution map, per the chokepoint convention. */
-	public static Inference bind(HashMap<LVar<?>, Term<?>> newSubstitutions) {
-		return new Bind(newSubstitutions);
+	/**
+	 * Inferred bindings — a DELTA of newly inferred pairs, revalidated against the
+	 * live package at application: a still-unbound variable is bound, one already
+	 * bound to the same value is dropped, and one bound to a different value is a
+	 * contradiction between constraint domains — the branch fails (never the silent
+	 * keep-first of the raw substitution merge).
+	 */
+	public static Inference bind(HashMap<LVar<?>, Term<?>> delta) {
+		return new Bind(delta);
 	}
 
 	/**
@@ -44,20 +50,53 @@ public abstract class Inference {
 	public abstract Goal toGoal();
 
 	private static final class Bind extends Inference {
-		private final HashMap<LVar<?>, Term<?>> newSubstitutions;
+		private final HashMap<LVar<?>, Term<?>> delta;
 
-		private Bind(HashMap<LVar<?>, Term<?>> newSubstitutions) {
-			this.newSubstitutions = newSubstitutions;
+		private Bind(HashMap<LVar<?>, Term<?>> delta) {
+			this.delta = delta;
 		}
 
 		@Override
+		@SuppressWarnings("unchecked")
 		public Goal toGoal() {
-			return s -> StoreSupport.processPrefix(newSubstitutions).apply(s);
+			return s -> {
+				HashMap<LVar<?>, Term<?>> kept = HashMap.empty();
+				for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : delta) {
+					Term<?> walked = com.tgac.logic.unification.MiniKanren.walk(s, binding._1);
+					if (walked.asVar().isDefined()) {
+						// still open — bind the live representative
+						kept = kept.put((LVar<?>) walked.asVar().get(), binding._2);
+					} else if (!walked.equals(binding._2)) {
+						// two domains inferred different values: the branch is inconsistent
+						return com.tgac.functional.monad.Cont.complete(
+								com.tgac.functional.category.Nothing.nothing());
+					}
+					// bound to the same value: already known, drop
+				}
+				if (kept.isEmpty()) {
+					return com.tgac.functional.monad.Cont.just(s);
+				}
+				HashMap<LVar<?>, Term<?>> full = s.getSubstitutions();
+				for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : kept) {
+					full = full.put(binding._1, binding._2);
+				}
+				return StoreSupport.processPrefix(full).apply(s);
+			};
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof Bind && delta.equals(((Bind) o).delta);
+		}
+
+		@Override
+		public int hashCode() {
+			return delta.hashCode();
 		}
 
 		@Override
 		public String toString() {
-			return "bind" + newSubstitutions;
+			return "bind" + delta;
 		}
 	}
 
@@ -78,6 +117,18 @@ public abstract class Inference {
 			// violation the chokepoint's full-map contract forbids
 			return s -> narrowing.applyTo(com.tgac.logic.unification.MiniKanren.walk(s, target))
 					.apply(s);
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof Narrow
+					&& target.equals(((Narrow) o).target)
+					&& narrowing.equals(((Narrow) o).narrowing);
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * target.hashCode() + narrowing.hashCode();
 		}
 
 		@Override

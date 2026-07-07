@@ -142,6 +142,7 @@ public class StoreSupport {
 				reacted = after;
 			}
 			Goal applyInferred = inferred.stream()
+					.distinct()
 					.map(Inference::toGoal)
 					.reduce(Goal.success(), Goal::and);
 			// wake EVERY store's suspended constraints watching a newly bound variable;

@@ -1,0 +1,148 @@
+package com.tgac.logic.ckanren;
+
+import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.tabling.Table;
+import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Store;
+import com.tgac.logic.unification.Stored;
+import com.tgac.logic.unification.Term;
+import io.vavr.collection.HashMap;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
+import org.junit.Test;
+
+/**
+ * Pins the driver's inference-routing guarantees
+ * (docs/design/capability-constraint-api.md §8): contradictory inferred bindings
+ * fail the branch instead of silently keeping the first, agreeing bindings apply
+ * once, and duplicate narrowings are deduplicated before application.
+ */
+public class CapabilityDriverTest {
+
+	/** A test-only constraint domain that emits configured inferences on every prefix. */
+	private static abstract class EmittingStore implements ConstraintStore {
+		final BiFunction<HashMap<LVar<?>, Term<?>>, Package, Reaction> reaction;
+
+		EmittingStore(BiFunction<HashMap<LVar<?>, Term<?>>, Package, Reaction> reaction) {
+			this.reaction = reaction;
+		}
+
+		@Override
+		public Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state) {
+			return reaction.apply(prefix, state);
+		}
+
+		@Override
+		public <T> Goal enforceConstraints(Term<T> x) {
+			return Goal.success();
+		}
+
+		@Override
+		public <A> Term<A> reify(Term<A> unifiable, Package renameSubstitutions, Package p) {
+			return unifiable;
+		}
+
+		@Override
+		public boolean isEmpty() {
+			return true;
+		}
+
+		@Override
+		public Store remove(Stored c) {
+			return this;
+		}
+
+		@Override
+		public Store prepend(Stored c) {
+			return this;
+		}
+
+		@Override
+		public boolean contains(Stored c) {
+			return false;
+		}
+	}
+
+	// two distinct classes: the store map is keyed by class
+	private static final class StoreA extends EmittingStore {
+		StoreA(BiFunction<HashMap<LVar<?>, Term<?>>, Package, Reaction> r) {
+			super(r);
+		}
+	}
+
+	private static final class StoreB extends EmittingStore {
+		StoreB(BiFunction<HashMap<LVar<?>, Term<?>>, Package, Reaction> r) {
+			super(r);
+		}
+	}
+
+	private static Package root(Store... stores) {
+		Package p = Package.empty().withStore(Table.empty());
+		for (Store s : stores) {
+			p = p.putStore(s);
+		}
+		return p;
+	}
+
+	private static long solutions(Package root) {
+		com.tgac.logic.unification.Unifiable<Long> x = lvar();
+		return x.unifies(0L)
+				.solveFrom(root, x, BreadthFirstScheduler::new)
+				.count();
+	}
+
+	@Test(timeout = 5000)
+	public void contradictoryInferredBindingsFailTheBranch() {
+		LVar<Long> q = com.tgac.logic.unification.LVar.<Long> lvar().asVar().get();
+
+		Package root = root(
+				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
+						Arrays.asList(Inference.bind(HashMap.of(q, lval(1L)))))),
+				new StoreB((prefix, state) -> Reaction.updated(new StoreB((pf, st) -> Reaction.unchanged()),
+						Arrays.asList(Inference.bind(HashMap.of(q, lval(2L)))))));
+
+		// two stores infer q=1 and q=2 in one pass: the branch is inconsistent and
+		// must DIE — the silent keep-first would instead emit a wrong answer
+		assertThat(solutions(root)).isEqualTo(0);
+	}
+
+	@Test(timeout = 5000)
+	public void agreeingInferredBindingsApplyOnce() {
+		LVar<Long> q = com.tgac.logic.unification.LVar.<Long> lvar().asVar().get();
+
+		Package root = root(
+				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
+						Arrays.asList(Inference.bind(HashMap.of(q, lval(1L)))))),
+				new StoreB((prefix, state) -> Reaction.updated(new StoreB((pf, st) -> Reaction.unchanged()),
+						Arrays.asList(Inference.bind(HashMap.of(q, lval(1L)))))));
+
+		assertThat(solutions(root)).isEqualTo(1);
+	}
+
+	@Test(timeout = 5000)
+	public void identicalNarrowingsApplyOnce() {
+		AtomicInteger applications = new AtomicInteger();
+		Narrowing counting = target -> {
+			applications.incrementAndGet();
+			return Goal.success();
+		};
+		Term<Long> t = lvar();
+		Inference narrow = Inference.narrow(t, counting);
+
+		Package root = root(
+				new StoreA((prefix, state) -> Reaction.updated(new StoreA((pf, st) -> Reaction.unchanged()),
+						Arrays.asList(narrow, narrow))));
+
+		assertThat(solutions(root)).isEqualTo(1);
+		assertThat(applications.get())
+				.as("duplicate narrowings must be deduplicated before application")
+				.isEqualTo(1);
+	}
+}
