@@ -94,13 +94,13 @@ public class Union<T> extends Domain<T> {
 		return intervals.last().max();
 	}
 	@Override
-	public Domain<T> dropBefore(Arithmetic<T> value) {
-		return onEachInterval(i -> i.dropBefore(value));
+	public Domain<T> atLeast(Arithmetic<T> value) {
+		return onEachInterval(i -> i.atLeast(value));
 	}
 
 	@Override
-	public Domain<T> copyBefore(Arithmetic<T> value) {
-		return onEachInterval(i -> i.copyBefore(value));
+	public Domain<T> atMost(Arithmetic<T> value) {
+		return onEachInterval(i -> i.atMost(value));
 	}
 	@Override
 	public Domain<T> intersect(Domain<T> other) {
@@ -123,11 +123,15 @@ public class Union<T> extends Domain<T> {
 		return v.visit(this);
 	}
 
-	private Union<T> onEachInterval(UnaryOperator<Domain<T>> op) {
-		return new Union<>(
-				intervals.toJavaStream()
-						.map(op)
-						.collect(Array.collector()));
+	private Domain<T> onEachInterval(UnaryOperator<Domain<T>> op) {
+		// members can narrow to nothing; an empty member would poison min()/max()
+		Array<Domain<T>> result = intervals.toJavaStream()
+				.map(op)
+				.filter(d -> !d.isEmpty())
+				.collect(Array.collector());
+		return result.isEmpty() ? Empty.instance() :
+				result.size() == 1 ? result.get(0) :
+						new Union<>(result);
 	}
 
 	@Override

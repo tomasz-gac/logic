@@ -31,6 +31,28 @@ import org.junit.Test;
 public class OrderConstraintsTest {
 
 	@Test
+	public void leqIsCompleteAtTheBoundary() {
+		Unifiable<Long> i = lvar();
+		Unifiable<Long> j = lvar();
+
+		// completeness, not just soundness: the boundary pair (2,2) must be found
+		java.util.List<Tuple2<Long, Long>> result =
+				Utils.collect(Goal.success()
+						.and(dom(i, EnumeratedDomain.range(1L, 3L)))
+						.and(dom(j, EnumeratedDomain.range(1L, 3L)))
+						.and(FiniteDomain.leq(i, j))
+						.solve(lval(Tuple.of(i, j)))
+						.map(Term::get)
+						.map(t -> t.map1(Term::get).map2(Term::get)));
+
+		Assertions.assertThat(result)
+				.containsExactlyInAnyOrder(
+						Tuple.of(1L, 1L),
+						Tuple.of(1L, 2L),
+						Tuple.of(2L, 2L));
+	}
+
+	@Test
 	public void shouldConstrainAsLeq() {
 		Unifiable<Long> i = lvar();
 		Unifiable<Long> j = lvar();

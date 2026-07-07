@@ -66,21 +66,21 @@ public class Interval<T> extends Domain<T> {
 		return max;
 	}
 	@Override
-	public Domain<T> dropBefore(Arithmetic<T> e) {
-		return e.equals(max) ?
-				Singleton.of(e) :
-				e.compareTo(max) < 0 ?
-						Interval.of(maxValue(e, min), max) :
-						Empty.instance();
-
+	public Domain<T> atLeast(Arithmetic<T> e) {
+		if (e.compareTo(max) > 0) {
+			return Empty.instance();
+		}
+		Arithmetic<T> newMin = maxValue(e, min);
+		return newMin.compareTo(max) == 0 ? Singleton.of(max) : Interval.of(newMin, max);
 	}
+
 	@Override
-	public Domain<T> copyBefore(Arithmetic<T> e) {
-		return e.equals(min) ?
-				Empty.instance() :
-				e.compareTo(min) > 0 ?
-						Interval.of(min, minValue(e.prev(), max)) :
-						Empty.instance();
+	public Domain<T> atMost(Arithmetic<T> e) {
+		if (e.compareTo(min) < 0) {
+			return Empty.instance();
+		}
+		Arithmetic<T> newMax = minValue(e, max);
+		return newMax.compareTo(min) == 0 ? Singleton.of(min) : Interval.of(min, newMax);
 	}
 
 	@Override

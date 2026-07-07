@@ -113,9 +113,9 @@ public class FiniteDomain {
 				Array.of(less, more), (vds, p) ->
 						Tuple.of(vds.get(0), vds.get(1))
 								.apply((lss, mor) ->
-										lss.<T> getDomain().copyBefore(mor.<T> getDomain().max())
+										lss.<T> getDomain().atMost(mor.<T> getDomain().max())
 												.processDom(lss.unifiable)
-												.and(mor.<T> getDomain().dropBefore(lss.<T> getDomain().min())
+												.and(mor.<T> getDomain().atLeast(lss.<T> getDomain().min())
 														.processDom(mor.unifiable)))
 								.apply(p));
 	}

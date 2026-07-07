@@ -35,9 +35,15 @@ public abstract class Domain<T> {
 
 	public abstract Arithmetic<T> max();
 
-	public abstract Domain<T> dropBefore(Arithmetic<T> value);
+	/**
+	 * The values of this domain that are ≥ {@code value} (inclusive lower bound).
+	 */
+	public abstract Domain<T> atLeast(Arithmetic<T> value);
 
-	public abstract Domain<T> copyBefore(Arithmetic<T> value);
+	/**
+	 * The values of this domain that are ≤ {@code value} (inclusive upper bound).
+	 */
+	public abstract Domain<T> atMost(Arithmetic<T> value);
 
 	public abstract Domain<T> intersect(Domain<T> other);
 

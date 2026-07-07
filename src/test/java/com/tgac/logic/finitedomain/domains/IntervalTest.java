@@ -130,56 +130,56 @@ public class IntervalTest {
 	}
 
 	@Test
-	public void shouldDropBefore() {
-		Assertions.assertThat(Interval.of(0, 3).dropBefore(Arithmetic.of(2)))
+	public void shouldAtLeast() {
+		Assertions.assertThat(Interval.of(0, 3).atLeast(Arithmetic.of(2)))
 				.isEqualTo(Interval.of(2, 3));
 	}
 
 	@Test
-	public void shouldDropBefore1() {
-		Assertions.assertThat(Interval.of(0, 3).dropBefore(Arithmetic.of(0)))
+	public void shouldAtLeast1() {
+		Assertions.assertThat(Interval.of(0, 3).atLeast(Arithmetic.of(0)))
 				.isEqualTo(Interval.of(0, 3));
 	}
 
 	@Test
-	public void shouldDropBefore3() {
-		Assertions.assertThat(Interval.of(0, 3).dropBefore(Arithmetic.of(3)))
+	public void shouldAtLeast3() {
+		Assertions.assertThat(Interval.of(0, 3).atLeast(Arithmetic.of(3)))
 				.isEqualTo(Singleton.of(3));
 	}
 
 	@Test
-	public void shouldDropBefore4() {
-		Assertions.assertThat(Interval.of(0, 3).dropBefore(Arithmetic.of(5)))
+	public void shouldAtLeast4() {
+		Assertions.assertThat(Interval.of(0, 3).atLeast(Arithmetic.of(5)))
 				.isEqualTo(Empty.instance());
 	}
 
 	@Test
-	public void shouldDropBefore5() {
-		Assertions.assertThat(Interval.of(0, 3).dropBefore(Arithmetic.of(-2)))
+	public void shouldAtLeast5() {
+		Assertions.assertThat(Interval.of(0, 3).atLeast(Arithmetic.of(-2)))
 				.isEqualTo(Interval.of(0, 3));
 	}
 
 	@Test
-	public void shouldCopyBefore() {
-		Assertions.assertThat(Interval.of(0, 3).copyBefore(Arithmetic.of(2)))
-				.isEqualTo(Interval.of(0, 1));
-	}
-
-	@Test
-	public void shouldCopyBefore2() {
-		Assertions.assertThat(Interval.of(0, 3).copyBefore(Arithmetic.of(0)))
-				.isEqualTo(Empty.instance());
-	}
-
-	@Test
-	public void shouldCopyBefore3() {
-		Assertions.assertThat(Interval.of(0, 3).copyBefore(Arithmetic.of(3)))
+	public void shouldAtMost() {
+		Assertions.assertThat(Interval.of(0, 3).atMost(Arithmetic.of(2)))
 				.isEqualTo(Interval.of(0, 2));
 	}
 
 	@Test
-	public void shouldCopyBefore4() {
-		Assertions.assertThat(Interval.of(0, 3).copyBefore(Arithmetic.of(5)))
+	public void shouldAtMost2() {
+		Assertions.assertThat(Interval.of(0, 3).atMost(Arithmetic.of(0)))
+				.isEqualTo(Singleton.of(0));
+	}
+
+	@Test
+	public void shouldAtMost3() {
+		Assertions.assertThat(Interval.of(0, 3).atMost(Arithmetic.of(3)))
+				.isEqualTo(Interval.of(0, 3));
+	}
+
+	@Test
+	public void shouldAtMost4() {
+		Assertions.assertThat(Interval.of(0, 3).atMost(Arithmetic.of(5)))
 				.isEqualTo(Interval.of(0, 3));
 	}
 

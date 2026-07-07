@@ -49,34 +49,30 @@ public class EnumeratedDomain<T> extends Domain<T> {
 	}
 
 	@Override
-	public Domain<T> dropBefore(Arithmetic<T> e) {
+	public Domain<T> atLeast(Arithmetic<T> e) {
 		if (e.compareTo(max()) > 0) {
 			return Empty.instance();
 		}
 		int index = Collections.binarySearch(elements.toJavaList(), e, Arithmetic::compareTo);
-		if (index >= 0) {
-			Array<Arithmetic<T>> result = elements.subSequence(index, elements.size());
-			return result.isEmpty() ? Empty.instance() :
-					result.size() == 1 ? Singleton.of(result.get(0)) :
-							EnumeratedDomain.of(result);
-		}
-		return this;
+		int from = index >= 0 ? index : -(index + 1);
+		return normalized(elements.subSequence(from, elements.size()));
 	}
 
 	@Override
-	public Domain<T> copyBefore(Arithmetic<T> e) {
-		if (e.compareTo(min()) <= 0) {
+	public Domain<T> atMost(Arithmetic<T> e) {
+		if (e.compareTo(min()) < 0) {
 			return Empty.instance();
 		}
 		int index = Collections.binarySearch(elements.toJavaList(), e, Arithmetic::compareTo);
-		if (index >= 0) {
-			Array<Arithmetic<T>> result = elements.subSequence(0, index);
-			return result.isEmpty() ? Empty.instance() :
-					result.size() == 1 ?
-							Singleton.of(result.get(0)) :
-							EnumeratedDomain.of(result);
-		}
-		return this;
+		int to = index >= 0 ? index + 1 : -(index + 1);
+		return normalized(elements.subSequence(0, to));
+	}
+
+	private static <T> Domain<T> normalized(Array<Arithmetic<T>> result) {
+		return result.isEmpty() ? Empty.instance() :
+				result.size() == 1 ?
+						Singleton.of(result.get(0)) :
+						EnumeratedDomain.of(result);
 	}
 	@Override
 	public Arithmetic<T> min() {

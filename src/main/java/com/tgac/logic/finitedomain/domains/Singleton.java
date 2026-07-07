@@ -32,12 +32,12 @@ public class Singleton<T> extends Domain<T> {
 	}
 
 	@Override
-	public Domain<T> dropBefore(Arithmetic<T> e) {
+	public Domain<T> atLeast(Arithmetic<T> e) {
 		return e.compareTo(value) > 0 ? Empty.instance() : this;
 	}
 
 	@Override
-	public Domain<T> copyBefore(Arithmetic<T> e) {
+	public Domain<T> atMost(Arithmetic<T> e) {
 		return e.compareTo(value) >= 0 ? this : Empty.instance();
 	}
 

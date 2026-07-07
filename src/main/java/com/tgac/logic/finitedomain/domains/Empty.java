@@ -16,11 +16,11 @@ public class Empty<T> extends Domain<T> {
 	}
 
 	@Override
-	public Domain<T> dropBefore(Arithmetic<T> p) {
+	public Domain<T> atLeast(Arithmetic<T> p) {
 		return this;
 	}
 	@Override
-	public Domain<T> copyBefore(Arithmetic<T> p) {
+	public Domain<T> atMost(Arithmetic<T> p) {
 		return this;
 	}
 	@Override
