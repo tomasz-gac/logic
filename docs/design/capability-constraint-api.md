@@ -327,17 +327,28 @@ last (lock the door after the furniture is arranged):
   quiescence point (the outermost-marker trick for runs disappears), and an
   inspectable agenda for propagation tracing.
 
-  **The producer map** — during a drain, appends come from exactly four paths, all
-  inside applyOneItem: (1) VERDICTS — a Wake runs parked propagators; narrowed
-  appends Narrow/Bind items, run appends Run items; (2) REACTIONS — a Bind runs
-  every store's onPrefix, whose inferences are appends; (3) DOMAIN OUTCOMES — a
-  Narrow strictly shrinking appends Wake(x), collapsing appends Bind{x→v} (a
-  binding minted by propagation, no unification involved); (4) UNIFICATION, but
-  ONLY inside spliced Run goals — unify's trigger code sees the agenda present and
-  appends a Bind instead of starting a second drain. Corollary: pure propagation
-  never invokes unification — the driver applies Bind items primitively
-  (revalidated delta, direct extension); do NOT route Bind application through
-  unify "for consistency", that would put a trigger inside the loop.
+  **The producer map** — during a drain, appends come from exactly three paths,
+  all inside applyOneItem: (1) VERDICTS — a Wake runs parked propagators; narrowed
+  appends Narrow/Bind items, run collects a Run; (2) REACTIONS — a Bind runs every
+  store's onPrefix, whose inferences are appends; (3) DOMAIN OUTCOMES — a Narrow
+  strictly shrinking appends Wake(x), collapsing appends Bind{x→v} (a binding
+  minted by propagation, no unification involved). Unification is NEVER a producer
+  — it is always a trigger. The driver applies Bind items primitively (revalidated
+  delta, direct extension); do NOT route them through unify — that would put a
+  trigger inside the loop.
+
+  **Two-phase drain (Tom's catch: constraints inside projections).** Phase 1
+  propagates Bind/Narrow/Wake to quiescence with the agenda present; Run goals are
+  only collected. Phase 2 REMOVES the agenda and chains the collected runs as
+  plain goals (exactly today's PendingRuns drain). A spliced run therefore
+  executes with NO agenda: every trigger it hits — unification or constraint
+  statement — starts a fresh synchronous drain that quiesces before the run's
+  next conjunct. Do NOT let runs execute with the agenda present: their
+  constraint statements would QUEUE instead of propagating synchronously, and a
+  committed-choice construct inside the projected goal could commit on
+  un-propagated state — the Phase-1 unsoundness family, one level up. Runs
+  spawning constraints spawning runs is ordinary search (may diverge; fairness
+  applies); propagation between runs always quiesces (DCC).
 
   **HARD REQUIREMENT (Tom): the drain must NOT be a native Java loop.** Each
   iteration must pass through a deferred step (`Goal.defer`), so one propagation
