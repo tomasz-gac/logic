@@ -42,12 +42,13 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
-		return s -> MiniKanren.prefixS(oldPackage.getSubstitutions(), newSubstitutions)
-				.toJavaStream()
-				.map(sub -> sub.apply((x, v) ->
-						CKanren.runConstraints(x, projections)))
-				.reduce(Goal.success(), Goal::and)
-				.apply(s);
+		// projections are woken by the chokepoint's cross-store wake
+		return s -> Cont.just(s);
+	}
+
+	@Override
+	public Iterable<Constraint> pendingConstraints() {
+		return projections;
 	}
 
 	@Override

@@ -48,6 +48,17 @@ public interface ConstraintStore extends Store {
 	Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage);
 
 	/**
+	 * The suspended {@link Constraint} goals this store holds, exposed for the
+	 * chokepoint's cross-store wake: when a variable is bound or narrowed, every
+	 * store's constraints watching it are re-run, not only the store that caused
+	 * the change. Stores using wholesale verification (disequality) have none —
+	 * they participate through {@link #processPrefix} instead.
+	 */
+	default Iterable<Constraint> pendingConstraints() {
+		return java.util.Collections.emptyList();
+	}
+
+	/**
 	 * <pre>
 	 *    This function is run as part of the reifier.
 	 *    It is responsible for building a Scheme data structure

@@ -99,14 +99,32 @@ public class StoreSupport {
 		return p -> {
 			// the chokepoint applies the extension exactly once; stores only react
 			Package extended = p.extendS(newSubstitutions);
-			return p.getConstraints().values().toJavaStream()
+			Goal reactions = p.getConstraints().values().toJavaStream()
 					.filter(ConstraintStore.class::isInstance)
 					.map(ConstraintStore.class::cast)
 					.map(cs -> cs.processPrefix(newSubstitutions, p))
 					.reduce(Goal::and)
-					.orElseGet(Goal::success)
-					.apply(extended);
+					.orElseGet(Goal::success);
+			// wake EVERY store's suspended constraints watching a newly bound variable;
+			// read the stores from the live package, since earlier wakes re-park constraints
+			Goal wake = MiniKanren.prefixS(p.getSubstitutions(), newSubstitutions)
+					.keySet().toJavaStream()
+					.<Goal> map(x -> s -> CKanren.runConstraints(x, pendingConstraints(s)).apply(s))
+					.reduce(Goal.success(), Goal::and);
+			return reactions.and(wake).apply(extended);
 		};
+	}
+
+	/**
+	 * The union of every store's suspended constraints — the cross-store wake list.
+	 */
+	public static Iterable<Constraint> pendingConstraints(Package p) {
+		return p.getConstraints().values().toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
+				.map(ConstraintStore.class::cast)
+				.flatMap(cs -> java.util.stream.StreamSupport.stream(
+						cs.pendingConstraints().spliterator(), false))
+				.collect(java.util.stream.Collectors.toList());
 	}
 
 	public static <T> Goal enforceConstraints(Package p, Term<T> x) {

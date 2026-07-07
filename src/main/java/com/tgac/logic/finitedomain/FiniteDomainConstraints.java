@@ -1,6 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.ckanren.CKanren.runConstraints;
 import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 
 import com.tgac.functional.reflection.Types;
@@ -81,16 +80,22 @@ class FiniteDomainConstraints implements ConstraintStore {
 	@Override
 	@SuppressWarnings("unchecked")
 	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
+		// the chokepoint wakes suspended constraints across all stores; this store's
+		// reaction is only the domain-membership check of each newly bound value
 		return s -> MiniKanren.prefixS(oldPackage.getSubstitutions(), newSubstitutions)
 				.toJavaStream()
 				.<Goal> map(ht -> ht
 						.apply((x, v) -> FiniteDomainConstraints.getDom(s, x)
 								.map(Domain.class::cast)
 								.map(dom -> dom.processDom(v))
-								.getOrElse(Goal.success())
-								.and(runConstraints(x, constraints))))
+								.getOrElse(Goal.success())))
 				.reduce(Goal.success(), Goal::and)
 				.apply(s);
+	}
+
+	@Override
+	public Iterable<Constraint> pendingConstraints() {
+		return constraints;
 	}
 
 	@Override
