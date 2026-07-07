@@ -5,8 +5,8 @@ import static com.tgac.logic.ckanren.Propagation.resolve;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVal;
@@ -17,14 +17,9 @@ import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.Array;
-import io.vavr.control.Option;
 import io.vavr.control.Try;
-import java.util.Collection;
-import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.var;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CKanren {
@@ -51,7 +46,6 @@ public class CKanren {
 		return unifyNc(u, LVal.lval(v));
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> Cont<Reified<T>, Nothing> reify(Package s, Term<T> x) {
 		// after renaming every node is an LVal, a ReifiedVar, or a Constrained wrapper
 		return enforce(s, x).apply(s)

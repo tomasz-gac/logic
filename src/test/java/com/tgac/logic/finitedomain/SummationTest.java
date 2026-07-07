@@ -7,17 +7,15 @@ import static com.tgac.logic.finitedomain.FiniteDomain.lss;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
-import com.tgac.logic.goals.Goal;
 import com.tgac.logic.Utils;
 import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LList;
-import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
 import java.math.BigInteger;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -43,7 +41,6 @@ public class SummationTest {
 						.and(dom(j, Interval.of(0L, 100L)))
 						.and(dom(k, Interval.of(0L, 100L)));
 
-
 		List<Tuple3<Long, Long, Long>> result =
 				Utils.collect(goal.solve(lval(Tuple.of(i, j, k)))
 						.map(Term::get)
@@ -51,7 +48,6 @@ public class SummationTest {
 								.map1(Term::get)
 								.map2(Term::get)
 								.map3(Term::get)));
-
 
 		Assertions.assertThat(result.stream().allMatch(t -> t._1 + t._2 == t._3))
 				.isTrue();
@@ -122,7 +118,6 @@ public class SummationTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
-
 		int S = result.get(0).get(0);
 		int E = result.get(0).get(1);
 		int N = result.get(0).get(2);
@@ -164,10 +159,10 @@ public class SummationTest {
 		Unifiable<Integer> c = lvar();
 		// b has no domain, so addo cannot enumerate a solution
 		Assertions.assertThat(Utils.collect(addo(a, b, c)
-				.and(dom(a, Interval.of(0, 100)))
-				.and(dom(c, Interval.of(0, 100)))
-				.solve(lval(Tuple.of(a, b, c)))
-				.map(Term::get)))
+						.and(dom(a, Interval.of(0, 100)))
+						.and(dom(c, Interval.of(0, 100)))
+						.solve(lval(Tuple.of(a, b, c)))
+						.map(Term::get)))
 				.isEmpty();
 	}
 }

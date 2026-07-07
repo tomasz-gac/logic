@@ -1,13 +1,13 @@
 package com.tgac.logic.finitedomain.domains;
+
 import com.tgac.logic.finitedomain.Domain;
 import io.vavr.control.Option;
+import java.math.BigInteger;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
-
-import java.math.BigInteger;
-import java.util.stream.Stream;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
@@ -65,6 +65,7 @@ public class Singleton<T> extends Domain<T> {
 	public boolean contains(T v) {
 		return value.getValue().equals(v);
 	}
+
 	@Override
 	public Domain<T> intersect(Domain<T> other) {
 		return Option.of(value.getValue())

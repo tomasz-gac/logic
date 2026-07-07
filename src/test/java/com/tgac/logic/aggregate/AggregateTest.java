@@ -1,18 +1,17 @@
 package com.tgac.logic.aggregate;
 
+import static com.tgac.logic.finitedomain.FiniteDomain.dom;
+import static com.tgac.logic.separate.Disequality.separate;
+import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
 import java.util.stream.Collectors;
-import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.separate.Disequality.separate;
-import static com.tgac.logic.unification.LVal.lval;
-
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import org.junit.Test;
 
 public class AggregateTest {

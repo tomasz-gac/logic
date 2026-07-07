@@ -1,20 +1,19 @@
 package com.tgac.logic.separate;
 
-import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.LogicTest.runStream;
+import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.separate.Disequality.rembero;
 import static com.tgac.logic.separate.Disequality.separate;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Logic;
 import com.tgac.logic.LogicTest;
 import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Logic;
 import com.tgac.logic.unification.LList;
-import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -319,18 +318,18 @@ public class SeparateTest {
 				.containsExactly(2, 3);
 	}
 
-		@Test
-		public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
-			Unifiable<Integer> x = lvar();
-			List<Integer> results = Goal.conda(
-							x.separate(x),
-							x.unifies(1).or(x.unifies(2)),
-							x.unifies(3))
-					.solve(x)
-					.map(Term::get)
-					.collect(Collectors.toList());
+	@Test
+	public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
+		Unifiable<Integer> x = lvar();
+		List<Integer> results = Goal.conda(
+						x.separate(x),
+						x.unifies(1).or(x.unifies(2)),
+						x.unifies(3))
+				.solve(x)
+				.map(Term::get)
+				.collect(Collectors.toList());
 
-			Assertions.assertThat(results)
-					.containsExactly(1);
-		}
+		Assertions.assertThat(results)
+				.containsExactly(1);
+	}
 }

@@ -1,9 +1,9 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.functional.reflection.Types;
+import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
-import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
@@ -11,15 +11,13 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unifiable;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
-import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;

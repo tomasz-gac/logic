@@ -1,9 +1,9 @@
 package com.tgac.logic.finitedomain.domains;
+
 import com.tgac.logic.finitedomain.Domain;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-
-import java.util.stream.Stream;
 
 @SuppressWarnings("rawtypes")
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -19,10 +19,12 @@ public class Empty<T> extends Domain<T> {
 	public Domain<T> atLeast(Arithmetic<T> p) {
 		return this;
 	}
+
 	@Override
 	public Domain<T> atMost(Arithmetic<T> p) {
 		return this;
 	}
+
 	@Override
 	public Stream<T> stream() {
 		return Stream.empty();
@@ -32,10 +34,12 @@ public class Empty<T> extends Domain<T> {
 	public boolean isEmpty() {
 		return true;
 	}
+
 	@Override
 	public Arithmetic<T> min() {
 		throw new UnsupportedOperationException("Cannot call min on empty domain");
 	}
+
 	@Override
 	public Arithmetic<T> max() {
 		throw new UnsupportedOperationException("Cannot call max on empty domain");
@@ -50,6 +54,7 @@ public class Empty<T> extends Domain<T> {
 	public boolean contains(T v) {
 		return false;
 	}
+
 	@Override
 	public Domain<T> intersect(Domain<T> other) {
 		return this;
@@ -59,6 +64,7 @@ public class Empty<T> extends Domain<T> {
 	public boolean isDisjoint(Domain<T> other) {
 		return true;
 	}
+
 	@Override
 	public Domain<T> difference(Domain<T> other) {
 		return other;

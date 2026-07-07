@@ -1,6 +1,8 @@
 package com.tgac.logic.unification;
+
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
+
 public class TestAccess {
 	public static <T> LVar<T> lvarUnsafe() {
 		return new LVar<>();

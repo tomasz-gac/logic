@@ -1,13 +1,13 @@
 package com.tgac.logic.tabling;
 
+import static com.tgac.logic.unification.LVal.lval;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.ReifiedVar;
 import io.vavr.Tuple;
 import org.junit.Test;
-
-import static com.tgac.logic.unification.LVal.lval;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class TableTest {
 

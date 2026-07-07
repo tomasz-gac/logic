@@ -1,9 +1,9 @@
 package com.tgac.logic.unification;
 
-import com.tgac.logic.goals.Goal;
-import com.tgac.logic.ckanren.CKanren;
-
 import static com.tgac.logic.unification.LVal.lval;
+
+import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.goals.Goal;
 
 /**
  * A term that may enter a solver: goals are built by unifying these.

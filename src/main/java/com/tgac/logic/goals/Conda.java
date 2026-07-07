@@ -4,8 +4,8 @@ import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.unification.Package;
 import java.util.ArrayList;
 import java.util.List;

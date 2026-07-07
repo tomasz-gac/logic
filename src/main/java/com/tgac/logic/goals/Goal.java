@@ -4,12 +4,12 @@ import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.Scheduler;
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.schedulers.DepthFirstScheduler;
 import com.tgac.functional.fibers.schedulers.ForkJoinScheduler;
-import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.debug.DebugStore;
 import com.tgac.logic.debug.Trace;
@@ -43,6 +43,7 @@ import java.util.stream.StreamSupport;
  * combinators (e.g., {@link #and(Goal...)}, {@link #or(Goal...)}), and methods to execute
  * the goal and retrieve solutions (e.g., {@link #solve(Unifiable)}).
  * </pre>
+ *
  * @author TGa
  */
 public interface Goal extends Function<Package, Cont<Package, Nothing>> {
@@ -53,6 +54,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * This can be useful for type inference or when a Goal instance is needed
 	 * from a lambda or method reference that already produces one.
 	 * </pre>
+	 *
 	 * @param g The goal to return.
 	 * @return The same goal {@code g}.
 	 */
@@ -66,6 +68,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * <pre>
 	 * The resulting goal succeeds if and only if this goal and all specified {@code goals} succeed.
 	 * </pre>
+	 *
 	 * @param goals Additional goals to conjunctively combine with this goal.
 	 * @return A new {@link Goal} representing the conjunction.
 	 * @see Conjunction#and(Goal...)
@@ -81,6 +84,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * The resulting goal succeeds if this goal or any of the specified {@code goals} succeed.
 	 * This typically implements a fair disjunction (like {@code conde}).
 	 * </pre>
+	 *
 	 * @param goals Additional goals to disjunctively combine with this goal.
 	 * @return A new {@link Goal} representing the disjunction.
 	 * @see Conde#or(Goal...)
@@ -97,12 +101,13 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * This is often used for committed choice or if-then-else like constructs.
 	 * This uses {@link Condu} for its underlying mechanism, specifically its {@code orElse} method.
 	 * </pre>
+	 *
 	 * @param goals Alternative goals to try if the preceding ones fail.
 	 * @return A new {@link Goal} representing the ordered disjunction.
 	 * @see Condu#orElse(Goal...)
 	 * @see #condu(Goal...)
 	 */
-	default Goal orElse(Goal... goals){
+	default Goal orElse(Goal... goals) {
 		return new Condu().orElse(this).orElse(goals);
 	}
 
@@ -113,12 +118,13 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * It attempts goals in sequence, and the behavior regarding commitment to the first
 	 * successful path is determined by the {@code Conda} implementation's {@code orElseFirst} method.
 	 * </pre>
+	 *
 	 * @param goals Alternative goals to try, subject to the "orElseFirst" semantics of {@link Condu}.
 	 * @return A new {@link Goal} based on {@link Conda#orElseFirst(Goal...)}.
 	 * @see Conda#orElseFirst(Goal...)
 	 * @see #conda(Goal...)
 	 */
-	default Goal orElseFirst(Goal... goals){
+	default Goal orElseFirst(Goal... goals) {
 		return new Conda().orElseFirst(this).orElseFirst(goals);
 	}
 
@@ -129,6 +135,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * If no goals are provided, it results in a {@link #failure()} goal.
 	 * This is constructed by reducing the goals using {@link Goal#or(Goal...)}.
 	 * </pre>
+	 *
 	 * @param goals The goals to be combined disjunctively.
 	 * @return A new {@link Goal} representing the fair disjunction (conde).
 	 */
@@ -145,6 +152,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * that leads to a solution, based on the behavior of {@link Goal#orElse(Goal...)}.
 	 * If no goals are provided, it results in a {@link #failure()} goal.
 	 * </pre>
+	 *
 	 * @param goals The goals to be combined.
 	 * @return A new {@link Goal} representing the committed choice disjunction (condu).
 	 */
@@ -164,6 +172,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * {@code orElseFirst} logic.
 	 * If no goals are provided, it results in a {@link #failure()} goal.
 	 * </pre>
+	 *
 	 * @param goals The goals, often structured as condition-consequence clauses, to be combined.
 	 * @return A new {@link Goal} representing the conditional disjunction (conda).
 	 */
@@ -178,6 +187,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * <pre>
 	 * The resulting goal succeeds if and only if all specified {@code goals} succeed.
 	 * </pre>
+	 *
 	 * @param goals The goals to be combined conjunctively.
 	 * @return A new {@link Goal} representing the conjunction.
 	 */
@@ -190,6 +200,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * <pre>
 	 * Useful for debugging and tracing goal execution.
 	 * </pre>
+	 *
 	 * @param name The name to assign to this goal.
 	 * @return A {@link NamedGoal} wrapping this goal with the given name.
 	 */
@@ -214,8 +225,9 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * The default implementation performs no optimization and returns the goal itself
 	 * wrapped in a completed {@link Fiber} object.
 	 * </pre>
+	 *
 	 * @return A {@link Fiber} containing the (potentially optimized) goal.
-	 * By default, returns {@code Fiber.done(this)}.
+	 * 		By default, returns {@code Fiber.done(this)}.
 	 */
 	default Fiber<Goal> optimize() {
 		return done(this);
@@ -228,6 +240,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * preventing infinite recursion during goal construction.
 	 * The deferred goal is automatically named "recursive call".
 	 * </pre>
+	 *
 	 * @param g A {@link Supplier} that provides the goal to be executed.
 	 * @return A new {@link Goal} that defers the creation of the actual goal.
 	 */
@@ -255,6 +268,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * When applied, it returns a continuation that yields the input state unchanged.
 	 * It is named "success".
 	 * </pre>
+	 *
 	 * @return A {@link Goal} that always succeeds.
 	 */
 	static Goal success() {
@@ -268,6 +282,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * When applied, it returns a continuation that yields no results.
 	 * It is named "failure".
 	 * </pre>
+	 *
 	 * @return A {@link Goal} that always fails.
 	 */
 	static Goal failure() {
@@ -293,13 +308,14 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * consumer multiple times before returning false. Standard {@code Spliterator.tryAdvance}
 	 * typically processes at most one element per call.
 	 * </pre>
+	 *
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
 	 * @param factory A function that takes a {@link Fiber} computation (representing the goal's execution logic)
-	 * and produces an {@link Scheduler} to run it. This allows for different execution
-	 * strategies (e.g., BFS, DFS, parallel).
+	 * 		and produces an {@link Scheduler} to run it. This allows for different execution
+	 * 		strategies (e.g., BFS, DFS, parallel).
 	 * @return A {@link Stream} of {@link Unifiable}s, where each element is an instantiation
-	 * of the {@code out} variable representing a solution.
+	 * 		of the {@code out} variable representing a solution.
 	 */
 	default <T> Stream<Reified<T>> solve(
 			Unifiable<T> out,
@@ -399,6 +415,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * <pre>
 	 * This is a convenience method that uses a {@link ForkJoinScheduler} on the common pool.
 	 * </pre>
+	 *
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
 	 * @return A {@link Stream} of {@link Unifiable}s representing solutions, potentially computed in parallel.
@@ -415,6 +432,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * <pre>
 	 * This is a convenience method that uses a {@link BreadthFirstScheduler}.
 	 * </pre>
+	 *
 	 * @param <T> The type of the value held by the output unifiable variable.
 	 * @param out The {@link Unifiable} variable whose instantiated values are desired.
 	 * @return A {@link Stream} of {@link Unifiable}s representing solutions, computed using BFS.

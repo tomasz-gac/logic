@@ -1,8 +1,10 @@
 package com.tgac.logic.finitedomain.domains;
+
 import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Array;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
+
 public class IntervalTest {
 	@Test
 	public void shouldSplitIntervalWithSingleton() {
@@ -16,6 +18,7 @@ public class IntervalTest {
 						Interval.of(0, 4),
 						Interval.of(6, 10)));
 	}
+
 	@Test
 	public void shouldSplitIntervalWithSingletonDisjoint() {
 		Interval<Integer> domain1 = Interval.of(0, 10);
@@ -276,9 +279,9 @@ public class IntervalTest {
 	}
 
 	@Test
-	public void shouldDiffWithSingleton(){
+	public void shouldDiffWithSingleton() {
 		Assertions.assertThat(
-				Interval.of(9, 19).difference(Singleton.of(9)))
+						Interval.of(9, 19).difference(Singleton.of(9)))
 				.isEqualTo(Interval.of(10, 19));
 	}
 

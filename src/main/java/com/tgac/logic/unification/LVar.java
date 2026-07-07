@@ -1,11 +1,10 @@
 package com.tgac.logic.unification;
 
 import io.vavr.control.Option;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author TGa

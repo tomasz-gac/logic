@@ -1,20 +1,20 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.goals.Goal.defer;
-import static com.tgac.logic.goals.Matche.llist;
-import static com.tgac.logic.goals.Matche.matche;
 import static com.tgac.logic.Utils.collect;
 import static com.tgac.logic.finitedomain.FiniteDomain.addo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.separate;
+import static com.tgac.logic.goals.Goal.defer;
+import static com.tgac.logic.goals.Matche.llist;
+import static com.tgac.logic.goals.Matche.matche;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
-import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Logic;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Logic;
 import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Reified;
@@ -46,7 +46,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
 	}
@@ -60,7 +59,6 @@ public class FiniteDomainTest {
 						.and(dom(i, EnumeratedDomain.range(5L, 15L))))
 						.map(Term::get)
 						.collect(Collectors.toList());
-
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(5L, 6L, 7L, 8L, 9L);
@@ -77,7 +75,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
 	}
@@ -92,7 +89,6 @@ public class FiniteDomainTest {
 						.and(CKanren.unify(j, i)))
 						.map(Term::get)
 						.collect(Collectors.toList());
-
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
@@ -110,7 +106,6 @@ public class FiniteDomainTest {
 						.and(CKanren.unify(k, i)))
 						.map(Term::get)
 						.collect(Collectors.toList());
-
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
@@ -130,7 +125,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.collect(Collectors.toList());
 
-
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(5L, 6L, 7L, 8L, 9L);
 	}
@@ -147,7 +141,6 @@ public class FiniteDomainTest {
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get))
 						.collect(Collectors.toList());
-
 
 		Assertions.assertThat(results)
 				.containsExactlyInAnyOrder(
@@ -181,7 +174,6 @@ public class FiniteDomainTest {
 		Unifiable<Long> i = lvar();
 		Goal goal = dom(i, Interval.of(0L, 10L))
 				.and(FiniteDomain.separate(i, lval(5L)));
-
 
 		var result = collect(goal.solve(i)
 				.map(Term::get));
@@ -281,9 +273,9 @@ public class FiniteDomainTest {
 				.allMatch(t -> t._1 + t._2 == t._3)
 				.allMatch(t -> t._1 >= 0 && t._1 <= 5 && t._2 >= 0 && t._2 <= 5);
 		org.assertj.core.api.Assertions.assertThat(result.stream()
-				.map(t -> Tuple.of(t._1, t._2, t._3))
-				.distinct()
-				.count())
+						.map(t -> Tuple.of(t._1, t._2, t._3))
+						.distinct()
+						.count())
 				.isEqualTo(36L);
 	}
 }

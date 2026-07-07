@@ -5,8 +5,8 @@ import static io.vavr.Predicates.not;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.propagator.Narrowing;
 import com.tgac.logic.ckanren.Propagation;
+import com.tgac.logic.ckanren.propagator.Narrowing;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;
 import com.tgac.logic.finitedomain.domains.Singleton;
@@ -15,7 +15,6 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unifiable;
 import io.vavr.control.Option;
 import java.util.stream.Stream;
 import lombok.EqualsAndHashCode;

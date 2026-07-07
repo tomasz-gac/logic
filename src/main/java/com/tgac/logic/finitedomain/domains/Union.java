@@ -1,18 +1,18 @@
 package com.tgac.logic.finitedomain.domains;
+
+import static com.tgac.logic.finitedomain.domains.Interval.maxValue;
+import static io.vavr.Predicates.not;
+
 import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Array;
-import lombok.EqualsAndHashCode;
-import lombok.Value;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static com.tgac.logic.finitedomain.domains.Interval.maxValue;
-import static io.vavr.Predicates.not;
+import lombok.EqualsAndHashCode;
+import lombok.Value;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
@@ -76,23 +76,28 @@ public class Union<T> extends Domain<T> {
 		return intervals.toJavaStream()
 				.anyMatch(i -> i.contains(value));
 	}
+
 	@Override
 	public Stream<T> stream() {
 		return intervals.toJavaStream()
 				.flatMap(Domain::stream);
 	}
+
 	@Override
 	public boolean isEmpty() {
 		return intervals.isEmpty();
 	}
+
 	@Override
 	public Arithmetic<T> min() {
 		return intervals.head().min();
 	}
+
 	@Override
 	public Arithmetic<T> max() {
 		return intervals.last().max();
 	}
+
 	@Override
 	public Domain<T> atLeast(Arithmetic<T> value) {
 		return onEachInterval(i -> i.atLeast(value));
@@ -102,6 +107,7 @@ public class Union<T> extends Domain<T> {
 	public Domain<T> atMost(Arithmetic<T> value) {
 		return onEachInterval(i -> i.atMost(value));
 	}
+
 	@Override
 	public Domain<T> intersect(Domain<T> other) {
 		return onEachInterval(i -> i.intersect(other));

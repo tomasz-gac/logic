@@ -1,19 +1,19 @@
 package com.tgac.logic.unification;
 
 import static com.tgac.functional.Exceptions.throwingBiOp;
-import static com.tgac.functional.fibers.MFiber.mdone;
-import static com.tgac.functional.fibers.MFiber.mdefer;
-import static com.tgac.functional.fibers.MFiber.none;
-import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.functional.fibers.Fiber.defer;
+import static com.tgac.functional.fibers.Fiber.done;
+import static com.tgac.functional.fibers.MFiber.mdefer;
+import static com.tgac.functional.fibers.MFiber.mdone;
+import static com.tgac.functional.fibers.MFiber.none;
 import static com.tgac.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
 import com.tgac.functional.Streams;
-import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.reflection.Types;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
@@ -446,7 +446,7 @@ public class MiniKanren {
 	 */
 	public static <T> Fiber<Boolean> alphaEquiv(Term<T> x, Term<T> y, Package s) {
 		return reify(s, x).flatMap(xReified ->
-			reify(s, y).map(xReified::equals));
+				reify(s, y).map(xReified::equals));
 	}
 
 	public static <A, B> BiFunction<A, A, Tuple2<B, B>> applyOnBoth(Function<A, B> f) {

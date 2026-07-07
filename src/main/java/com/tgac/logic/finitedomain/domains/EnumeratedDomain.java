@@ -1,17 +1,17 @@
 package com.tgac.logic.finitedomain.domains;
+
 import com.tgac.functional.Exceptions;
 import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Array;
 import io.vavr.collection.Iterator;
 import io.vavr.control.Option;
+import java.math.BigInteger;
+import java.util.Collections;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
-
-import java.math.BigInteger;
-import java.util.Collections;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
@@ -75,6 +75,7 @@ public class EnumeratedDomain<T> extends Domain<T> {
 						Singleton.of(result.get(0)) :
 						EnumeratedDomain.of(result);
 	}
+
 	@Override
 	public Arithmetic<T> min() {
 		return Option.of(elements)
@@ -82,6 +83,7 @@ public class EnumeratedDomain<T> extends Domain<T> {
 				.map(e -> e.get(0))
 				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call min on empty domain"));
 	}
+
 	@Override
 	public Arithmetic<T> max() {
 		return Option.of(elements)
@@ -89,6 +91,7 @@ public class EnumeratedDomain<T> extends Domain<T> {
 				.map(e -> e.get(e.size() - 1))
 				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call min on empty domain"));
 	}
+
 	@Override
 	public boolean contains(T v) {
 		return elements.toJavaStream()

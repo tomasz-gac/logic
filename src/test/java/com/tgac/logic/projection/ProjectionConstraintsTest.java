@@ -2,7 +2,6 @@ package com.tgac.logic.projection;
 
 import static com.tgac.logic.unification.LVar.lvar;
 
-import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
@@ -13,7 +12,7 @@ import org.junit.Test;
 public class ProjectionConstraintsTest {
 
 	@Test
-	public void shouldJustProjectImmediately(){
+	public void shouldJustProjectImmediately() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
@@ -28,23 +27,23 @@ public class ProjectionConstraintsTest {
 	}
 
 	@Test
-	public void shouldProjectDeferred(){
+	public void shouldProjectDeferred() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
 		List<Integer> results =
 				ProjectionConstraints.project(x, v -> y.unifies(2 * v))
 						.and(x.unifies(3))
-				.solve(y)
-				.map(Term::get)
-				.collect(Collectors.toList());
+						.solve(y)
+						.map(Term::get)
+						.collect(Collectors.toList());
 
 		Assertions.assertThat(results)
 				.containsExactly(6);
 	}
 
 	@Test
-	public void shouldProjectDeferredWithOtherVariable(){
+	public void shouldProjectDeferredWithOtherVariable() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
@@ -53,9 +52,9 @@ public class ProjectionConstraintsTest {
 				ProjectionConstraints.project(y, v -> z.unifies(2 * v))
 						.and(x.unifies(y))
 						.and(y.unifies(3))
-				.solve(z)
-				.map(Term::get)
-				.collect(Collectors.toList());
+						.solve(z)
+						.map(Term::get)
+						.collect(Collectors.toList());
 
 		Assertions.assertThat(results)
 				.containsExactly(6);

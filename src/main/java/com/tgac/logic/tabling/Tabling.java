@@ -3,6 +3,10 @@ package com.tgac.logic.tabling;
 // ABOUTME: Tabled evaluation of logic goals: answers are cached per call and shared,
 // ABOUTME: which makes left-recursive and mutually recursive predicates terminate.
 
+import static com.tgac.functional.category.Nothing.nothing;
+import static com.tgac.functional.fibers.Fiber.done;
+import static com.tgac.logic.unification.LVal.lval;
+
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.store.ConstraintStore;
@@ -17,10 +21,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-
-import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.functional.fibers.Fiber.done;
-import static com.tgac.logic.unification.LVal.lval;
 
 /**
  * Provides tabling (memoization) for logic goals to prevent infinite loops
@@ -87,9 +87,9 @@ public class Tabling {
 		return pkg -> k -> {
 			assertNoConstraints(pkg, "at a tabled call");
 			return MiniKanren.reify(pkg, argsTerm).flatMap(reifiedArgs -> {
-			Call key = Call.of(relation, reifiedArgs);
-			Table table = pkg.getStore(Table.class);
-			TableEntry entry = table.getOrCreateEntry(key);
+				Call key = Call.of(relation, reifiedArgs);
+				Table table = pkg.getStore(Table.class);
+				TableEntry entry = table.getOrCreateEntry(key);
 				return entry.tryBecomeMaster() ?
 						produce(entry, body.get(), pkg, argsTerm, k) :
 						consume(entry, k, pkg, argsTerm, 0);

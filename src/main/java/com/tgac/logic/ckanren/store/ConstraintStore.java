@@ -1,13 +1,11 @@
 package com.tgac.logic.ckanren.store;
+
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unifiable;
-import io.vavr.collection.HashMap;
 import java.util.Collections;
 
 public interface ConstraintStore extends Store {
@@ -24,8 +22,7 @@ public interface ConstraintStore extends Store {
 	 * of the search — not during propagation. (cKanren's enforce-constraints,
 	 * Alvis et al.)
 	 *
-	 * @param x
-	 * 		- the variable about to be reified
+	 * @param x - the variable about to be reified
 	 */
 	<T> Goal enforce(Term<T> x);
 
@@ -36,10 +33,8 @@ public interface ConstraintStore extends Store {
 	 * anything and change only its own factor — a whole package is not
 	 * expressible in the return type.
 	 *
-	 * @param prefix
-	 * 		- exactly the newly applied bindings
-	 * @param state
-	 * 		- the extended live package to verify and read domains against
+	 * @param prefix - exactly the newly applied bindings
+	 * @param state - the extended live package to verify and read domains against
 	 */
 	Revision revise(Prefix prefix, Package state);
 
@@ -60,10 +55,8 @@ public interface ConstraintStore extends Store {
 	 * disequality its surviving records, finite domains nothing (enforce grounded
 	 * them). (cKanren's reify-constraints, Alvis et al.)
 	 *
-	 * @param unifiable
-	 * 		- the reified answer built so far
-	 * @param renameSubstitutions
-	 * 		- substitutions used in variable renaming
+	 * @param unifiable - the reified answer built so far
+	 * @param renameSubstitutions - substitutions used in variable renaming
 	 */
 	<A> Term<A> reify(Term<A> unifiable, Package renameSubstitutions, Package p);
 

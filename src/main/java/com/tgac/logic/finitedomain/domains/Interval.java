@@ -1,15 +1,15 @@
 package com.tgac.logic.finitedomain.domains;
+
 import com.tgac.functional.Exceptions;
 import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Iterator;
+import java.math.BigInteger;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
-
-import java.math.BigInteger;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 @Value
 @EqualsAndHashCode(callSuper = true)
@@ -46,6 +46,7 @@ public class Interval<T> extends Domain<T> {
 		return min.compareToValue(value) <= 0 &&
 				max.compareToValue(value) >= 0;
 	}
+
 	@Override
 	public Stream<T> stream() {
 		return StreamSupport.stream(Iterator.iterate(min, Arithmetic::next)
@@ -53,18 +54,22 @@ public class Interval<T> extends Domain<T> {
 						.spliterator(), false)
 				.map(Arithmetic::getValue);
 	}
+
 	@Override
 	public boolean isEmpty() {
 		return false;
 	}
+
 	@Override
 	public Arithmetic<T> min() {
 		return min;
 	}
+
 	@Override
 	public Arithmetic<T> max() {
 		return max;
 	}
+
 	@Override
 	public Domain<T> atLeast(Arithmetic<T> e) {
 		if (e.compareTo(max) > 0) {
@@ -91,12 +96,14 @@ public class Interval<T> extends Domain<T> {
 			public Domain<T> visit(Empty<T> domain) {
 				return that;
 			}
+
 			@Override
 			public Domain<T> visit(Singleton<T> domain) {
 				return contains(domain.getValue().getValue()) ?
 						domain :
 						Empty.instance();
 			}
+
 			@Override
 			public Domain<T> visit(Interval<T> domain) {
 				Arithmetic<T> min = maxValue(min(), other.min());
@@ -109,10 +116,12 @@ public class Interval<T> extends Domain<T> {
 					return Empty.instance();
 				}
 			}
+
 			@Override
 			public Domain<T> visit(Union<T> domain) {
 				return domain.intersect(that);
 			}
+
 			@Override
 			public Domain<T> visit(EnumeratedDomain<T> domain) {
 				return domain.intersect(that);
@@ -127,19 +136,23 @@ public class Interval<T> extends Domain<T> {
 			public Boolean visit(Empty<T> domain) {
 				return true;
 			}
+
 			@Override
 			public Boolean visit(Singleton<T> domain) {
 				return !contains(domain.getValue().getValue());
 			}
+
 			@Override
 			public Boolean visit(Interval<T> domain) {
 				return max.compareTo(other.min()) < 0 || min.compareTo(other.max()) > 0;
 			}
+
 			@Override
 			public Boolean visit(Union<T> domain) {
 				return domain.getIntervals().toJavaStream()
 						.allMatch(v -> isDisjoint(v));
 			}
+
 			@Override
 			public Boolean visit(EnumeratedDomain<T> domain) {
 				return domain.getElements().toJavaStream()
@@ -157,6 +170,7 @@ public class Interval<T> extends Domain<T> {
 			public Domain<T> visit(Empty<T> domain) {
 				return that;
 			}
+
 			@Override
 			public Domain<T> visit(Singleton<T> domain) {
 				Arithmetic<T> value = domain.getValue();
@@ -174,6 +188,7 @@ public class Interval<T> extends Domain<T> {
 					return that;
 				}
 			}
+
 			@Override
 			public Domain<T> visit(Interval<T> domain) {
 				if (other.max().compareTo(that.min()) < 0 || other.min().compareTo(max()) > 0) {
@@ -195,6 +210,7 @@ public class Interval<T> extends Domain<T> {
 					return Interval.of(that.min(), other.min().prev());
 				}
 			}
+
 			@Override
 			public Domain<T> visit(Union<T> domain) {
 				return ((Union<T>) other).getIntervals().toJavaStream()
@@ -202,6 +218,7 @@ public class Interval<T> extends Domain<T> {
 						.reduce(Domain::intersect)
 						.orElseGet(Empty::instance);
 			}
+
 			@Override
 			public Domain<T> visit(EnumeratedDomain<T> domain) {
 				return domain.stream()

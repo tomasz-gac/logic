@@ -1,5 +1,9 @@
 package com.tgac.logic.tabling;
 
+import static com.tgac.logic.unification.LVal.lval;
+import static com.tgac.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
@@ -11,10 +15,6 @@ import io.vavr.Tuple;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import org.junit.Test;
-
-import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class TableEntryTest {
 

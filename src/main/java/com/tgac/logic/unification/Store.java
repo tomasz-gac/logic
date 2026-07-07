@@ -1,4 +1,5 @@
 package com.tgac.logic.unification;
+
 public interface Store {
 	Store remove(Stored c);
 

@@ -98,7 +98,7 @@ public final class Propagation {
 	 * in flight.
 	 */
 	public static Cont<Package, Nothing> interpret(Propagator p, Package s) {
-		return p.propagate(s).<Cont<Package, Nothing>>match(
+		return p.propagate(s).<Cont<Package, Nothing>> match(
 				() -> Cont.complete(Nothing.nothing()),
 				() -> Cont.just(s),
 				() -> Cont.just(s.withoutStored(p)),
@@ -254,11 +254,11 @@ public final class Propagation {
 					Package extended = s.withSubstitutions(kept.appliedTo(s.getSubstitutions()));
 					// revisions are DATA: fold them; each swaps at most its own factor and
 					// hands inferences back for routing
-					Package reacted = extended;
+					Package revised = extended;
 					ArrayList<Inference> inferred = new ArrayList<>();
-					for (ConstraintStore cs : constraintStores(reacted)) {
-						Package before = reacted;
-						Package after = cs.revise(kept, reacted).match(
+					for (ConstraintStore cs : constraintStores(revised)) {
+						Package before = revised;
+						Package after = cs.revise(kept, revised).match(
 								() -> null,
 								() -> before,
 								(store, inferences) -> {
@@ -268,11 +268,11 @@ public final class Propagation {
 						if (after == null) {
 							return Cont.complete(Nothing.nothing());
 						}
-						reacted = after;
+						revised = after;
 					}
 					// queue wakes for the newly bound vars, then apply revision inferences
 					// inline (bounded: their cascades append rather than recurse)
-					Agenda agenda = (Agenda) reacted.getConstraints().get(Agenda.class).get();
+					Agenda agenda = (Agenda) revised.getConstraints().get(Agenda.class).get();
 					for (Tuple2<LVar<?>, Term<?>> binding : kept.bindings()) {
 						agenda = agenda.append(new Wake(binding._1));
 					}
@@ -280,7 +280,7 @@ public final class Propagation {
 							.distinct()
 							.map(Propagation::apply)
 							.reduce(Goal.success(), Goal::and)
-							.apply(reacted.putStore(agenda));
+							.apply(revised.putStore(agenda));
 				};
 			}
 

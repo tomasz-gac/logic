@@ -1,12 +1,12 @@
 package com.tgac.logic.finitedomain.domains;
 
-import lombok.EqualsAndHashCode;
-import lombok.RequiredArgsConstructor;
-
 import java.math.BigInteger;
 import java.util.Comparator;
 import java.util.function.BinaryOperator;
 import java.util.function.UnaryOperator;
+import lombok.EqualsAndHashCode;
+import lombok.RequiredArgsConstructor;
+
 public interface Arithmetic<T> extends Comparable<Arithmetic<T>> {
 	T getValue();
 
@@ -110,6 +110,7 @@ public interface Arithmetic<T> extends Comparable<Arithmetic<T>> {
 		public Arithmetic<T> next() {
 			return map(v -> add.apply(value, unit));
 		}
+
 		@Override
 		public Arithmetic<T> prev() {
 			return map(v -> sub.apply(value, unit));
@@ -119,6 +120,7 @@ public interface Arithmetic<T> extends Comparable<Arithmetic<T>> {
 		public Arithmetic<T> add(Arithmetic<T> other) {
 			return map(v -> add.apply(v, other.getValue()));
 		}
+
 		@Override
 		public Arithmetic<T> subtract(Arithmetic<T> other) {
 			return map(v -> sub.apply(v, other.getValue()));
@@ -133,6 +135,7 @@ public interface Arithmetic<T> extends Comparable<Arithmetic<T>> {
 		public Arithmetic<T> div(Arithmetic<T> other) {
 			return map(v -> div.apply(v, other.getValue()));
 		}
+
 		@Override
 		public boolean isZero() {
 			return cmp.compare(value, zero) == 0;

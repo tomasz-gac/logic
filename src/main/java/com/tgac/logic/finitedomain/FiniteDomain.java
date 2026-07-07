@@ -1,10 +1,7 @@
 package com.tgac.logic.finitedomain;
 
-
-import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.ckanren.propagator.Propagator;

@@ -386,7 +386,6 @@ public class LogicTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
-
 		Assertions.assertThat(result)
 				.hasSize(7)
 				.allMatch(l -> l.stream().anyMatch(x -> x));
@@ -401,7 +400,6 @@ public class LogicTest {
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
-
 		Assertions.assertThat(result)
 				.containsExactly(Arrays.asList(false, false, false));
 	}
@@ -414,7 +412,6 @@ public class LogicTest {
 				.solve(out)
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
-
 
 		Assertions.assertThat(result)
 				.hasSize(7)
@@ -429,7 +426,6 @@ public class LogicTest {
 				.solve(out)
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
-
 
 		Assertions.assertThat(result)
 				.containsExactly(Arrays.asList(true, true, true));

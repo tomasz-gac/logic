@@ -7,8 +7,8 @@ import static com.tgac.logic.goals.Matche.matche;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;

@@ -1,13 +1,16 @@
 package com.tgac.logic.finitedomain;
+
+import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getFDStore;
+import static com.tgac.logic.unification.LVal.lval;
+
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.Propagation;
+import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -15,15 +18,11 @@ import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.control.Option;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-
 import java.util.Collection;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getFDStore;
-import static com.tgac.logic.unification.LVal.lval;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 class EnforceConstraintsFD {

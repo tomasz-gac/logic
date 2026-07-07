@@ -1,22 +1,21 @@
 package com.tgac.logic.finitedomain;
 
+import static com.tgac.logic.finitedomain.FiniteDomain.dom;
+import static com.tgac.logic.finitedomain.FiniteDomain.lss;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.goals.Goal.success;
 import static com.tgac.logic.goals.Matche.llist;
-import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.lss;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.functional.Streams;
-import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Matche;
 import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
-import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -66,7 +65,6 @@ public class OrderConstraintsTest {
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get)));
 
-
 		Assertions.assertThat(result)
 				.allMatch(t -> t._1 <= t._2);
 	}
@@ -84,7 +82,6 @@ public class OrderConstraintsTest {
 						.solve(lval(Tuple.of(i, j)))
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get)));
-
 
 		Assertions.assertThat(result)
 				.allMatch(t -> t._1 <= t._2);
@@ -105,7 +102,6 @@ public class OrderConstraintsTest {
 				.solve(lval(Tuple.of(y, z)))
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get)));
-
 
 		Assertions.assertThat(results)
 				.allMatch(t -> t._1 <= 5 && t._2 <= 5);

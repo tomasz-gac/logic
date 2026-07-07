@@ -5,22 +5,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.logic.Utils;
-import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.Propagation;
+import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.propagator.Verdict;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
-import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
-import com.tgac.logic.unification.TestAccess;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.TestAccess;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
-import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.Stream;
 import java.util.Arrays;
 import java.util.List;
@@ -72,7 +70,6 @@ public class ParametersTest {
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
 								HashSet.empty()))));
 
-
 		Assertions.assertThat(collect.stream()
 						.map(p -> TestAccess.get(p, i.asVar().get()).get())
 						.map(Term::get)
@@ -92,7 +89,6 @@ public class ParametersTest {
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
 										.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
 								HashSet.empty()))));
-
 
 		List<Tuple2<Long, Long>> results = collect.stream()
 				.map(p -> Tuple.of(TestAccess.get(p, i.asVar().get()).get(),

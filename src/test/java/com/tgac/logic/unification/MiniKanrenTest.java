@@ -6,7 +6,6 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.Utils;
@@ -498,7 +497,7 @@ public class MiniKanrenTest {
 	}
 
 	@Test
-	public void shouldUnifyEmptyLTree(){
+	public void shouldUnifyEmptyLTree() {
 		Unifiable<LTree<Integer>> tree = lvar();
 
 		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
@@ -507,11 +506,11 @@ public class MiniKanrenTest {
 				.collect(Collectors.toList());
 
 		assertThat(collect)
-				.containsExactly(LTree.<Integer>empty().get());
+				.containsExactly(LTree.<Integer> empty().get());
 	}
 
 	@Test
-	public void shouldUnifyEmptyLTree2(){
+	public void shouldUnifyEmptyLTree2() {
 		Unifiable<LTree<Integer>> tree = LTree.ofAll(3);
 
 		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
@@ -522,7 +521,6 @@ public class MiniKanrenTest {
 		assertThat(collect)
 				.isEmpty();
 	}
-
 
 	@Test
 	public void shouldReifyWithCanonicalNumbering() {

@@ -1,19 +1,19 @@
 package com.tgac.logic.ckanren;
+
+import static com.tgac.logic.unification.LVal.lval;
+
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.Utils;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Unifiable;
-import org.assertj.core.api.Assertions;
-import org.junit.Test;
-
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static com.tgac.logic.unification.LVal.lval;
+import org.assertj.core.api.Assertions;
+import org.junit.Test;
 
 @SuppressWarnings("ALL")
 public class CKanrenTest {

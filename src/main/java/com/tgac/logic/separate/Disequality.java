@@ -8,10 +8,10 @@ import static com.tgac.logic.unification.MiniKanren.walkAll;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.goals.Goal;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.finitedomain.FiniteDomain;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
 import com.tgac.logic.unification.LList;
