@@ -177,12 +177,6 @@ public class FiniteDomain {
 				.named(pkg -> MiniKanren.format(pkg, divided) + " / " + MiniKanren.format(pkg, divisor) + " = " + MiniKanren.format(pkg, result));
 	}
 
-	private static <T> Option<Arithmetic<T>> div(Arithmetic<T> lhs, Arithmetic<T> rhs) {
-		return Option.of(Tuple.of(lhs, rhs))
-				.filter(t -> !t._2.isZero())
-				.map(t -> t.apply(Arithmetic::div));
-	}
-
 	static <T> Goal mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
 		return constraintOperation(
 				p -> mulFD(a, b, rhs).apply(p),
@@ -228,18 +222,38 @@ public class FiniteDomain {
 			return wi.processDom(w.getUnifiable());
 		}
 
-		ui = Interval.normalized(
-				div(wMin, vMax).getOrElse(uMin),
-				div(wMax, vMin).getOrElse(uMax));
-
-		vi = Interval.normalized(
-				div(wMin, uMax).getOrElse(vMin),
-				div(wMax, uMin).getOrElse(vMax));
+		// quotient bounds are meaningless when the divisor interval spans zero
+		// (w/v is unbounded around v = 0) — trim only sign-constant divisors
+		ui = quotientBounds(wMin, wMax, vMin, vMax).getOrElse(() -> u.<T> getDomain());
+		vi = quotientBounds(wMin, wMax, uMin, uMax).getOrElse(() -> v.<T> getDomain());
 
 		return s -> wi.processDom(w.getUnifiable())
 				.and(ui.processDom(u.getUnifiable()))
 				.and(vi.processDom(v.getUnifiable()))
 				.apply(s);
+	}
+
+	/**
+	 * Bounds of {@code w / d} over the endpoint box, defined only when the divisor
+	 * interval is sign-constant (no zero inside). Exact integer quotients attain
+	 * their extremes at the endpoints, so the endpoint min/max never excludes a
+	 * valid factor.
+	 */
+	private static <T> Option<Domain<T>> quotientBounds(
+			Arithmetic<T> wMin, Arithmetic<T> wMax,
+			Arithmetic<T> dMin, Arithmetic<T> dMax) {
+		Arithmetic<T> zero = dMin.subtract(dMin);
+		if (dMin.compareTo(zero) <= 0 && dMax.compareTo(zero) >= 0) {
+			return Option.none();
+		}
+		Array<Tuple2<Arithmetic<T>, Arithmetic<T>>> wdPerm = Array.of(
+				Tuple.of(wMin, dMin),
+				Tuple.of(wMin, dMax),
+				Tuple.of(wMax, dMin),
+				Tuple.of(wMax, dMax));
+		return Option.of(Interval.normalized(
+				minResult(Arithmetic::div, wdPerm),
+				maxResult(Arithmetic::div, wdPerm)));
 	}
 
 	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {

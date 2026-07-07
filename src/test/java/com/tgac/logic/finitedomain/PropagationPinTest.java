@@ -50,10 +50,8 @@ public class PropagationPinTest {
 	 * Gap 3 (narrowing wakes nobody). leq(x,y) runs while y is still wide; when
 	 * leq(y,z) later narrows y (to a non-singleton, so no binding occurs), nothing
 	 * re-runs leq(x,y), and x's domain keeps values the fixpoint excludes. Passes
-	 * after Phase 2 (wake-on-narrowing) — ignored until then; remove the @Ignore as
-	 * Phase 2's first step. See docs/design/constraint-propagation.md §4.
+	 * after Phase 2 (wake-on-narrowing). See docs/design/constraint-propagation.md §4.
 	 */
-	@org.junit.Ignore("Phase 2 gate: wake-on-narrowing not implemented yet")
 	@Test(timeout = 5000)
 	public void narrowingPropagatesToConstraintsStatedEarlier() {
 		Unifiable<Long> x = lvar();

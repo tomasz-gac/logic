@@ -88,7 +88,11 @@ public abstract class Domain<T> {
 		return s -> FiniteDomainConstraints.getDom(s, x)
 				.map(previousDomain -> Option.of(previousDomain.intersect(this))
 						.filter(not(Domain::isEmpty))
-						.map(i -> i.resolveStorableDom(x).apply(s))
+						// an unchanged domain must not re-wake watchers — this is the
+						// termination guard of wake-on-narrowing
+						.map(i -> i.equals(previousDomain) ?
+								Cont.<Package, Nothing> just(s) :
+								i.resolveStorableDom(x).apply(s))
 						// intersection is empty
 						.getOrElse(Cont.complete(Nothing.nothing())))
 				// x has no domain
@@ -113,7 +117,12 @@ public abstract class Domain<T> {
 				return StoreSupport.processPrefix(a.getSubstitutions().put(x, lval(v)))
 						.apply(a);
 			} else {
-				return Cont.just(extendD(x, this, a));
+				// a narrowed (but not collapsed) domain wakes the constraints watching x,
+				// so narrowing cascades like x≤y≤z propagate without waiting for a binding
+				Package narrowed = extendD(x, this, a);
+				return com.tgac.logic.ckanren.CKanren
+						.runConstraints(x, StoreSupport.pendingConstraints(narrowed))
+						.apply(narrowed);
 			}
 		};
 	}
