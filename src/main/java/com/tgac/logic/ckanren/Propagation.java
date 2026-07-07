@@ -8,6 +8,7 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
+import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -165,6 +166,55 @@ public final class Propagation {
 						.apply(s));
 	}
 
+	/**
+	 * Folds a trigger over the constraint stores: each answers a {@link Revision} —
+	 * at most its own factor swapped — and the driver routes the payloads: changed
+	 * terms and inferred prefixes queue as agenda items, runs join the run lane,
+	 * legacy inferences apply inline.
+	 */
+	private static Cont<Package, Nothing> reviseAll(
+			Package s,
+			java.util.function.BiFunction<ConstraintStore, Package, Revision> trigger,
+			java.util.List<Term<?>> alsoChanged) {
+		Package current = s;
+		java.util.List<Inference> legacy = new ArrayList<>();
+		java.util.List<Prefix> inferred = new ArrayList<>();
+		java.util.List<Term<?>> changed = new ArrayList<>(alsoChanged);
+		java.util.List<Goal> runs = new ArrayList<>();
+		for (ConstraintStore cs : constraintStores(current)) {
+			Package before = current;
+			Package after = trigger.apply(cs, before).match(
+					() -> null,
+					() -> before,
+					upd -> {
+						legacy.addAll(upd.inferences());
+						inferred.addAll(upd.inferred());
+						changed.addAll(upd.changed());
+						runs.addAll(upd.runs());
+						return before.putStore(upd.factor());
+					});
+			if (after == null) {
+				return Cont.complete(Nothing.nothing());
+			}
+			current = after;
+		}
+		Agenda agenda = (Agenda) current.getConstraints().get(Agenda.class).get();
+		for (Term<?> x : changed) {
+			agenda = agenda.append(new Agenda.Wake(x));
+		}
+		for (Prefix prefix : inferred) {
+			agenda = agenda.append(new Agenda.Bind(prefix));
+		}
+		for (Goal run : runs) {
+			agenda = agenda.appendRun(run);
+		}
+		return legacy.stream()
+				.distinct()
+				.map(Propagation::apply)
+				.reduce(Goal.success(), Goal::and)
+				.apply(current.putStore(agenda));
+	}
+
 	private static java.util.List<ConstraintStore> constraintStores(Package p) {
 		return p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
@@ -252,35 +302,13 @@ public final class Propagation {
 						return Cont.just(s);
 					}
 					Package extended = s.withSubstitutions(kept.appliedTo(s.getSubstitutions()));
-					// revisions are DATA: fold them; each swaps at most its own factor and
-					// hands inferences back for routing
-					Package revised = extended;
-					ArrayList<Inference> inferred = new ArrayList<>();
-					for (ConstraintStore cs : constraintStores(revised)) {
-						Package before = revised;
-						Package after = cs.revise(kept, revised).match(
-								() -> null,
-								() -> before,
-								(store, inferences) -> {
-									inferred.addAll(inferences);
-									return before.putStore(store);
-								});
-						if (after == null) {
-							return Cont.complete(Nothing.nothing());
-						}
-						revised = after;
-					}
-					// queue wakes for the newly bound vars, then apply revision inferences
-					// inline (bounded: their cascades append rather than recurse)
-					Agenda agenda = (Agenda) revised.getConstraints().get(Agenda.class).get();
+					// revise every store against the delta; the newly bound vars queue
+					// as changed terms so their watchers re-examine
+					java.util.List<Term<?>> bound = new ArrayList<>();
 					for (Tuple2<LVar<?>, Term<?>> binding : kept.bindings()) {
-						agenda = agenda.append(new Wake(binding._1));
+						bound.add(binding._1);
 					}
-					return inferred.stream()
-							.distinct()
-							.map(Propagation::apply)
-							.reduce(Goal.success(), Goal::and)
-							.apply(revised.putStore(agenda));
+					return reviseAll(extended, (cs, p) -> cs.revise(kept, p), bound);
 				};
 			}
 
