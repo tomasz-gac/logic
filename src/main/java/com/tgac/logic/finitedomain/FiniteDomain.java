@@ -1,12 +1,13 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.ckanren.StoreSupport.withConstraint;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.CKanren;
-import com.tgac.logic.ckanren.Constraint;
+import com.tgac.logic.ckanren.Inference;
+import com.tgac.logic.ckanren.Propagator;
+import com.tgac.logic.ckanren.Verdict;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
@@ -21,6 +22,7 @@ import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.function.BinaryOperator;
 import java.util.stream.Stream;
@@ -76,19 +78,39 @@ public class FiniteDomain {
 				.filter(uds -> uds.size() == us.size());
 	}
 
-	private static <T> Goal constraintOperation(Goal constraintOp, Array<Unifiable<T>> us, ConstraintBody<T> body) {
+	/**
+	 * The step-1 adapter (capability-constraint-api.md §6): parks the constraint
+	 * under today's protocol, asks the propagator for a verdict and administers it —
+	 * fail kills the branch, keep stays parked, discharge returns the un-parked
+	 * package, narrowed stays parked and applies the inferences in order. addTo's
+	 * all-args-bound guard still decides parking, exactly as before.
+	 */
+	private static <T> Goal propagatorOperation(Goal constraintOp, Array<Unifiable<T>> us, Propagator prop) {
 		return p -> {
-			Package p1 = CKanren.buildWalkedConstraint(
+			Package registered = FiniteDomainConstraints.register(p);
+			Package parked = CKanren.buildWalkedConstraint(
 							constraintOp, us,
 							FiniteDomainConstraints.class,
-							p)
-					.addTo(FiniteDomainConstraints.register(p));
-			return letDomain(p1, us)
-					.filter(uds -> uds.toJavaStream()
-							.noneMatch(ud -> ud.getDomain().isEmpty()))
-					.map(uds -> body.create(uds, p1))
-					.getOrElse(Cont.just(p1));
+							registered)
+					.addTo(registered);
+			return prop.propagate(parked).match(
+					() -> Cont.complete(Nothing.nothing()),
+					() -> Cont.just(parked),
+					() -> Cont.just(registered),
+					inferences -> inferences.stream()
+							.map(Inference::toGoal)
+							.reduce(Goal.success(), Goal::and)
+							.apply(parked));
 		};
+	}
+
+	private static <T> Propagator gated(Array<Unifiable<T>> us,
+			java.util.function.Function<Array<VarWithDomain<T>>, Verdict> verdict) {
+		return s -> letDomain(s, us)
+				.filter(uds -> uds.toJavaStream()
+						.noneMatch(ud -> ud.getDomain().isEmpty()))
+				.map(verdict)
+				.getOrElse(Verdict::keep);
 	}
 
 	@Value
@@ -101,10 +123,6 @@ public class FiniteDomain {
 		public <U> Domain<U> getDomain() {
 			return (Domain<U>) domain;
 		}
-	}
-
-	interface ConstraintBody<T> {
-		Cont<Package, Nothing> create(Array<VarWithDomain<T>> vds, Package p);
 	}
 
 	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
@@ -134,16 +152,16 @@ public class FiniteDomain {
 	}
 
 	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
-		return constraintOperation(
+		return propagatorOperation(
 				p -> leqFD(less, more).apply(p),
-				Array.of(less, more), (vds, p) ->
+				Array.of(less, more),
+				gated(Array.of(less, more), vds ->
 						Tuple.of(vds.get(0), vds.get(1))
-								.apply((lss, mor) ->
-										lss.<T> getDomain().atMost(mor.<T> getDomain().max())
-												.processDom(lss.unifiable)
-												.and(mor.<T> getDomain().atLeast(lss.<T> getDomain().min())
-														.processDom(mor.unifiable)))
-								.apply(p));
+								.apply((lss, mor) -> Verdict.narrowed(Arrays.asList(
+										Inference.narrow(lss.getUnifiable(),
+												lss.<T> getDomain().atMost(mor.<T> getDomain().max())),
+										Inference.narrow(mor.getUnifiable(),
+												mor.<T> getDomain().atLeast(lss.<T> getDomain().min())))))));
 	}
 
 	public static <T> Goal addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
@@ -158,18 +176,18 @@ public class FiniteDomain {
 	}
 
 	static <T> Goal addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return constraintOperation(
+		return propagatorOperation(
 				p -> addoFD(a, b, rhs).apply(p),
-				Array.of(a, b, rhs), (vds, p) ->
+				Array.of(a, b, rhs),
+				gated(Array.of(a, b, rhs), vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
 								.apply((u, v, w) ->
-										addIntervals(u, v, w,
+										addVerdict(u, v, w,
 												u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
-												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))
-								.apply(p));
+												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))));
 	}
 
-	private static <T> Goal addIntervals(
+	private static <T> Verdict addVerdict(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
 			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
@@ -186,10 +204,10 @@ public class FiniteDomain {
 				wMin.subtract(vMax),
 				wMax.subtract(vMin).next());
 
-		return s -> wi.processDom(w.getUnifiable())
-				.and(vi.processDom(v.getUnifiable()))
-				.and(ui.processDom(u.getUnifiable()))
-				.apply(s);
+		return Verdict.narrowed(Arrays.asList(
+				Inference.narrow(w.getUnifiable(), wi),
+				Inference.narrow(v.getUnifiable(), vi),
+				Inference.narrow(u.getUnifiable(), ui)));
 	}
 
 	public static <T> Goal multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
@@ -204,29 +222,29 @@ public class FiniteDomain {
 	}
 
 	static <T> Goal mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return constraintOperation(
+		return propagatorOperation(
 				p -> mulFD(a, b, rhs).apply(p),
-				Array.of(a, b, rhs), (vds, p) ->
+				Array.of(a, b, rhs),
+				gated(Array.of(a, b, rhs), vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
 								.apply((u, v, w) ->
-										mulIntervals(u, v, w,
+										mulVerdict(u, v, w,
 												u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
-												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max())
-												.apply(p)));
+												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))));
 	}
 
-	private static <T> Goal mulIntervals(
+	private static <T> Verdict mulVerdict(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
 			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
 		// all are numbers -> check multiplication
 		if (uMin.equals(uMax) && vMin.equals(vMax) && wMin.equals(wMax)) {
-			return Goal.successIf(uMin.mul(vMin).compareTo(wMin) == 0);
+			return uMin.mul(vMin).compareTo(wMin) == 0 ? Verdict.discharge() : Verdict.fail();
 		}
 
 		// some are numbers -> do nothing until all generated
 		if (uMin.equals(uMax) || vMin.equals(vMax) || wMin.equals(wMax)) {
-			return Goal.success();
+			return Verdict.keep();
 		}
 
 		// Trim domains
@@ -245,7 +263,8 @@ public class FiniteDomain {
 
 		// result is zero, so we cannot infer any u or v bounds information
 		if (wi.min().equals(wi.max()) && wi.min().isZero()) {
-			return wi.processDom(w.getUnifiable());
+			return Verdict.narrowed(Collections.singletonList(
+					Inference.narrow(w.getUnifiable(), wi)));
 		}
 
 		// quotient bounds are meaningless when the divisor interval spans zero
@@ -253,10 +272,10 @@ public class FiniteDomain {
 		ui = quotientBounds(wMin, wMax, vMin, vMax).getOrElse(() -> u.<T> getDomain());
 		vi = quotientBounds(wMin, wMax, uMin, uMax).getOrElse(() -> v.<T> getDomain());
 
-		return s -> wi.processDom(w.getUnifiable())
-				.and(ui.processDom(u.getUnifiable()))
-				.and(vi.processDom(v.getUnifiable()))
-				.apply(s);
+		return Verdict.narrowed(Arrays.asList(
+				Inference.narrow(w.getUnifiable(), wi),
+				Inference.narrow(u.getUnifiable(), ui),
+				Inference.narrow(v.getUnifiable(), vi)));
 	}
 
 	/**
@@ -288,42 +307,33 @@ public class FiniteDomain {
 				.named(pkg -> MiniKanren.format(pkg, l) + " ≠_fd " + MiniKanren.format(pkg, r));
 	}
 
-	private static <T> Goal separateFDC(Term<T> l, Term<T> r) {
-		return s -> letDomain(s, Array.of(l, r))
-				.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
-				.map(ds -> ds.apply((ld, rd) -> {
+	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
+		return propagatorOperation(
+				p -> separateFDC(l, r).apply(p),
+				Array.of(l, r),
+				s -> letDomain(s, Array.of(l, r))
+						.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
+						.map(ds -> ds.apply((ld, rd) -> {
 							Option<Tuple2<Arithmetic<T>, Arithmetic<T>>> zip = MiniKanren.zip(
 									getSingleElement(ld.getDomain()),
 									getSingleElement(rd.getDomain()));
 							if (zip.isDefined() && zip.get().apply(Objects::equals)) {
-								return Cont.<Package, Nothing> complete(Nothing.nothing());
+								return Verdict.fail();
 							}
 							if (ld.getDomain().isDisjoint(rd.getDomain())) {
-								return Cont.<Package, Nothing> just(s);
+								return Verdict.discharge();
 							}
-							Package a = withConstraint(s,
-									Constraint.of(
-											p -> separateFDC(l, r).apply(p),
-											FiniteDomainConstraints.class,
-											Arrays.asList(l, r)));
 							if (ld.getDomain() instanceof Singleton) {
-								return rd.<T> getDomain().difference(ld.getDomain())
-										.processDom(r)
-										.apply(a);
-							} else if (rd.getDomain() instanceof Singleton) {
-								return ld.<T> getDomain().difference(rd.getDomain())
-										.processDom(l)
-										.apply(a);
-							} else {
-								return Cont.<Package, Nothing> just(a);
+								return Verdict.narrowed(Collections.singletonList(
+										Inference.narrow(r, rd.<T> getDomain().difference(ld.getDomain()))));
 							}
-						}
-				)).getOrElse(() -> Tuple.of(s.walk(l), s.walk(r))
-						.apply((lv, rv) ->
-								Cont.just(withConstraint(s,
-										Constraint.of(p -> separateFDC(lv, rv).apply(p),
-												FiniteDomainConstraints.class,
-												Arrays.asList(lv, rv))))));
+							if (rd.getDomain() instanceof Singleton) {
+								return Verdict.narrowed(Collections.singletonList(
+										Inference.narrow(l, ld.<T> getDomain().difference(rd.getDomain()))));
+							}
+							return Verdict.keep();
+						}))
+						.getOrElse(Verdict::keep));
 	}
 
 	private static <T> Option<Arithmetic<T>> getSingleElement(Domain<T> dom) {
