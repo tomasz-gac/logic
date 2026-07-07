@@ -5,7 +5,7 @@ import static io.vavr.Predicates.not;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.Narrowing;
+import com.tgac.logic.ckanren.propagator.Narrowing;
 import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;

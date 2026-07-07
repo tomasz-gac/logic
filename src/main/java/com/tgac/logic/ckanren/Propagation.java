@@ -5,6 +5,9 @@ package com.tgac.logic.ckanren;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.ckanren.propagator.Inference;
+import com.tgac.logic.ckanren.propagator.Propagator;
+import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;

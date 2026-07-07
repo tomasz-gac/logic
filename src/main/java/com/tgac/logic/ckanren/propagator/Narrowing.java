@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.ckanren.propagator;
 
 // ABOUTME: A narrowing of the values a term may take — the payload of Inference.narrow.
 // ABOUTME: The vocabulary-level view of a domain: applicable to a target, nothing more.

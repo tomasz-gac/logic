@@ -1,4 +1,5 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.ckanren.store;
+import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;

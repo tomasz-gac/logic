@@ -1,8 +1,9 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.ckanren.store;
 
 // ABOUTME: A store's revised self after newly applied bindings — its own updated factor
 // ABOUTME: plus inferences for the chokepoint to route; never a whole package.
 
+import com.tgac.logic.ckanren.propagator.Inference;
 import com.tgac.logic.unification.Store;
 import java.util.Collections;
 import java.util.List;

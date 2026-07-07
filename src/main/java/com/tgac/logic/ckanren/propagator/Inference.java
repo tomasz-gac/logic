@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.ckanren.propagator;
 
 // ABOUTME: The shared cross-factor vocabulary: information a propagator or store has
 // ABOUTME: inferred but may not apply itself — bindings grow, domains shrink.
