@@ -3,7 +3,6 @@ package com.tgac.logic.ckanren;
 // ABOUTME: The shared cross-factor vocabulary: information a propagator or store has
 // ABOUTME: inferred but may not apply itself — bindings grow, domains shrink.
 
-import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
@@ -14,9 +13,9 @@ import io.vavr.collection.HashMap;
  * A message addressed to a factor of the {@link Package}, never to a store
  * (docs/design/capability-constraint-api.md §2.4). Exactly two kinds, matching the
  * two shared factors of the product lattice: {@link #bind} grows the substitution,
- * {@link #narrow} shrinks a domain. The reference to {@link Domain} is a deliberate
- * package cycle: the vocabulary couples to the system's shared domain concept
- * (rule B of the composition model), not to the FD store.
+ * {@link #narrow} shrinks what a term may be — expressed through the minimal
+ * {@link Narrowing} seam, so the vocabulary couples to the shared concept
+ * (rule B of the composition model), not to the finite-domain machinery.
  */
 public abstract class Inference {
 
@@ -29,12 +28,12 @@ public abstract class Inference {
 	}
 
 	/**
-	 * An inferred domain for {@code target}. Applied through {@code processDom}, so a
-	 * ground target becomes a membership check, an unchanged domain is a no-op, a
-	 * collapse binds through the chokepoint, and an emptied domain fails.
+	 * An inferred narrowing for {@code target}: a ground target becomes a membership
+	 * check, an unchanged attribution is a no-op, a collapse binds through the
+	 * chokepoint, and an emptied one fails.
 	 */
-	public static Inference narrow(Term<?> target, Domain<?> domain) {
-		return new Narrow(target, domain);
+	public static Inference narrow(Term<?> target, Narrowing narrowing) {
+		return new Narrow(target, narrowing);
 	}
 
 	/**
@@ -64,28 +63,26 @@ public abstract class Inference {
 
 	private static final class Narrow extends Inference {
 		private final Term<?> target;
-		private final Domain<?> domain;
+		private final Narrowing narrowing;
 
-		private Narrow(Term<?> target, Domain<?> domain) {
+		private Narrow(Term<?> target, Narrowing narrowing) {
 			this.target = target;
-			this.domain = domain;
+			this.narrowing = narrowing;
 		}
 
 		@Override
-		@SuppressWarnings({"unchecked", "rawtypes"})
 		public Goal toGoal() {
 			// walk at APPLICATION time: the target may have been bound meanwhile (by an
 			// earlier inference of the same verdict, or captured pre-walk by the emitter);
 			// narrowing a stale var object would re-bind a bound variable — exactly the
 			// violation the chokepoint's full-map contract forbids
-			return s -> ((Domain) domain)
-					.processDom(com.tgac.logic.unification.MiniKanren.walk(s, (Term) target))
+			return s -> narrowing.applyTo(com.tgac.logic.unification.MiniKanren.walk(s, target))
 					.apply(s);
 		}
 
 		@Override
 		public String toString() {
-			return target + " ⊂ " + domain;
+			return target + " ⊂ " + narrowing;
 		}
 	}
 }

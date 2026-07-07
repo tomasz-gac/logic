@@ -19,7 +19,13 @@ import java.util.stream.Stream;
 import lombok.EqualsAndHashCode;
 
 @EqualsAndHashCode
-public abstract class Domain<T> {
+public abstract class Domain<T> implements com.tgac.logic.ckanren.Narrowing {
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Goal applyTo(Term<?> target) {
+		return processDom((Term<T>) target);
+	}
 
 	public abstract <R> R accept(DomainVisitor<T, R> v);
 

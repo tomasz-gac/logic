@@ -124,12 +124,16 @@ chokepoint assembles the package from returned factors.
 The shared vocabulary of the system — the only way information crosses factors:
 
 ```java
-Inference.bind(Prefix p)                  // substitutions grow (deferred unification)
-Inference.narrow(LVar<?> x, Domain<?> d)  // x's domain shrinks
+Inference.bind(Prefix p)                        // substitutions grow (deferred unification)
+Inference.narrow(Term<?> target, Narrowing n)   // what the target may be shrinks
 ```
 
 Exactly two variants, matching the two shared factors of the product lattice
-(bindings grow; domains shrink). Everything else is a store's private state. Emitted
+(bindings grow; attributions shrink). `Narrowing` is the minimal vocabulary seam —
+one method, "apply to a target" — implemented by the finite-domain `Domain`
+hierarchy, whose lattice/arithmetic machinery stays in `finitedomain`; the
+dependency is one-way (finitedomain → ckanren). Everything else is a store's
+private state. Emitted
 by both `Reaction`s and `Verdict.narrowed`; applied only by the driver. This replaces
 call-shaped bridges: the Neq→FD bridge stops being `Disequality` calling
 `FiniteDomain.excludeFromDomain` (a named, cross-package dependency) and becomes Neq
