@@ -5,9 +5,10 @@ import static com.tgac.logic.ckanren.StoreSupport.getConstraintStore;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.ConstraintStore;
+import com.tgac.logic.ckanren.Inference;
+import com.tgac.logic.ckanren.Reaction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
@@ -78,19 +79,27 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
-		// the chokepoint wakes suspended constraints across all stores; this store's
-		// reaction is only the domain-membership check of each newly bound value
-		return s -> MiniKanren.prefixS(oldPackage.getSubstitutions(), newSubstitutions)
-				.toJavaStream()
-				.<Goal> map(ht -> ht
-						.apply((x, v) -> FiniteDomainConstraints.getDom(s, x)
-								.map(Domain.class::cast)
-								.map(dom -> dom.processDom(v))
-								.getOrElse(Goal.success())))
-				.reduce(Goal.success(), Goal::and)
-				.apply(s);
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state) {
+		// this store's reaction: each newly bound value must lie in its variable's
+		// domain; a var-var binding aliases the two, so the domain follows the
+		// representative as a narrow inference
+		java.util.List<Inference> narrows = new java.util.ArrayList<>();
+		for (io.vavr.Tuple2<LVar<?>, Term<?>> binding : prefix) {
+			Domain dom = (Domain) getDomain((LVar) binding._1).getOrNull();
+			if (dom == null) {
+				continue;
+			}
+			Term<?> v = binding._2;
+			if (v.isVal()) {
+				if (!dom.contains(v.get())) {
+					return Reaction.fail();
+				}
+			} else {
+				narrows.add(Inference.narrow(v, dom));
+			}
+		}
+		return narrows.isEmpty() ? Reaction.unchanged() : Reaction.updated(this, narrows);
 	}
 
 	@Override

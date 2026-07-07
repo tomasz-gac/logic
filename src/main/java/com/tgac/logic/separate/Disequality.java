@@ -125,25 +125,15 @@ public class Disequality {
 		}
 	}
 
-	static Option<Package> verifyUnify(Package newPackage, Package a) {
-		// substitutions haven't changed, so constraints are not violated
-		if (newPackage.getSubstitutions() == a.getSubstitutions()) {
-			return Option.of(a);
-		} else {
-			return verifyAndSimplifyConstraints(
-					NeqConstraints.get(a)
-							.getConstraints(),
-					List.empty(),
-					newPackage.getSubstitutions())
-					// Rebuilds the package from the live substitutions and stores,
-					// replacing only the disequality store with its simplified form.
-					// newPackage is the chokepoint-extended package threaded through any
-					// earlier store reactions of the same pass, so every binding of the
-					// pass — including ones other stores inferred — is visible here.
-					.map(c -> Package.of(
-							newPackage.getSubstitutions(),
-							newPackage.getConstraints().put(NeqConstraints.class, NeqConstraints.of(c))));
-		}
+	/**
+	 * Re-verifies every record against the given substitutions: none = some record
+	 * is violated (all its pairs hold simultaneously); otherwise the surviving
+	 * records, simplified to their remaining prefixes.
+	 */
+	static Option<List<NeqConstraint>> verifyAndSimplify(
+			List<NeqConstraint> constraints,
+			HashMap<LVar<?>, Term<?>> substitutions) {
+		return verifyAndSimplifyConstraints(constraints, List.empty(), substitutions);
 	}
 
 	private static Option<List<NeqConstraint>> verifyAndSimplifyConstraints(

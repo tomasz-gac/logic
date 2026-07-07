@@ -122,16 +122,35 @@ public class StoreSupport {
 				// pure-relational fast path: no reactions, no prefix diff, no wake
 				return Cont.just(extended);
 			}
-			Goal reactions = stores.stream()
-					.map(cs -> cs.processPrefix(newSubstitutions, p))
+			HashMap<LVar<?>, Term<?>> prefix = MiniKanren.prefixS(p.getSubstitutions(), newSubstitutions);
+			// reactions are DATA: fold them synchronously — each store swaps at most
+			// its own factor and hands inferences to the chokepoint for routing
+			Package reacted = extended;
+			java.util.List<Inference> inferred = new java.util.ArrayList<>();
+			for (ConstraintStore cs : stores) {
+				Package before = reacted;
+				Package after = cs.onPrefix(prefix, reacted).match(
+						() -> null,
+						() -> before,
+						(store, inferences) -> {
+							inferred.addAll(inferences);
+							return before.putStore(store);
+						});
+				if (after == null) {
+					return Cont.complete(Nothing.nothing());
+				}
+				reacted = after;
+			}
+			Goal applyInferred = inferred.stream()
+					.map(Inference::toGoal)
 					.reduce(Goal.success(), Goal::and);
 			// wake EVERY store's suspended constraints watching a newly bound variable;
 			// read the stores from the live package, since earlier wakes re-park constraints
-			Goal wake = MiniKanren.prefixS(p.getSubstitutions(), newSubstitutions)
+			Goal wake = prefix
 					.keySet().toJavaStream()
 					.<Goal> map(x -> s -> CKanren.runConstraints(x, pendingConstraints(s)).apply(s))
 					.reduce(Goal.success(), Goal::and);
-			return reactions.and(wake).apply(extended);
+			return applyInferred.and(wake).apply(reacted);
 		};
 	}
 

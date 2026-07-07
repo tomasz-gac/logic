@@ -7,6 +7,7 @@ import com.tgac.functional.transformer.OptionT;
 import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.ckanren.Constraint;
 import com.tgac.logic.ckanren.ConstraintStore;
+import com.tgac.logic.ckanren.Reaction;
 import com.tgac.logic.ckanren.StoreSupport;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
@@ -41,9 +42,9 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
+	public Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state) {
 		// projections are woken by the chokepoint's cross-store wake
-		return s -> Cont.just(s);
+		return Reaction.unchanged();
 	}
 
 	@Override

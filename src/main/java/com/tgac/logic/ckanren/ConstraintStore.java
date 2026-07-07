@@ -29,23 +29,18 @@ public interface ConstraintStore extends Store {
 	<T> Goal enforceConstraints(Term<T> x);
 
 	/**
-	 * <pre>
-	 * 	This function is sent a prefix of the substitution, consisting of
-	 * 	all the associations newly added after a unification. In addition, it is sent
-	 * 	the current constraints. This can be an opportunity to rerun constraints
-	 * 	for the variables with new associations but different constraints.
+	 * React to newly applied bindings (cKanren's process-prefix, capability form:
+	 * docs/design/capability-constraint-api.md §2.3). The chokepoint has already
+	 * applied the extension; the store may read anything and change only its own
+	 * factor — a whole package is not expressible in the return type.
 	 *
-	 * 	cKanren, miniKanren with Constraints. Alvis et al.
-	 * </pre>
-	 *
-	 * @param newSubstitutions
-	 * 		- the full substitution map after the unification
-	 * @param oldPackage
-	 * 		- the package before the unification; the prefix (newly added
-	 * 		associations) is computed against it, so composing stores never
-	 * 		starve one another by pre-applying the substitutions
+	 * @param prefix
+	 * 		- exactly the newly added associations (the delta, precomputed by the
+	 * 		chokepoint)
+	 * @param state
+	 * 		- the extended live package to verify and read domains against
 	 */
-	Goal processPrefix(HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage);
+	Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state);
 
 	/**
 	 * The suspended {@link Constraint} goals this store holds, exposed for the

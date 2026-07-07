@@ -6,9 +6,8 @@ import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 import com.tgac.logic.unification.Term;
 
-import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.ConstraintStore;
+import com.tgac.logic.ckanren.Reaction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
@@ -68,12 +67,10 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Goal processPrefix(
-			HashMap<LVar<?>, Term<?>> newSubstitutions, Package oldPackage) {
-		// s already carries the new substitutions; the chokepoint applied them
-		return s -> Disequality.verifyUnify(s, oldPackage)
-				.map(Cont::<Package, Nothing>just)
-				.getOrElse(Cont.complete(Nothing.nothing()));
+	public Reaction onPrefix(HashMap<LVar<?>, Term<?>> prefix, Package state) {
+		return Disequality.verifyAndSimplify(constraints, state.getSubstitutions())
+				.map(c -> (Reaction) Reaction.updated(NeqConstraints.of(c)))
+				.getOrElse(Reaction::fail);
 	}
 
 	@Override
