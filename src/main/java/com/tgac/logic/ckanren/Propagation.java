@@ -97,7 +97,7 @@ public final class Propagation {
 	 * splicing after quiescence, or run inline at statement time when no drain is
 	 * in flight.
 	 */
-	public static Cont<Package, Nothing> interpret(Propagator p, Package s) {
+	private static Cont<Package, Nothing> interpret(Propagator p, Package s) {
 		return p.propagate(s).<Cont<Package, Nothing>> match(
 				() -> Cont.complete(Nothing.nothing()),
 				() -> Cont.just(s),
@@ -124,7 +124,7 @@ public final class Propagation {
 	 * match is re-interpreted against the live package (an earlier wake in the same
 	 * chain may have removed it).
 	 */
-	public static Goal wake(Term<?> changed) {
+	private static Goal wake(Term<?> changed) {
 		return s -> {
 			Goal chain = StreamSupport
 					.stream(pendingPropagators(s).spliterator(), false)
@@ -140,7 +140,7 @@ public final class Propagation {
 	/**
 	 * The union of every store's suspended propagators — the cross-store wake list.
 	 */
-	public static Iterable<Propagator> pendingPropagators(Package p) {
+	private static Iterable<Propagator> pendingPropagators(Package p) {
 		return p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)

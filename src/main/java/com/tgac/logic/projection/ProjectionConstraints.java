@@ -30,7 +30,8 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public <T> Goal enforce(Term<T> x) {
-		return Propagation.wake(x)
+		Goal wakeWatchers = s -> Propagation.enqueueWake(x, s);
+		return wakeWatchers
 				.and(s1 -> s1.getStore(ProjectionConstraints.class)
 						.projections
 						.isEmpty() ?

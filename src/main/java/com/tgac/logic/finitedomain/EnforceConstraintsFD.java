@@ -69,7 +69,7 @@ class EnforceConstraintsFD {
 	}
 
 	private static Goal rerunConstraints(Term<?> x) {
-		return Propagation.wake(x);
+		return s -> Propagation.enqueueWake(x, s);
 	}
 
 	private static <T> Goal unifyWithAllDomainValues(Term<T> x, Domain<T> d) {
