@@ -4,10 +4,17 @@
 Its two jobs are (a) give one shared vocabulary for the engine's fixpoint-based subsystems,
 and (b) **stop a future implementer from prematurely merging them into one engine.** The
 elegant unification below is seductive; read the recommendation (§4) before acting on it.
+**Reviewed July 2026 (with Tom), after the narrowing instance was built: the recommendation
+HELD — see §9 for what the intervening work taught, including the unification question asked
+and answered again.**
 
-Companion docs (the two concrete instances):
-- `docs/design/constraint-propagation.md` — the *narrowing* instance.
-- `docs/design/semiring-inference.md` — the *accumulating* instance.
+Companion docs (the concrete instances):
+- `docs/design/constraint-propagation.md` — the *narrowing* instance (historical record);
+  `capability-constraint-api.md` and `minimal-constraint-vocabulary.md` are the shape it
+  actually shipped in.
+- `docs/design/semiring-inference.md` — the *accumulating* instance (still planned).
+- `docs/design/tabled-constraints.md` — the two instances MEETING (design sketch): what it
+  costs to let tabling and constraints cooperate.
 
 ---
 
@@ -21,9 +28,10 @@ Kleene iteration).
   operator over the lattice of answer sets. It grows the answer table until it stops changing.
 - **Semiring-tabling (planned, `semiring-inference.md` §7):** the same iteration, but each
   table entry accumulates a semiring value instead of a bare set.
-- **Constraint propagation (planned, `constraint-propagation.md`):** the greatest fixpoint of
-  the narrowing operators over the lattice of variable domains. It shrinks domains until
-  nothing narrows further.
+- **Constraint propagation (IMPLEMENTED, July 2026):** the greatest fixpoint of the
+  narrowing operators over the lattice of variable domains. It shrinks domains until
+  nothing narrows further. Shipped as the agenda drain in `ckanren/Propagation` with the
+  store boundary of `minimal-constraint-vocabulary.md`.
 
 That common shape is real, and it is a useful thing to *see*. It is not, by itself, a reason
 to share code.
@@ -140,11 +148,55 @@ review checklist, not code:
 - **Proven duplication:** once both subsystems exist, if the worklist/change-detection code is
   copy-pasted and diverging, extract §5's helper then.
 
-Neither condition holds today (tabling exists and is entangled; AC-3 does not exist). So the
-answer today is: **shared model, separate code.**
+Neither condition holds today (not greenfield; and as of July 2026 BOTH loops exist — the
+agenda drain and tabling — and share no code to deduplicate, see §9). So the answer today
+is: **shared model, separate code.**
 
 ---
 
 ## 8. Non-goals
 
 - A unified fixpoint driver, built up front or retrofitted onto working tabling. (§4.)
+
+---
+
+## 9. What building the narrowing instance taught (July 2026 review)
+
+The propagation engine now exists, built separately per §4, and the experience upgrades
+several of this note's predictions to observations — recorded here so the next "shouldn't
+we unify?" conversation starts where this one ended.
+
+- **"Only the dumb loop is common" is now inspectable fact.** The agenda drain is a
+  synchronous, Package-local, confluent loop over cheap operators (one item per deferred
+  step); tabling is a cross-branch coordination protocol woven through parked
+  continuations, where the ascending machine's worklist IS the search scheduler's frame
+  queue. They share a mental model and zero lines. An extraction today would delete no
+  duplication, and an abstraction that deletes nothing is speculation (YAGNI).
+- **The third customer is not a lattice.** Sharpening §6's star/closure remark: semiring
+  ⊕ for counting, probability and provenance is NON-IDEMPOTENT — two derivations of the
+  same answer must count twice, where a lattice join would collapse them. Idempotence is a
+  lattice law; its absence changes the convergence theory (star/closure, ω-continuity),
+  not just the parameters. A "lattice fixpoint engine" built now would be a roof the very
+  next tenant cannot live under; the abstraction honest enough for all three instances —
+  ordered algebra plus a convergence policy — is a while-loop with type parameters.
+- **The instances couple through vocabulary, not through a shared engine.** The
+  interesting interaction — tabling and constraints cooperating — happens entirely at the
+  boundary: call keys carrying constraint regions, per-store entailment, residue restated
+  at consumption (`tabled-constraints.md`). Notably the coupling can CREATE termination:
+  a descending region can bound an ascending machine's novelty (`nat(x)` diverges under
+  plain tabling; `nat(x), x ∈ {1..10}` is finite). None of that needs merged internals.
+- **The termination story unified conceptually without unifying code.** Plain tabling's
+  termination condition ("finitely many distinct answers/subgoals") is the special case
+  of "no infinite antichain in the answer/call order" where the order is discrete
+  (variant equality). Constraints enrich the order on the same product space
+  (term × region): comparability adds subsumption-dedup, incomparability adds novelty.
+  Call-side widening is sound in both coordinates (XSB's subgoal abstraction is the
+  term-coordinate instance; dropping call residue is the region-coordinate instance);
+  answer-side widening is unsound in both. One theory, two coordinates, still two engines.
+- **A user-facing `Lattice<L>` interface was considered and DEFERRED (Tom, July 2026).**
+  The right-sized unification, if ever wanted, is a small interface (meet, order/entails,
+  bottom, optionally enumerable atoms) with the generic abstract-domains store as its
+  first paying customer, adopted — not migrated to — by `Domain` and the TCLP hooks.
+  Deferred until such a customer is real; recorded so it is proposed as adoption, never
+  as an engine rewrite. The §4 verdict on the engine merge is unchanged and, per the
+  above, stronger.

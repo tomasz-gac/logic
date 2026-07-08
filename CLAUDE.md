@@ -148,6 +148,9 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   speaks only to stores (revise/changed/stated → Revision); Narrowing + Inference are
   gone; Propagator/Verdict are a store-implementor toolkit. Read before touching the
   constraint core or the wake machinery.
+- `docs/design/tabled-constraints.md` — DESIGN SKETCH: merging tabling and constraints
+  (TCLP): three intra-domain store hooks (project/entails/restate), pointwise product-order
+  entailment, the antichain termination gate. Read before weakening the tabling guard tests.
 - `docs/design/suspensions.md` — parked goals woken by bindings (freeze/when): the
   concept behind Verdict.run(Goal), its reify policy, and the extraction plan gated
   on a second customer (pldb deferred lookups).
