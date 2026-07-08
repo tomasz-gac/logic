@@ -254,12 +254,13 @@ only the owner can act). The resolution, decided with Tom:
   own code.
 - **Fair interleaving moved to the correct layer**: hooks return
   `Fiber<Revision>`, mirroring the unifier (`MiniKanren.unifyPrefix` is an
-  `MFiber`). Cheap stores answer `Fiber.done(...)`; expensive cascades defer
-  between steps via `functional`'s `Worklist` (extracted under
-  fixpoint-machine.md §4's bottom-up rule: one item per deferred step, so any
-  scheduler interleaves fairly). Granularity is the store author's choice —
-  it was never enforceable anyway; the framework's hard laws are only the
-  custody rules.
+  `MFiber`). Cheap stores answer `Fiber.done(...)` — today's FD cascade is a
+  plain synchronous loop, since every propagator is cheap; a store hosting
+  expensive propagators defers between steps via `functional`'s `Worklist`
+  (extracted under fixpoint-machine.md §4's bottom-up rule: one item per
+  deferred step, so any scheduler interleaves fairly). Granularity is the
+  store author's choice — it was never enforceable anyway; the framework's
+  hard laws are only the custody rules.
 - **The intra-store note has its own type**: `Verdict.update` answers the
   toolkit's `Update` (factor + inferred + runs + `withReexamine` terms feeding
   the owner's worklist), and `Revision` carries only what the driver routes

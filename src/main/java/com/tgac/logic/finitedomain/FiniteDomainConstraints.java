@@ -1,7 +1,6 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.Worklist;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
@@ -143,24 +142,25 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	/**
-	 * This store's propagation loop: one {@link Worklist} item is one term whose
-	 * watchers re-examine; verdict updates discover further terms; the drain is
-	 * fiber-stepped, so the driving scheduler interleaves fairly between items.
-	 * Termination is contraction: {@link DomainUpdate} only ever shrinks domains.
+	 * This store's propagation loop: one iteration is one term whose watchers
+	 * re-examine; verdict updates discover further terms; contraction
+	 * ({@link DomainUpdate} only ever shrinks domains) is what terminates it.
+	 * A plain synchronous loop — every propagator here is cheap, so the whole
+	 * cascade is one fiber step. A store hosting expensive propagators would
+	 * defer between items instead ({@code functional}'s {@code Worklist} is
+	 * that loop, fiber-stepped) — granularity is the store author's choice.
 	 */
 	private Fiber<Revision> cascade(Package state, Cascade acc, List<Term<?>> seeds) {
-		FiniteDomainConstraints original = this;
-		return Worklist.drain(acc, seeds, (a, w) -> {
-					List<Term<?>> discovered = administer(
-							a.factor.constraints.toJavaStream()
-									.filter(p -> p.watches(state.putStore(a.factor), w))
-									.collect(Collectors.toList()),
-							state, a);
-					return a.dead ?
-							Worklist.Step.stop(a) :
-							Worklist.Step.proceed(a, discovered);
-				})
-				.map(a -> a.toRevision(original));
+		java.util.ArrayDeque<Term<?>> queue = new java.util.ArrayDeque<>(seeds);
+		while (!queue.isEmpty() && !acc.dead) {
+			Term<?> next = queue.poll();
+			queue.addAll(administer(
+					acc.factor.constraints.toJavaStream()
+							.filter(p -> p.watches(state.putStore(acc.factor), next))
+							.collect(Collectors.toList()),
+					state, acc));
+		}
+		return Fiber.done(acc.toRevision(this));
 	}
 
 	/**
