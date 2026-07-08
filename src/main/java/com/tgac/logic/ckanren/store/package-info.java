@@ -5,9 +5,10 @@
  * (docs/design/minimal-constraint-vocabulary.md §2.1). A {@link
  * com.tgac.logic.ckanren.store.ConstraintStore} is one constraint domain's factor
  * of the package (finite domains, disequality, projection), living for the whole
- * derivation. Three triggers — {@code revise} (bindings arrived), {@code narrowed}
- * (a term narrowed; broadcast), {@code stated} (your item was stated; dispatched to
- * the owner) — all answer a {@link com.tgac.logic.ckanren.store.Revision}: at
+ * derivation. Two triggers — {@code revise} (bindings arrived: custody, your own
+ * watchers, your own cascade) and {@code stated} (your item was stated; dispatched
+ * to the owner) — answer a {@code Fiber} of
+ * {@link com.tgac.logic.ckanren.store.Revision}: at
  * most the store's own replaced factor, plus consequences in the driver's
  * two-word vocabulary (inferred {@code Prefix}es, narrowed {@code Term}s) and run
  * goals for the post-quiescence splice. Touching the substitutions or another

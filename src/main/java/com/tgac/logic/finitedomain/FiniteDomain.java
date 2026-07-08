@@ -50,8 +50,28 @@ public class FiniteDomain {
 				.<Cont<Package, Nothing>> match(
 						() -> Cont.complete(Nothing.nothing()),
 						() -> Cont.just(s),
-						(factor, x) -> Propagation.narrowed(x).apply(s.putStore(factor)),
+						(factor, x) -> reexamineOwn(x).apply(s.putStore(factor)),
 						prefix -> Propagation.resolve(prefix).apply(s));
+	}
+
+	/**
+	 * Statement-position re-examination of this domain's own watchers of
+	 * {@code x}: the store drains its cascade (a fiber — long cascades stay
+	 * fairly stepped) and the collapses it yields re-enter through the
+	 * chokepoint like any other inferred bindings.
+	 */
+	static Goal reexamineOwn(Term<?> x) {
+		return s -> Cont.defer(() -> FiniteDomainConstraints.reexamine(x, s)
+				.map(revision -> revision.<Cont<Package, Nothing>> match(
+						() -> Cont.complete(Nothing.nothing()),
+						() -> Cont.just(s),
+						upd -> {
+							Package updated = s.putStore(upd.factor());
+							return upd.inferred().stream()
+									.map(Propagation::resolve)
+									.reduce(Goal.success(), Goal::and)
+									.apply(updated);
+						})));
 	}
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {

@@ -1,5 +1,9 @@
 # The minimal constraint vocabulary — the driver speaks only to stores
 
+**AMENDED (July 2026, §9): the `narrowed` trigger was ABOLISHED — hooks return
+`Fiber<Revision>` and stores own their cascades; where the text below describes a
+narrowed trigger/broadcast, §9 supersedes it.**
+
 **Status: IMPLEMENTED (July 2026; the uniform store boundary is Tom's call:
 "the driver only handles cross-store interactions, never intra-store").
 Deviations from the plan, all recorded in place: the FD primitive lives in its
@@ -233,3 +237,36 @@ step before moving code.
   statement semantics, single-store dispatch) or faked via `narrowed` on
   watched terms (rejected: multi-wake, wakes on ground values, inexact).
 - The bridge keep/drop decision (§4) — independent of this design.
+
+## 9. The scheduling layer (July 2026 amendment — implemented)
+
+The `narrowed` trigger (né `changed`) conflated two events: bound variables
+(shared content — the substitution) and domain narrowings (private content —
+only the owner can act). The resolution, decided with Tom:
+
+- **`narrowed` is ABOLISHED** as a trigger, an agenda item, and a public entry.
+  The driver's items are Bind and Stated; the public surface is `resolve` and
+  `activate`; the store hooks are `revise`, `stated`, `enforce`, `reify`.
+- **A store's reaction is COMPLETE**: `revise` does custody, re-examines the
+  store's own watchers of the newly bound variables, and chases the resulting
+  cascade. Statement-position re-examination (`dom` narrowing, labelling's
+  catch-up, projection's enforce flush) is self-service by the owning domain's
+  own code.
+- **Fair interleaving moved to the correct layer**: hooks return
+  `Fiber<Revision>`, mirroring the unifier (`MiniKanren.unifyPrefix` is an
+  `MFiber`). Cheap stores answer `Fiber.done(...)`; expensive cascades defer
+  between steps via `functional`'s `Worklist` (extracted under
+  fixpoint-machine.md §4's bottom-up rule: one item per deferred step, so any
+  scheduler interleaves fairly). Granularity is the store author's choice —
+  it was never enforceable anyway; the framework's hard laws are only the
+  custody rules.
+- **`Revision.withNarrowed` survives as an intra-store note**: the vocabulary
+  by which `DomainUpdate.narrowAll` feeds the owning store's worklist. It never
+  reaches the driver — `Propagation`'s fold rejects a top-level narrowed
+  payload loudly (pinned by `topLevelNarrowedPayloadIsRejected`).
+- **Termination** is each store's contraction obligation (`DomainUpdate` only
+  shrinks); a non-contracting store now spins fairly as fiber steps rather
+  than being preempted per agenda item.
+
+Cross-store interaction is therefore exactly one thing: bindings, through the
+substitution. Everything else is intra-store or store↔driver scheduling.

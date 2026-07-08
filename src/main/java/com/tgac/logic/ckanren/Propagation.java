@@ -5,6 +5,7 @@ package com.tgac.logic.ckanren;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -79,56 +80,53 @@ public final class Propagation {
 	}
 
 	/**
-	 * The announcement entry: {@code x}'s knowledge shrank — bound to a value,
-	 * or its domain strictly narrowed — so every store re-examines whatever it
-	 * has watching {@code x}. In a monotone engine narrowing is the only change
-	 * there is, which is what the name pins down. Mode-oblivious like the other
-	 * entries; a spurious announcement is harmless.
-	 */
-	public static Goal narrowed(Term<?> x) {
-		return s -> enqueue(s, new Agenda.Narrowed(x));
-	}
-
-	/**
-	 * Folds a trigger over the constraint stores: each answers a {@link Revision} —
-	 * at most its own factor swapped — and the driver routes the payloads: narrowed
-	 * terms and inferred prefixes queue as agenda items, runs join the run lane.
+	 * Folds a trigger over the constraint stores as one fiber: each store answers
+	 * a {@link Revision} — at most its own factor swapped — possibly across many
+	 * deferred steps (the store's scheduling choice); the driver routes the
+	 * consequences: inferred prefixes queue as Bind items, runs join the run
+	 * lane. Narrowed terms are intra-store notes and must never reach this fold.
 	 */
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
-			java.util.function.BiFunction<ConstraintStore, Package, Revision> trigger,
-			java.util.List<Term<?>> alsoNarrowed) {
-		Package current = s;
-		java.util.List<Prefix> inferred = new ArrayList<>();
-		java.util.List<Term<?>> narrowed = new ArrayList<>(alsoNarrowed);
-		java.util.List<Goal> runs = new ArrayList<>();
-		for (ConstraintStore cs : constraintStores(current)) {
-			Package before = current;
-			Package after = trigger.apply(cs, before).match(
-					() -> null,
-					() -> before,
-					upd -> {
-						inferred.addAll(upd.inferred());
-						narrowed.addAll(upd.narrowed());
-						runs.addAll(upd.runs());
-						return before.putStore(upd.factor());
-					});
-			if (after == null) {
-				return Cont.complete(Nothing.nothing());
+			java.util.function.BiFunction<ConstraintStore, Package, Fiber<Revision>> trigger) {
+		return Cont.defer(() -> fold(s, constraintStores(s), 0,
+				new ArrayList<>(), new ArrayList<>(), trigger));
+	}
+
+	private static Fiber<Cont<Package, Nothing>> fold(
+			Package current,
+			java.util.List<ConstraintStore> stores,
+			int i,
+			java.util.List<Prefix> inferred,
+			java.util.List<Goal> runs,
+			java.util.function.BiFunction<ConstraintStore, Package, Fiber<Revision>> trigger) {
+		if (i == stores.size()) {
+			Agenda agenda = (Agenda) current.getConstraints().get(Agenda.class).get();
+			for (Prefix prefix : inferred) {
+				agenda = agenda.append(new Agenda.Bind(prefix));
 			}
-			current = after;
+			for (Goal run : runs) {
+				agenda = agenda.appendRun(run);
+			}
+			return Fiber.done(Cont.just(current.putStore(agenda)));
 		}
-		Agenda agenda = (Agenda) current.getConstraints().get(Agenda.class).get();
-		for (Term<?> x : narrowed) {
-			agenda = agenda.append(new Agenda.Narrowed(x));
-		}
-		for (Prefix prefix : inferred) {
-			agenda = agenda.append(new Agenda.Bind(prefix));
-		}
-		for (Goal run : runs) {
-			agenda = agenda.appendRun(run);
-		}
-		return Cont.just(current.putStore(agenda));
+		ConstraintStore cs = stores.get(i);
+		Package before = current;
+		return Fiber.defer(() -> trigger.apply(cs, before)
+				.flatMap(revision -> revision.<Fiber<Cont<Package, Nothing>>> match(
+						() -> Fiber.done(Cont.complete(Nothing.nothing())),
+						() -> fold(before, stores, i + 1, inferred, runs, trigger),
+						upd -> {
+							if (!upd.narrowed().isEmpty()) {
+								throw new IllegalStateException(
+										"narrowed terms are store-internal: the owning store's"
+												+ " cascade consumes them, the driver never does");
+							}
+							inferred.addAll(upd.inferred());
+							runs.addAll(upd.runs());
+							return fold(before.putStore(upd.factor()), stores, i + 1,
+									inferred, runs, trigger);
+						})));
 	}
 
 	private static java.util.List<ConstraintStore> constraintStores(Package p) {
@@ -218,40 +216,15 @@ public final class Propagation {
 						return Cont.just(s);
 					}
 					Package extended = s.withSubstitutions(kept.appliedTo(s.getSubstitutions()));
-					// revise every store against the delta; the newly bound vars queue
-					// as narrowed terms so their watchers re-examine
-					java.util.List<Term<?>> bound = new ArrayList<>();
-					for (Tuple2<LVar<?>, Term<?>> binding : kept.bindings()) {
-						bound.add(binding._1);
-					}
-					return reviseAll(extended, (cs, p) -> cs.revise(kept, p), bound);
+					// each store's revise is COMPLETE: custody, its own watchers of the
+					// newly bound variables, and its own cascade
+					return reviseAll(extended, (cs, p) -> cs.revise(kept, p));
 				};
 			}
 
 			@Override
 			public String toString() {
 				return prefix.toString();
-			}
-		}
-
-		/** A term narrowed — every store re-examines its watchers. */
-		static final class Narrowed extends Item {
-			final Term<?> narrowed;
-
-			Narrowed(Term<?> narrowed) {
-				this.narrowed = narrowed;
-			}
-
-			@Override
-			Goal apply() {
-				return s -> reviseAll(s,
-						(cs, p) -> cs.narrowed(narrowed, p),
-						java.util.Collections.emptyList());
-			}
-
-			@Override
-			public String toString() {
-				return "narrowed(" + narrowed + ")";
 			}
 		}
 
@@ -268,8 +241,7 @@ public final class Propagation {
 				return s -> reviseAll(s,
 						(cs, p) -> item.getStoreClass() == cs.getClass() ?
 								cs.stated(item, p) :
-								Revision.unchanged(),
-						java.util.Collections.emptyList());
+								Fiber.done(Revision.unchanged()));
 			}
 
 			@Override

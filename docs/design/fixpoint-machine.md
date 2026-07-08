@@ -193,6 +193,11 @@ we unify?" conversation starts where this one ended.
   Call-side widening is sound in both coordinates (XSB's subgoal abstraction is the
   term-coordinate instance; dropping call residue is the region-coordinate instance);
   answer-side widening is unsound in both. One theory, two coordinates, still two engines.
+- **A leaf-level `Worklist` WAS extracted (July 2026, `functional/fibers/Worklist`)** —
+  under §4's own bottom-up rule, at the moment the store-owned cascades would have
+  duplicated it: a fiber-stepped drain-to-quiescence loop (one item per deferred
+  step). It is explicitly NOT the §5 driver: the agenda and tabling remain their
+  own machines; `Worklist` is a brick stores use INSIDE their hooks.
 - **A user-facing `Lattice<L>` interface was considered and DEFERRED (Tom, July 2026).**
   The right-sized unification, if ever wanted, is a small interface (meet, order/entails,
   bottom, optionally enumerable atoms) with the generic abstract-domains store as its

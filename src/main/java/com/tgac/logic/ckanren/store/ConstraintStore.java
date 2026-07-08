@@ -1,5 +1,6 @@
 package com.tgac.logic.ckanren.store;
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
@@ -27,34 +28,37 @@ public interface ConstraintStore extends Store {
 
 	/**
 	 * Revise this store against newly applied bindings — AC-3's REVISE, cKanren's
-	 * process-prefix (capability form: docs/design/capability-constraint-api.md
-	 * §2.3). The chokepoint has already applied the extension; the store may read
-	 * anything and change only its own factor — a whole package is not
-	 * expressible in the return type.
+	 * process-prefix. The chokepoint has already applied the extension; the store
+	 * may read anything and change only its own factor — a whole package is not
+	 * expressible in the return type. The reaction is COMPLETE: custody checks,
+	 * re-examining this store's own watchers of the newly bound variables, and
+	 * chasing the resulting cascade are all this store's business; the driver
+	 * routes only the returned consequences (inferred prefixes, runs).
 	 *
-	 * @param prefix - exactly the newly applied bindings
-	 * @param state - the extended live package to verify and read domains against
+	 * <p>The fiber return is the scheduling contract: cheap reactions return
+	 * {@code Fiber.done(revision)}; expensive ones (long cascades, heavy global
+	 * propagators) defer between steps — see {@code Worklist} — so the driving
+	 * scheduler interleaves other branches fairly. Granularity is the author's
+	 * choice; the driver guarantees fairness only between fiber steps.
+	 * Termination is the store's contraction obligation: updates may only shrink
+	 * knowledge ({@code DomainUpdate} guarantees it for domains).
+	 *
+	 * @param prefix
+	 * 		- exactly the newly applied bindings
+	 * @param state
+	 * 		- the extended live package to verify and read domains against
 	 */
-	Revision revise(Prefix prefix, Package state);
-
-	/**
-	 * A term's knowledge shrank — bound to a value, or its domain strictly
-	 * narrowed. Re-examine whatever this store has watching it; the trigger broadcasts to every store, so cross-store waking
-	 * needs no other machinery. Stores with nothing parked (disequality) keep the
-	 * default — they participate through {@link #revise} instead.
-	 */
-	default Revision narrowed(Term<?> x, Package state) {
-		return Revision.unchanged();
-	}
+	Fiber<Revision> revise(Prefix prefix, Package state);
 
 	/**
 	 * One of this store's items was just stated ({@code Propagation.activate}
 	 * parked it already). First examination: a constraint over already-ground
 	 * terms will never be woken, so whatever can be decided or narrowed at
-	 * statement time must be decided here.
+	 * statement time must be decided here. Same scheduling contract as
+	 * {@link #revise}.
 	 */
-	default Revision stated(Stored item, Package state) {
-		return Revision.unchanged();
+	default Fiber<Revision> stated(Stored item, Package state) {
+		return Fiber.done(Revision.unchanged());
 	}
 
 	/**

@@ -3,7 +3,9 @@ package com.tgac.logic.ckanren;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.store.ConstraintStore;
@@ -17,7 +19,6 @@ import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import org.junit.Test;
 
@@ -39,8 +40,8 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public Revision revise(Prefix prefix, Package state) {
-			return reaction.apply(prefix, state);
+		public Fiber<Revision> revise(Prefix prefix, Package state) {
+			return Fiber.done(reaction.apply(prefix, state));
 		}
 
 		@Override
@@ -159,29 +160,19 @@ public class CapabilityDriverTest {
 	}
 
 	@Test(timeout = 5000)
-	public void narrowedPayloadBroadcastsToEveryStore() {
-		AtomicInteger examinations = new AtomicInteger();
+	public void topLevelNarrowedPayloadIsRejected() {
+		// narrowed terms are intra-store notes (the owning cascade consumes them);
+		// a store leaking one to the driver is a broken store and must fail LOUDLY
 		Term<Long> t = lvar();
 
-		StoreB listening = new StoreB((prefix, state) -> Revision.unchanged()) {
-			@Override
-			public Revision narrowed(Term<?> x, Package state) {
-				if (x == t) {
-					examinations.incrementAndGet();
-				}
-				return Revision.unchanged();
-			}
-		};
 		Package root = root(
 				new StoreA((prefix, state) ->
 						Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
-								.withNarrowed(t)),
-				listening);
+								.withNarrowed(t)));
 
-		assertThat(solutions(root)).isEqualTo(1);
-		assertThat(examinations.get())
-				.as("one narrowed payload: every store re-examines exactly once")
-				.isEqualTo(1);
+		assertThatThrownBy(() -> solutions(root))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("store-internal");
 	}
 
 	@Test(timeout = 5000)

@@ -1,5 +1,7 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.Worklist;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
@@ -83,122 +85,157 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public Revision revise(Prefix prefix, Package state) {
+	public Fiber<Revision> revise(Prefix prefix, Package state) {
 		// each newly bound value must lie in its variable's domain; a var-var
-		// binding aliases the two, so the domain follows the representative
-		FiniteDomainConstraints[] factor = {this};
-		List<LVar<?>> narrowed = new ArrayList<>();
-		List<Prefix> inferred = new ArrayList<>();
+		// binding aliases the two, so the domain follows the representative;
+		// every bound variable's watchers re-examine, then the cascade drains
+		Cascade acc = new Cascade(this);
+		List<Term<?>> seeds = new ArrayList<>();
 		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
-			Domain dom = (Domain) factor[0].getDomain((LVar) binding._1).getOrNull();
+			seeds.add(binding._1);
+			Domain dom = (Domain) acc.factor.getDomain((LVar) binding._1).getOrNull();
 			if (dom == null) {
 				continue;
 			}
 			boolean dead = DomainUpdate
-					.apply(state, factor[0], state.walk(binding._2), dom)
+					.apply(state, acc.factor, state.walk(binding._2), dom)
 					.match(
 							() -> true,
 							() -> false,
 							(narrowedFactor, x) -> {
-								factor[0] = narrowedFactor;
-								narrowed.add(x);
+								acc.factor = narrowedFactor;
+								seeds.add(x);
 								return false;
 							},
 							p -> {
-								inferred.add(p);
+								acc.inferred.add(p);
 								return false;
 							});
 			if (dead) {
-				return Revision.fail();
+				return Fiber.done(Revision.fail());
 			}
 		}
-		if (factor[0] == this && narrowed.isEmpty() && inferred.isEmpty()) {
-			return Revision.unchanged();
-		}
-		Revision.Updated result = Revision.updated(factor[0]);
-		for (LVar<?> x : narrowed) {
-			result = result.withNarrowed(x);
-		}
-		for (Prefix p : inferred) {
-			result = result.withInferred(p);
-		}
-		return result;
+		return cascade(state, acc, seeds);
 	}
 
 	@Override
-	public Revision narrowed(Term<?> x, Package state) {
-		return administer(
-				constraints.toJavaStream()
-						.filter(p -> p.watches(state, x))
-						.collect(Collectors.toList()),
-				state);
+	public Fiber<Revision> stated(Stored item, Package state) {
+		if (!(item instanceof Propagator)) {
+			return Fiber.done(Revision.unchanged());
+		}
+		Cascade acc = new Cascade(this);
+		List<Term<?>> discovered = administer(
+				java.util.Collections.singletonList((Propagator) item), state, acc);
+		if (acc.dead) {
+			return Fiber.done(Revision.fail());
+		}
+		return cascade(state, acc, discovered);
 	}
 
-	@Override
-	public Revision stated(Stored item, Package state) {
-		return item instanceof Propagator ?
-				administer(java.util.Collections.singletonList((Propagator) item), state) :
-				Revision.unchanged();
+	/**
+	 * The statement-position re-examination seam ({@code dom} narrowing an
+	 * existing domain, labelling's catch-up): drains this store's own cascade
+	 * from {@code x} against the live state.
+	 */
+	static Fiber<Revision> reexamine(Term<?> x, Package state) {
+		FiniteDomainConstraints self = getFDStore(state);
+		return self.cascade(state, new Cascade(self), java.util.Collections.singletonList(x));
+	}
+
+	/**
+	 * This store's propagation loop: one {@link Worklist} item is one term whose
+	 * watchers re-examine; verdict updates discover further terms; the drain is
+	 * fiber-stepped, so the driving scheduler interleaves fairly between items.
+	 * Termination is contraction: {@link DomainUpdate} only ever shrinks domains.
+	 */
+	private Fiber<Revision> cascade(Package state, Cascade acc, List<Term<?>> seeds) {
+		FiniteDomainConstraints original = this;
+		return Worklist.drain(acc, seeds, (a, w) -> {
+					List<Term<?>> discovered = administer(
+							a.factor.constraints.toJavaStream()
+									.filter(p -> p.watches(state.putStore(a.factor), w))
+									.collect(Collectors.toList()),
+							state, a);
+					return a.dead ?
+							Worklist.Step.stop(a) :
+							Worklist.Step.proceed(a, discovered);
+				})
+				.map(a -> a.toRevision(original));
 	}
 
 	/**
 	 * Runs the given parked propagators against the live state and administers
-	 * their verdicts into one revision: fail kills the branch, keep stays parked,
-	 * subsumed unparks, update applies to the current factor (narrowed domains,
-	 * inferred collapses), run unparks and joins the run lane. Each propagator
-	 * sees the factor as left by the verdicts before it.
+	 * their verdicts into the cascade state: fail kills the branch, keep stays
+	 * parked, subsumed unparks, update applies to the current factor (narrowed
+	 * domains feed the worklist, inferred collapses accumulate), run unparks and
+	 * joins the run lane. Each propagator sees the factor as left by the verdicts
+	 * before it.
 	 */
-	private Revision administer(List<Propagator> candidates, Package state) {
-		FiniteDomainConstraints[] factor = {this};
-		List<Prefix> inferred = new ArrayList<>();
-		List<Term<?>> narrowed = new ArrayList<>();
-		List<Goal> runs = new ArrayList<>();
+	private static List<Term<?>> administer(List<Propagator> candidates, Package state, Cascade acc) {
+		List<Term<?>> discovered = new ArrayList<>();
 		for (Propagator p : candidates) {
-			if (!factor[0].contains(p)) {
+			if (!acc.factor.contains(p)) {
 				// an earlier verdict of this same trigger removed it
 				continue;
 			}
-			Package live = state.putStore(factor[0]);
+			Package live = state.putStore(acc.factor);
 			boolean dead = p.propagate(live).match(
 					() -> true,
 					() -> false,
 					() -> {
-						factor[0] = (FiniteDomainConstraints) factor[0].remove(p);
+						acc.factor = (FiniteDomainConstraints) acc.factor.remove(p);
 						return false;
 					},
-					f -> f.apply(live, factor[0]).match(
+					f -> f.apply(live, acc.factor).match(
 							() -> true,
 							() -> false,
 							upd -> {
-								factor[0] = (FiniteDomainConstraints) upd.factor();
-								inferred.addAll(upd.inferred());
-								narrowed.addAll(upd.narrowed());
-								runs.addAll(upd.runs());
+								acc.factor = (FiniteDomainConstraints) upd.factor();
+								acc.inferred.addAll(upd.inferred());
+								acc.runs.addAll(upd.runs());
+								discovered.addAll(upd.narrowed());
 								return false;
 							}),
 					goal -> {
-						factor[0] = (FiniteDomainConstraints) factor[0].remove(p);
-						runs.add(goal);
+						acc.factor = (FiniteDomainConstraints) acc.factor.remove(p);
+						acc.runs.add(goal);
 						return false;
 					});
 			if (dead) {
-				return Revision.fail();
+				acc.dead = true;
+				return discovered;
 			}
 		}
-		if (factor[0] == this && inferred.isEmpty() && narrowed.isEmpty() && runs.isEmpty()) {
-			return Revision.unchanged();
+		return discovered;
+	}
+
+	/** The threaded state of one cascade: the evolving factor plus its harvest. */
+	private static final class Cascade {
+		FiniteDomainConstraints factor;
+		final List<Prefix> inferred = new ArrayList<>();
+		final List<Goal> runs = new ArrayList<>();
+		boolean dead;
+
+		Cascade(FiniteDomainConstraints factor) {
+			this.factor = factor;
 		}
-		Revision.Updated result = Revision.updated(factor[0]);
-		for (Term<?> x : narrowed) {
-			result = result.withNarrowed(x);
+
+		Revision toRevision(FiniteDomainConstraints original) {
+			if (dead) {
+				return Revision.fail();
+			}
+			if (factor == original && inferred.isEmpty() && runs.isEmpty()) {
+				return Revision.unchanged();
+			}
+			Revision.Updated result = Revision.updated(factor);
+			for (Prefix p : inferred) {
+				result = result.withInferred(p);
+			}
+			for (Goal run : runs) {
+				result = result.withRun(run);
+			}
+			return result;
 		}
-		for (Prefix p : inferred) {
-			result = result.withInferred(p);
-		}
-		for (Goal run : runs) {
-			result = result.withRun(run);
-		}
-		return result;
 	}
 
 	@Override

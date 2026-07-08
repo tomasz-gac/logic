@@ -1,13 +1,16 @@
 package com.tgac.logic.projection;
 
 import com.tgac.functional.Exceptions;
-import com.tgac.functional.monad.Cont;
+import com.tgac.functional.category.Nothing;
 import com.tgac.logic.ckanren.Propagation;
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.propagator.Verdict;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
@@ -15,6 +18,7 @@ import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
 import java.util.Collections;
 import java.util.function.Function;
@@ -30,32 +34,48 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public <T> Goal enforce(Term<T> x) {
-		return Propagation.narrowed(x)
-				.and(s1 -> s1.getStore(ProjectionConstraints.class)
-						.projections
-						.isEmpty() ?
-						Cont.just(s1) :
-						Exceptions.throwNow(new RuntimeException("Unbound variables during projection")));
+		// self-service at search position: run whatever projections of x are
+		// ground, then anything still parked is a programming error
+		return s -> {
+			ProjectionConstraints self = s.getStore(ProjectionConstraints.class);
+			return self.administer(self.projections.filter(p -> p.watches(s, x)), s)
+					.<Cont<Package, Nothing>> match(
+							() -> Cont.complete(Nothing.nothing()),
+							() -> verifyDrained(s),
+							upd -> {
+								Package cleared = s.putStore(upd.factor());
+								Goal drained = s2 -> verifyDrained(s2);
+								return upd.runs().stream()
+										.reduce(Goal.success(), Goal::and)
+										.and(drained)
+										.apply(cleared);
+							});
+		};
+	}
+
+	private static Cont<Package, Nothing> verifyDrained(Package s) {
+		return s.getStore(ProjectionConstraints.class).projections.isEmpty() ?
+				Cont.just(s) :
+				Exceptions.throwNow(new RuntimeException("Unbound variables during projection"));
 	}
 
 	@Override
-	public Revision revise(Prefix prefix, Package state) {
-		// projections are woken by the chokepoint's cross-store wake
-		return Revision.unchanged();
+	public Fiber<Revision> revise(Prefix prefix, Package state) {
+		// a projection only cares about groundness, so its own watchers of the
+		// newly bound variables are re-examined right here
+		LinkedHashSet<Propagator> candidates = LinkedHashSet.empty();
+		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
+			candidates = candidates.addAll(
+					projections.filter(p -> p.watches(state, binding._1)));
+		}
+		return Fiber.done(administer(candidates, state));
 	}
 
 	@Override
-	public Revision narrowed(Term<?> x, Package state) {
-		return administer(
-				projections.filter(p -> p.watches(state, x)),
-				state);
-	}
-
-	@Override
-	public Revision stated(Stored item, Package state) {
-		return item instanceof Propagator ?
+	public Fiber<Revision> stated(Stored item, Package state) {
+		return Fiber.done(item instanceof Propagator ?
 				administer(LinkedHashSet.of((Propagator) item), state) :
-				Revision.unchanged();
+				Revision.unchanged());
 	}
 
 	/**

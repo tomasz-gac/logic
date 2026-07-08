@@ -103,7 +103,13 @@ public abstract class Revision {
 					appended(inferred, prefix), narrowed, runs);
 		}
 
-		/** A strictly narrowed term — its watchers get re-examined. */
+		/**
+		 * A term whose watchers the OWNING store must still re-examine — an
+		 * intra-store note consumed by the store's own cascade (e.g.
+		 * {@code DomainUpdate.narrowAll} feeding the FD worklist). Never returned
+		 * to the driver, which rejects it loudly: nothing outside the owner can
+		 * act on a narrowing whose content lives in the owner's factor.
+		 */
 		public Updated withNarrowed(Term<?> x) {
 			return new Updated(factor,
 					inferred, appended(narrowed, x), runs);

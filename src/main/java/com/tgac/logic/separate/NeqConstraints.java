@@ -4,6 +4,7 @@ import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -64,10 +65,10 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Revision revise(Prefix prefix, Package state) {
-		return Disequality.verifyAndSimplify(constraints, state.getSubstitutions())
+	public Fiber<Revision> revise(Prefix prefix, Package state) {
+		return Fiber.done(Disequality.verifyAndSimplify(constraints, state.getSubstitutions())
 				.map(c -> (Revision) Revision.updated(NeqConstraints.of(c)))
-				.getOrElse(Revision::fail);
+				.getOrElse(Revision::fail));
 	}
 
 	@Override
