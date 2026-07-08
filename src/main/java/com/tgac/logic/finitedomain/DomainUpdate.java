@@ -5,7 +5,7 @@ package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.unification.LVal.lval;
 
-import com.tgac.logic.ckanren.store.Revision;
+import com.tgac.logic.ckanren.propagator.Update;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
@@ -62,11 +62,11 @@ abstract class DomainUpdate {
 	}
 
 	/**
-	 * Folds a batch of updates into one {@link Revision}, threading the factor:
+	 * Folds a batch of updates into one {@link Update}, threading the factor:
 	 * fail short-circuits, narrowings accumulate narrowed terms, collapses
 	 * accumulate inferred prefixes.
 	 */
-	static Revision narrowAll(Package state, FiniteDomainConstraints factor,
+	static Update narrowAll(Package state, FiniteDomainConstraints factor,
 			List<FiniteDomain.VarWithDomain<?>> updates) {
 		FiniteDomainConstraints[] current = {factor};
 		java.util.List<LVar<?>> narrowed = new java.util.ArrayList<>();
@@ -87,15 +87,15 @@ abstract class DomainUpdate {
 								return false;
 							});
 			if (dead) {
-				return Revision.fail();
+				return Update.fail();
 			}
 		}
 		if (narrowed.isEmpty() && inferred.isEmpty()) {
-			return Revision.unchanged();
+			return Update.unchanged();
 		}
-		Revision.Updated result = Revision.updated(current[0]);
+		Update.Applied result = Update.applied(current[0]);
 		for (LVar<?> x : narrowed) {
-			result = result.withNarrowed(x);
+			result = result.withReexamine(x);
 		}
 		for (Prefix prefix : inferred) {
 			result = result.withInferred(prefix);

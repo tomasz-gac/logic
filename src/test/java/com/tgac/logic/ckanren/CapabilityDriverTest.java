@@ -3,7 +3,6 @@ package com.tgac.logic.ckanren;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
@@ -157,22 +156,6 @@ public class CapabilityDriverTest {
 				.anyMatch(c -> c.getSimpleName().equals("Agenda")))
 				.as("the agenda must be removed at quiescence")
 				.isFalse();
-	}
-
-	@Test(timeout = 5000)
-	public void topLevelNarrowedPayloadIsRejected() {
-		// narrowed terms are intra-store notes (the owning cascade consumes them);
-		// a store leaking one to the driver is a broken store and must fail LOUDLY
-		Term<Long> t = lvar();
-
-		Package root = root(
-				new StoreA((prefix, state) ->
-						Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
-								.withNarrowed(t)));
-
-		assertThatThrownBy(() -> solutions(root))
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("store-internal");
 	}
 
 	@Test(timeout = 5000)

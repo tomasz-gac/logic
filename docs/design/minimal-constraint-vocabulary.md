@@ -260,10 +260,11 @@ only the owner can act). The resolution, decided with Tom:
   scheduler interleaves fairly). Granularity is the store author's choice —
   it was never enforceable anyway; the framework's hard laws are only the
   custody rules.
-- **`Revision.withNarrowed` survives as an intra-store note**: the vocabulary
-  by which `DomainUpdate.narrowAll` feeds the owning store's worklist. It never
-  reaches the driver — `Propagation`'s fold rejects a top-level narrowed
-  payload loudly (pinned by `topLevelNarrowedPayloadIsRejected`).
+- **The intra-store note has its own type**: `Verdict.update` answers the
+  toolkit's `Update` (factor + inferred + runs + `withReexamine` terms feeding
+  the owner's worklist), and `Revision` carries only what the driver routes
+  (factor + inferred + runs). Leaking a re-examination note to the driver is
+  UNREPRESENTABLE — the runtime guard and its pin were retired for the type.
 - **Termination** is each store's contraction obligation (`DomainUpdate` only
   shrinks); a non-contracting store now spins fairly as fiber steps rather
   than being preempted per agenda item.

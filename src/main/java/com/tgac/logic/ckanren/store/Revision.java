@@ -41,7 +41,7 @@ public abstract class Revision {
 	/** Replace my factor; add consequences with the {@code with*} builders. */
 	public static Updated updated(Store replacement) {
 		return new Updated(replacement,
-				Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+				Collections.emptyList(), Collections.emptyList());
 	}
 
 	public abstract <R> R match(
@@ -82,14 +82,12 @@ public abstract class Revision {
 	public static final class Updated extends Revision {
 		private final Store factor;
 		private final List<Prefix> inferred;
-		private final List<Term<?>> narrowed;
 		private final List<Goal> runs;
 
 		private Updated(Store factor,
-				List<Prefix> inferred, List<Term<?>> narrowed, List<Goal> runs) {
+				List<Prefix> inferred, List<Goal> runs) {
 			this.factor = factor;
 			this.inferred = inferred;
-			this.narrowed = narrowed;
 			this.runs = runs;
 		}
 
@@ -100,25 +98,13 @@ public abstract class Revision {
 		 */
 		public Updated withInferred(Prefix prefix) {
 			return new Updated(factor,
-					appended(inferred, prefix), narrowed, runs);
-		}
-
-		/**
-		 * A term whose watchers the OWNING store must still re-examine — an
-		 * intra-store note consumed by the store's own cascade (e.g.
-		 * {@code DomainUpdate.narrowAll} feeding the FD worklist). Never returned
-		 * to the driver, which rejects it loudly: nothing outside the owner can
-		 * act on a narrowing whose content lives in the owner's factor.
-		 */
-		public Updated withNarrowed(Term<?> x) {
-			return new Updated(factor,
-					inferred, appended(narrowed, x), runs);
+					appended(inferred, prefix), runs);
 		}
 
 		/** A goal for the run lane, spliced after the drain quiesces. */
 		public Updated withRun(Goal goal) {
 			return new Updated(factor,
-					inferred, narrowed, appended(runs, goal));
+					inferred, appended(runs, goal));
 		}
 
 		public Store factor() {
@@ -129,11 +115,7 @@ public abstract class Revision {
 			return inferred;
 		}
 
-		public List<Term<?>> narrowed() {
-			return narrowed;
-		}
-
-		public List<Goal> runs() {
+public List<Goal> runs() {
 			return runs;
 		}
 
@@ -147,7 +129,6 @@ public abstract class Revision {
 		public String toString() {
 			return "updated(" + factor
 					+ (inferred.isEmpty() ? "" : ", bind" + inferred)
-					+ (narrowed.isEmpty() ? "" : ", narrowed" + narrowed)
 					+ (runs.isEmpty() ? "" : ", runs" + runs) + ")";
 		}
 

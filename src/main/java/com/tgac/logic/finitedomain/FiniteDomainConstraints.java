@@ -189,11 +189,11 @@ class FiniteDomainConstraints implements ConstraintStore {
 					f -> f.apply(live, acc.factor).match(
 							() -> true,
 							() -> false,
-							upd -> {
-								acc.factor = (FiniteDomainConstraints) upd.factor();
-								acc.inferred.addAll(upd.inferred());
-								acc.runs.addAll(upd.runs());
-								discovered.addAll(upd.narrowed());
+							applied -> {
+								acc.factor = (FiniteDomainConstraints) applied.factor();
+								acc.inferred.addAll(applied.inferred());
+								acc.runs.addAll(applied.runs());
+								discovered.addAll(applied.reexamine());
 								return false;
 							}),
 					goal -> {

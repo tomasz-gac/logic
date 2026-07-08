@@ -84,7 +84,8 @@ public final class Propagation {
 	 * a {@link Revision} — at most its own factor swapped — possibly across many
 	 * deferred steps (the store's scheduling choice); the driver routes the
 	 * consequences: inferred prefixes queue as Bind items, runs join the run
-	 * lane. Narrowed terms are intra-store notes and must never reach this fold.
+	 * lane. Intra-store re-examination notes ride {@code Update}, not Revision —
+	 * leaking one to the driver is unrepresentable.
 	 */
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
@@ -117,11 +118,6 @@ public final class Propagation {
 						() -> Fiber.done(Cont.complete(Nothing.nothing())),
 						() -> fold(before, stores, i + 1, inferred, runs, trigger),
 						upd -> {
-							if (!upd.narrowed().isEmpty()) {
-								throw new IllegalStateException(
-										"narrowed terms are store-internal: the owning store's"
-												+ " cascade consumes them, the driver never does");
-							}
 							inferred.addAll(upd.inferred());
 							runs.addAll(upd.runs());
 							return fold(before.putStore(upd.factor()), stores, i + 1,
