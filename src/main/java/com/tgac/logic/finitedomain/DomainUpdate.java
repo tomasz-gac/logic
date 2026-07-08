@@ -12,29 +12,25 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import java.util.List;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
- * cKanren's process-δ as a value instead of a goal (the semantics of the old
- * {@code Domain.processDom}/{@code updateVarDomain}/{@code resolveStorableDom}
- * chain): a ground target is a membership check; a variable's previous domain is
- * intersected — an empty intersection fails, an equal one is the termination
- * guard of wake-on-narrowing (no re-wake on no-change), a singleton collapses to
- * an inferred binding (the domain map is deliberately NOT updated — stale domain
- * information under a binding is fine, domains are consulted only for unbound
- * variables), and anything else narrows the factor.
+ * cKanren's process-δ as a value: a ground target is a membership check; a
+ * variable's previous domain is intersected — an empty intersection fails, an
+ * equal one is the termination guard of wake-on-narrowing, a singleton collapses
+ * to an inferred binding (the domain map is deliberately NOT updated — stale
+ * domain information under a binding is fine, domains are consulted only for
+ * unbound variables), and anything else narrows the factor with a re-examination
+ * note. All expressed as the toolkit's {@link Update} steps.
  */
-abstract class DomainUpdate {
+final class DomainUpdate {
 
 	private DomainUpdate() {
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	static DomainUpdate apply(Package state, FiniteDomainConstraints factor, Term<?> target, Domain<?> dom) {
+	static Update apply(Package state, FiniteDomainConstraints factor, Term<?> target, Domain<?> dom) {
 		if (target.isVal()) {
-			return ((Domain) dom).contains(target.get()) ? UNCHANGED : FAIL;
+			return ((Domain) dom).contains(target.get()) ? Update.unchanged() : Update.fail();
 		}
 		LVar<?> x = (LVar<?>) target.asVar().get();
 		Domain previous = (Domain) factor.getDomain((LVar) x).getOrNull();
@@ -42,120 +38,60 @@ abstract class DomainUpdate {
 		if (previous != null) {
 			effective = previous.intersect((Domain) dom);
 			if (effective.isEmpty()) {
-				return FAIL;
+				return Update.fail();
 			}
 			if (effective.equals(previous)) {
-				return UNCHANGED;
+				return Update.unchanged();
 			}
 		} else {
 			effective = (Domain) dom;
 		}
 		if (effective instanceof Singleton) {
 			Object v = ((Singleton) effective).getValue().getValue();
-			// updateVarDomain only touches open variables, so the mint succeeds;
-			// the defensive branch mirrors the old already-bound no-op
+			// only open variables collapse, so the mint succeeds; the defensive
+			// branch mirrors the old already-bound no-op
 			return Prefix.binding(state, x, lval(v))
-					.<DomainUpdate> map(Collapsed::new)
-					.getOrElse(UNCHANGED);
+					.<Update> map(prefix -> Update.applied(factor).withInferred(prefix))
+					.getOrElse(Update.unchanged());
 		}
-		return new Narrowed(factor.withDomain(x, effective), x);
+		return Update.applied(factor.withDomain(x, effective)).withReexamine(x);
 	}
 
 	/**
 	 * Folds a batch of updates into one {@link Update}, threading the factor:
-	 * fail short-circuits, narrowings accumulate narrowed terms, collapses
+	 * fail short-circuits, narrowings accumulate re-examination terms, collapses
 	 * accumulate inferred prefixes.
 	 */
 	static Update narrowAll(Package state, FiniteDomainConstraints factor,
 			List<FiniteDomain.VarWithDomain<?>> updates) {
-		FiniteDomainConstraints[] current = {factor};
-		java.util.List<LVar<?>> narrowed = new java.util.ArrayList<>();
+		FiniteDomainConstraints current = factor;
 		java.util.List<Prefix> inferred = new java.util.ArrayList<>();
+		java.util.List<Term<?>> reexamine = new java.util.ArrayList<>();
 		for (FiniteDomain.VarWithDomain<?> update : updates) {
-			boolean dead = DomainUpdate
-					.apply(state, current[0], update.getUnifiable(), update.getDomain())
-					.match(
-							() -> true,
-							() -> false,
-							(narrowedFactor, x) -> {
-								current[0] = narrowedFactor;
-								narrowed.add(x);
-								return false;
-							},
-							prefix -> {
-								inferred.add(prefix);
-								return false;
-							});
-			if (dead) {
+			Update step = apply(state, current, update.getUnifiable(), update.getDomain());
+			FiniteDomainConstraints before = current;
+			current = step.match(
+					() -> null,
+					() -> before,
+					applied -> {
+						inferred.addAll(applied.inferred());
+						reexamine.addAll(applied.reexamine());
+						return (FiniteDomainConstraints) applied.factor();
+					});
+			if (current == null) {
 				return Update.fail();
 			}
 		}
-		if (narrowed.isEmpty() && inferred.isEmpty()) {
+		if (current == factor && inferred.isEmpty() && reexamine.isEmpty()) {
 			return Update.unchanged();
 		}
-		Update.Applied result = Update.applied(current[0]);
-		for (LVar<?> x : narrowed) {
-			result = result.withReexamine(x);
-		}
+		Update.Applied result = Update.applied(current);
 		for (Prefix prefix : inferred) {
 			result = result.withInferred(prefix);
 		}
+		for (Term<?> x : reexamine) {
+			result = result.withReexamine(x);
+		}
 		return result;
-	}
-
-	abstract <R> R match(
-			Supplier<R> onFail,
-			Supplier<R> onUnchanged,
-			BiFunction<FiniteDomainConstraints, LVar<?>, R> onNarrowed,
-			Function<Prefix, R> onCollapsed);
-
-	private static final DomainUpdate FAIL = new DomainUpdate() {
-		@Override
-		<R> R match(Supplier<R> onFail, Supplier<R> onUnchanged,
-				BiFunction<FiniteDomainConstraints, LVar<?>, R> onNarrowed,
-				Function<Prefix, R> onCollapsed) {
-			return onFail.get();
-		}
-	};
-
-	private static final DomainUpdate UNCHANGED = new DomainUpdate() {
-		@Override
-		<R> R match(Supplier<R> onFail, Supplier<R> onUnchanged,
-				BiFunction<FiniteDomainConstraints, LVar<?>, R> onNarrowed,
-				Function<Prefix, R> onCollapsed) {
-			return onUnchanged.get();
-		}
-	};
-
-	private static final class Narrowed extends DomainUpdate {
-		private final FiniteDomainConstraints factor;
-		private final LVar<?> x;
-
-		private Narrowed(FiniteDomainConstraints factor, LVar<?> x) {
-			this.factor = factor;
-			this.x = x;
-		}
-
-		@Override
-		<R> R match(Supplier<R> onFail, Supplier<R> onUnchanged,
-				BiFunction<FiniteDomainConstraints, LVar<?>, R> onNarrowed,
-				Function<Prefix, R> onCollapsed) {
-			return onNarrowed.apply(factor, x);
-		}
-	}
-
-	private static final class Collapsed extends DomainUpdate {
-		private final Prefix prefix;
-
-		private Collapsed(Prefix prefix) {
-			this.prefix = prefix;
-		}
-
-		@Override
-		<R> R match(Supplier<R> onFail, Supplier<R> onUnchanged,
-				BiFunction<FiniteDomainConstraints, LVar<?>, R> onNarrowed,
-				Function<Prefix, R> onCollapsed) {
-			return onCollapsed.apply(prefix);
-		}
 	}
 }

@@ -50,8 +50,15 @@ public class FiniteDomain {
 				.<Cont<Package, Nothing>> match(
 						() -> Cont.complete(Nothing.nothing()),
 						() -> Cont.just(s),
-						(factor, x) -> reexamineOwn(x).apply(s.putStore(factor)),
-						prefix -> Propagation.resolve(prefix).apply(s));
+						applied -> {
+							Goal binds = applied.inferred().stream()
+									.map(Propagation::resolve)
+									.reduce(Goal.success(), Goal::and);
+							Goal wakes = applied.reexamine().stream()
+									.map(FiniteDomain::reexamineOwn)
+									.reduce(Goal.success(), Goal::and);
+							return binds.and(wakes).apply(s.putStore(applied.factor()));
+						});
 	}
 
 	/**

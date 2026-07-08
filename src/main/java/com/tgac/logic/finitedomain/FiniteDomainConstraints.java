@@ -1,6 +1,7 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.ckanren.propagator.Update;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
@@ -17,6 +18,7 @@ import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -88,33 +90,23 @@ class FiniteDomainConstraints implements ConstraintStore {
 		// each newly bound value must lie in its variable's domain; a var-var
 		// binding aliases the two, so the domain follows the representative;
 		// every bound variable's watchers re-examine, then the cascade drains
-		Cascade acc = new Cascade(this);
-		List<Term<?>> seeds = new ArrayList<>();
+		FiniteDomainConstraints factor = this;
+		List<Prefix> inferred = new ArrayList<>();
+		List<Goal> runs = new ArrayList<>();
+		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
 		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
-			seeds.add(binding._1);
-			Domain dom = (Domain) acc.factor.getDomain((LVar) binding._1).getOrNull();
+			queue.add(binding._1);
+			Domain dom = (Domain) factor.getDomain((LVar) binding._1).getOrNull();
 			if (dom == null) {
 				continue;
 			}
-			boolean dead = DomainUpdate
-					.apply(state, acc.factor, state.walk(binding._2), dom)
-					.match(
-							() -> true,
-							() -> false,
-							(narrowedFactor, x) -> {
-								acc.factor = narrowedFactor;
-								seeds.add(x);
-								return false;
-							},
-							p -> {
-								acc.inferred.add(p);
-								return false;
-							});
-			if (dead) {
+			factor = consume(DomainUpdate.apply(state, factor, state.walk(binding._2), dom),
+					factor, inferred, runs, queue);
+			if (factor == null) {
 				return Fiber.done(Revision.fail());
 			}
 		}
-		return cascade(state, acc, seeds);
+		return cascade(state, factor, inferred, runs, queue);
 	}
 
 	@Override
@@ -122,13 +114,16 @@ class FiniteDomainConstraints implements ConstraintStore {
 		if (!(item instanceof Propagator)) {
 			return Fiber.done(Revision.unchanged());
 		}
-		Cascade acc = new Cascade(this);
-		List<Term<?>> discovered = administer(
-				java.util.Collections.singletonList((Propagator) item), state, acc);
-		if (acc.dead) {
+		List<Prefix> inferred = new ArrayList<>();
+		List<Goal> runs = new ArrayList<>();
+		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
+		FiniteDomainConstraints factor = consume(
+				examine((Propagator) item, state.putStore(this), this),
+				this, inferred, runs, queue);
+		if (factor == null) {
 			return Fiber.done(Revision.fail());
 		}
-		return cascade(state, acc, discovered);
+		return cascade(state, factor, inferred, runs, queue);
 	}
 
 	/**
@@ -138,7 +133,8 @@ class FiniteDomainConstraints implements ConstraintStore {
 	 */
 	static Fiber<Revision> reexamine(Term<?> x, Package state) {
 		FiniteDomainConstraints self = getFDStore(state);
-		return self.cascade(state, new Cascade(self), java.util.Collections.singletonList(x));
+		return self.cascade(state, self, new ArrayList<>(), new ArrayList<>(),
+				new ArrayDeque<>(java.util.Collections.singletonList(x)));
 	}
 
 	/**
@@ -150,92 +146,65 @@ class FiniteDomainConstraints implements ConstraintStore {
 	 * defer between items instead ({@code functional}'s {@code Worklist} is
 	 * that loop, fiber-stepped) — granularity is the store author's choice.
 	 */
-	private Fiber<Revision> cascade(Package state, Cascade acc, List<Term<?>> seeds) {
-		java.util.ArrayDeque<Term<?>> queue = new java.util.ArrayDeque<>(seeds);
-		while (!queue.isEmpty() && !acc.dead) {
+	private Fiber<Revision> cascade(Package state, FiniteDomainConstraints start,
+			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
+		FiniteDomainConstraints factor = start;
+		while (!queue.isEmpty()) {
 			Term<?> next = queue.poll();
-			queue.addAll(administer(
-					acc.factor.constraints.toJavaStream()
-							.filter(p -> p.watches(state.putStore(acc.factor), next))
-							.collect(Collectors.toList()),
-					state, acc));
+			List<Propagator> snapshot = factor.constraints.toJavaList();
+			for (Propagator p : snapshot) {
+				if (!factor.contains(p)) {
+					// an earlier verdict of this same trigger removed it
+					continue;
+				}
+				Package live = state.putStore(factor);
+				if (!p.watches(live, next)) {
+					continue;
+				}
+				factor = consume(examine(p, live, factor), factor, inferred, runs, queue);
+				if (factor == null) {
+					return Fiber.done(Revision.fail());
+				}
+			}
 		}
-		return Fiber.done(acc.toRevision(this));
+		if (factor == this && inferred.isEmpty() && runs.isEmpty()) {
+			return Fiber.done(Revision.unchanged());
+		}
+		Revision.Updated result = Revision.updated(factor);
+		for (Prefix prefix : inferred) {
+			result = result.withInferred(prefix);
+		}
+		for (Goal run : runs) {
+			result = result.withRun(run);
+		}
+		return Fiber.done(result);
+	}
+
+	/** One propagator's verdict as an {@link Update} step against the factor. */
+	private static Update examine(Propagator p, Package live, FiniteDomainConstraints factor) {
+		return p.propagate(live).match(
+				Update::fail,
+				Update::unchanged,
+				() -> Update.applied(factor.remove(p)),
+				f -> f.apply(live, factor),
+				goal -> Update.applied(factor.remove(p)).withRun(goal));
 	}
 
 	/**
-	 * Runs the given parked propagators against the live state and administers
-	 * their verdicts into the cascade state: fail kills the branch, keep stays
-	 * parked, subsumed unparks, update applies to the current factor (narrowed
-	 * domains feed the worklist, inferred collapses accumulate), run unparks and
-	 * joins the run lane. Each propagator sees the factor as left by the verdicts
-	 * before it.
+	 * Threads one step: the new factor (null when the branch died), payloads
+	 * accumulated, re-examination notes queued.
 	 */
-	private static List<Term<?>> administer(List<Propagator> candidates, Package state, Cascade acc) {
-		List<Term<?>> discovered = new ArrayList<>();
-		for (Propagator p : candidates) {
-			if (!acc.factor.contains(p)) {
-				// an earlier verdict of this same trigger removed it
-				continue;
-			}
-			Package live = state.putStore(acc.factor);
-			boolean dead = p.propagate(live).match(
-					() -> true,
-					() -> false,
-					() -> {
-						acc.factor = (FiniteDomainConstraints) acc.factor.remove(p);
-						return false;
-					},
-					f -> f.apply(live, acc.factor).match(
-							() -> true,
-							() -> false,
-							applied -> {
-								acc.factor = (FiniteDomainConstraints) applied.factor();
-								acc.inferred.addAll(applied.inferred());
-								acc.runs.addAll(applied.runs());
-								discovered.addAll(applied.reexamine());
-								return false;
-							}),
-					goal -> {
-						acc.factor = (FiniteDomainConstraints) acc.factor.remove(p);
-						acc.runs.add(goal);
-						return false;
-					});
-			if (dead) {
-				acc.dead = true;
-				return discovered;
-			}
-		}
-		return discovered;
-	}
-
-	/** The threaded state of one cascade: the evolving factor plus its harvest. */
-	private static final class Cascade {
-		FiniteDomainConstraints factor;
-		final List<Prefix> inferred = new ArrayList<>();
-		final List<Goal> runs = new ArrayList<>();
-		boolean dead;
-
-		Cascade(FiniteDomainConstraints factor) {
-			this.factor = factor;
-		}
-
-		Revision toRevision(FiniteDomainConstraints original) {
-			if (dead) {
-				return Revision.fail();
-			}
-			if (factor == original && inferred.isEmpty() && runs.isEmpty()) {
-				return Revision.unchanged();
-			}
-			Revision.Updated result = Revision.updated(factor);
-			for (Prefix p : inferred) {
-				result = result.withInferred(p);
-			}
-			for (Goal run : runs) {
-				result = result.withRun(run);
-			}
-			return result;
-		}
+	private static FiniteDomainConstraints consume(Update step, FiniteDomainConstraints factor,
+			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
+		return step.match(
+				() -> null,
+				() -> factor,
+				applied -> {
+					inferred.addAll(applied.inferred());
+					runs.addAll(applied.runs());
+					queue.addAll(applied.reexamine());
+					return (FiniteDomainConstraints) applied.factor();
+				});
 	}
 
 	@Override
