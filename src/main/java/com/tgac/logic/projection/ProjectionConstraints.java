@@ -1,14 +1,16 @@
 package com.tgac.logic.projection;
 
+// ABOUTME: Suspensions as a store: a projection parks a goal-producing body until its
+// ABOUTME: watched term is deep-ground, then hands the goal to the run lane.
+
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
-import com.tgac.logic.ckanren.Propagation;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.propagator.Propagator;
-import com.tgac.logic.ckanren.propagator.Verdict;
+import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
+import com.tgac.logic.ckanren.store.Watches;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -20,7 +22,6 @@ import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
-import java.util.Collections;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -30,7 +31,28 @@ import lombok.Value;
 public class ProjectionConstraints implements ConstraintStore {
 	private static final ProjectionConstraints EMPTY = new ProjectionConstraints(LinkedHashSet.empty());
 
-	LinkedHashSet<Propagator> projections;
+	LinkedHashSet<Projection> projections;
+
+	/**
+	 * A parked suspension: nothing but the watched term and the body to run once
+	 * it is deep-ground. No verdicts, no propagator machinery — groundness is the
+	 * only question a projection ever asks.
+	 */
+	@Value
+	static class Projection implements Stored {
+		Term<?> target;
+		Function<Object, Goal> body;
+
+		@Override
+		public Class<? extends Store> getStoreClass() {
+			return ProjectionConstraints.class;
+		}
+
+		@Override
+		public String toString() {
+			return "project(" + target + ")";
+		}
+	}
 
 	@Override
 	public <T> Goal enforce(Term<T> x) {
@@ -38,7 +60,7 @@ public class ProjectionConstraints implements ConstraintStore {
 		// ground, then anything still parked is a programming error
 		return s -> {
 			ProjectionConstraints self = s.getStore(ProjectionConstraints.class);
-			return self.administer(self.projections.filter(p -> p.watches(s, x)), s)
+			return self.examine(self.projections.filter(p -> Watches.matches(s, p.target, x)), s)
 					.<Cont<Package, Nothing>> match(
 							() -> Cont.complete(Nothing.nothing()),
 							() -> verifyDrained(s),
@@ -63,58 +85,40 @@ public class ProjectionConstraints implements ConstraintStore {
 	public Fiber<Revision> revise(Prefix prefix, Package state) {
 		// a projection only cares about groundness, so its own watchers of the
 		// newly bound variables are re-examined right here
-		LinkedHashSet<Propagator> candidates = LinkedHashSet.empty();
+		LinkedHashSet<Projection> candidates = LinkedHashSet.empty();
 		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
 			candidates = candidates.addAll(
-					projections.filter(p -> p.watches(state, binding._1)));
+					projections.filter(p -> Watches.matches(state, p.target, binding._1)));
 		}
-		return Fiber.done(administer(candidates, state));
+		return Fiber.done(examine(candidates, state));
 	}
 
 	@Override
 	public Fiber<Revision> stated(Stored item, Package state) {
-		return Fiber.done(item instanceof Propagator ?
-				administer(LinkedHashSet.of((Propagator) item), state) :
+		return Fiber.done(item instanceof Projection ?
+				examine(LinkedHashSet.of((Projection) item), state) :
 				Revision.unchanged());
 	}
 
-	/**
-	 * Projection verdicts are keep (not ground yet) or run (ground: unpark and
-	 * splice the projected goal after quiescence); fail and subsumed are honored
-	 * for completeness.
-	 */
-	private Revision administer(Iterable<Propagator> candidates, Package state) {
-		@SuppressWarnings("unchecked")
-		LinkedHashSet<Propagator>[] remaining = new LinkedHashSet[] {projections};
+	/** Ground candidates unpark and hand their goals to the run lane; the rest wait. */
+	@SuppressWarnings("unchecked")
+	private Revision examine(Iterable<Projection> candidates, Package state) {
+		LinkedHashSet<Projection> remaining = projections;
 		java.util.List<Goal> runs = new java.util.ArrayList<>();
-		for (Propagator p : candidates) {
-			if (!remaining[0].contains(p)) {
+		for (Projection p : candidates) {
+			if (!remaining.contains(p)) {
 				continue;
 			}
-			boolean dead = p.propagate(state).match(
-					() -> true,
-					() -> false,
-					() -> {
-						remaining[0] = remaining[0].remove(p);
-						return false;
-					},
-					f -> {
-						throw new UnsupportedOperationException(
-								"projection propagators do not update their factor");
-					},
-					goal -> {
-						remaining[0] = remaining[0].remove(p);
-						runs.add(goal);
-						return false;
-					});
-			if (dead) {
-				return Revision.fail();
+			Term<Object> walked = MiniKanren.walkAll(state, (Term<Object>) p.getTarget()).get();
+			if (walked.asVal().isDefined()) {
+				remaining = remaining.remove(p);
+				runs.add(p.getBody().apply(walked.get()));
 			}
 		}
-		if (remaining[0] == projections && runs.isEmpty()) {
+		if (remaining == projections && runs.isEmpty()) {
 			return Revision.unchanged();
 		}
-		Revision.Updated result = Revision.updated(new ProjectionConstraints(remaining[0]));
+		Revision.Updated result = Revision.updated(new ProjectionConstraints(remaining));
 		for (Goal run : runs) {
 			result = result.withRun(run);
 		}
@@ -133,8 +137,8 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public Store remove(Stored c) {
-		if (c instanceof Propagator) {
-			return new ProjectionConstraints(projections.remove((Propagator) c));
+		if (c instanceof Projection) {
+			return new ProjectionConstraints(projections.remove((Projection) c));
 		} else {
 			return this;
 		}
@@ -142,8 +146,8 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public Store prepend(Stored c) {
-		if (c instanceof Propagator) {
-			return new ProjectionConstraints(projections.add((Propagator) c));
+		if (c instanceof Projection) {
+			return new ProjectionConstraints(projections.add((Projection) c));
 		} else {
 			return this;
 		}
@@ -151,24 +155,22 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public boolean contains(Stored c) {
-		if (c instanceof Propagator) {
-			return projections.contains((Propagator) c);
+		if (c instanceof Projection) {
+			return projections.contains((Projection) c);
 		} else {
 			return false;
 		}
 	}
 
+	/**
+	 * Parks a suspension: keep until {@code x} is deep-ground, then the body's
+	 * goal joins the run lane and splices after the pass quiesces
+	 * (docs/design/suspensions.md §5).
+	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Goal project(Unifiable<T> x, Function<T, Goal> f) {
-		// parks a suspension-shaped propagator: keep until x is deep-ground, then
-		// hand the projected goal to the store's revision, which splices it after
-		// the pass quiesces (docs/design/suspensions.md §5)
 		return s -> Propagation.activate(
-						Propagator.of(ProjectionConstraints.class,
-								Collections.singletonList(x),
-								state -> MiniKanren.walkAll(state, x).get()
-										.asVal()
-										.map(v -> Verdict.run(f.apply(v)))
-										.getOrElse(Verdict::keep)))
+						new Projection(x, v -> f.apply((T) v)))
 				.apply(s.withStore(EMPTY));
 	}
 }

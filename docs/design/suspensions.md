@@ -1,3 +1,8 @@
+> **July 2026:** the feature's expression is `Revision.withRun` (the run lane)
+> plus projection's bare `(target, body)` suspensions; `Verdict.run` was an
+> intermediate form and no longer exists. Where this doc says Verdict.run,
+> read run-lane.
+
 # Suspensions — parked goals woken by bindings
 
 **Status: the feature IS implemented — as `Verdict.run` (July 2026).** What §5

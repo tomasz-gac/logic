@@ -57,8 +57,10 @@ Small, local, well-tested changes elsewhere don't need to ask.
   cascade) and `stated` (your item was stated) — each answered by a
   `Fiber<Revision>` (own factor + consequences; fiber so long cascades stay fairly
   stepped — see `functional`'s `Worklist`). How a store
-  computes it is its own business: FD/Projection schedule parked bodies with the
-  `ckanren/propagator` toolkit; Neq re-verifies its records wholesale.
+  computes it is its own business: FD administers its own propagators (now
+  `finitedomain`-private: Propagator/Verdict/Update), Projection parks bare
+  (term, body) suspensions, Neq re-verifies its records wholesale;
+  `ckanren/store/Watches` is the shared chain matcher.
 
 Key **seams** (the places behaviour is hooked):
 - `goals/NamedGoal` — the tracing hook. A named goal reports box-model ports when a tracer

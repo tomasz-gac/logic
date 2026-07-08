@@ -6,8 +6,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.category.Nothing;
 import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.Propagation;
-import com.tgac.logic.ckanren.propagator.Propagator;
-import com.tgac.logic.ckanren.propagator.Verdict;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;

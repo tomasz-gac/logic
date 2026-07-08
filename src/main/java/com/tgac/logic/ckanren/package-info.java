@@ -8,9 +8,9 @@
  * fixpoint explicit, and the router of revisions.
  *
  * <p>Layering: the driver speaks ONLY to stores —
- * {@code com.tgac.logic.ckanren.store} is its entire constraint boundary; the
- * {@code com.tgac.logic.ckanren.propagator} toolkit is store-internal machinery
- * the driver never sees. Concrete stores live with their domains
+ * {@code com.tgac.logic.ckanren.store} is its entire constraint boundary; how a
+ * store computes its answer (FD's propagators, projection's parked bodies) is
+ * machinery the driver never sees, owned by each domain's package. Concrete stores live with their domains
  * ({@code finitedomain}, {@code separate}, {@code projection}).
  * Design: docs/design/minimal-constraint-vocabulary.md.
  */

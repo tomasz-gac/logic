@@ -5,12 +5,12 @@ package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.unification.LVal.lval;
 
-import com.tgac.logic.ckanren.propagator.Update;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -65,8 +65,8 @@ final class DomainUpdate {
 	static Update narrowAll(Package state, FiniteDomainConstraints factor,
 			List<FiniteDomain.VarWithDomain<?>> updates) {
 		FiniteDomainConstraints current = factor;
-		java.util.List<Prefix> inferred = new java.util.ArrayList<>();
-		java.util.List<Term<?>> reexamine = new java.util.ArrayList<>();
+		List<Prefix> inferred = new ArrayList<>();
+		List<Term<?>> reexamine = new ArrayList<>();
 		for (FiniteDomain.VarWithDomain<?> update : updates) {
 			Update step = apply(state, current, update.getUnifiable(), update.getDomain());
 			FiniteDomainConstraints before = current;

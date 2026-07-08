@@ -272,3 +272,13 @@ only the owner can act). The resolution, decided with Tom:
 
 Cross-store interaction is therefore exactly one thing: bindings, through the
 substitution. Everything else is intra-store or store↔driver scheduling.
+
+**Further amendment (July 2026):** projection dropped the propagator machinery
+entirely — a `Projection` is a bare `(target, body)` `Stored`; groundness is the
+only question it asks, `Revision.withRun` is how the answer leaves. That left
+the toolkit FD-only, so `Propagator`/`Verdict`/`Update` moved INTO
+`finitedomain` (private machinery), `Verdict.run` was deleted (no user — the
+run lane was always the actual suspension mechanism), `Propagator` became a
+concrete value class (its interface had one anonymous implementor), and the
+chain-inclusive watch matcher was extracted as `ckanren.store.Watches`, shared
+by store implementations. `ckanren` = driver + store protocol, nothing else.

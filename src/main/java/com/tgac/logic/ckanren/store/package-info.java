@@ -14,8 +14,9 @@
  * goals for the post-quiescence splice. Touching the substitutions or another
  * store's entry is not expressible.
  *
- * <p>How a store computes its revision is its own business — FD and projection
- * schedule parked bodies with the {@code ckanren.propagator} toolkit; disequality
- * re-verifies its records wholesale.
+ * <p>How a store computes its revision is its own business — FD administers its
+ * own propagators, projection parks bare (term, body) suspensions, disequality
+ * re-verifies its records wholesale. {@link
+ * com.tgac.logic.ckanren.store.Watches} is the shared chain-inclusive matcher.
  */
 package com.tgac.logic.ckanren.store;

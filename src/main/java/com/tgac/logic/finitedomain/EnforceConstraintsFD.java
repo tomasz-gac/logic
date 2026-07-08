@@ -9,7 +9,6 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.Propagation;
-import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;

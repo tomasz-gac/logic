@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren.propagator;
+package com.tgac.logic.finitedomain;
 
 // ABOUTME: A propagator's application to its OWN store's factor — the intra-store
 // ABOUTME: answer type, distinct from the store→driver Revision.

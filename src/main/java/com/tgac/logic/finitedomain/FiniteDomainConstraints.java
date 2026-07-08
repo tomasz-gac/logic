@@ -1,9 +1,7 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.ckanren.propagator.Update;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.ckanren.propagator.Propagator;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -12,7 +10,6 @@ import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.ckanren.propagator.Verdict;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
@@ -186,8 +183,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 				Update::fail,
 				Update::unchanged,
 				() -> Update.applied(factor.remove(p)),
-				f -> f.apply(live, factor),
-				goal -> Update.applied(factor.remove(p)).withRun(goal));
+				f -> f.apply(live, factor));
 	}
 
 	/**
