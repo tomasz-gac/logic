@@ -53,15 +53,15 @@ Small, local, well-tested changes elsewhere don't need to ask.
 - **Constraint stores** implement `ConstraintStore` (`ckanren/store/`):
   `FiniteDomainConstraints`, `NeqConstraints` (disequality), `ProjectionConstraints`.
   The driver (`ckanren/Propagation`) speaks to them through three triggers — `revise`
-  (bindings arrived), `changed` (a term changed; broadcast), `stated` (your item was
-  stated) — each answered by a `Revision` (own factor + consequences). How a store
+  (bindings arrived), `narrowed` (a term's knowledge shrank; broadcast), `stated`
+  (your item was stated) — each answered by a `Revision` (own factor + consequences). How a store
   computes it is its own business: FD/Projection schedule parked bodies with the
   `ckanren/propagator` toolkit; Neq re-verifies its records wholesale.
 
 Key **seams** (the places behaviour is hooked):
 - `goals/NamedGoal` — the tracing hook. A named goal reports box-model ports when a tracer
   is seeded. Zero cost otherwise.
-- `ckanren/Propagation` — the chokepoint (`resolve`/`activate`/`changed`), the agenda
+- `ckanren/Propagation` — the chokepoint (`resolve`/`activate`/`narrowed`), the agenda
   drain, and the revision router: where constraint stores are composed.
 - `functional`'s `FiberStep` — the single step interpreter all schedulers share.
 
@@ -75,7 +75,7 @@ Key **seams** (the places behaviour is hooked):
   unify, FD collapse, labelling); a `Prefix` is mintable only by the unifier
   (`MiniKanren.unifyPrefix`) or the checked `Prefix.binding`. Stores answer triggers with
   `Revision`s and may swap only their OWN factor; cross-store consequences ride the
-  revision payloads (inferred prefixes, changed terms, runs). Propagators are
+  revision payloads (inferred prefixes, narrowed terms, runs). Propagators are
   store-internal (the `ckanren/propagator` toolkit) — the framework owns parking, so
   `keep` is default-safe and evaporation is unrepresentable. The equal-domain check in
   `finitedomain/DomainUpdate` is the termination guard of wake-on-narrowing — do not
@@ -145,7 +145,7 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   (native debugging, simpler tabling, natural cut) as a separate experimental module; the
   completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
 - `docs/design/minimal-constraint-vocabulary.md` — IMPLEMENTED (July 2026): the driver
-  speaks only to stores (revise/changed/stated → Revision); Narrowing + Inference are
+  speaks only to stores (revise/narrowed/stated → Revision); Narrowing + Inference are
   gone; Propagator/Verdict are a store-implementor toolkit. Read before touching the
   constraint core or the wake machinery.
 - `docs/design/tabled-constraints.md` — DESIGN SKETCH: merging tabling and constraints

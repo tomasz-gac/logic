@@ -4,7 +4,7 @@
  * The propagator toolkit — used BY stores, unknown to the driver
  * (docs/design/minimal-constraint-vocabulary.md §2.4). A {@link
  * com.tgac.logic.ckanren.propagator.Propagator} is one parked constraint body
- * watching terms; the store that owns it runs it from its {@code changed} and
+ * watching terms; the store that owns it runs it from its {@code narrowed} and
  * {@code stated} hooks and administers the {@link
  * com.tgac.logic.ckanren.propagator.Verdict} itself: keep parked (the
  * default-safe case — forgetting to re-park is not expressible), subsumed, fail

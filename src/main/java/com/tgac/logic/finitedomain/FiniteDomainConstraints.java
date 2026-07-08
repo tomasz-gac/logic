@@ -87,7 +87,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 		// each newly bound value must lie in its variable's domain; a var-var
 		// binding aliases the two, so the domain follows the representative
 		FiniteDomainConstraints[] factor = {this};
-		List<LVar<?>> changed = new ArrayList<>();
+		List<LVar<?>> narrowed = new ArrayList<>();
 		List<Prefix> inferred = new ArrayList<>();
 		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
 			Domain dom = (Domain) factor[0].getDomain((LVar) binding._1).getOrNull();
@@ -101,7 +101,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 							() -> false,
 							(narrowedFactor, x) -> {
 								factor[0] = narrowedFactor;
-								changed.add(x);
+								narrowed.add(x);
 								return false;
 							},
 							p -> {
@@ -112,12 +112,12 @@ class FiniteDomainConstraints implements ConstraintStore {
 				return Revision.fail();
 			}
 		}
-		if (factor[0] == this && changed.isEmpty() && inferred.isEmpty()) {
+		if (factor[0] == this && narrowed.isEmpty() && inferred.isEmpty()) {
 			return Revision.unchanged();
 		}
 		Revision.Updated result = Revision.updated(factor[0]);
-		for (LVar<?> x : changed) {
-			result = result.withChanged(x);
+		for (LVar<?> x : narrowed) {
+			result = result.withNarrowed(x);
 		}
 		for (Prefix p : inferred) {
 			result = result.withInferred(p);
@@ -126,7 +126,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Revision changed(Term<?> x, Package state) {
+	public Revision narrowed(Term<?> x, Package state) {
 		return administer(
 				constraints.toJavaStream()
 						.filter(p -> p.watches(state, x))
@@ -151,7 +151,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	private Revision administer(List<Propagator> candidates, Package state) {
 		FiniteDomainConstraints[] factor = {this};
 		List<Prefix> inferred = new ArrayList<>();
-		List<Term<?>> changed = new ArrayList<>();
+		List<Term<?>> narrowed = new ArrayList<>();
 		List<Goal> runs = new ArrayList<>();
 		for (Propagator p : candidates) {
 			if (!factor[0].contains(p)) {
@@ -172,7 +172,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 							upd -> {
 								factor[0] = (FiniteDomainConstraints) upd.factor();
 								inferred.addAll(upd.inferred());
-								changed.addAll(upd.changed());
+								narrowed.addAll(upd.narrowed());
 								runs.addAll(upd.runs());
 								return false;
 							}),
@@ -185,12 +185,12 @@ class FiniteDomainConstraints implements ConstraintStore {
 				return Revision.fail();
 			}
 		}
-		if (factor[0] == this && inferred.isEmpty() && changed.isEmpty() && runs.isEmpty()) {
+		if (factor[0] == this && inferred.isEmpty() && narrowed.isEmpty() && runs.isEmpty()) {
 			return Revision.unchanged();
 		}
 		Revision.Updated result = Revision.updated(factor[0]);
-		for (Term<?> x : changed) {
-			result = result.withChanged(x);
+		for (Term<?> x : narrowed) {
+			result = result.withNarrowed(x);
 		}
 		for (Prefix p : inferred) {
 			result = result.withInferred(p);

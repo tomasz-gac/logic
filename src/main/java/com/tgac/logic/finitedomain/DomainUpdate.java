@@ -63,13 +63,13 @@ abstract class DomainUpdate {
 
 	/**
 	 * Folds a batch of updates into one {@link Revision}, threading the factor:
-	 * fail short-circuits, narrowings accumulate changed terms, collapses
+	 * fail short-circuits, narrowings accumulate narrowed terms, collapses
 	 * accumulate inferred prefixes.
 	 */
 	static Revision narrowAll(Package state, FiniteDomainConstraints factor,
 			List<FiniteDomain.VarWithDomain<?>> updates) {
 		FiniteDomainConstraints[] current = {factor};
-		java.util.List<LVar<?>> changed = new java.util.ArrayList<>();
+		java.util.List<LVar<?>> narrowed = new java.util.ArrayList<>();
 		java.util.List<Prefix> inferred = new java.util.ArrayList<>();
 		for (FiniteDomain.VarWithDomain<?> update : updates) {
 			boolean dead = DomainUpdate
@@ -79,7 +79,7 @@ abstract class DomainUpdate {
 							() -> false,
 							(narrowedFactor, x) -> {
 								current[0] = narrowedFactor;
-								changed.add(x);
+								narrowed.add(x);
 								return false;
 							},
 							prefix -> {
@@ -90,12 +90,12 @@ abstract class DomainUpdate {
 				return Revision.fail();
 			}
 		}
-		if (changed.isEmpty() && inferred.isEmpty()) {
+		if (narrowed.isEmpty() && inferred.isEmpty()) {
 			return Revision.unchanged();
 		}
 		Revision.Updated result = Revision.updated(current[0]);
-		for (LVar<?> x : changed) {
-			result = result.withChanged(x);
+		for (LVar<?> x : narrowed) {
+			result = result.withNarrowed(x);
 		}
 		for (Prefix prefix : inferred) {
 			result = result.withInferred(prefix);

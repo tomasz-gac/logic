@@ -110,7 +110,7 @@ reuse, not soundness).
 ### 5.3 `restate(residue) → Goal`
 
 Turn my residue back into statements through the normal public entries
-(`resolve`/`activate`/`changed`), so a consumer replaying a cached answer
+(`resolve`/`activate`/`narrowed`), so a consumer replaying a cached answer
 re-imposes its guards — the meet-at-consumption. Without this hook, cached
 answers silently generalize (the second guard test's scenario).
 

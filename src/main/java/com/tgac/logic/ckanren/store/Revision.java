@@ -1,7 +1,7 @@
 package com.tgac.logic.ckanren.store;
 
 // ABOUTME: A store's revised self after a trigger — its own updated factor plus the
-// ABOUTME: cross-store consequences (bindings, changed terms, runs); never a whole package.
+// ABOUTME: cross-store consequences (bindings, narrowed terms, runs); never a whole package.
 
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Prefix;
@@ -18,7 +18,7 @@ import java.util.function.Supplier;
  * (docs/design/minimal-constraint-vocabulary.md §2.2). A revision may only replace
  * the store's OWN factor; everything that crosses store boundaries rides the
  * payloads, expressed in the driver's two-word vocabulary: {@link Prefix}
- * (bindings grow) and changed {@link Term}s (re-examine watchers), plus run goals
+ * (bindings grow) and narrowed {@link Term}s (re-examine watchers), plus run goals
  * for the post-quiescence splice. Touching the substitutions or another store's
  * entry is not expressible. Java 8 has no sealed types; the set is closed by the
  * private constructor.
@@ -82,14 +82,14 @@ public abstract class Revision {
 	public static final class Updated extends Revision {
 		private final Store factor;
 		private final List<Prefix> inferred;
-		private final List<Term<?>> changed;
+		private final List<Term<?>> narrowed;
 		private final List<Goal> runs;
 
 		private Updated(Store factor,
-				List<Prefix> inferred, List<Term<?>> changed, List<Goal> runs) {
+				List<Prefix> inferred, List<Term<?>> narrowed, List<Goal> runs) {
 			this.factor = factor;
 			this.inferred = inferred;
-			this.changed = changed;
+			this.narrowed = narrowed;
 			this.runs = runs;
 		}
 
@@ -100,19 +100,19 @@ public abstract class Revision {
 		 */
 		public Updated withInferred(Prefix prefix) {
 			return new Updated(factor,
-					appended(inferred, prefix), changed, runs);
+					appended(inferred, prefix), narrowed, runs);
 		}
 
 		/** A strictly narrowed term — its watchers get re-examined. */
-		public Updated withChanged(Term<?> x) {
+		public Updated withNarrowed(Term<?> x) {
 			return new Updated(factor,
-					inferred, appended(changed, x), runs);
+					inferred, appended(narrowed, x), runs);
 		}
 
 		/** A goal for the run lane, spliced after the drain quiesces. */
 		public Updated withRun(Goal goal) {
 			return new Updated(factor,
-					inferred, changed, appended(runs, goal));
+					inferred, narrowed, appended(runs, goal));
 		}
 
 		public Store factor() {
@@ -123,8 +123,8 @@ public abstract class Revision {
 			return inferred;
 		}
 
-		public List<Term<?>> changed() {
-			return changed;
+		public List<Term<?>> narrowed() {
+			return narrowed;
 		}
 
 		public List<Goal> runs() {
@@ -141,7 +141,7 @@ public abstract class Revision {
 		public String toString() {
 			return "updated(" + factor
 					+ (inferred.isEmpty() ? "" : ", bind" + inferred)
-					+ (changed.isEmpty() ? "" : ", changed" + changed)
+					+ (narrowed.isEmpty() ? "" : ", narrowed" + narrowed)
 					+ (runs.isEmpty() ? "" : ", runs" + runs) + ")";
 		}
 

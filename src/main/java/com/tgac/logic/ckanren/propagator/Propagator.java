@@ -28,22 +28,22 @@ public interface Propagator extends Stored {
 	Verdict propagate(Package state);
 
 	/**
-	 * Does a change to {@code changed} re-run this propagator? {@code changed} is a
+	 * Does a change to {@code narrowed} re-run this propagator? {@code narrowed} is a
 	 * newly bound variable during a wake, or an answer term during enforcement
 	 * (whose components match element-wise, as the old relevance check did).
 	 */
-	default boolean watches(Package state, Term<?> changed) {
+	default boolean watches(Package state, Term<?> narrowed) {
 		for (Term<?> watchedTerm : watchedTerms()) {
-			// follow the whole walk chain: the changed variable may be the watched
+			// follow the whole walk chain: the narrowed variable may be the watched
 			// term itself, an alias link in the middle, or the end of the chain —
 			// a full walk would step THROUGH a just-bound variable to its value
 			// and miss the match
 			Term<?> cur = watchedTerm;
 			while (true) {
-				if (cur.equals(changed)) {
+				if (cur.equals(narrowed)) {
 					return true;
 				}
-				if (changed.isVal() && changedContains(changed, cur)) {
+				if (narrowed.isVal() && narrowedContains(narrowed, cur)) {
 					return true;
 				}
 				if (!cur.asVar().isDefined()) {
@@ -60,14 +60,14 @@ public interface Propagator extends Stored {
 	}
 
 	/** Mirrors the old anyRelevantVar: a ground composite matches element-wise. */
-	static boolean changedContains(Term<?> changed, Term<?> live) {
-		Object w = changed.get();
+	static boolean narrowedContains(Term<?> narrowed, Term<?> live) {
+		Object w = narrowed.get();
 		return MiniKanren.asIterable(w)
 				.orElse(() -> MiniKanren.tupleAsIterable(w))
 				.map(it -> StreamSupport.stream(it.spliterator(), false)
 						.map(MiniKanren::wrapTerm)
 						.anyMatch(live::equals))
-				.getOrElse(() -> MiniKanren.asLList(changed)
+				.getOrElse(() -> MiniKanren.asLList(narrowed)
 						.map(l -> l.stream()
 								.anyMatch(e -> e.fold(live::equals, live::equals)))
 						.getOrElse(false));

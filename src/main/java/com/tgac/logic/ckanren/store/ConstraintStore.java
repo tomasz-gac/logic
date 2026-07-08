@@ -38,12 +38,12 @@ public interface ConstraintStore extends Store {
 	Revision revise(Prefix prefix, Package state);
 
 	/**
-	 * A term changed — bound or narrowed. Re-examine whatever this store has
-	 * watching it; the trigger broadcasts to every store, so cross-store waking
+	 * A term's knowledge shrank — bound to a value, or its domain strictly
+	 * narrowed. Re-examine whatever this store has watching it; the trigger broadcasts to every store, so cross-store waking
 	 * needs no other machinery. Stores with nothing parked (disequality) keep the
 	 * default — they participate through {@link #revise} instead.
 	 */
-	default Revision changed(Term<?> x, Package state) {
+	default Revision narrowed(Term<?> x, Package state) {
 		return Revision.unchanged();
 	}
 

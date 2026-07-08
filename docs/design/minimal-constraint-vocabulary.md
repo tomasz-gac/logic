@@ -7,8 +7,8 @@ own class (`finitedomain/DomainUpdate` — process-δ as a value); the enqueues
 were DELETED outright rather than privatized (zero callers remained once
 stores answered with data); `Stated` dispatches by store-class equality;
 projection's update arm throws (no projection propagator updates its factor);
-the retired dedup pin became two pins on the payload routes (changed
-broadcasts exactly once; runs splice only after quiescence — suite is 315). Supersedes §2.4 of
+the retired dedup pin became two pins on the payload routes (a narrowed
+term broadcasts exactly once; runs splice only after quiescence — suite is 315). Supersedes §2.4 of
 `capability-constraint-api.md` (the `Inference` vocabulary), DEMOTES the
 propagator protocol from driver boundary to store-implementor toolkit, and
 FORECLOSES the data-shaped Neq→FD bridge (§6) — recorded so it is not
@@ -54,7 +54,7 @@ boundary again.
 ## 2. The target boundary
 
 The driver understands exactly two values — **`Prefix`** (bindings grow) and
-**`Term`** (this changed; re-examine) — and one answer shape.
+**`Term`** (this narrowed; re-examine) — and one answer shape.
 
 ### 2.1 `ConstraintStore` — three triggers, one answer
 
@@ -65,8 +65,8 @@ interface ConstraintStore extends Store {
 	/** Bindings arrived. Revise your factor against them. */
 	Revision revise(Prefix prefix, Package state);
 
-	/** A term changed (bound or narrowed). Re-examine whatever watches it. */
-	default Revision changed(Term<?> x, Package state) { return Revision.unchanged(); }
+	/** A term's knowledge shrank (bound, or domain narrowed). Re-examine watchers. */
+	default Revision narrowed(Term<?> x, Package state) { return Revision.unchanged(); }
 
 	/** One of your items was just stated. First examination. */
 	default Revision stated(Stored item, Package state) { return Revision.unchanged(); }
@@ -76,7 +76,7 @@ interface ConstraintStore extends Store {
 }
 ```
 
-`revise` and `changed` broadcast to every store; `stated` goes to the item's
+`revise` and `narrowed` broadcast to every store; `stated` goes to the item's
 owning store only (`getStoreClass`). `pendingPropagators` is DELETED from the
 interface — the cross-store wake union was the driver reaching into store
 internals; the broadcast replaces it.
@@ -89,13 +89,13 @@ Revision.unchanged()                 // nothing to do
 Revision.updated(Store myFactor)     // swap my factor
     // payloads (exact factory shape decided at implementation, §8):
     //   Prefix inferred      — collapses and other inferred bindings
-    //   List<Term> changed   — strict narrowings: wake the watchers
+    //   List<Term> narrowed   — strict narrowings: wake the watchers
     //   List<Goal> runs      — suspension bodies (projection), spliced
     //                          after quiescence via the run lane
 ```
 
 The driver's routing, in ONE place: swap the factor, queue a Bind for the
-prefix, queue a Wake per changed term, append runs to the run lane. It never
+prefix, queue a wake per narrowed term, append runs to the run lane. It never
 executes store code and never inspects a domain.
 
 ### 2.3 `Propagation` — the public surface
@@ -103,20 +103,20 @@ executes store code and never inspects a domain.
 ```java
 Propagation.resolve(Prefix)     // statement: these unify / this was inferred
 Propagation.activate(Stored)    // statement: park this item + first examination
-Propagation.changed(Term)       // announcement: x changed, re-examine watchers
+Propagation.narrowed(Term)      // announcement: x narrowed, re-examine watchers
 ```
 
 All three are goal-shaped and mode-oblivious (drain in flight → append;
 otherwise → install and drain). `activate(item)` = `withStored(item)` + queue
 `Stated(item)`. `enqueueBind`/`enqueueWake` go PRIVATE. The agenda's item
-kinds become Bind(Prefix) / Changed(Term) / Stated(Stored); the
+kinds become Bind(Prefix) / Narrowed(Term) / Stated(Stored); the
 one-item-per-deferred-step fairness invariant and the run-lane phase-2 splice
 are unchanged.
 
 ### 2.4 What dissolves, what demotes
 
 - **`Narrowing`, `Inference` — deleted.** `Domain` implements nothing from
-  `ckanren` and never calls the engine; binds and changed-announcements ride
+  `ckanren` and never calls the engine; binds and narrowing announcements ride
   `Revision` payloads.
 - **`Propagator`/`Verdict` — demoted, not deleted.** They stop being driver
   citizens and become the `ckanren.propagator` TOOLKIT: a library for stores
@@ -124,7 +124,7 @@ are unchanged.
   argument (keep-is-default, framework owns parking) protects constraint
   AUTHORS, and authors write against this toolkit — the protection moves with
   them. The store administers its own propagators' verdicts inside
-  `changed`/`stated` (the logic of today's `Propagation.interpret`/`wake`,
+  `narrowed`/`stated` (the logic of today's `Propagation.interpret`/`wake`,
   including chain-inclusive watch matching, moves into the stores). The
   toolkit's `Verdict.narrowed(List<Inference>)` is replaced by a store-local
   update shape (recommended: `Verdict.update(f)` with
@@ -145,7 +145,7 @@ are unchanged.
   REWORKED (atomic revisions have nothing to dedup), not silently dropped.
 - **Termination becomes vocabulary-visible.** The equal-domain guard stays
   FD-side (domain equality is domain semantics) but the driver sees its
-  effect as "no changed terms in the revision" — the fixpoint argument reads
+  effect as "no narrowed terms in the revision" — the fixpoint argument reads
   off the boundary: substitutions only grow, and stores that report no change
   cause no work.
 - **The two-level mirror resolves.** Store-level `Revision` is THE protocol;
@@ -158,7 +158,7 @@ are unchanged.
 Goal-position code that announces work, all on the public API, no hatches:
 
 - **`FiniteDomain.dom`**: update the FD factor (`Package.updateStore`), then
-  `changed(x)` on strict narrowing or `resolve(prefix)` on collapse.
+  `narrowed(x)` on strict narrowing or `resolve(prefix)` on collapse.
 - **The call-shaped bridge** — DECIDED AND DROPPED (Tom, July 2026):
   optimization-only (identical answer sets via record verification +
   labelling), and it was the last inter-domain named dependency (`separate`
@@ -166,7 +166,7 @@ Goal-position code that announces work, all on the public API, no hatches:
   equivalence that made the drop safe. Disequality and FD now compose through
   the substitution alone — the way every CLP system we surveyed does (§1.1).
 - **The enforce hooks** (labelling's re-run, projection's wake-then-check):
-  goal-shaped forever — labelling IS search; `changed` is their entry.
+  goal-shaped forever — labelling IS search; `narrowed` is their entry.
 
 ## 5. Relationship to the other designs
 
@@ -196,13 +196,13 @@ A future need for genuine cross-domain narrowing must overcome this section.
 
 ## 7. Migration plan (each step lands green on the full suite)
 
-1. **`Revision` grows payloads** (prefix, changed, runs) additively; the
+1. **`Revision` grows payloads** (prefix, narrowed, runs) additively; the
    driver routes them wherever revisions are already folded. Existing callers
    untouched.
 2. **Store-level wakes.** Add `ConstraintStore.changed` (default unchanged);
    move the interpret/wake/watch machinery from `Propagation` into
-   `FiniteDomainConstraints.changed` and `ProjectionConstraints.changed`;
-   Wake items fold `changed` over stores; DELETE `pendingPropagators` and the
+   `FiniteDomainConstraints.narrowed` and `ProjectionConstraints.narrowed`;
+   Wake items fold `narrowed` over stores; DELETE `pendingPropagators` and the
    driver's propagator handling. The watches lesson applies verbatim: the
    chain-inclusive matching must move intact (a plain live walk steps THROUGH
    a just-bound variable and misses the primary match).
@@ -211,7 +211,7 @@ A future need for genuine cross-domain narrowing must overcome this section.
    `project`.
 4. **FD internals.** Toolkit `Verdict` update-shape replaces
    `narrowed(List<Inference>)`; convert `leq`, `addo`, `mulo`, `separateFDC`,
-   the aliasing revise; `dom` and the bridge onto `resolve`/`changed` +
+   the aliasing revise; `dom` and the bridge onto `resolve`/`narrowed` +
    `updateStore`; `Domain` sheds `Narrowing`.
 5. **Deletions.** `Narrowing`, `Inference`; enqueues private;
    `ckanren.propagator` package-info rewritten as the toolkit ("used BY
@@ -226,10 +226,10 @@ step before moving code.
 
 ## 8. Open decisions (Tom)
 
-- Names: `changed` vs `touched` (trigger + public entry); `stated` vs
+- Names: `narrowed` vs `touched` (trigger + public entry); `stated` vs
   `examined`; the `Revision` payload factories (arities vs builder) — decide
   at implementation against real call-site shapes.
 - Whether `Stated` is a distinct agenda item kind (recommended: yes — exact
-  statement semantics, single-store dispatch) or faked via `changed` on
+  statement semantics, single-store dispatch) or faked via `narrowed` on
   watched terms (rejected: multi-wake, wakes on ground values, inexact).
 - The bridge keep/drop decision (§4) — independent of this design.

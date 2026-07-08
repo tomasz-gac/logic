@@ -30,7 +30,7 @@ public class ProjectionConstraints implements ConstraintStore {
 
 	@Override
 	public <T> Goal enforce(Term<T> x) {
-		return Propagation.changed(x)
+		return Propagation.narrowed(x)
 				.and(s1 -> s1.getStore(ProjectionConstraints.class)
 						.projections
 						.isEmpty() ?
@@ -45,7 +45,7 @@ public class ProjectionConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public Revision changed(Term<?> x, Package state) {
+	public Revision narrowed(Term<?> x, Package state) {
 		return administer(
 				projections.filter(p -> p.watches(state, x)),
 				state);

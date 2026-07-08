@@ -25,7 +25,7 @@ import org.junit.Test;
  * Pins the driver's revision-routing guarantees
  * (docs/design/minimal-constraint-vocabulary.md §2.2): contradictory inferred
  * bindings fail the branch instead of silently keeping the first, agreeing
- * bindings apply once, changed payloads broadcast to every store, runs splice
+ * bindings apply once, narrowed payloads broadcast to every store, runs splice
  * only after quiescence, and the agenda never leaks into answers.
  */
 public class CapabilityDriverTest {
@@ -159,13 +159,13 @@ public class CapabilityDriverTest {
 	}
 
 	@Test(timeout = 5000)
-	public void changedPayloadBroadcastsToEveryStore() {
+	public void narrowedPayloadBroadcastsToEveryStore() {
 		AtomicInteger examinations = new AtomicInteger();
 		Term<Long> t = lvar();
 
 		StoreB listening = new StoreB((prefix, state) -> Revision.unchanged()) {
 			@Override
-			public Revision changed(Term<?> x, Package state) {
+			public Revision narrowed(Term<?> x, Package state) {
 				if (x == t) {
 					examinations.incrementAndGet();
 				}
@@ -175,12 +175,12 @@ public class CapabilityDriverTest {
 		Package root = root(
 				new StoreA((prefix, state) ->
 						Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
-								.withChanged(t)),
+								.withNarrowed(t)),
 				listening);
 
 		assertThat(solutions(root)).isEqualTo(1);
 		assertThat(examinations.get())
-				.as("one changed payload: every store re-examines exactly once")
+				.as("one narrowed payload: every store re-examines exactly once")
 				.isEqualTo(1);
 	}
 

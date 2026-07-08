@@ -79,26 +79,28 @@ public final class Propagation {
 	}
 
 	/**
-	 * The announcement entry: {@code x} changed — bound or narrowed — so every
-	 * store re-examines whatever it has watching {@code x}. Mode-oblivious like
-	 * the other entries; a spurious announcement is harmless.
+	 * The announcement entry: {@code x}'s knowledge shrank — bound to a value,
+	 * or its domain strictly narrowed — so every store re-examines whatever it
+	 * has watching {@code x}. In a monotone engine narrowing is the only change
+	 * there is, which is what the name pins down. Mode-oblivious like the other
+	 * entries; a spurious announcement is harmless.
 	 */
-	public static Goal changed(Term<?> x) {
-		return s -> enqueue(s, new Agenda.Changed(x));
+	public static Goal narrowed(Term<?> x) {
+		return s -> enqueue(s, new Agenda.Narrowed(x));
 	}
 
 	/**
 	 * Folds a trigger over the constraint stores: each answers a {@link Revision} —
-	 * at most its own factor swapped — and the driver routes the payloads: changed
+	 * at most its own factor swapped — and the driver routes the payloads: narrowed
 	 * terms and inferred prefixes queue as agenda items, runs join the run lane.
 	 */
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
 			java.util.function.BiFunction<ConstraintStore, Package, Revision> trigger,
-			java.util.List<Term<?>> alsoChanged) {
+			java.util.List<Term<?>> alsoNarrowed) {
 		Package current = s;
 		java.util.List<Prefix> inferred = new ArrayList<>();
-		java.util.List<Term<?>> changed = new ArrayList<>(alsoChanged);
+		java.util.List<Term<?>> narrowed = new ArrayList<>(alsoNarrowed);
 		java.util.List<Goal> runs = new ArrayList<>();
 		for (ConstraintStore cs : constraintStores(current)) {
 			Package before = current;
@@ -107,7 +109,7 @@ public final class Propagation {
 					() -> before,
 					upd -> {
 						inferred.addAll(upd.inferred());
-						changed.addAll(upd.changed());
+						narrowed.addAll(upd.narrowed());
 						runs.addAll(upd.runs());
 						return before.putStore(upd.factor());
 					});
@@ -117,8 +119,8 @@ public final class Propagation {
 			current = after;
 		}
 		Agenda agenda = (Agenda) current.getConstraints().get(Agenda.class).get();
-		for (Term<?> x : changed) {
-			agenda = agenda.append(new Agenda.Changed(x));
+		for (Term<?> x : narrowed) {
+			agenda = agenda.append(new Agenda.Narrowed(x));
 		}
 		for (Prefix prefix : inferred) {
 			agenda = agenda.append(new Agenda.Bind(prefix));
@@ -217,7 +219,7 @@ public final class Propagation {
 					}
 					Package extended = s.withSubstitutions(kept.appliedTo(s.getSubstitutions()));
 					// revise every store against the delta; the newly bound vars queue
-					// as changed terms so their watchers re-examine
+					// as narrowed terms so their watchers re-examine
 					java.util.List<Term<?>> bound = new ArrayList<>();
 					for (Tuple2<LVar<?>, Term<?>> binding : kept.bindings()) {
 						bound.add(binding._1);
@@ -232,24 +234,24 @@ public final class Propagation {
 			}
 		}
 
-		/** A term changed — every store re-examines its watchers. */
-		static final class Changed extends Item {
-			final Term<?> changed;
+		/** A term narrowed — every store re-examines its watchers. */
+		static final class Narrowed extends Item {
+			final Term<?> narrowed;
 
-			Changed(Term<?> changed) {
-				this.changed = changed;
+			Narrowed(Term<?> narrowed) {
+				this.narrowed = narrowed;
 			}
 
 			@Override
 			Goal apply() {
 				return s -> reviseAll(s,
-						(cs, p) -> cs.changed(changed, p),
+						(cs, p) -> cs.narrowed(narrowed, p),
 						java.util.Collections.emptyList());
 			}
 
 			@Override
 			public String toString() {
-				return "changed(" + changed + ")";
+				return "narrowed(" + narrowed + ")";
 			}
 		}
 

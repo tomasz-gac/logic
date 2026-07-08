@@ -42,7 +42,7 @@ public class FiniteDomain {
 	/**
 	 * Statement-position domain update: walk the target, apply against the live
 	 * FD factor, and route the outcome through the public entries — resolve for a
-	 * collapse, changed for a strict narrowing.
+	 * collapse, narrowed for a strict narrowing.
 	 */
 	private static Goal applyDom(Term<?> target, Domain<?> d) {
 		return s -> DomainUpdate
@@ -50,7 +50,7 @@ public class FiniteDomain {
 				.<Cont<Package, Nothing>> match(
 						() -> Cont.complete(Nothing.nothing()),
 						() -> Cont.just(s),
-						(factor, x) -> Propagation.changed(x).apply(s.putStore(factor)),
+						(factor, x) -> Propagation.narrowed(x).apply(s.putStore(factor)),
 						prefix -> Propagation.resolve(prefix).apply(s));
 	}
 
