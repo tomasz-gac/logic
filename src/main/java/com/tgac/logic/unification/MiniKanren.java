@@ -149,46 +149,46 @@ public class MiniKanren {
 				.orElse(() -> r.asVar()
 						.map(rVar -> extend.apply(s, rVar, l))
 						.map(MFiber::mdone))
-				.orElse(() -> zip(l.asVal(), r.asVal())
-						.flatMap(MiniKanren::toIterable)
-						.map(lr -> unifyIterable(extend, s, lr._1, lr._2)))
-				.orElse(() -> zip(
-						l.asVal().flatMap(MiniKanren::<T>asLList),
-						r.asVal().flatMap(MiniKanren::<T>asLList))
-						.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
-						.map(lr -> unifyLList(extend, s, lr._1, lr._2)))
-				.orElse(() -> zip(
-						l.asVal().flatMap(MiniKanren::<T>asLTree),
-						r.asVal().flatMap(MiniKanren::<T>asLTree))
-						.filter(lr -> !lr._1.isEmpty() && !lr._2.isEmpty())
-						.map(lr -> unifyLTree(extend, s, lr._1, lr._2)))
+				.orElse(() -> zip(decompose(l), decompose(r))
+						.map(lr -> unifyDecomposed(extend, s, lr._1, lr._2)))
 				.getOrElse(MFiber::none);
 	}
 
-	private static <T> MFiber<Substitutions> unifyLList(Extender extend, Substitutions s, LList<T> l, LList<T> r) {
-		return mdefer(() -> unify(extend, s, l.getHead(), r.getHead()))
-				.flatMap(s1 -> unify(extend, s1, l.getTail(), r.getTail()));
-	}
-
-	private static <T> MFiber<Substitutions> unifyLTree(Extender extend, Substitutions s, LTree<T> l, LTree<T> r) {
-		return mdefer(() -> unify(extend, s, l.getValue(), r.getValue()))
-				.flatMap(s1 -> unify(extend, s1, l.getChildren(), r.getChildren()));
-	}
-
-	private static <T> MFiber<Substitutions> unifyIterable(Extender extender, Substitutions s, Iterable<Object> l, Iterable<Object> r) {
-		if (toJavaStream(l).count() != toJavaStream(r).count()) {
+	private static MFiber<Substitutions> unifyDecomposed(
+			Extender extend,
+			Substitutions s,
+			Decomposition l,
+			Decomposition r) {
+		if (l.getKind() != r.getKind()) {
 			return none();
-		} else {
-			return Streams.zip(toJavaStream(l), toJavaStream(r), Tuple::of)
-					// Because Tuples are treated as iterable
-					// some of their elements may not be terms.
-					// For those, we're wrapping them as Val to process them anyway
-					.map(p -> p.map(applyOnBoth(MiniKanren::<T>wrapTerm)))
-					.reduce(mdone(s),
-							(state, unifiedItems) ->
-									state.flatMap(s1 -> unify(extender, s1, unifiedItems._1, unifiedItems._2)),
-							throwingBiOp(UnsupportedOperationException::new));
 		}
+		switch (l.getKind()) {
+			case LLIST:
+			case LTREE:
+				// always two members — (head, tail) / (value, children); shape
+				// variance is resolved by recursion, never at this level
+				Iterator<Term<?>> lm = l.getMembers().iterator();
+				Iterator<Term<?>> rm = r.getMembers().iterator();
+				Term<Object> lFirst = castTerm(lm.next());
+				Term<Object> rFirst = castTerm(rm.next());
+				Term<Object> lSecond = castTerm(lm.next());
+				Term<Object> rSecond = castTerm(rm.next());
+				return mdefer(() -> unify(extend, s, lFirst, rFirst))
+						.flatMap(s1 -> unify(extend, s1, lSecond, rSecond));
+			default:
+				if (memberStream(l.getMembers()).count() != memberStream(r.getMembers()).count()) {
+					return none();
+				}
+				return Streams.zip(memberStream(l.getMembers()), memberStream(r.getMembers()), Tuple::of)
+						.reduce(mdone(s),
+								(state, ms) -> state.flatMap(s1 ->
+										unify(extend, s1, MiniKanren.<Object> castTerm(ms._1), castTerm(ms._2))),
+								throwingBiOp(UnsupportedOperationException::new));
+		}
+	}
+
+	private static java.util.stream.Stream<Term<?>> memberStream(Iterable<Term<?>> members) {
+		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(members.iterator(), 0), false);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -263,31 +263,79 @@ public class MiniKanren {
 						.getOrElse(done(v)));
 	}
 
+	/** A term's one-level structural decomposition: its kind and a lazy view of its members. */
+	public static final class Decomposition {
+		public enum Kind {
+			ITERABLE, TUPLE, LLIST, LTREE
+		}
+
+		private final Kind kind;
+		private final Iterable<Term<?>> members;
+
+		private Decomposition(Kind kind, Iterable<Term<?>> members) {
+			this.kind = kind;
+			this.members = members;
+		}
+
+		public Kind getKind() {
+			return kind;
+		}
+
+		public Iterable<Term<?>> getMembers() {
+			return members;
+		}
+	}
+
+	/**
+	 * The ONE place that knows what structure is: a term's kind and members, one
+	 * level deep, held lazily — no rebuild, no collector. Empty when the term is
+	 * not structural (variables, plain values, empty LList/LTree — the empties
+	 * are equality atoms). The kinds are deliberately coarse: any iterable
+	 * matches any iterable; tuples are their own class, arity-checked by count.
+	 */
+	static Option<Decomposition> decompose(Term<?> v) {
+		if (!v.asVal().isDefined()) {
+			return Option.none();
+		}
+		Object w = v.get();
+		return MiniKanren.<Object> asIterable(w)
+				.map(it -> new Decomposition(Decomposition.Kind.ITERABLE, wrapAll(it)))
+				.orElse(() -> tupleAsIterable(w)
+						.map(it -> new Decomposition(Decomposition.Kind.TUPLE, wrapAll(it))))
+				.orElse(() -> Types.cast(w, LList.class)
+						.filter(x -> !x.isEmpty())
+						.map(x -> new Decomposition(Decomposition.Kind.LLIST,
+								Arrays.<Term<?>> asList(x.getHead(), x.getTail()))))
+				.orElse(() -> Types.cast(w, LTree.class)
+						.filter(t -> !t.isEmpty())
+						.map(t -> new Decomposition(Decomposition.Kind.LTREE,
+								Arrays.<Term<?>> asList(t.getValue(), t.getChildren()))));
+	}
+
+	private static Iterable<Term<?>> wrapAll(Iterable<Object> items) {
+		return () -> {
+			Iterator<Object> it = items.iterator();
+			return new Iterator<Term<?>>() {
+				@Override
+				public boolean hasNext() {
+					return it.hasNext();
+				}
+
+				@Override
+				public Term<?> next() {
+					return wrapTerm(it.next());
+				}
+			};
+		};
+	}
+
 	/**
 	 * The term's structural members — the same decomposition the unifier and
 	 * walkAll recognize (collections, tuples, LList, LTree) — read-only: no
 	 * rebuild, no collector needed. Empty when the term is not structural.
 	 */
 	public static Option<Iterable<Term<?>>> members(Term<?> v) {
-		if (!v.asVal().isDefined()) {
-			return Option.none();
-		}
-		Object w = v.get();
-		return asIterable(w)
-				.orElse(() -> tupleAsIterable(w))
-				.map(it -> {
-					java.util.List<Term<?>> ms = new ArrayList<>();
-					for (Object o : it) {
-						ms.add(wrapTerm(o));
-					}
-					return (Iterable<Term<?>>) ms;
-				})
-				.orElse(() -> Types.cast(w, LList.class)
-						.filter(l -> !l.isEmpty())
-						.map(l -> Arrays.<Term<?>> asList(l.getHead(), l.getTail())))
-				.orElse(() -> Types.cast(w, LTree.class)
-						.filter(t -> !t.isEmpty())
-						.map(t -> Arrays.<Term<?>> asList(t.getValue(), t.getChildren())));
+		return decompose(v).map(Decomposition::getMembers);
 	}
 
 	/**
@@ -446,23 +494,6 @@ public class MiniKanren {
 
 	public static <A, B> Option<Tuple2<A, B>> zip(Option<A> a, Option<B> b) {
 		return a.flatMap(av -> b.map(bv -> Tuple.of(av, bv)));
-	}
-
-	private static <T> Option<Tuple2<Iterable<Object>, Iterable<Object>>> toIterable(Tuple2<T, T> lr) {
-		return lr.apply(MiniKanren::asIterablePair)
-				.orElse(() -> tuplesAsIterable(lr));
-	}
-
-	private static <T> Option<Tuple2<Iterable<Object>, Iterable<Object>>> asIterablePair(T lhs, T rhs) {
-		return Tuple.of(lhs, rhs)
-				.map(applyOnBoth(MiniKanren::asIterable))
-				.apply(MiniKanren::zip);
-	}
-
-	private static Option<Tuple2<Iterable<Object>, Iterable<Object>>> tuplesAsIterable(Tuple2<?, ?> items) {
-		return items
-				.apply(applyOnBoth(MiniKanren::tupleAsIterable))
-				.apply(MiniKanren::zip);
 	}
 
 	public static Option<Iterable<Object>> tupleAsIterable(Object tuple) {
