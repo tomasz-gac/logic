@@ -10,6 +10,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.goals.Barrier;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.TableEntry.Registration;
 import com.tgac.logic.unification.MiniKanren;
@@ -84,7 +85,9 @@ public class Tabling {
 	 */
 	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
 		Unifiable<T> argsTerm = lval(args);
-		return pkg -> k -> {
+		// keyed widening: the call pattern is the table key, so no optimizer may
+		// move binders across it — the contract as a type, not an accident of opacity
+		return Barrier.of(pkg -> k -> {
 			assertNoConstraints(pkg, "at a tabled call");
 			return MiniKanren.reify(pkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
 				Call key = Call.of(relation, reifiedArgs);
@@ -94,7 +97,7 @@ public class Tabling {
 						produce(entry, body.get(), pkg, argsTerm, k) :
 						consume(entry, k, pkg, argsTerm, 0);
 			});
-		};
+		});
 	}
 
 	/**

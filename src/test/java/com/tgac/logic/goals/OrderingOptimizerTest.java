@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.tabling.Tabling;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Unifiable;
 import java.util.stream.Collectors;
@@ -62,6 +63,19 @@ public class OrderingOptimizerTest {
 		assertThat(OrderingOptimizer.times(Long.MAX_VALUE / 2, 3)).isEqualTo(Long.MAX_VALUE);
 		assertThat(OrderingOptimizer.plus(Long.MAX_VALUE, 1)).isEqualTo(Long.MAX_VALUE);
 		assertThat(OrderingOptimizer.times(0, Long.MAX_VALUE)).isEqualTo(0);
+	}
+
+	@Test
+	public void tabledCallsAreExplicitBarriers() {
+		Goal tabled = Tabling.<Unifiable<Integer>> define(x -> Goal.success())
+				.apply(lvar());
+		assertThat(tabled).isInstanceOf(Barrier.class);
+
+		Goal b5 = new FixedOrder(5), b1 = new FixedOrder(1), b3 = new FixedOrder(3), b2 = new FixedOrder(2);
+		Goal sorted = b5.and(b1).and(tabled).and(b3).and(b2)
+				.accept(new OrderingOptimizer()).get();
+		assertThat(((Conjunction) sorted).getClauses())
+				.containsExactly(b1, b5, tabled, b2, b3);
 	}
 
 	@Test
