@@ -41,6 +41,7 @@ import io.vavr.control.Try;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Spliterators;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -274,11 +275,6 @@ public class MiniKanren {
 	}
 
 	/**
-	 * Rebuild the structure of a term (collection, LList, LTree or tuple)
-	 * with each component passed through the mapper. Empty when the term
-	 * is not structural.
-	 */
-	/**
 	 * The term's structural members — the same decomposition the unifier and
 	 * walkAll recognize (collections, tuples, LList, LTree) — read-only: no
 	 * rebuild, no collector needed. Empty when the term is not structural.
@@ -297,14 +293,19 @@ public class MiniKanren {
 					}
 					return (Iterable<Term<?>>) ms;
 				})
-				.orElse(() -> MiniKanren.<Object> asLList(v)
+				.orElse(() -> Types.cast(w, LList.class)
 						.filter(l -> !l.isEmpty())
 						.map(l -> Arrays.<Term<?>> asList(l.getHead(), l.getTail())))
-				.orElse(() -> MiniKanren.<Object> asLTree(v)
+				.orElse(() -> Types.cast(w, LTree.class)
 						.filter(t -> !t.isEmpty())
 						.map(t -> Arrays.<Term<?>> asList(t.getValue(), t.getChildren())));
 	}
 
+	/**
+	 * Rebuild the structure of a term (collection, LList, LTree or tuple)
+	 * with each component passed through the mapper. Empty when the term
+	 * is not structural.
+	 */
 	private static <T> Option<Fiber<Term<T>>> mapStructure(
 			Term<T> v,
 			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
@@ -426,44 +427,18 @@ public class MiniKanren {
 								extend(s, (LVar<Object>) u, ReifiedVar.of("_." + s.size())) :
 								s)
 						.map(Fiber::done)
-						.orElse(() -> v.asVal()
-								.flatMap(w -> asIterable(w)
-										.orElse(() -> tupleAsIterable(w)))
-								.map(it -> reifyIterable(s, it)))
-						.orElse(() -> v.asVal()
-								.flatMap(w -> Types.cast(w, LList.class))
-								.map(llist -> reifyLList(s, llist)))
-						.orElse(() -> v.asVal()
-								.flatMap(w -> Types.cast(w, LTree.class))
-								.map(ltree -> reifyLTree(s, ltree)))
+						.orElse(() -> members(v)
+								.map(ms -> reifyMembers(s, ms.iterator())))
 						.getOrElse(done(s)));
 	}
 
-	private static Fiber<Package> reifyLList(Package s, LList<?> llist) {
-		if (llist.isEmpty()) {
+	private static Fiber<Package> reifyMembers(Package s, Iterator<Term<?>> members) {
+		if (!members.hasNext()) {
 			return done(s);
-		} else {
-			return reifyS(s, llist.getHead())
-					.flatMap(s1 -> reifyS(s1, llist.getTail()));
 		}
-	}
-
-	private static Fiber<Package> reifyLTree(Package s, LTree<?> tree) {
-		if (tree.isEmpty()) {
-			return done(s);
-		} else {
-			return reifyS(s, tree.getValue())
-					.flatMap(p -> reifyS(p, tree.getChildren()));
-		}
-	}
-
-	private static Fiber<Package> reifyIterable(Package s, Iterable<Object> l) {
-		return toJavaStream(l)
-				.map(MiniKanren::wrapTerm)
-				.reduce(done(s),
-						(state, item) ->
-								state.flatMap(s1 -> reifyS(s1, item)),
-						Exceptions.throwingBiOp(UnsupportedOperationException::new));
+		Term<?> head = members.next();
+		return defer(() -> reifyS(s, head))
+				.flatMap(s1 -> reifyMembers(s1, members));
 	}
 
 	/**
