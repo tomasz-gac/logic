@@ -90,6 +90,31 @@ public class StructuralClassesTest {
 	}
 
 	@Test
+	public void sameShapeTreesUnifyThroughTheLeaves() {
+		// LTree decomposes one level at a time — (value, children) — so a leaf
+		// variable is reached through recursion, never through a flat member zip
+		Unifiable<Integer> x = lvar();
+		Substitutions s = MiniKanren.unify(Substitutions.empty(),
+						LTree.ofAll(1, LTree.ofAll(2).get()).getObjectUnifiable(),
+						LTree.of(lval(1), LList.ofAll(LTree.of(x).get())).getObjectUnifiable())
+				.get().get();
+		assertThat(s.walk(x)).isEqualTo(lval(2));
+	}
+
+	@Test
+	public void differentShapeTreesDoNotUnify() {
+		// branching factors differ: the children LLists disagree cons-vs-empty
+		assertThat(unifies(
+				LTree.ofAll(1, LTree.ofAll(2).get(), LTree.ofAll(3).get()).getObjectUnifiable(),
+				LTree.ofAll(1, LTree.ofAll(2).get()).getObjectUnifiable()))
+				.isFalse();
+		assertThat(unifies(
+				LTree.ofAll(1, LTree.ofAll(2).get()).getObjectUnifiable(),
+				LTree.ofAll(1).getObjectUnifiable()))
+				.isFalse();
+	}
+
+	@Test
 	public void llistDoesNotUnifyWithIterable() {
 		assertThat(unifies(
 				LList.of(lval(1)).getObjectUnifiable(),
