@@ -1,5 +1,6 @@
 package com.tgac.logic.goals;
 
+import com.tgac.logic.goals.optimizer.Optimizer;
 import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.Exceptions;
@@ -19,6 +20,13 @@ import lombok.Value;
 @NoArgsConstructor(access = AccessLevel.MODULE)
 public class Conde implements Goal {
 	List<Goal> clauses = new ArrayList<>();
+
+	/** One alternative per argument — never conde clause-conjunction syntax. */
+	public static Conde of(Iterable<Goal> alternatives) {
+		Conde conde = new Conde();
+		alternatives.forEach(conde::or);
+		return conde;
+	}
 
 	@Override
 	public Conde or(Goal... goals) {

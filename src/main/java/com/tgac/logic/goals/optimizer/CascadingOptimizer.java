@@ -1,8 +1,12 @@
-package com.tgac.logic.goals;
+package com.tgac.logic.goals.optimizer;
 
 // ABOUTME: The base optimizer: bottom-up structural recursion that flattens nested
 // ABOUTME: conjunctions and disjunctions; NamedGoal is transparent, everything else a leaf.
 
+import com.tgac.logic.goals.Conde;
+import com.tgac.logic.goals.Conjunction;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.NamedGoal;
 import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.fibers.Fiber;
@@ -33,7 +37,7 @@ public class CascadingOptimizer implements Optimizer {
 				.reduce((l, r) -> Fiber.zip(l, r)
 						.map(t -> t.apply(Stream::concat)))
 				.map(f -> f.map(s -> s.toArray(Goal[]::new))
-						.map(gs -> (Goal) new Conjunction().and(gs)))
+						.map(gs -> (Goal) Conjunction.of(gs)))
 				.orElseGet(() -> done(Goal.success()));
 	}
 
@@ -46,13 +50,7 @@ public class CascadingOptimizer implements Optimizer {
 						Stream.of(g)))
 				.reduce((l, r) -> Fiber.zip(l, r)
 						.map(t -> t.apply(Stream::concat)))
-				.map(f -> f.map(s -> {
-					// one alternative at a time: the varargs or() would wrap
-					// several goals into a conjunction (conde clause syntax)
-					Conde flat = new Conde();
-					s.forEach(flat::or);
-					return (Goal) flat;
-				}))
+				.map(f -> f.map(s -> (Goal) Conde.of(s.collect(java.util.stream.Collectors.toList()))))
 				.orElseGet(() -> done(Goal.failure()));
 	}
 

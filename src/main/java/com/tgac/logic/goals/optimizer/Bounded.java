@@ -1,4 +1,4 @@
-package com.tgac.logic.goals;
+package com.tgac.logic.goals.optimizer;
 
 // ABOUTME: A goal that can bound how many answers it may emit from a given state —
 // ABOUTME: the order function driving the ordering optimizer's ascending sort.

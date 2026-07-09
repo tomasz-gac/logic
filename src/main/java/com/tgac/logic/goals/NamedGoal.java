@@ -1,5 +1,6 @@
 package com.tgac.logic.goals;
 
+import com.tgac.logic.goals.optimizer.Optimizer;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;

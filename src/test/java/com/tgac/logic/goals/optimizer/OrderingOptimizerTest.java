@@ -1,8 +1,11 @@
-package com.tgac.logic.goals;
+package com.tgac.logic.goals.optimizer;
 
 // ABOUTME: Pins the ambient ordering layer: ascending sort within barrier-delimited
 // ABOUTME: segments, derived orders through combinators, and ambient-solve equivalence.
 
+import com.tgac.logic.goals.Conjunction;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;

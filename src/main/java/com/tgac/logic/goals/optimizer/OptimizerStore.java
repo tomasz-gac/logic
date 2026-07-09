@@ -1,8 +1,12 @@
-package com.tgac.logic.goals;
+package com.tgac.logic.goals.optimizer;
 
 // ABOUTME: The ambient optimizer riding the Package (DebugStore pattern): state
 // ABOUTME: flows through defer walls, so the pass is waiting when bodies unfold.
 
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Store;
+import com.tgac.logic.goals.Stored;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Substitutions;
 import io.vavr.control.Option;

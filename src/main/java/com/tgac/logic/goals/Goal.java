@@ -1,5 +1,7 @@
 package com.tgac.logic.goals;
 
+import com.tgac.logic.goals.optimizer.Optimizer;
+import com.tgac.logic.goals.optimizer.OptimizerStore;
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 

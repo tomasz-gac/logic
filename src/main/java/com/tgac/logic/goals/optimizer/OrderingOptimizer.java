@@ -1,8 +1,12 @@
-package com.tgac.logic.goals;
+package com.tgac.logic.goals.optimizer;
 
 // ABOUTME: Sorts barrier-delimited conjunction segments by ascending order (max
 // ABOUTME: answers), pricing and rebuilding the tree in one bottom-up traversal.
 
+import com.tgac.logic.goals.Conde;
+import com.tgac.logic.goals.Conjunction;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.NamedGoal;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Substitutions;
 import java.util.ArrayList;
@@ -53,15 +57,15 @@ public class OrderingOptimizer extends CascadingOptimizer {
 		if (g instanceof Conjunction) {
 			return priceAll(((Conjunction) g).getClauses())
 					.map(ps -> new Priced(
-							new Conjunction().and(sortSegments(ps).toArray(new Goal[0])),
+							Conjunction.of(sortSegments(ps).toArray(new Goal[0])),
 							productOf(ps)));
 		}
 		if (g instanceof Conde) {
 			return priceAll(((Conde) g).getClauses())
 					.map(ps -> {
-						Conde flat = new Conde();
-						ps.forEach(p -> flat.or(p.getGoal()));
-						return new Priced(flat, sumOf(ps));
+						List<Goal> alternatives = new ArrayList<>();
+						ps.forEach(p -> alternatives.add(p.getGoal()));
+						return new Priced(Conde.of(alternatives), sumOf(ps));
 					});
 		}
 		if (g instanceof NamedGoal) {

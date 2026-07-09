@@ -1,8 +1,12 @@
-package com.tgac.logic.goals;
+package com.tgac.logic.goals.optimizer;
 
 // ABOUTME: A visitor over the goal combinators — the seam for goal-tree rewriting.
 // ABOUTME: The generic visit(Goal) overload is the extension hook for foreign goal types.
 
+import com.tgac.logic.goals.Conde;
+import com.tgac.logic.goals.Conjunction;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.NamedGoal;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Substitutions;
 
