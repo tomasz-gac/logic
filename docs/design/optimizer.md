@@ -172,7 +172,7 @@ Discipline:
 - **Tabling oddity (benign)**: a tabled body runs under the master's
   package, so the first caller's optimizer plans for all consumers —
   cost is first-caller-dependent, answers are confluence-safe.
-- **Guard and Optimized unify into `Barrier` here** — "optimize outside
+- **Guard and Optimized unified into `Barrier` (SHIPPED)** — "optimize outside
   and inside, never across". Inside-optimization is OPERATIONAL (ambient
   staging at interior defer forcings), not traversal, so a hand-ordered
   conjunction inside a Barrier is never re-sorted (no hook at

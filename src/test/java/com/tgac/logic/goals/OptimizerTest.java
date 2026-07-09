@@ -63,38 +63,19 @@ public class OptimizerTest {
 	}
 
 	@Test
-	public void guardIsALeafTheOptimizerNeverEnters() {
+	public void barrierIsALeafTheOptimizerNeverEnters() {
 		Goal a = leaf(), b = leaf(), c = leaf();
 		Goal deliberate = a.and(b.and(c));
-		Guard guard = Guard.of(deliberate);
-		assertThat(cascade(guard)).isSameAs(guard);
-		assertThat(guard.getGoal()).isSameAs(deliberate);
+		Barrier barrier = Barrier.of(deliberate);
+		assertThat(cascade(barrier)).isSameAs(barrier);
+		assertThat(barrier.getGoal()).isSameAs(deliberate);
 	}
 
 	@Test
-	public void sameOptimizerUnwrapsAndFusesNestedOptimized() {
-		Goal a = leaf(), b = leaf(), c = leaf();
-		CascadingOptimizer optimizer = new CascadingOptimizer();
-		// a wrapped subtree fuses into the surrounding plan: no wrapper survives,
-		// and its clauses flatten into the outer conjunction
-		Goal flat = a.and(b.and(c).optimize(optimizer)).accept(optimizer).get();
-		assertThat(flat).isInstanceOf(Conjunction.class);
-		assertThat(((Conjunction) flat).getClauses()).containsExactly(a, b, c);
-	}
-
-	@Test
-	public void foreignOptimizedIsALeaf() {
-		Goal a = leaf(), b = leaf(), c = leaf();
-		Goal foreign = b.and(c).optimize(new CascadingOptimizer());
-		Goal walked = a.and(foreign).accept(new CascadingOptimizer()).get();
-		assertThat(((Conjunction) walked).getClauses()).containsExactly(a, foreign);
-	}
-
-	@Test
-	public void optimizedGoalSolvesToTheSameAnswers() {
+	public void rewrittenGoalSolvesToTheSameAnswers() {
 		Unifiable<Integer> x = lvar();
 		Goal g = unify(x, lval(3)).and(Goal.success().and(Goal.success()));
-		assertThat(g.optimize(new CascadingOptimizer()).solve(x)
+		assertThat(g.accept(new CascadingOptimizer()).get().solve(x)
 				.map(Object::toString)
 				.collect(Collectors.toList()))
 				.isEqualTo(g.solve(x)

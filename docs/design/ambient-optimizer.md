@@ -101,9 +101,9 @@ never re-sorted, since no hook fires at conjunction nodes), yet interior
 defer forcings still consult the store — so structure that UNFOLDS inside
 the Barrier still gets planned. Protect what was written; optimize what
 unfolds. `Guard` (interior-blocking) and foreign-`Optimized` (ownership
-claim) were both artifacts of wrapper delivery and dissolve; explicit and
-implicit barriers now have literally the same contract. Scoped opt-out =
-removing the store for a subtree.
+claim) were both artifacts of wrapper delivery and are GONE — `Barrier`
+shipped as the one type; explicit and implicit barriers have literally the
+same contract. Scoped opt-out = removing the store for a subtree.
 
 ## 6. The tiers are configurations, not architectures
 

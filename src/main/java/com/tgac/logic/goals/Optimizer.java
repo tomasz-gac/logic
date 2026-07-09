@@ -34,9 +34,7 @@ public interface Optimizer {
 
 	Fiber<Goal> visit(NamedGoal named);
 
-	Fiber<Goal> visit(Guard guard);
-
-	Fiber<Goal> visit(Optimized optimized);
+	Fiber<Goal> visit(Barrier barrier);
 
 	/**
 	 * Pass-state injection: a substitution-aware pass returns a copy carrying
@@ -75,13 +73,8 @@ public interface Optimizer {
 			}
 
 			@Override
-			public Fiber<Goal> visit(Guard guard) {
-				return both(guard);
-			}
-
-			@Override
-			public Fiber<Goal> visit(Optimized optimized) {
-				return both(optimized);
+			public Fiber<Goal> visit(Barrier barrier) {
+				return both(barrier);
 			}
 
 			@Override

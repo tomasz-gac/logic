@@ -227,13 +227,6 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 		return optimizer.visit(this);
 	}
 
-	/**
-	 * Wraps this goal so the optimizer rewrites it at apply time — per layer of
-	 * a recursive unfolding, since construction time sees only a defer wall.
-	 */
-	default Goal optimize(Optimizer optimizer) {
-		return Optimized.of(this, optimizer);
-	}
 
 	/**
 	 * Defers the creation of a goal, typically used for defining recursive goals.
