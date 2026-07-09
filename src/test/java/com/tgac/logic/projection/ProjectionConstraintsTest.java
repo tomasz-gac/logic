@@ -60,4 +60,42 @@ public class ProjectionConstraintsTest {
 				.containsExactly(6);
 	}
 
+
+	@org.junit.Test
+	public void compositeProjectionWakesOnMemberBindings() {
+		// watched is a STRUCTURE; members bind one at a time, including a member
+		// that only exists after nested instantiation
+		com.tgac.logic.unification.Unifiable<Integer> a = lvar();
+		com.tgac.logic.unification.Unifiable<Integer> b = lvar();
+		com.tgac.logic.unification.Unifiable<Integer> out = lvar();
+
+		java.util.List<Integer> results = ProjectionConstraints
+				.project(com.tgac.logic.unification.LVal.lval(io.vavr.Tuple.of(a, b)),
+						t -> out.unifies(((com.tgac.logic.unification.Unifiable<Integer>) t._1).get()
+								+ ((com.tgac.logic.unification.Unifiable<Integer>) t._2).get()))
+				.and(a.unifies(1))
+				.and(b.unifies(2))
+				.solve(out)
+				.map(com.tgac.logic.unification.Term::get)
+				.collect(java.util.stream.Collectors.toList());
+
+		org.assertj.core.api.Assertions.assertThat(results).containsExactly(3);
+	}
+
+	@org.junit.Test
+	public void twoVariableProjectionFiresOnceBothGround() {
+		com.tgac.logic.unification.Unifiable<Integer> a = lvar();
+		com.tgac.logic.unification.Unifiable<Integer> b = lvar();
+		com.tgac.logic.unification.Unifiable<Integer> out = lvar();
+
+		java.util.List<Integer> results = ProjectionConstraints
+				.project(a, b, (x, y) -> out.unifies(x * y))
+				.and(a.unifies(3))
+				.and(b.unifies(4))
+				.solve(out)
+				.map(com.tgac.logic.unification.Term::get)
+				.collect(java.util.stream.Collectors.toList());
+
+		org.assertj.core.api.Assertions.assertThat(results).containsExactly(12);
+	}
 }

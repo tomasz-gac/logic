@@ -54,7 +54,7 @@ public final class Suspension {
 
 	public boolean watchesAny(Package state, Term<?> changed) {
 		for (Term<?> w : watched) {
-			if (Watches.matches(state.substitution(), w, changed)) {
+			if (Watches.matchesStructurally(state.substitution(), w, changed)) {
 				return true;
 			}
 		}

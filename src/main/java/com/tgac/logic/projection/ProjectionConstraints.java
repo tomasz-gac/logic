@@ -21,11 +21,35 @@ public class ProjectionConstraints {
 	 * splices through the run lane after the pass that grounded {@code x}
 	 * quiesces — or runs inline when {@code x} is already ground here.
 	 */
-	@SuppressWarnings("unchecked")
 	public static <T> Goal project(Unifiable<T> x, Function<T, Goal> f) {
 		return Propagation.suspend(
 				Collections.singletonList(x),
 				sub -> sub.isGround(x),
 				s -> f.apply((T) MiniKanren.walkAll(s, x).get().get()).apply(s));
+	}
+
+	/** Two-variable projection, watched jointly — no nesting, one suspension. */
+	@SuppressWarnings("unchecked")
+	public static <T1, T2> Goal project(Unifiable<T1> v1, Unifiable<T2> v2,
+			io.vavr.Function2<T1, T2, Goal> f) {
+		return Propagation.suspend(
+				java.util.Arrays.asList(v1, v2),
+				sub -> sub.isGround(v1) && sub.isGround(v2),
+				s -> f.apply(
+						(T1) s.substitution().walkAll(v1).get(),
+						(T2) s.substitution().walkAll(v2).get()).apply(s));
+	}
+
+	/** Three-variable projection, watched jointly — no nesting, one suspension. */
+	@SuppressWarnings("unchecked")
+	public static <T1, T2, T3> Goal project(Unifiable<T1> v1, Unifiable<T2> v2, Unifiable<T3> v3,
+			io.vavr.Function3<T1, T2, T3, Goal> f) {
+		return Propagation.suspend(
+				java.util.Arrays.asList(v1, v2, v3),
+				sub -> sub.isGround(v1) && sub.isGround(v2) && sub.isGround(v3),
+				s -> f.apply(
+						(T1) s.substitution().walkAll(v1).get(),
+						(T2) s.substitution().walkAll(v2).get(),
+						(T3) s.substitution().walkAll(v3).get()).apply(s));
 	}
 }

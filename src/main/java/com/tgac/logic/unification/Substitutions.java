@@ -36,8 +36,31 @@ public final class Substitutions {
 		return MiniKanren.walkAll(Package.of(bindings, LinkedHashMap.empty()), t).get();
 	}
 
-	/** Whether the term is deep-ground under the current bindings. */
+	/** Whether the term is deep-ground under the current bindings — no variable
+	 * remains anywhere in its structure. */
 	public boolean isGround(Term<?> t) {
-		return walkAll(t).asVal().isDefined();
+		return fullyGround(walkAll(t));
+	}
+
+	private static boolean fullyGround(Term<?> t) {
+		if (t.asVar().isDefined()) {
+			return false;
+		}
+		Object v = t.get();
+		return MiniKanren.asIterable(v)
+				.orElse(() -> MiniKanren.tupleAsIterable(v))
+				.map(it -> {
+					for (Object o : it) {
+						if (!fullyGround(MiniKanren.wrapTerm(o))) {
+							return false;
+						}
+					}
+					return true;
+				})
+				.getOrElse(() -> MiniKanren.asLList(t)
+						.map(l -> l.stream().allMatch(e -> e.fold(
+								Substitutions::fullyGround,
+								Substitutions::fullyGround)))
+						.getOrElse(true));
 	}
 }

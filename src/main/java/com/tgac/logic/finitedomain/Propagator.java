@@ -52,7 +52,9 @@ public final class Propagator implements Stored {
 
 	/**
 	 * Does a change to {@code changed} re-run this propagator? Chain-inclusive:
-	 * see {@link Watches}.
+	 * see {@link Watches}. Watched terms are VARIABLES in practice — a composite
+	 * watched term does not trigger on its members' bindings (suspensions use
+	 * the structural variant; no FD constraint watches composites).
 	 */
 	public boolean watches(Package state, Term<?> changed) {
 		for (Term<?> watchedTerm : watchedTerms) {

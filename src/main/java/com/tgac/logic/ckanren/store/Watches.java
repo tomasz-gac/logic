@@ -20,6 +20,12 @@ public final class Watches {
 	private Watches() {
 	}
 
+	/**
+	 * Chain matching only: a COMPOSITE watched term does not trigger on its
+	 * members' bindings here — in practice propagators watch variables. Watchers
+	 * of structures (suspensions over tuples/lists) use
+	 * {@link #matchesStructurally}.
+	 */
 	public static boolean matches(Substitutions state, Term<?> watched, Term<?> changed) {
 		Term<?> cur = watched;
 		while (true) {
@@ -50,6 +56,33 @@ public final class Watches {
 				.getOrElse(() -> MiniKanren.asLList(changed)
 						.map(l -> l.stream()
 								.anyMatch(e -> e.fold(live::equals, live::equals)))
+						.getOrElse(false));
+	}
+
+	/**
+	 * Chain matching, recursing into structure: when a watched chain ends in a
+	 * composite, its members are watched too — including members that only came
+	 * into existence through nested instantiation (watch {@code (a,b)}, bind
+	 * {@code a} to {@code (c,d)}: {@code c} now triggers).
+	 */
+	public static boolean matchesStructurally(Substitutions state, Term<?> watched, Term<?> changed) {
+		if (matches(state, watched, changed)) {
+			return true;
+		}
+		Term<?> end = state.walk(watched);
+		if (!end.asVal().isDefined()) {
+			return false;
+		}
+		Object v = end.get();
+		return MiniKanren.asIterable(v)
+				.orElse(() -> MiniKanren.tupleAsIterable(v))
+				.map(it -> StreamSupport.stream(it.spliterator(), false)
+						.map(MiniKanren::wrapTerm)
+						.anyMatch(m -> matchesStructurally(state, m, changed)))
+				.getOrElse(() -> MiniKanren.asLList(end)
+						.map(l -> l.stream().anyMatch(e -> e.fold(
+								m -> matchesStructurally(state, m, changed),
+								m -> matchesStructurally(state, m, changed))))
 						.getOrElse(false));
 	}
 }
