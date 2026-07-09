@@ -6,7 +6,7 @@ package com.tgac.logic.ckanren.store;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
-import java.util.stream.StreamSupport;
+import java.util.function.Predicate;
 
 /**
  * Watch matching against the LIVE state: the changed term may be the watched
@@ -46,43 +46,37 @@ public final class Watches {
 		}
 	}
 
-	private static boolean changedContains(Term<?> changed, Term<?> live) {
-		Object w = changed.get();
-		return MiniKanren.asIterable(w)
-				.orElse(() -> MiniKanren.tupleAsIterable(w))
-				.map(it -> StreamSupport.stream(it.spliterator(), false)
-						.map(MiniKanren::wrapTerm)
-						.anyMatch(live::equals))
-				.getOrElse(() -> MiniKanren.asLList(changed)
-						.map(l -> l.stream()
-								.anyMatch(e -> e.fold(live::equals, live::equals)))
-						.getOrElse(false));
-	}
-
 	/**
 	 * Chain matching, recursing into structure: when a watched chain ends in a
 	 * composite, its members are watched too — including members that only came
 	 * into existence through nested instantiation (watch {@code (a,b)}, bind
-	 * {@code a} to {@code (c,d)}: {@code c} now triggers).
+	 * {@code a} to {@code (c,d)}: {@code c} now triggers). Structure is whatever
+	 * the unifier's own decomposition recognizes ({@code MiniKanren.members}:
+	 * collections, tuples, LList, LTree) — the two traversals cannot drift apart.
 	 */
 	public static boolean matchesStructurally(Substitutions state, Term<?> watched, Term<?> changed) {
 		if (matches(state, watched, changed)) {
 			return true;
 		}
 		Term<?> end = state.walk(watched);
-		if (!end.asVal().isDefined()) {
-			return false;
-		}
-		Object v = end.get();
-		return MiniKanren.asIterable(v)
-				.orElse(() -> MiniKanren.tupleAsIterable(v))
-				.map(it -> StreamSupport.stream(it.spliterator(), false)
-						.map(MiniKanren::wrapTerm)
-						.anyMatch(m -> matchesStructurally(state, m, changed)))
-				.getOrElse(() -> MiniKanren.asLList(end)
-						.map(l -> l.stream().anyMatch(e -> e.fold(
-								m -> matchesStructurally(state, m, changed),
-								m -> matchesStructurally(state, m, changed))))
-						.getOrElse(false));
+		return structuralAny(end, member -> matchesStructurally(state, member, changed));
+	}
+
+	/** Any structural member (per the unifier's decomposition) satisfying {@code p}. */
+	private static boolean structuralAny(Term<?> t, Predicate<Term<?>> p) {
+		return MiniKanren.members(t)
+				.map(members -> {
+					for (Term<?> member : members) {
+						if (p.test(member)) {
+							return true;
+						}
+					}
+					return false;
+				})
+				.getOrElse(false);
+	}
+
+	private static boolean changedContains(Term<?> changed, Term<?> live) {
+		return structuralAny(changed, member -> member.equals(live) || changedContains(member, live));
 	}
 }

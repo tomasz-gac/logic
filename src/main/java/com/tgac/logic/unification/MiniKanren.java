@@ -278,6 +278,33 @@ public class MiniKanren {
 	 * with each component passed through the mapper. Empty when the term
 	 * is not structural.
 	 */
+	/**
+	 * The term's structural members — the same decomposition the unifier and
+	 * walkAll recognize (collections, tuples, LList, LTree) — read-only: no
+	 * rebuild, no collector needed. Empty when the term is not structural.
+	 */
+	public static Option<Iterable<Term<?>>> members(Term<?> v) {
+		if (!v.asVal().isDefined()) {
+			return Option.none();
+		}
+		Object w = v.get();
+		return asIterable(w)
+				.orElse(() -> tupleAsIterable(w))
+				.map(it -> {
+					java.util.List<Term<?>> ms = new ArrayList<>();
+					for (Object o : it) {
+						ms.add(wrapTerm(o));
+					}
+					return (Iterable<Term<?>>) ms;
+				})
+				.orElse(() -> MiniKanren.<Object> asLList(v)
+						.filter(l -> !l.isEmpty())
+						.map(l -> Arrays.<Term<?>> asList(l.getHead(), l.getTail())))
+				.orElse(() -> MiniKanren.<Object> asLTree(v)
+						.filter(t -> !t.isEmpty())
+						.map(t -> Arrays.<Term<?>> asList(t.getValue(), t.getChildren())));
+	}
+
 	private static <T> Option<Fiber<Term<T>>> mapStructure(
 			Term<T> v,
 			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
