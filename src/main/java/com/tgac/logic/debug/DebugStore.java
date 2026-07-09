@@ -32,7 +32,7 @@ public class DebugStore implements Store {
 	}
 
 	public static Option<DebugStore> from(Package pkg) {
-		return pkg.getConstraints().get(DebugStore.class).map(DebugStore.class::cast);
+		return pkg.getStores().get(DebugStore.class).map(DebugStore.class::cast);
 	}
 
 	public DebugStore push(String box) {

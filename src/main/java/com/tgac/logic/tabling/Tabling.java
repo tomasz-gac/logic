@@ -105,7 +105,7 @@ public class Tabling {
 	 * around a tabled call or answer is rejected loudly instead.
 	 */
 	private static void assertNoConstraints(Package pkg, String when) {
-		pkg.getConstraints().values().toJavaStream()
+		pkg.getStores().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
 				.filter(cs -> !cs.isEmpty())

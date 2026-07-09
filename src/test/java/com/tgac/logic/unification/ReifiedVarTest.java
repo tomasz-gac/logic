@@ -54,7 +54,7 @@ public class ReifiedVarTest {
 		Unifiable<Integer> x = lvar();
 		ReifiedVar<Integer> hole = ReifiedVar.of("_.0");
 		Package s = Package.empty()
-				.withSubstitutions(HashMap.of(x.getVar(), hole));
+				.withSubstitutions(Substitutions.of(HashMap.of(x.getVar(), hole)));
 
 		assertThat(s.walk(x)).isSameAs(hole);
 	}

@@ -13,27 +13,23 @@ public class Package {
 
 	Substitutions substitutions;
 
-	LinkedHashMap<Class<? extends Store>, Store> constraints;
+	LinkedHashMap<Class<? extends Store>, Store> stores;
 
 	public static Package empty() {
 		return Package.of(Substitutions.empty(), LinkedHashMap.empty());
 	}
 
 	public static Package of(HashMap<LVar<?>, Term<?>> substitutions,
-			LinkedHashMap<Class<? extends Store>, Store> constraints) {
-		return Package.of(Substitutions.of(substitutions), constraints);
+			LinkedHashMap<Class<? extends Store>, Store> stores) {
+		return Package.of(Substitutions.of(substitutions), stores);
 	}
 
 	public Package withSubstitutions(Substitutions s) {
-		return Package.of(s, constraints);
-	}
-
-	public Package withSubstitutions(HashMap<LVar<?>, Term<?>> s) {
-		return Package.of(Substitutions.of(s), constraints);
+		return Package.of(s, stores);
 	}
 
 	<T> Package put(LVar<T> key, Term<T> value) {
-		return Package.of(substitutions.extend(key, value), constraints);
+		return Package.of(substitutions.extend(key, value), stores);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -55,51 +51,51 @@ public class Package {
 	}
 
 	public Package withStore(Store empty) {
-		if (constraints.get(empty.getClass()).isDefined()) {
+		if (stores.get(empty.getClass()).isDefined()) {
 			return this;
 		} else {
-			return Package.of(substitutions, constraints.put(empty.getClass(), empty));
+			return Package.of(substitutions, stores.put(empty.getClass(), empty));
 		}
 	}
 
 	public Package putStore(Store store) {
-		return Package.of(substitutions, constraints.put(store.getClass(), store));
+		return Package.of(substitutions, stores.put(store.getClass(), store));
 	}
 
 	public Package withoutStore(Class<? extends Store> cls) {
-		return Package.of(substitutions, constraints.remove(cls));
+		return Package.of(substitutions, stores.remove(cls));
 	}
 
 	/** The store registered under {@code cls}; throws when absent. */
 	@SuppressWarnings("unchecked")
 	public <T extends Store> T getStore(Class<T> cls) {
-		return (T) constraints.get(cls)
+		return (T) stores.get(cls)
 				.getOrElseThrow(() -> new IllegalStateException(
 						"No store associated with package"));
 	}
 
 	/** Prepends {@code c} into its store; unchanged when the store is absent. */
 	public Package withStored(Stored c) {
-		return constraints.get(c.getStoreClass())
+		return stores.get(c.getStoreClass())
 				.map(cs -> cs.prepend(c))
-				.map(cs -> Package.of(substitutions, constraints.put(c.getStoreClass(), cs)))
+				.map(cs -> Package.of(substitutions, stores.put(c.getStoreClass(), cs)))
 				.getOrElse(this);
 	}
 
 	/** Removes {@code c} from its store; unchanged when the store is absent. */
 	public Package withoutStored(Stored c) {
-		return constraints.get(c.getStoreClass())
+		return stores.get(c.getStoreClass())
 				.map(cs -> cs.remove(c))
-				.map(cs -> Package.of(substitutions, constraints.put(c.getStoreClass(), cs)))
+				.map(cs -> Package.of(substitutions, stores.put(c.getStoreClass(), cs)))
 				.getOrElse(this);
 	}
 
 	/** Applies {@code f} to the store registered under {@code cls}; unchanged when absent. */
 	@SuppressWarnings("unchecked")
 	public <T extends Store> Package updateStore(Class<T> cls, UnaryOperator<T> f) {
-		return constraints.get(cls)
+		return stores.get(cls)
 				.map(s -> (Store) f.apply((T) s))
-				.map(s -> Package.of(substitutions, constraints.put(cls, s)))
+				.map(s -> Package.of(substitutions, stores.put(cls, s)))
 				.getOrElse(this);
 	}
 }

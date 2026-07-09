@@ -154,7 +154,7 @@ public class CapabilityDriverTest {
 		assertThat(count).isEqualTo(1);
 		// quiescence removes the agenda; a leaked store would ride every
 		// subsequent package of the branch
-		assertThat(answer[0].getConstraints().keySet().toJavaStream()
+		assertThat(answer[0].getStores().keySet().toJavaStream()
 				.anyMatch(c -> c.getSimpleName().equals("Agenda")))
 				.as("the agenda must be removed at quiescence")
 				.isFalse();
@@ -177,7 +177,7 @@ public class CapabilityDriverTest {
 		assertThat(solutions(root)).isEqualTo(1);
 		assertThat(seen[0]).as("the run goal must execute").isNotNull();
 		// runs splice only after the drain quiesces and the agenda is removed
-		assertThat(seen[0].getConstraints().keySet().toJavaStream()
+		assertThat(seen[0].getStores().keySet().toJavaStream()
 				.anyMatch(c -> c.getSimpleName().equals("Agenda")))
 				.as("a spliced run sees no agenda")
 				.isFalse();

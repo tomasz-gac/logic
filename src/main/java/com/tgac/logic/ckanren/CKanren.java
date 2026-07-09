@@ -57,7 +57,7 @@ public class CKanren {
 												Fiber.done(v) :
 												MiniKanren.walkAll(r, v)
 														.map(result ->
-																s1.getConstraints() == null ?
+																s1.getStores() == null ?
 																		result :
 																		reifyConstraints(s1, result, vr._2))))
 								.map(t -> (Reified<T>) t)
@@ -80,7 +80,7 @@ public class CKanren {
 
 	/** Every store commits its constraints before {@code x} is reified. */
 	private static <T> Goal enforce(Package p, Term<T> x) {
-		return p.getConstraints().values().toJavaStream()
+		return p.getStores().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
 				.map(cs -> cs.enforce(x))
@@ -90,7 +90,7 @@ public class CKanren {
 
 	/** Every store renders its residual constraints into the reified answer. */
 	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Package renameSubstitutions) {
-		return p.getConstraints().values()
+		return p.getStores().values()
 				.toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)

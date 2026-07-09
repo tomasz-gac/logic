@@ -136,7 +136,7 @@ public final class Propagation {
 	}
 
 	private static Agenda agendaOf(Package pkg) {
-		return (Agenda) pkg.getConstraints().get(Agenda.class).get();
+		return (Agenda) pkg.getStores().get(Agenda.class).get();
 	}
 
 	/**
@@ -146,11 +146,11 @@ public final class Propagation {
 	 */
 	private static Goal ripen(Prefix prefix) {
 		return s -> {
-			if (!s.getConstraints().get(Suspensions.class).isDefined()) {
+			if (!s.getStores().get(Suspensions.class).isDefined()) {
 				return Cont.just(s);
 			}
 			Package current = s;
-			Suspensions parked = (Suspensions) s.getConstraints().get(Suspensions.class).get();
+			Suspensions parked = (Suspensions) s.getStores().get(Suspensions.class).get();
 			for (Suspension suspension : parked.parked) {
 				boolean touched = false;
 				for (Tuple2<LVar<?>, Term<?>> b : prefix.bindings()) {
@@ -171,13 +171,13 @@ public final class Propagation {
 
 	/** Answers may not leave while suspensions pend. */
 	public static boolean suspensionsPending(Package p) {
-		return p.getConstraints().get(Suspensions.class)
+		return p.getStores().get(Suspensions.class)
 				.map(sus -> !((Suspensions) sus).parked.isEmpty())
 				.getOrElse(false);
 	}
 
 	private static Stream<ConstraintStore> constraintStores(Package p) {
-		return p.getConstraints().values().toJavaStream()
+		return p.getStores().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast);
 	}
@@ -188,7 +188,7 @@ public final class Propagation {
 	 * install the agenda, drain to quiescence, then splice the collected runs.
 	 */
 	private static Cont<Package, Nothing> enqueue(Package p, Agenda.Item item) {
-		return p.getConstraints().get(Agenda.class)
+		return p.getStores().get(Agenda.class)
 				.map(a -> Cont.<Package, Nothing> just(p.putStore(((Agenda) a).append(item))))
 				.getOrElse(() -> drain().apply(p.putStore(Agenda.seeded(item))));
 	}
@@ -202,7 +202,7 @@ public final class Propagation {
 	 */
 	private static Goal drain() {
 		return Goal.defer(() -> s -> {
-			Agenda agenda = (Agenda) s.getConstraints().get(Agenda.class).get();
+			Agenda agenda = (Agenda) s.getStores().get(Agenda.class).get();
 			if (agenda.itemsExhausted()) {
 				Package cleared = s.withoutStore(Agenda.class);
 				return agenda.runs()
