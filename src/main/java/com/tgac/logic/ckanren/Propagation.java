@@ -69,7 +69,7 @@ public final class Propagation {
 			if (!constraintStores(p).findAny().isPresent() && !suspensionsPending(p)) {
 				// pure-relational fast path: no revisions, no suspensions to ripen,
 				// no agenda — the prefix is already the delta, a put per binding
-				return Cont.just(p.withSubstitutions(prefix.appliedTo(p.getSubstitutions())));
+				return Cont.just(p.withSubstitutions(prefix.appliedTo(p.substitution())));
 			}
 			return enqueue(p, new Agenda.Bind(prefix));
 		};
@@ -300,7 +300,7 @@ public final class Propagation {
 					if (kept.isEmpty()) {
 						return Cont.just(s);
 					}
-					Package extended = s.withSubstitutions(kept.appliedTo(s.getSubstitutions()));
+					Package extended = s.withSubstitutions(kept.appliedTo(s.substitution()));
 					// each store's revise is COMPLETE: custody, its own watchers of the
 					// newly bound variables, and its own cascade
 					return ((Goal) s2 -> reviseAll(s2, (cs, p) -> cs.revise(kept, p)))

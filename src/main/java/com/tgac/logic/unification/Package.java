@@ -11,48 +11,43 @@ import lombok.Value;
 @RequiredArgsConstructor(access = AccessLevel.PUBLIC, staticName = "of")
 public class Package {
 
-	HashMap<LVar<?>, Term<?>> substitutions;
+	Substitutions substitutions;
 
 	LinkedHashMap<Class<? extends Store>, Store> constraints;
 
 	public static Package empty() {
-		return new Package(HashMap.empty(), LinkedHashMap.empty());
+		return Package.of(Substitutions.empty(), LinkedHashMap.empty());
+	}
+
+	public static Package of(HashMap<LVar<?>, Term<?>> substitutions,
+			LinkedHashMap<Class<? extends Store>, Store> constraints) {
+		return Package.of(Substitutions.of(substitutions), constraints);
+	}
+
+	public Package withSubstitutions(Substitutions s) {
+		return Package.of(s, constraints);
 	}
 
 	public Package withSubstitutions(HashMap<LVar<?>, Term<?>> s) {
-		return new Package(s, constraints);
+		return Package.of(Substitutions.of(s), constraints);
 	}
 
 	<T> Package put(LVar<T> key, Term<T> value) {
-		return Package.of(substitutions.put(key, value), constraints);
+		return Package.of(substitutions.extend(key, value), constraints);
 	}
 
 	@SuppressWarnings("unchecked")
 	<T> Term<T> get(LVar<T> v) {
-		return (Term<T>) substitutions.getOrElse(v, null);
+		return (Term<T>) substitutions.binding(v);
 	}
 
 	public <T> Term<T> walk(Term<T> v) {
-		// only input vars are substitution keys; vals and reified vars walk to themselves
-		if (!v.asVar().isDefined()) {
-			return v;
-		}
-		if (get(v.getVar()) == null) {
-			// it's important to return the same object
-			// because we test with == to see if var is bound
-			return v;
-		}
-		Term<?> result = v;
-		Term<?> tmp;
-		while (result.asVar().isDefined() && (tmp = get(result.getVar())) != null) {
-			result = tmp;
-		}
-		return (Term<T>) result;
+		return substitutions.walk(v);
 	}
 
-	/** The substitution factor as a read-only view — see {@link Substitutions}. */
+	/** The substitution factor — see {@link Substitutions}. */
 	public Substitutions substitution() {
-		return new Substitutions(substitutions);
+		return substitutions;
 	}
 
 	public long size() {

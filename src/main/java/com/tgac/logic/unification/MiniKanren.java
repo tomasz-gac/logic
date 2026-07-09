@@ -250,12 +250,12 @@ public class MiniKanren {
 
 	public static <T> MFiber<Package> unify(Package s, Term<T> lhs, Term<T> rhs) {
 		return unify(s.substitution(), lhs, rhs)
-				.map(sub -> s.withSubstitutions(sub.map()));
+				.map(s::withSubstitutions);
 	}
 
 	public static <T> MFiber<Package> unifyUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
 		return unify(MiniKanren::extendNoCheck, s.substitution(), lhs, rhs)
-				.map(sub -> s.withSubstitutions(sub.map()));
+				.map(s::withSubstitutions);
 	}
 
 	/**

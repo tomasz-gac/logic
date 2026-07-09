@@ -45,6 +45,27 @@ public final class Substitutions {
 		return bindings;
 	}
 
+	public boolean isEmpty() {
+		return bindings.isEmpty();
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		// representation-independent: two substitutions are equal iff their
+		// bindings are — the contract any future backing must keep
+		return o instanceof Substitutions && bindings.equals(((Substitutions) o).bindings);
+	}
+
+	@Override
+	public int hashCode() {
+		return bindings.hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return bindings.toString();
+	}
+
 	/** One chain step: the term bound to {@code v}, or null when unbound. */
 	public Term<?> binding(LVar<?> v) {
 		return bindings.getOrElse(v, null);
@@ -68,7 +89,7 @@ public final class Substitutions {
 
 	/** The term deep-walked to its current bindings. */
 	public <T> Term<T> walkAll(Term<T> t) {
-		return MiniKanren.walkAll(Package.of(bindings, LinkedHashMap.empty()), t).get();
+		return MiniKanren.walkAll(Package.of(this, LinkedHashMap.empty()), t).get();
 	}
 
 	/**
