@@ -18,6 +18,7 @@ import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -77,14 +78,14 @@ public class Disequality {
 	 */
 	static Option<List<NeqConstraint>> verifyAndSimplify(
 			List<NeqConstraint> constraints,
-			HashMap<LVar<?>, Term<?>> substitutions) {
+			Substitutions substitutions) {
 		return verifyAndSimplifyConstraints(constraints, List.empty(), substitutions);
 	}
 
 	private static Option<List<NeqConstraint>> verifyAndSimplifyConstraints(
 			List<NeqConstraint> constraints,
 			List<NeqConstraint> newConstraints,
-			HashMap<LVar<?>, Term<?>> s) {
+			Substitutions s) {
 		return constraints.toJavaStream()
 				.reduce(Option.of(newConstraints),
 						(acc, c) -> acc.flatMap(currentConstraints ->
@@ -93,7 +94,7 @@ public class Disequality {
 	}
 
 	private static Option<List<NeqConstraint>> verificationStep(
-			HashMap<LVar<?>, Term<?>> substitutions,
+			Substitutions substitutions,
 			List<NeqConstraint> newConstraints,
 			NeqConstraint constraint) {
 		Option<HashMap<LVar<?>, Term<?>>> delta = unifyConstraints(constraint, substitutions);
@@ -126,16 +127,14 @@ public class Disequality {
 	 */
 	private static Option<HashMap<LVar<?>, Term<?>>> unifyConstraints(
 			NeqConstraint simultaneousConstraints,
-			HashMap<LVar<?>, Term<?>> s) {
+			Substitutions s) {
 		return simultaneousConstraints.getSeparate().toJavaStream()
 				.map(t -> t.map(applyOnBoth(u -> (Term<Object>) u)))
 				.reduce(Option.of(Tuple.of(s, HashMap.<LVar<?>, Term<?>> empty())),
 						(acc, lr) -> acc.flatMap(sd ->
-								// unification on a bare package cannot recurse into
+								// unification over bare substitutions cannot recurse into
 								// constraint processing — it only collects the prefix
-								MiniKanren.unifyPrefix(
-												Package.empty().withSubstitutions(sd._1),
-												lr._1, lr._2)
+								MiniKanren.unifyPrefix(sd._1, lr._1, lr._2)
 										.get()
 										.map(prefix -> Tuple.of(
 												prefix.appliedTo(sd._1),
@@ -227,7 +226,7 @@ public class Disequality {
 			List<NeqConstraint> accConstraints) {
 		return accConstraints.toJavaStream()
 				.reduce(false,
-						(r, v) -> r || unifyConstraints(v, constraints.getSeparate())
+						(r, v) -> r || unifyConstraints(v, Substitutions.of(constraints.getSeparate()))
 								.filter(HashMap::isEmpty)
 								.map(__ -> true)
 								.getOrElse(() -> false),

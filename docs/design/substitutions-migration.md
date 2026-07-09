@@ -1,7 +1,11 @@
 # The Substitutions migration — retyping the unifier onto the shared factor
 
-**Status: PLANNED (July 2026, designed with Tom on branch `worklist`). Not
-implemented, not scheduled — its-own-session work: it touches the hottest path
+**Status: Steps A and B IMPLEMENTED (July 2026, branch `substitutions`) — the
+Substitutions class carries the consumer-derived operation set (interface
+promotion deferred to the first second implementation, per YAGNI) and the
+unifier is typed over it, with Package entries as thin adapters; the
+Package.empty() trial-unification wrappers are gone. Steps C (decompose) and
+D (representation, benchmark-gated) remain — its-own-session work: it touches the hottest path
 in the engine. This completes the capability design's original `Substitutions`
 sketch (its spec read `MiniKanren.unify(Substitutions s, …)`; see
 `constraint-kernel.md` §7 for lineage), plus the

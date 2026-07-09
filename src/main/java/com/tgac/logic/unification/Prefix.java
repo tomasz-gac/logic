@@ -65,6 +65,15 @@ public final class Prefix {
 		return Option.of(new Prefix(kept));
 	}
 
+	/** The substitutions extended with this prefix. */
+	public Substitutions appliedTo(Substitutions s) {
+		Substitutions result = s;
+		for (Tuple2<LVar<?>, Term<?>> binding : delta) {
+			result = result.extend(binding._1, binding._2);
+		}
+		return result;
+	}
+
 	/** The substitution map extended with this prefix. */
 	public HashMap<LVar<?>, Term<?>> appliedTo(HashMap<LVar<?>, Term<?>> substitutions) {
 		HashMap<LVar<?>, Term<?>> result = substitutions;

@@ -66,7 +66,7 @@ class NeqConstraints implements ConstraintStore {
 
 	@Override
 	public Fiber<Revision> revise(Prefix prefix, Package state) {
-		return Fiber.done(Disequality.verifyAndSimplify(constraints, state.getSubstitutions())
+		return Fiber.done(Disequality.verifyAndSimplify(constraints, state.substitution())
 				.map(c -> (Revision) Revision.updated(NeqConstraints.of(c)))
 				.getOrElse(Revision::fail));
 	}

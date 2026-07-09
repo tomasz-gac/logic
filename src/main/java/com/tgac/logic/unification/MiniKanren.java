@@ -93,6 +93,22 @@ public class MiniKanren {
 		return s.put(lhs, rhs);
 	}
 
+	private static <T> Substitutions extendNoCheck(Substitutions s, LVar<T> lhs, Term<T> rhs) {
+		return s.extend(lhs, rhs);
+	}
+
+	public static <T> Boolean occursCheck(Substitutions s, LVar<T> x, Term<T> v) {
+		return s.walk(v).asVar()
+				.map(vv -> vv == x)
+				.getOrElse(false);
+	}
+
+	static <T> Substitutions extend(Substitutions s, LVar<T> lhs, Term<T> rhs) {
+		return occursCheck(s, lhs, rhs) ?
+				s :
+				extendNoCheck(s, lhs, rhs);
+	}
+
 	public static <T> Term<T> walk(Package s, Term<T> v) {
 		return s.walk(v);
 	}
@@ -119,16 +135,16 @@ public class MiniKanren {
 	}
 
 	private interface Extender {
-		<T> Package apply(Package s, LVar<T> lhs, Term<T> rhs);
+		<T> Substitutions apply(Substitutions s, LVar<T> lhs, Term<T> rhs);
 	}
 
-	private static <T> MFiber<Package> unify(
+	private static <T> MFiber<Substitutions> unify(
 			Extender extend,
-			Package s,
+			Substitutions s,
 			Term<T> lhs,
 			Term<T> rhs) {
-		Term<T> l = walk(s, lhs);
-		Term<T> r = walk(s, rhs);
+		Term<T> l = s.walk(lhs);
+		Term<T> r = s.walk(rhs);
 
 		// reified terms are solver output; meeting one here is a programming error
 		// that the type system cannot catch when it is nested inside a value
@@ -169,17 +185,17 @@ public class MiniKanren {
 				.getOrElse(MFiber::none);
 	}
 
-	private static <T> MFiber<Package> unifyLList(Extender extend, Package s, LList<T> l, LList<T> r) {
+	private static <T> MFiber<Substitutions> unifyLList(Extender extend, Substitutions s, LList<T> l, LList<T> r) {
 		return mdefer(() -> unify(extend, s, l.getHead(), r.getHead()))
 				.flatMap(s1 -> unify(extend, s1, l.getTail(), r.getTail()));
 	}
 
-	private static <T> MFiber<Package> unifyLTree(Extender extend, Package s, LTree<T> l, LTree<T> r) {
+	private static <T> MFiber<Substitutions> unifyLTree(Extender extend, Substitutions s, LTree<T> l, LTree<T> r) {
 		return mdefer(() -> unify(extend, s, l.getValue(), r.getValue()))
 				.flatMap(s1 -> unify(extend, s1, l.getChildren(), r.getChildren()));
 	}
 
-	private static <T> MFiber<Package> unifyIterable(Extender extender, Package s, Iterable<Object> l, Iterable<Object> r) {
+	private static <T> MFiber<Substitutions> unifyIterable(Extender extender, Substitutions s, Iterable<Object> l, Iterable<Object> r) {
 		if (!l.iterator().hasNext() && r.iterator().hasNext()) {
 			return mdone(s);
 		}
@@ -228,12 +244,18 @@ public class MiniKanren {
 				Option.none();
 	}
 
-	public static <T> MFiber<Package> unify(Package s, Term<T> lhs, Term<T> rhs) {
+	public static <T> MFiber<Substitutions> unify(Substitutions s, Term<T> lhs, Term<T> rhs) {
 		return unify(MiniKanren::extend, s, lhs, rhs);
 	}
 
+	public static <T> MFiber<Package> unify(Package s, Term<T> lhs, Term<T> rhs) {
+		return unify(s.substitution(), lhs, rhs)
+				.map(sub -> s.withSubstitutions(sub.map()));
+	}
+
 	public static <T> MFiber<Package> unifyUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
-		return unify(MiniKanren::extendNoCheck, s, lhs, rhs);
+		return unify(MiniKanren::extendNoCheck, s.substitution(), lhs, rhs)
+				.map(sub -> s.withSubstitutions(sub.map()));
 	}
 
 	/**
@@ -243,19 +265,23 @@ public class MiniKanren {
 	 * so no post-hoc map diff is needed.
 	 */
 	public static <T> MFiber<Prefix> unifyPrefix(Package s, Term<T> lhs, Term<T> rhs) {
+		return unifyPrefix(s.substitution(), lhs, rhs);
+	}
+
+	public static <T> MFiber<Prefix> unifyPrefix(Substitutions s, Term<T> lhs, Term<T> rhs) {
 		return unifyPrefix(MiniKanren::extend, s, lhs, rhs);
 	}
 
 	public static <T> MFiber<Prefix> unifyPrefixUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
-		return unifyPrefix(MiniKanren::extendNoCheck, s, lhs, rhs);
+		return unifyPrefix(MiniKanren::extendNoCheck, s.substitution(), lhs, rhs);
 	}
 
-	private static <T> MFiber<Prefix> unifyPrefix(Extender extend, Package s, Term<T> lhs, Term<T> rhs) {
+	private static <T> MFiber<Prefix> unifyPrefix(Extender extend, Substitutions s, Term<T> lhs, Term<T> rhs) {
 		ArrayList<Tuple2<LVar<?>, Term<?>>> collected = new ArrayList<>();
 		Extender collecting = new Extender() {
 			@Override
-			public <U> Package apply(Package p, LVar<U> l, Term<U> r) {
-				Package extended = extend.apply(p, l, r);
+			public <U> Substitutions apply(Substitutions p, LVar<U> l, Term<U> r) {
+				Substitutions extended = extend.apply(p, l, r);
 				if (extended != p) {
 					collected.add(Tuple.of(l, r));
 				}

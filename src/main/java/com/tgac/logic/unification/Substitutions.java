@@ -22,14 +22,48 @@ public final class Substitutions {
 		this.bindings = bindings;
 	}
 
+	public static Substitutions empty() {
+		return new Substitutions(HashMap.empty());
+	}
+
+	/** A view over an existing binding map — map-level threading (trial unification). */
+	public static Substitutions of(HashMap<LVar<?>, Term<?>> bindings) {
+		return new Substitutions(bindings);
+	}
+
+	/** This plus one binding — the unifier's extension step. */
+	public Substitutions extend(LVar<?> v, Term<?> t) {
+		return new Substitutions(bindings.put(v, t));
+	}
+
+	/** The number of bindings. Reified variable numbering derives from it. */
+	public long size() {
+		return bindings.size();
+	}
+
+	HashMap<LVar<?>, Term<?>> map() {
+		return bindings;
+	}
+
 	/** One chain step: the term bound to {@code v}, or null when unbound. */
 	public Term<?> binding(LVar<?> v) {
 		return bindings.getOrElse(v, null);
 	}
 
 	/** The term's walk-chain end: a value, or the representative unbound variable. */
-	public <T> Term<T> walk(Term<T> t) {
-		return Package.of(bindings, LinkedHashMap.empty()).walk(t);
+	@SuppressWarnings("unchecked")
+	public <T> Term<T> walk(Term<T> v) {
+		// same loop as Package.walk, duplicated to keep both hot paths allocation-free
+		if (!v.asVar().isDefined()) {
+			return v;
+		}
+		Term<?> result = v;
+		Term<?> next;
+		while (result.asVar().isDefined()
+				&& (next = bindings.getOrElse(result.asVar().get(), null)) != null) {
+			result = next;
+		}
+		return (Term<T>) result;
 	}
 
 	/** The term deep-walked to its current bindings. */
