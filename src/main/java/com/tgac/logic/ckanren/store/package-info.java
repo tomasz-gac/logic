@@ -2,7 +2,7 @@
 // ABOUTME: triggers with a Fiber of Revision — its own factor plus consequences.
 /**
  * The store protocol — the driver's entire constraint boundary
- * (docs/design/minimal-constraint-vocabulary.md §2.1). A {@link
+ * (docs/design/constraint-kernel.md). A {@link
  * com.tgac.logic.ckanren.store.ConstraintStore} is one constraint domain's
  * factor of the package (finite domains, disequality), living for the whole
  * derivation. Two triggers — {@code revise} (bindings arrived: custody, your

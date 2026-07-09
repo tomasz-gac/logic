@@ -2,13 +2,14 @@
 
 **Status: PLANNED (July 2026, designed with Tom on branch `worklist`). Not
 implemented, not scheduled — its-own-session work: it touches the hottest path
-in the engine. This is the completion of `capability-constraint-api.md` §2.1
-(whose sketch literally reads `MiniKanren.unify(Substitutions s, …)`), plus the
+in the engine. This completes the capability design's original `Substitutions`
+sketch (its spec read `MiniKanren.unify(Substitutions s, …)`; see
+`constraint-kernel.md` §7 for lineage), plus the
 two follow-ons that surfaced while designing it: the kind-tagged decomposition
 and the swappable-representation question.**
 
-Prerequisite reading: `minimal-constraint-vocabulary.md` (the store boundary and
-the `Substitutions` view as shipped for suspension ripeness).
+Prerequisite reading: `constraint-kernel.md` (the kernel as shipped, including
+the `Substitutions` view).
 
 ---
 

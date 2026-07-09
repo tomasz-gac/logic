@@ -7,7 +7,7 @@ decision can be made deliberately when a use case pays for it. Until then, the
 wall stands (see §2).**
 
 Prerequisite reading: `fixpoint-machine.md` (the two-fixpoint mental model),
-`minimal-constraint-vocabulary.md` (the store boundary this extends),
+`constraint-kernel.md` (the store boundary this extends),
 `tabling/Tabling.java`'s class javadoc (the master/slave protocol).
 
 ---

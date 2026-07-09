@@ -20,7 +20,7 @@ public class ProjectionConstraints {
 
 	/**
 	 * Parks a suspension: wait until {@code x} is deep-ground, then run
-	 * {@code f} with the walked value (docs/design/suspensions.md §5). The body
+	 * {@code f} with the walked value (docs/design/constraint-kernel.md). The body
 	 * splices through the run lane after the pass that grounded {@code x}
 	 * quiesces — or runs inline when {@code x} is already ground here.
 	 */

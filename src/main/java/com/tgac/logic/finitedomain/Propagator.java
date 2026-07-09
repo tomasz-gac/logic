@@ -11,8 +11,7 @@ import com.tgac.logic.unification.Term;
 import java.util.function.Function;
 
 /**
- * The parked unit of the wake machinery (docs/design/capability-constraint-api.md
- * §2.2). Extends {@link Stored} so park/remove route to the owning store without a
+ * The parked unit of the wake machinery (docs/design/constraint-kernel.md* §2.2). Extends {@link Stored} so park/remove route to the owning store without a
  * wrapper. Watch matching walks the watched terms against the LIVE state, so
  * aliasing (x bound to y) re-targets the watch structurally, where the old
  * Constraint protocol relied on the re-park-with-freshly-walked-args side effect of

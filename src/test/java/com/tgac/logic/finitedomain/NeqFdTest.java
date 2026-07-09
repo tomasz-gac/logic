@@ -17,7 +17,7 @@ import org.junit.Test;
  * Disequality and finite domains compose through the substitution alone: the
  * record verifies on every binding, labelling generates candidates, violations
  * die. There is no domain-exclusion bridge (dropped July 2026 — it was
- * optimization-only; minimal-constraint-vocabulary.md §4/§6): these tests pin
+ * optimization-only; constraint-kernel.md/§6): these tests pin
  * that the ANSWER SETS are complete and correct without it, in both statement
  * orders and for both arithmetic and non-arithmetic values.
  */

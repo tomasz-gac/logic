@@ -94,7 +94,7 @@ public class FiniteDomain {
 	/**
 	 * Statement-time entry: parks a propagator watching {@code us} in the FD store
 	 * and queues its first examination; wakes re-examine the same parked object
-	 * against the live state (minimal-constraint-vocabulary.md §2.3).
+	 * against the live state (constraint-kernel.md).
 	 */
 	private static <T> Goal fdConstraint(Array<Unifiable<T>> us,
 			Function<Package, Verdict> body) {

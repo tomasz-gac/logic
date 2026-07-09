@@ -25,7 +25,7 @@ import org.junit.Test;
 
 /**
  * Pins the driver's revision-routing guarantees
- * (docs/design/minimal-constraint-vocabulary.md §2.2): contradictory inferred
+ * (docs/design/constraint-kernel.md): contradictory inferred
  * bindings fail the branch instead of silently keeping the first, agreeing
  * bindings apply once, narrowed payloads broadcast to every store, runs splice
  * only after quiescence, and the agenda never leaks into answers.

@@ -9,8 +9,8 @@ HELD — see §9 for what the intervening work taught, including the unification
 and answered again.**
 
 Companion docs (the concrete instances):
-- `docs/design/constraint-propagation.md` — the *narrowing* instance (historical record);
-  `capability-constraint-api.md` and `minimal-constraint-vocabulary.md` are the shape it
+- `docs/design/constraint-kernel.md` — the *narrowing* instance (historical record);
+  `constraint-kernel.md` and `constraint-kernel.md` are the shape it
   actually shipped in.
 - `docs/design/semiring-inference.md` — the *accumulating* instance (still planned).
 - `docs/design/tabled-constraints.md` — the two instances MEETING (design sketch): what it
@@ -31,7 +31,7 @@ Kleene iteration).
 - **Constraint propagation (IMPLEMENTED, July 2026):** the greatest fixpoint of the
   narrowing operators over the lattice of variable domains. It shrinks domains until
   nothing narrows further. Shipped as the agenda drain in `ckanren/Propagation` with the
-  store boundary of `minimal-constraint-vocabulary.md`.
+  store boundary of `constraint-kernel.md`.
 
 That common shape is real, and it is a useful thing to *see*. It is not, by itself, a reason
 to share code.
@@ -94,7 +94,7 @@ propagation has no use for. The clever parts are client-specific; only the dumb 
    guessed-at abstraction is textbook premature generality.
 
 Instead:
-- Build **constraint AC-3** as its own focused thing (`constraint-propagation.md`). Its
+- Build **constraint AC-3** as its own focused thing (`constraint-kernel.md`). Its
   dependency index and narrowing loop want to be simple and fast, not generic.
 - Build **semiring-tabling** by generalizing tabling's **existing** worklist/parking
   (`semiring-inference.md` §7), not by porting tabling onto something new.

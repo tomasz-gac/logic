@@ -221,7 +221,7 @@ as `P`); needs log-space care for underflow. Advanced/research — do §2–§5 
 
 ## 11. Relationship to constraint propagation (do NOT over-unify)
 
-Both this and `docs/design/constraint-propagation.md` are "iterate a monotone operator on a
+Both this and `docs/design/constraint-kernel.md` are "iterate a monotone operator on a
 lattice to a fixpoint." That kinship is a useful *mental model* but they are **duals** and
 should stay separate code:
 - semiring-tabling **grows** answers (least fixpoint, ⊕ accumulates);

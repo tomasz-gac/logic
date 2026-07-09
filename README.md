@@ -174,8 +174,8 @@ solver (no global constraints yet; the extension point below is where they'd go)
   (`ckanren/propagator`).
 
 The design record lives in `docs/design/` — start with
-`minimal-constraint-vocabulary.md` (the current constraint engine),
-`capability-constraint-api.md` (how it got that way), and
+`constraint-kernel.md` (the current constraint engine),
+`constraint-kernel.md` (how it got that way), and
 `fixpoint-machine.md` (the shared mental model). `CLAUDE.md` carries the
 working-on-this map: landmines, seams, backlog.
 

@@ -11,7 +11,7 @@ import java.util.function.Supplier;
 
 /**
  * The closed set of propagation outcomes (see
- * docs/design/capability-constraint-api.md §2.2). {@code keep} is the default-safe
+ * docs/design/constraint-kernel.md). {@code keep} is the default-safe
  * case: a propagator that cannot decide stays parked, so forgetting to re-park —
  * the classic silent-evaporation trap of the goal-based protocol — cannot be
  * expressed. Java 8 has no sealed types; the set is closed by the private

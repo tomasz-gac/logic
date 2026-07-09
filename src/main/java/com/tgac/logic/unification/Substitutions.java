@@ -11,7 +11,7 @@ import java.util.ArrayDeque;
  * A read-only view of the substitution — the shared factor of the {@link Package}
  * — with no route to any store. Code typed against this view is structurally
  * scoped to shared knowledge: it cannot depend on domains, records or any other
- * private factor (the capability-constraint-api.md §2.1 {@code Substitutions}
+ * private factor (the constraint-kernel.md {@code Substitutions}
  * sketch, finally realized where it has a job).
  */
 public final class Substitutions {

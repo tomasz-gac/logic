@@ -90,7 +90,7 @@ Key **seams** (the places behaviour is hooked):
   Disequality's trial unification. Use a plain `Store` for transport (Table pattern).
   Constraint bodies wake on narrowing too — they must tolerate any mix of wide/ground
   args (see the mulIntervals sign-guard lesson).
-  Details: `docs/design/minimal-constraint-vocabulary.md`.
+  Details: `docs/design/constraint-kernel.md`.
 - **`Package.withSubstitutions` REPLACES the substitution map.** In constraint-aware code
   never touch it directly — obtain a `Prefix` and `resolve` it.
 - **Tracing runs depth-first.** `solve(out, tracer)` uses `DepthFirstScheduler` so the trace
@@ -129,7 +129,7 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   isolated — depends only on `category`) vs. leave it.
 - **Constraint-propagation redesign** — DONE, all of it (July 2026): Phases 1–2,
   the capability API (Steps 1–3.5), and the uniform store boundary
-  (`minimal-constraint-vocabulary.md`). The Neq→FD bridge was DROPPED (optimization-
+  (`constraint-kernel.md` records the shape). The Neq→FD bridge was DROPPED (optimization-
   only). Nothing remains on this line.
 - **Semiring-weighted inference** — turn the engine into a weighted-inference machine
   (counting, probability, shortest-path, MAP, provenance, learning) via one small `Semiring`
@@ -139,22 +139,16 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 
 ## Where knowledge lives
 
-- `docs/design/constraint-propagation.md` — HISTORICAL: the propagator/fixpoint
-  reasoning record (all phases since completed; names have moved on).
-- `docs/design/capability-constraint-api.md` — IMPLEMENTED (Steps 1–3.5, July 2026):
-  the type-safety refactor that made the constraint API's breaking actions
-  unrepresentable (Prefix, Verdict, Revision, the explicit driver). Its §2.4
-  vocabulary was later superseded by `minimal-constraint-vocabulary.md`.
+- `docs/design/constraint-kernel.md` — AUTHORITATIVE: the constraint kernel as
+  shipped (package product, Propagation's three entries, the store protocol and
+  2×2 vocabulary, FD's toolkit, structure's one owner, the contracts, the
+  lineage). Read before touching the constraint core.
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
 - `docs/design/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
   together, AND why NOT to merge them into one engine prematurely.
 - `docs/design/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
   (native debugging, simpler tabling, natural cut) as a separate experimental module; the
   completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
-- `docs/design/minimal-constraint-vocabulary.md` — IMPLEMENTED (July 2026): the driver
-  speaks only to stores (revise/stated → Fiber<Revision>); Narrowing + Inference are
-  gone; Propagator/Verdict are a store-implementor toolkit. Read before touching the
-  constraint core or the wake machinery.
 - `docs/design/tabled-constraints.md` — DESIGN SKETCH: merging tabling and constraints
   (TCLP): three intra-domain store hooks (project/entails/restate), pointwise product-order
   entailment, the antichain termination gate. Read before weakening the tabling guard tests.
@@ -162,8 +156,5 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   Substitutions interface (completes capability §2.1), one kind-tagged decompose
   shared by unify and members, representation swaps gated on benchmarks. Read
   before touching MiniKanren internals.
-- `docs/design/suspensions.md` — parked goals woken by bindings (freeze/when): the
-  concept behind Verdict.run(Goal), its reify policy, and the extraction plan gated
-  on a second customer (pldb deferred lookups).
 - This file — architecture, landmines, workflow.
 - Commit history is descriptive; read it when a change looks surprising.
