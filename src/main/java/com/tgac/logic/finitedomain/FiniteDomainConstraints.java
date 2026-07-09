@@ -18,6 +18,7 @@ import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -132,7 +133,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	static Fiber<Revision> reexamine(Term<?> x, Package state) {
 		FiniteDomainConstraints self = getFDStore(state);
 		return self.cascade(state, self, new ArrayList<>(), new ArrayList<>(),
-				new ArrayDeque<>(java.util.Collections.singletonList(x)));
+				new ArrayDeque<>(Collections.singletonList(x)));
 	}
 
 	/**
@@ -175,7 +176,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 		for (Goal run : runs) {
 			// a store-level search effect is a degenerate (already ripe) suspension
 			result = result.withSuspend(Suspension.of(
-					java.util.Collections.emptyList(), p -> true, run));
+					Collections.emptyList(), p -> true, run));
 		}
 		return Fiber.done(result);
 	}

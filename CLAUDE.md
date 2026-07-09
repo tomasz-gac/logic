@@ -21,6 +21,9 @@ tests.
    then `git push`. End commit messages with the Co-Authored-By trailer.
 5. **Java 8 only.** No `var` in main, no records, no switch-expressions. vavr tuples and
    functions max out at arity 8, accessors are 1-indexed (`._1`).
+   **Always import at the top level — NEVER inline-qualify** (`io.vavr.Function2 f`
+   is wrong; import it). The only excuse is a genuine simple-name clash in the same
+   file (e.g. `java.util.stream.Stream` vs vavr's `Stream`).
 6. **`functional` is a separate repo and a Maven dependency.** It lives at
    `../functional`. If you change it, `cd ../functional && mvn -q install` before `logic`
    can see the change. Schedulers, fibers, `Cont`, `Nothing` all live there.

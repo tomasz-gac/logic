@@ -3,9 +3,9 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: A parked constraint body that reports a Verdict — the framework owns the
 // ABOUTME: parked lifecycle; watch matching resolves against the live state.
 
+import com.tgac.logic.ckanren.store.Watches;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Store;
-import com.tgac.logic.ckanren.store.Watches;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import java.util.function.Function;

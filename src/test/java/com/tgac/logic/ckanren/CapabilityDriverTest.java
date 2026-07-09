@@ -19,6 +19,7 @@ import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import java.util.Collections;
 import java.util.function.BiFunction;
 import org.junit.Test;
 
@@ -171,7 +172,7 @@ public class CapabilityDriverTest {
 				new StoreA((prefix, state) ->
 						Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
 								.withSuspend(Suspension.of(
-										java.util.Collections.emptyList(), st -> true, probe))));
+										Collections.emptyList(), st -> true, probe))));
 
 		assertThat(solutions(root)).isEqualTo(1);
 		assertThat(seen[0]).as("the run goal must execute").isNotNull();

@@ -36,8 +36,10 @@ public final class Substitutions {
 		return MiniKanren.walkAll(Package.of(bindings, LinkedHashMap.empty()), t).get();
 	}
 
-	/** Whether the term is deep-ground under the current bindings — no variable
-	 * remains anywhere in its structure. */
+	/**
+	 * Whether the term is deep-ground under the current bindings — no variable
+	 * remains anywhere in its structure.
+	 */
 	public boolean isGround(Term<?> t) {
 		return fullyGround(walkAll(t));
 	}

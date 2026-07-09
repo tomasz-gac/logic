@@ -12,15 +12,19 @@ import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.ckanren.store.Suspension;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
-import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Stored;
+import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
@@ -87,7 +91,7 @@ public final class Propagation {
 	 * the body runs right here, at its own search position.
 	 */
 	public static Goal suspend(Iterable<? extends Term<?>> watched,
-			java.util.function.Predicate<com.tgac.logic.unification.Substitutions> ripe, Goal body) {
+			Predicate<Substitutions> ripe, Goal body) {
 		return s -> ripe.test(s.substitution()) ?
 				body.apply(s) :
 				Cont.just(s.withStore(Suspensions.EMPTY)
@@ -149,7 +153,7 @@ public final class Propagation {
 			Suspensions parked = (Suspensions) s.getConstraints().get(Suspensions.class).get();
 			for (Suspension suspension : parked.parked) {
 				boolean touched = false;
-				for (Tuple2<com.tgac.logic.unification.LVar<?>, com.tgac.logic.unification.Term<?>> b : prefix.bindings()) {
+				for (Tuple2<LVar<?>, Term<?>> b : prefix.bindings()) {
 					if (suspension.watchesAny(current, b._1)) {
 						touched = true;
 						break;

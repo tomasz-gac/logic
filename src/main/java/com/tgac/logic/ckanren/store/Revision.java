@@ -3,7 +3,6 @@ package com.tgac.logic.ckanren.store;
 // ABOUTME: A store's revised self after a trigger — its own updated factor plus the
 // ABOUTME: cross-store consequences (bindings, suspensions); never a whole package.
 
-import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Term;

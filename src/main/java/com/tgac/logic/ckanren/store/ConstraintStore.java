@@ -43,10 +43,8 @@ public interface ConstraintStore extends Store {
 	 * Termination is the store's contraction obligation: updates may only shrink
 	 * knowledge ({@code DomainUpdate} guarantees it for domains).
 	 *
-	 * @param prefix
-	 * 		- exactly the newly applied bindings
-	 * @param state
-	 * 		- the extended live package to verify and read domains against
+	 * @param prefix - exactly the newly applied bindings
+	 * @param state - the extended live package to verify and read domains against
 	 */
 	Fiber<Revision> revise(Prefix prefix, Package state);
 

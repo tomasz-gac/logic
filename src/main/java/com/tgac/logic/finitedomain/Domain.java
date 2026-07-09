@@ -1,6 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;
 import java.util.stream.Stream;
