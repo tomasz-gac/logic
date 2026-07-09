@@ -95,9 +95,15 @@ both with one owner:
 ```java
 // in MiniKanren: the ONE place that knows what structure is
 static Option<Decomposition> decompose(Term<?> v);
-// Decomposition = (Kind kind, List<Term<?>> members)
+// Decomposition = (Kind kind, Iterable<Term<?>> members)
 // Kind = ITERABLE | TUPLE | LLIST | LTREE   — the CURRENT coarse classes, exactly
 ```
+
+Members are held LAZILY (decided upfront): `Decomposition` carries a view over
+the existing structure, never a rebuilt collection. `unifyIterable` today counts
+and re-streams without materializing — decompose must not be the step that
+introduces per-node allocation on the hot path. The one current materializer is
+`members` itself (an `ArrayList` per call); it inherits the lazy view.
 
 - `unify` structural case: decompose both; same kind AND same arity → zip-unify
   members; else fail. **Behavior preservation is the whole risk**: the current
