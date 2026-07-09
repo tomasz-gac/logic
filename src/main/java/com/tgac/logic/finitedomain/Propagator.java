@@ -56,7 +56,7 @@ public final class Propagator implements Stored {
 	 */
 	public boolean watches(Package state, Term<?> changed) {
 		for (Term<?> watchedTerm : watchedTerms) {
-			if (Watches.matches(state, watchedTerm, changed)) {
+			if (Watches.matches(state.substitution(), watchedTerm, changed)) {
 				return true;
 			}
 		}

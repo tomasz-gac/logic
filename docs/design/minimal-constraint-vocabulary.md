@@ -282,3 +282,14 @@ run lane was always the actual suspension mechanism), `Propagator` became a
 concrete value class (its interface had one anonymous implementor), and the
 chain-inclusive watch matcher was extracted as `ckanren.store.Watches`, shared
 by store implementations. `ckanren` = driver + store protocol, nothing else.
+
+**Suspension amendment (July 2026):** search effects left the stores entirely.
+`Suspension(watched, ripe: Predicate<Substitutions>, body)` is kernel: parked in
+a persistent driver-owned store, ripened on watched-chain binds (pending
+suspensions disqualify resolve's pure-relational fast path), spliced via the run
+lane. `Revision.withRun` was subsumed by `withSuspend` (a run is the degenerate
+always-ripe suspension) before ever shipping a user. The vocabulary is a 2×2:
+bind effects = `resolve` / `withInferred`; search effects = `suspend` /
+`withSuspend` — each from goal and store position. `Substitutions` (the §2.1
+sketch of capability-constraint-api.md, realized) scopes ripeness structurally;
+monotonicity (bindings never falsify) is spelled out on `Suspension`.

@@ -21,6 +21,11 @@ public final class Substitutions {
 		this.bindings = bindings;
 	}
 
+	/** One chain step: the term bound to {@code v}, or null when unbound. */
+	public Term<?> binding(LVar<?> v) {
+		return bindings.getOrElse(v, null);
+	}
+
 	/** The term's walk-chain end: a value, or the representative unbound variable. */
 	public <T> Term<T> walk(Term<T> t) {
 		return Package.of(bindings, LinkedHashMap.empty()).walk(t);

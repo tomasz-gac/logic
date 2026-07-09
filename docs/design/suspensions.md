@@ -1,7 +1,12 @@
-> **July 2026:** the feature's expression is `Revision.withRun` (the run lane)
-> plus projection's bare `(target, body)` suspensions; `Verdict.run` was an
-> intermediate form and no longer exists. Where this doc says Verdict.run,
-> read run-lane.
+> **July 2026, final form:** suspensions are a KERNEL feature —
+> `Propagation.suspend(watched, ripe, body)` with `Suspension` parked in a
+> persistent driver-owned store, ripened on watched-chain binds, spliced via
+> the run lane. `ripe` is a `Predicate<Substitutions>` (structurally scoped to
+> shared knowledge) and must be monotone: adding bindings never falsifies it.
+> Projection is a facade over `suspend`. Store-emitted search effects are
+> `Revision.withSuspend` (degenerate always-ripe = a plain run); `Verdict.run`
+> and `Revision.withRun` no longer exist. Where this doc says Verdict.run,
+> read `suspend`/`withSuspend`.
 
 # Suspensions — parked goals woken by bindings
 

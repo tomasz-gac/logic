@@ -4,7 +4,7 @@ package com.tgac.logic.ckanren.store;
 // ABOUTME: watched term? Shared by store implementations; walks every chain node.
 
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import java.util.stream.StreamSupport;
 
@@ -20,7 +20,7 @@ public final class Watches {
 	private Watches() {
 	}
 
-	public static boolean matches(Package state, Term<?> watched, Term<?> changed) {
+	public static boolean matches(Substitutions state, Term<?> watched, Term<?> changed) {
 		Term<?> cur = watched;
 		while (true) {
 			if (cur.equals(changed)) {
@@ -32,7 +32,7 @@ public final class Watches {
 			if (!cur.asVar().isDefined()) {
 				return false;
 			}
-			Term<?> next = state.getSubstitutions().getOrElse(cur.asVar().get(), null);
+			Term<?> next = state.binding(cur.asVar().get());
 			if (next == null) {
 				return false;
 			}
