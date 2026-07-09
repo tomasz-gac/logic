@@ -3,8 +3,8 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: The outcome a propagator reports after re-examining its constraint — the
 // ABOUTME: framework administers the parked lifecycle; bodies only ever report.
 
-import com.tgac.logic.unification.Package;
-import com.tgac.logic.unification.Store;
+import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Store;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;

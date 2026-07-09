@@ -1,5 +1,9 @@
-package com.tgac.logic.unification;
+package com.tgac.logic.goals;
 
+import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
 import java.util.function.UnaryOperator;
@@ -26,15 +30,6 @@ public class Package {
 
 	public Package withSubstitutions(Substitutions s) {
 		return Package.of(s, stores);
-	}
-
-	<T> Package put(LVar<T> key, Term<T> value) {
-		return Package.of(substitutions.extend(key, value), stores);
-	}
-
-	@SuppressWarnings("unchecked")
-	<T> Term<T> get(LVar<T> v) {
-		return (Term<T>) substitutions.binding(v);
 	}
 
 	/** Renders a value for a trace label — a {@link Term} is deep-walked to its current bindings. */

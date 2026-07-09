@@ -9,7 +9,7 @@ import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;

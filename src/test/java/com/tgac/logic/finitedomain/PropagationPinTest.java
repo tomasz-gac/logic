@@ -10,7 +10,7 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.separate.Disequality;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;

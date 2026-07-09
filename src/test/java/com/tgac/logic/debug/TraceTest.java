@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.debug.Trace.Tracer;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Unifiable;
 import java.util.ArrayList;
 import java.util.HashMap;

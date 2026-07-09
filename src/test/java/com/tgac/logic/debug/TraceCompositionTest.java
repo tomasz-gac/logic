@@ -12,7 +12,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
 import com.tgac.logic.unification.LList;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;

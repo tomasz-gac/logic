@@ -4,9 +4,9 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: parked lifecycle; watch matching resolves against the live state.
 
 import com.tgac.logic.ckanren.store.Watches;
-import com.tgac.logic.unification.Package;
-import com.tgac.logic.unification.Store;
-import com.tgac.logic.unification.Stored;
+import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Store;
+import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
 import java.util.function.Function;
 

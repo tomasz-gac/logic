@@ -4,7 +4,7 @@ package com.tgac.logic.ckanren.store;
 // ABOUTME: substitution holds. The condition must be monotone: once true, stays true.
 
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import java.util.function.Predicate;

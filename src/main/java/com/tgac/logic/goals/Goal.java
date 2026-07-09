@@ -14,7 +14,6 @@ import com.tgac.logic.ckanren.CKanren;
 import com.tgac.logic.debug.DebugStore;
 import com.tgac.logic.debug.Trace;
 import com.tgac.logic.tabling.Table;
-import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import java.util.Arrays;

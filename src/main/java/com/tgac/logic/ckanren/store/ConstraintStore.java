@@ -2,11 +2,11 @@ package com.tgac.logic.ckanren.store;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Prefix;
-import com.tgac.logic.unification.Store;
-import com.tgac.logic.unification.Stored;
+import com.tgac.logic.goals.Store;
+import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
 
 public interface ConstraintStore extends Store {

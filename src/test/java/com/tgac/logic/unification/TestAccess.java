@@ -1,5 +1,6 @@
 package com.tgac.logic.unification;
 
+import com.tgac.logic.goals.Package;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 

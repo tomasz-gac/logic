@@ -8,7 +8,7 @@ import com.tgac.logic.Utils;
 import com.tgac.logic.ckanren.Propagation;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.unification.LVar;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.TestAccess;
 import com.tgac.logic.unification.Unifiable;

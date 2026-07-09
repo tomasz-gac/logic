@@ -8,7 +8,7 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.Utils;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
 import java.util.stream.Collectors;

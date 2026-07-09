@@ -1,4 +1,4 @@
-package com.tgac.logic.unification;
+package com.tgac.logic.goals;
 
 public interface Store {
 	Store remove(Stored c);

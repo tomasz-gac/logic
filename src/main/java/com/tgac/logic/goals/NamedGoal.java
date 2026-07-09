@@ -4,7 +4,6 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.debug.DebugStore;
 import com.tgac.logic.debug.Trace;
-import com.tgac.logic.unification.Package;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;

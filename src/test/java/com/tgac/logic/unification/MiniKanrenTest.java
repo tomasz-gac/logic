@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.Utils;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;

@@ -13,7 +13,7 @@ import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.TableEntry.Registration;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.Package;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;

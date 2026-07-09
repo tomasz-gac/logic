@@ -5,9 +5,9 @@ package com.tgac.logic.debug;
 
 import com.tgac.logic.debug.Trace.Tracer;
 import com.tgac.logic.tabling.Table;
-import com.tgac.logic.unification.Package;
-import com.tgac.logic.unification.Store;
-import com.tgac.logic.unification.Stored;
+import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Store;
+import com.tgac.logic.goals.Stored;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;

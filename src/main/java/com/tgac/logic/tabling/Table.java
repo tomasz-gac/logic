@@ -4,8 +4,8 @@ package com.tgac.logic.tabling;
 // ABOUTME: Rides the package's constraint-store map so every derived state shares it.
 
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.Store;
-import com.tgac.logic.unification.Stored;
+import com.tgac.logic.goals.Store;
+import com.tgac.logic.goals.Stored;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
