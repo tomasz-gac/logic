@@ -176,9 +176,6 @@ public class MiniKanren {
 	}
 
 	private static <T> MFiber<Substitutions> unifyIterable(Extender extender, Substitutions s, Iterable<Object> l, Iterable<Object> r) {
-		if (!l.iterator().hasNext() && r.iterator().hasNext()) {
-			return mdone(s);
-		}
 		if (toJavaStream(l).count() != toJavaStream(r).count()) {
 			return none();
 		} else {
