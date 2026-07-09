@@ -5,6 +5,7 @@ package com.tgac.logic.unification;
 
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
+import java.util.ArrayDeque;
 
 /**
  * A read-only view of the substitution — the shared factor of the {@link Package}
@@ -38,31 +39,20 @@ public final class Substitutions {
 
 	/**
 	 * Whether the term is deep-ground under the current bindings — no variable
-	 * remains anywhere in its structure.
+	 * remains anywhere in its structure. Heap-stacked: term depth never touches
+	 * the JVM stack.
 	 */
 	public boolean isGround(Term<?> t) {
-		return fullyGround(walkAll(t));
-	}
-
-	private static boolean fullyGround(Term<?> t) {
-		if (t.asVar().isDefined()) {
-			return false;
+		ArrayDeque<Term<?>> pending = new ArrayDeque<>();
+		pending.add(walkAll(t));
+		while (!pending.isEmpty()) {
+			Term<?> cur = pending.poll();
+			if (cur.asVar().isDefined()) {
+				return false;
+			}
+			MiniKanren.members(cur)
+					.forEach(members -> members.forEach(pending::add));
 		}
-		Object v = t.get();
-		return MiniKanren.asIterable(v)
-				.orElse(() -> MiniKanren.tupleAsIterable(v))
-				.map(it -> {
-					for (Object o : it) {
-						if (!fullyGround(MiniKanren.wrapTerm(o))) {
-							return false;
-						}
-					}
-					return true;
-				})
-				.getOrElse(() -> MiniKanren.asLList(t)
-						.map(l -> l.stream().allMatch(e -> e.fold(
-								Substitutions::fullyGround,
-								Substitutions::fullyGround)))
-						.getOrElse(true));
+		return true;
 	}
 }

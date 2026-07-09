@@ -6,7 +6,7 @@ package com.tgac.logic.ckanren.store;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
-import java.util.function.Predicate;
+import java.util.ArrayDeque;
 
 /**
  * Watch matching against the LIVE state: the changed term may be the watched
@@ -47,36 +47,38 @@ public final class Watches {
 	}
 
 	/**
-	 * Chain matching, recursing into structure: when a watched chain ends in a
-	 * composite, its members are watched too — including members that only came
-	 * into existence through nested instantiation (watch {@code (a,b)}, bind
+	 * Chain matching over the whole structure: a watched chain ending in a
+	 * composite watches its members too — including members that only came into
+	 * existence through nested instantiation (watch {@code (a,b)}, bind
 	 * {@code a} to {@code (c,d)}: {@code c} now triggers). Structure is whatever
 	 * the unifier's own decomposition recognizes ({@code MiniKanren.members}:
-	 * collections, tuples, LList, LTree) — the two traversals cannot drift apart.
+	 * collections, tuples, LList, LTree). Heap-stacked: term depth never touches
+	 * the JVM stack.
 	 */
 	public static boolean matchesStructurally(Substitutions state, Term<?> watched, Term<?> changed) {
-		if (matches(state, watched, changed)) {
-			return true;
+		ArrayDeque<Term<?>> pending = new ArrayDeque<>();
+		pending.add(watched);
+		while (!pending.isEmpty()) {
+			Term<?> cur = pending.poll();
+			if (matches(state, cur, changed)) {
+				return true;
+			}
+			MiniKanren.members(state.walk(cur))
+					.forEach(members -> members.forEach(pending::add));
 		}
-		Term<?> end = state.walk(watched);
-		return structuralAny(end, member -> matchesStructurally(state, member, changed));
-	}
-
-	/** Any structural member (per the unifier's decomposition) satisfying {@code p}. */
-	private static boolean structuralAny(Term<?> t, Predicate<Term<?>> p) {
-		return MiniKanren.members(t)
-				.map(members -> {
-					for (Term<?> member : members) {
-						if (p.test(member)) {
-							return true;
-						}
-					}
-					return false;
-				})
-				.getOrElse(false);
+		return false;
 	}
 
 	private static boolean changedContains(Term<?> changed, Term<?> live) {
-		return structuralAny(changed, member -> member.equals(live) || changedContains(member, live));
+		ArrayDeque<Term<?>> pending = new ArrayDeque<>();
+		MiniKanren.members(changed).forEach(members -> members.forEach(pending::add));
+		while (!pending.isEmpty()) {
+			Term<?> cur = pending.poll();
+			if (cur.equals(live)) {
+				return true;
+			}
+			MiniKanren.members(cur).forEach(members -> members.forEach(pending::add));
+		}
+		return false;
 	}
 }
