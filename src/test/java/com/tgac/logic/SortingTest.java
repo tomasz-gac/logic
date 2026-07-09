@@ -6,7 +6,7 @@ import static com.tgac.logic.goals.Matche.matche;
 import static com.tgac.logic.unification.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
@@ -33,7 +33,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 @SuppressWarnings({"unchecked", "ArraysAsListWithZeroOrOneArgument", "unused"})
-@ExtensionMethod(CKanren.class)
+@ExtensionMethod(Constraints.class)
 public class SortingTest {
 
 	public static Goal firsto(Goal... goals) {

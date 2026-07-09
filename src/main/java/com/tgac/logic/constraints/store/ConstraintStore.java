@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren.store;
+package com.tgac.logic.constraints.store;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;

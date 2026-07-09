@@ -10,7 +10,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.functional.Streams;
 import com.tgac.logic.Utils;
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
@@ -98,7 +98,7 @@ public class OrderConstraintsTest {
 				.and(dom(z, EnumeratedDomain.range(3L, 6L)))
 				.and(dom(y, EnumeratedDomain.range(1L, 5L)))
 				.and(FiniteDomain.leq(x, lval(5L)))
-				.and(CKanren.unify(x, y))
+				.and(Constraints.unify(x, y))
 				.solve(lval(Tuple.of(y, z)))
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get)));

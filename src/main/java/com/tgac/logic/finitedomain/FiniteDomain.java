@@ -3,7 +3,7 @@ package com.tgac.logic.finitedomain;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.ckanren.Propagation;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;

@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren.store;
+package com.tgac.logic.constraints.store;
 
 // ABOUTME: A parked search effect: run the body once the condition over the shared
 // ABOUTME: substitution holds. The condition must be monotone: once true, stays true.

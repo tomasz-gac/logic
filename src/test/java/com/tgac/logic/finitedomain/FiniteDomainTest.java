@@ -10,7 +10,7 @@ import static com.tgac.logic.goals.Matche.matche;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
@@ -71,7 +71,7 @@ public class FiniteDomainTest {
 
 		List<Long> result =
 				solve(j, dom(i, EnumeratedDomain.range(0L, 10L))
-						.and(CKanren.unify(i, j)))
+						.and(Constraints.unify(i, j)))
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -86,7 +86,7 @@ public class FiniteDomainTest {
 
 		List<Long> result =
 				solve(j, dom(i, EnumeratedDomain.range(0L, 10L))
-						.and(CKanren.unify(j, i)))
+						.and(Constraints.unify(j, i)))
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -103,7 +103,7 @@ public class FiniteDomainTest {
 		List<Long> result =
 				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(k.unifies(j))
-						.and(CKanren.unify(k, i)))
+						.and(Constraints.unify(k, i)))
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -120,7 +120,7 @@ public class FiniteDomainTest {
 		List<Long> result =
 				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
 						.and(k.unifies(j))
-						.and(CKanren.unify(k, i))
+						.and(Constraints.unify(k, i))
 						.and(dom(k, EnumeratedDomain.range(5L, 20L))))
 						.map(Term::get)
 						.collect(Collectors.toList());

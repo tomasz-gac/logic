@@ -165,13 +165,13 @@ solver (no global constraints yet; the extension point below is where they'd go)
 - **Search** is a set of scheduler drivers over one step interpreter (in
   `functional`); breadth-first is the default, and tracing uses depth-first so
   traces read in Prolog order.
-- **Constraints** follow a capability design: the driver (`ckanren/Propagation`)
-  speaks to stores through three triggers (`revise`, `changed`, `stated`), each
-  answered by a `Revision` — a store can swap only its own factor, and the
-  breaking actions (touching the substitution, another store's state, forgetting
-  to re-park a constraint) are unrepresentable by type. New constraint domains
-  implement one interface; parked-propagator scheduling is a reusable toolkit
-  (`ckanren/propagator`).
+- **Constraints** follow a capability design: the driver (`constraints/Propagation`)
+  speaks to stores through two triggers (`revise`, `stated`), each answered by a
+  `Fiber<Revision>` — a store can swap only its own factor, and the breaking
+  actions (touching the substitution, another store's state, forgetting to
+  re-park a constraint) are unrepresentable by type. New constraint domains
+  implement one interface; the propagator toolkit is `finitedomain`'s private
+  machinery.
 
 The design record lives in `docs/design/` — start with
 `constraint-kernel.md` (the current constraint engine),

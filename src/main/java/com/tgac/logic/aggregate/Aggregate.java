@@ -9,7 +9,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.MiniKanren;
@@ -50,12 +50,12 @@ public class Aggregate {
 		return pkg -> k -> {
 			Collection<Reified<T>> collected = new ConcurrentLinkedQueue<>();
 			return goal.apply(pkg).apply(answerPkg ->
-							CKanren.reify(answerPkg, template).apply(reified -> {
+							Constraints.reify(answerPkg, template).apply(reified -> {
 								collected.add(reified);
 								return done(nothing());
 							}))
 					.flatMap(exhausted -> buildList(collected).flatMap(list ->
-							CKanren.unify(result, list).apply(pkg).apply(k)));
+							Constraints.unify(result, list).apply(pkg).apply(k)));
 		};
 	}
 
@@ -66,11 +66,11 @@ public class Aggregate {
 		return pkg -> k -> {
 			AtomicInteger n = new AtomicInteger(0);
 			return goal.apply(pkg).apply(answerPkg ->
-							CKanren.reify(answerPkg, lvar()).apply(reified -> {
+							Constraints.reify(answerPkg, lvar()).apply(reified -> {
 								n.incrementAndGet();
 								return done(nothing());
 							}))
-					.flatMap(exhausted -> CKanren.unify(result, lval(n.get())).apply(pkg).apply(k));
+					.flatMap(exhausted -> Constraints.unify(result, lval(n.get())).apply(pkg).apply(k));
 		};
 	}
 
@@ -105,7 +105,7 @@ public class Aggregate {
 		return pkg -> k -> {
 			AtomicReference<Integer> acc = new AtomicReference<>(initial);
 			return goal.apply(pkg).apply(answerPkg ->
-							CKanren.reify(answerPkg, expr).apply(reified -> {
+							Constraints.reify(answerPkg, expr).apply(reified -> {
 								int v = requireInt(reified);
 								acc.updateAndGet(cur -> cur == null ? v : combine.applyAsInt(cur, v));
 								return done(nothing());
@@ -115,7 +115,7 @@ public class Aggregate {
 						if (total == null && failWhenEmpty) {
 							return done(nothing());
 						}
-						return CKanren.unify(result, lval(total == null ? 0 : total)).apply(pkg).apply(k);
+						return Constraints.unify(result, lval(total == null ? 0 : total)).apply(pkg).apply(k);
 					});
 		};
 	}

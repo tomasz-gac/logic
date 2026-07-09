@@ -10,7 +10,7 @@ import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.schedulers.DepthFirstScheduler;
 import com.tgac.functional.fibers.schedulers.ForkJoinScheduler;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.debug.DebugStore;
 import com.tgac.logic.debug.Trace;
 import com.tgac.logic.tabling.Table;
@@ -352,7 +352,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 		Deque<Reified<T>> results = new LinkedBlockingDeque<>();
 
 		Fiber<Nothing> recur = apply(root)
-				.flatMap(s -> CKanren.reify(s, out))
+				.flatMap(s -> Constraints.reify(s, out))
 				.run(v -> {
 					results.add(v);      // Push result to queue
 					return nothing();         // Unit signal

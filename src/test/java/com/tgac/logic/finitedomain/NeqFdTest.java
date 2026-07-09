@@ -5,7 +5,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.Term;
@@ -78,7 +78,7 @@ public class NeqFdTest {
 		Unifiable<String> s = lvar();
 
 		assertThat(Disequality.separate(s, lval("no"))
-				.and(CKanren.unify(s, lval("yes")))
+				.and(Constraints.unify(s, lval("yes")))
 				.solve(s)
 				.map(Term::get)
 				.collect(Collectors.toList()))

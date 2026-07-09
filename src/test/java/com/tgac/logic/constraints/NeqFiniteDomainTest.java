@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.constraints;
 
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.unification.LVal.lval;

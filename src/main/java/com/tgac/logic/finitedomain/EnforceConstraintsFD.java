@@ -8,7 +8,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.ckanren.Propagation;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
@@ -78,7 +78,7 @@ class EnforceConstraintsFD {
 				.orElseGet(Goal::failure);
 	}
 
-	// because of ambiguity in CKanren
+	// because of ambiguity in Constraints
 	private static <T> Goal unifyTerms(Term<T> u, Unifiable<T> v) {
 		return s -> Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), u, v)
 				.map(prefix -> Propagation.resolve(prefix).apply(s))

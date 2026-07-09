@@ -3,7 +3,7 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: A parked constraint body that reports a Verdict — the framework owns the
 // ABOUTME: parked lifecycle; watch matching resolves against the live state.
 
-import com.tgac.logic.ckanren.store.Watches;
+import com.tgac.logic.constraints.store.Watches;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;

@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.LogicTest;
 import com.tgac.logic.Utils;
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.unification.LList;
@@ -35,7 +35,7 @@ public class SeparateTest {
 		Unifiable<Integer> out = lvar();
 		List<Integer> result = LogicTest.runStream(out,
 						separate(out, lval(2)),
-						CKanren.unify(out, lval(3)))
+						Constraints.unify(out, lval(3)))
 				.map(Term::get)
 				.collect(Collectors.toList());
 		assertThat(result).containsExactly(3);
@@ -46,7 +46,7 @@ public class SeparateTest {
 		Unifiable<Integer> out = lvar();
 		Assertions.assertThat(LogicTest.runStream(out,
 						separate(out, lval(2)),
-						CKanren.unify(out, lval(2))))
+						Constraints.unify(out, lval(2))))
 				.isEmpty();
 	}
 
@@ -54,7 +54,7 @@ public class SeparateTest {
 	public void shouldNotUnifyWhenConstraintsAlreadyViolated() {
 		Unifiable<Integer> out = lvar();
 		Assertions.assertThat(LogicTest.runStream(out,
-						CKanren.unify(out, lval(2)),
+						Constraints.unify(out, lval(2)),
 						separate(out, lval(2))))
 				.isEmpty();
 	}
@@ -121,7 +121,7 @@ public class SeparateTest {
 								LList<Tuple2<Unifiable<Integer>, Unifiable<Integer>>>,
 								Integer, Integer, Integer> exist((a, d, dummy, x, y) ->
 								u.unifies(LList.of(a, LList.of(lval(Tuple.of(y, x)), d)))
-										.and(CKanren.unify(a, lval(Tuple.of(x, y))))
+										.and(Constraints.unify(a, lval(Tuple.of(x, y))))
 										.and(separate(x, lval(3)))
 										.and(separate(y, lval(2)))
 										.and(separate(a, lval(Tuple.of(lval(7), lval(8)))))

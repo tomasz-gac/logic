@@ -2,7 +2,7 @@ package com.tgac.logic.unification;
 
 import static com.tgac.logic.unification.LVal.lval;
 
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
 
 /**
@@ -13,15 +13,15 @@ import com.tgac.logic.goals.Goal;
 public interface Unifiable<T> extends Term<T> {
 
 	default Goal unifies(Unifiable<T> rhs) {
-		return CKanren.unify(this, rhs);
+		return Constraints.unify(this, rhs);
 	}
 
 	default Goal unifies(T value) {
-		return CKanren.unify(this, lval(value));
+		return Constraints.unify(this, lval(value));
 	}
 
 	default Goal unifiesNc(Unifiable<T> rhs) {
-		return CKanren.unifyNc(this, rhs)
+		return Constraints.unifyNc(this, rhs)
 				.named("unifyNc");
 	}
 

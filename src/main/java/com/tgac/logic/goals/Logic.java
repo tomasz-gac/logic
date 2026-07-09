@@ -1,6 +1,6 @@
 package com.tgac.logic.goals;
 
-import static com.tgac.logic.ckanren.CKanren.unify;
+import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.goals.Matche.llist;
 import static com.tgac.logic.goals.Matche.matche;

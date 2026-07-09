@@ -70,7 +70,7 @@ Contracts to pin BEFORE anything else changes:
 `Substitutions` and thread it; `unifyPrefix` still mints `Prefix` via the
 collecting Extender (unchanged). Callers:
 
-- `CKanren.unify`: `MiniKanren.unifyPrefix(s.substitution(), u, v)`.
+- `Constraints.unify`: `MiniKanren.unifyPrefix(s.substitution(), u, v)`.
 - Disequality trial unification: direct — the `Package.empty()` wrapper dance
   deletes; `unifyConstraints` threads `Substitutions` values.
 - `EnforceConstraintsFD.unifyTerms`: same one-liner change.

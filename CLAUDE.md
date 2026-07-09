@@ -31,7 +31,7 @@ tests.
 ## STOP and ask the human before touching
 
 These are subtle and easy to break silently:
-- **the constraint core** (`ckanren/`, `finitedomain/`, `separate/`, `projection/`) — see
+- **the constraint core** (`constraints/`, `finitedomain/`, `separate/`, `projection/`) — see
   the composition limitation below;
 - **tabling** (`tabling/`) — parked-continuation scheduling, easy to deadlock;
 - **the fiber/scheduler substrate** in `functional`.
@@ -53,9 +53,9 @@ Small, local, well-tested changes elsewhere don't need to ask.
   `DepthFirstScheduler` (Prolog order, used by tracing), `RoundRobin`, `ForkJoin`,
   `UnfairBreadthFirst`. All are drivers over `FiberStep`; they differ only in which frame
   they step next.
-- **Constraint stores** implement `ConstraintStore` (`ckanren/store/`):
+- **Constraint stores** implement `ConstraintStore` (`constraints/store/`):
   `FiniteDomainConstraints`, `NeqConstraints` (disequality), `ProjectionConstraints`.
-  The driver (`ckanren/Propagation`) speaks to them through two triggers — `revise`
+  The driver (`constraints/Propagation`) speaks to them through two triggers — `revise`
   (bindings arrived; the store's COMPLETE reaction: custody, own watchers, own
   cascade) and `stated` (your item was stated) — each answered by a
   `Fiber<Revision>` (own factor + consequences; fiber so long cascades stay fairly
@@ -63,12 +63,12 @@ Small, local, well-tested changes elsewhere don't need to ask.
   computes it is its own business: FD administers its own propagators (now
   `finitedomain`-private: Propagator/Verdict/Update), Projection parks bare
   (term, body) suspensions, Neq re-verifies its records wholesale;
-  `ckanren/store/Watches` is the shared chain matcher.
+  `constraints/store/Watches` is the shared chain matcher.
 
 Key **seams** (the places behaviour is hooked):
 - `goals/NamedGoal` — the tracing hook. A named goal reports box-model ports when a tracer
   is seeded. Zero cost otherwise.
-- `ckanren/Propagation` — the chokepoint (`resolve`/`activate`), the agenda
+- `constraints/Propagation` — the chokepoint (`resolve`/`activate`), the agenda
   drain, and the revision router: where constraint stores are composed.
 - `functional`'s `FiberStep` — the single step interpreter all schedulers share.
 
@@ -83,7 +83,7 @@ Key **seams** (the places behaviour is hooked):
   (`MiniKanren.unifyPrefix`) or the checked `Prefix.binding`. Stores answer triggers with
   `Revision`s and may swap only their OWN factor; cross-store consequences ride the
   revision payloads (inferred prefixes, narrowed terms, runs). Propagators are
-  store-internal (the `ckanren/propagator` toolkit) — the framework owns parking, so
+  store-internal (`finitedomain`'s private toolkit) — the framework owns parking, so
   `keep` is default-safe and evaporation is unrepresentable. The equal-domain check in
   `finitedomain/DomainUpdate` is the termination guard of wake-on-narrowing — do not
   remove it. Raw `MiniKanren.unify` is legitimate only inside the unifier and for

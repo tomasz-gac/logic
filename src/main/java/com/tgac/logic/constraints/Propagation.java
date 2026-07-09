@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.constraints;
 
 // ABOUTME: The propagation engine: the chokepoint that applies prefixes, the agenda
 // ABOUTME: worklist that makes the fixpoint explicit, and verdict administration.
@@ -8,9 +8,9 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.store.ConstraintStore;
-import com.tgac.logic.ckanren.store.Revision;
-import com.tgac.logic.ckanren.store.Suspension;
+import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Revision;
+import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.goals.Package;
@@ -40,7 +40,7 @@ public final class Propagation {
 	/**
 	 * The constraint chokepoint: applies a unification's {@link Prefix} and lets every
 	 * constraint domain respond. This is the ONLY way substitutions may grow in
-	 * constraint-aware code — user unification ({@link CKanren#unify}), finite-domain
+	 * constraint-aware code — user unification ({@link Constraints#unify}), finite-domain
 	 * collapse inference and labelling all route through here, which is what makes an
 	 * inferred binding indistinguishable from a unification.
 	 *

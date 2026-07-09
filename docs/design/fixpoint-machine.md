@@ -30,7 +30,7 @@ Kleene iteration).
   table entry accumulates a semiring value instead of a bare set.
 - **Constraint propagation (IMPLEMENTED, July 2026):** the greatest fixpoint of the
   narrowing operators over the lattice of variable domains. It shrinks domains until
-  nothing narrows further. Shipped as the agenda drain in `ckanren/Propagation` with the
+  nothing narrows further. Shipped as the agenda drain in `constraints/Propagation` with the
   store boundary of `constraint-kernel.md`.
 
 That common shape is real, and it is a useful thing to *see*. It is not, by itself, a reason

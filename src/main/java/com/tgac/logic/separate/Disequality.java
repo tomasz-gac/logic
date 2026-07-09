@@ -1,7 +1,7 @@
 package com.tgac.logic.separate;
 
 import static com.tgac.functional.fibers.Fiber.done;
-import static com.tgac.logic.ckanren.CKanren.unify;
+import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
 import static com.tgac.logic.unification.MiniKanren.format;
 import static com.tgac.logic.unification.MiniKanren.walkAll;

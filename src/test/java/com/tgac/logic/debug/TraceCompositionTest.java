@@ -7,7 +7,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.aggregate.Aggregate;
-import com.tgac.logic.ckanren.CKanren;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
@@ -87,7 +87,7 @@ public class TraceCompositionTest {
 	public void tracingDoesNotChangeConstraintResults() {
 		Rec rec = new Rec();
 		Unifiable<Integer> out = lvar();
-		Goal g = separate(out, lval(2)).and(CKanren.unify(out, lval(3))).named("constrained");
+		Goal g = separate(out, lval(2)).and(Constraints.unify(out, lval(3))).named("constrained");
 
 		List<Integer> traced = g.solve(out, rec).map(Term::get).collect(Collectors.toList());
 

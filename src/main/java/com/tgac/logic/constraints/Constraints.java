@@ -1,13 +1,13 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.constraints;
 
 import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.logic.ckanren.Propagation.resolve;
+import static com.tgac.logic.constraints.Propagation.resolve;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.store.ConstraintStore;
+import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
@@ -23,7 +23,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class CKanren {
+public class Constraints {
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
 		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), u, v)
@@ -50,7 +50,7 @@ public class CKanren {
 	public static <T> Cont<Reified<T>, Nothing> reify(Package s, Term<T> x) {
 		// after renaming every node is an LVal, a ReifiedVar, or a Constrained wrapper
 		return enforce(s, x).apply(s)
-				.flatMap(CKanren::verifyNoPendingSuspensions)
+				.flatMap(Constraints::verifyNoPendingSuspensions)
 				.flatMap(s1 -> Cont.defer(() ->
 						walkAndRename(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->

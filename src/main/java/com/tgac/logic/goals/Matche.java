@@ -1,6 +1,6 @@
 package com.tgac.logic.goals;
 
-import static com.tgac.logic.ckanren.CKanren.unify;
+import static com.tgac.logic.constraints.Constraints.unify;
 
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.unification.LList;

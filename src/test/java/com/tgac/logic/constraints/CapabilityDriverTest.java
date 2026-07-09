@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.constraints;
 
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -7,9 +7,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.ckanren.store.ConstraintStore;
-import com.tgac.logic.ckanren.store.Revision;
-import com.tgac.logic.ckanren.store.Suspension;
+import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Revision;
+import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.LVar;

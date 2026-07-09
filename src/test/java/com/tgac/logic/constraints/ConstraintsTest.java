@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren;
+package com.tgac.logic.constraints;
 
 import static com.tgac.logic.unification.LVal.lval;
 
@@ -16,17 +16,17 @@ import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 @SuppressWarnings("ALL")
-public class CKanrenTest {
+public class ConstraintsTest {
 
 	@Test
 	public void shouldUnify() {
 		Unifiable<Integer> u = LVar.lvar();
 		Unifiable<Integer> v = lval(1);
-		Cont<Package, Nothing> s = CKanren.unify(u, v)
+		Cont<Package, Nothing> s = Constraints.unify(u, v)
 				.apply(Package.empty());
 		List<Integer> map = Utils.collect(s
 				.map(p -> Fiber.done(p.walk(v))
-						.map(v1 -> Utils.collect(CKanren.
+						.map(v1 -> Utils.collect(Constraints.
 										reify(p, v1))
 								.stream()
 								.collect(Collectors.toList()).get(0).get())

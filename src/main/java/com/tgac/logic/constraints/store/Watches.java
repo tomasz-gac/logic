@@ -1,4 +1,4 @@
-package com.tgac.logic.ckanren.store;
+package com.tgac.logic.constraints.store;
 
 // ABOUTME: The chain-inclusive watch matcher: does a change to one term affect a
 // ABOUTME: watched term? Shared by store implementations; walks every chain node.

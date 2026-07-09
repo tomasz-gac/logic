@@ -1,7 +1,7 @@
 package com.tgac.logic.unification;
 
 import static com.tgac.logic.LogicTest.runStream;
-import static com.tgac.logic.ckanren.CKanren.unify;
+import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
