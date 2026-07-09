@@ -49,6 +49,7 @@ public class CKanren {
 	public static <T> Cont<Reified<T>, Nothing> reify(Package s, Term<T> x) {
 		// after renaming every node is an LVal, a ReifiedVar, or a Constrained wrapper
 		return enforce(s, x).apply(s)
+				.flatMap(CKanren::verifyNoPendingSuspensions)
 				.flatMap(s1 -> Cont.defer(() ->
 						calculateSubstitutionAndRenamePackage(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->
@@ -61,6 +62,14 @@ public class CKanren {
 																		reifyConstraints(s1, result, vr._2))))
 								.map(t -> (Reified<T>) t)
 								.map(Cont::just)));
+	}
+
+	/** Answers may not leave while suspensions pend. */
+	private static Cont<Package, Nothing> verifyNoPendingSuspensions(Package s) {
+		if (Propagation.suspensionsPending(s)) {
+			throw new RuntimeException("Unbound variables during projection");
+		}
+		return Cont.just(s);
 	}
 
 	public static <T> Fiber<Tuple2<Term<T>, Package>> calculateSubstitutionAndRenamePackage(Term<T> x, Package s1) {

@@ -1,7 +1,7 @@
 package com.tgac.logic.ckanren.store;
 
 // ABOUTME: A store's revised self after a trigger — its own updated factor plus the
-// ABOUTME: cross-store consequences (bindings, narrowed terms, runs); never a whole package.
+// ABOUTME: cross-store consequences (bindings, suspensions); never a whole package.
 
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Prefix;
@@ -82,13 +82,12 @@ public abstract class Revision {
 	public static final class Updated extends Revision {
 		private final Store factor;
 		private final List<Prefix> inferred;
-		private final List<Goal> runs;
+		private final List<Suspension> suspensions;
 
-		private Updated(Store factor,
-				List<Prefix> inferred, List<Goal> runs) {
+		private Updated(Store factor, List<Prefix> inferred, List<Suspension> suspensions) {
 			this.factor = factor;
 			this.inferred = inferred;
-			this.runs = runs;
+			this.suspensions = suspensions;
 		}
 
 		/**
@@ -98,13 +97,15 @@ public abstract class Revision {
 		 */
 		public Updated withInferred(Prefix prefix) {
 			return new Updated(factor,
-					appended(inferred, prefix), runs);
+					appended(inferred, prefix), suspensions);
 		}
 
-		/** A goal for the run lane, spliced after the drain quiesces. */
-		public Updated withRun(Goal goal) {
-			return new Updated(factor,
-					inferred, appended(runs, goal));
+		/**
+		 * A search effect: parked until ripe, run-lane immediately when already
+		 * ripe. The degenerate always-ripe form is a plain run.
+		 */
+		public Updated withSuspend(Suspension suspension) {
+			return new Updated(factor, inferred, appended(suspensions, suspension));
 		}
 
 		public Store factor() {
@@ -115,8 +116,8 @@ public abstract class Revision {
 			return inferred;
 		}
 
-public List<Goal> runs() {
-			return runs;
+		public List<Suspension> suspensions() {
+			return suspensions;
 		}
 
 		@Override
@@ -129,7 +130,7 @@ public List<Goal> runs() {
 		public String toString() {
 			return "updated(" + factor
 					+ (inferred.isEmpty() ? "" : ", bind" + inferred)
-					+ (runs.isEmpty() ? "" : ", runs" + runs) + ")";
+					+ (suspensions.isEmpty() ? "" : ", " + suspensions) + ")";
 		}
 
 		private static <T> List<T> appended(List<T> xs, T x) {

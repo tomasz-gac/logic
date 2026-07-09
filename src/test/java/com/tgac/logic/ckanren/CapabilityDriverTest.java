@@ -9,6 +9,7 @@ import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
+import com.tgac.logic.ckanren.store.Suspension;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.LVar;
@@ -169,7 +170,8 @@ public class CapabilityDriverTest {
 		Package root = root(
 				new StoreA((prefix, state) ->
 						Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
-								.withRun(probe)));
+								.withSuspend(Suspension.of(
+										java.util.Collections.emptyList(), st -> true, probe))));
 
 		assertThat(solutions(root)).isEqualTo(1);
 		assertThat(seen[0]).as("the run goal must execute").isNotNull();

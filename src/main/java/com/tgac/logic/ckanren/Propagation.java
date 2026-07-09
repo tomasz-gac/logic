@@ -3,24 +3,25 @@ package com.tgac.logic.ckanren;
 // ABOUTME: The propagation engine: the chokepoint that applies prefixes, the agenda
 // ABOUTME: worklist that makes the fixpoint explicit, and verdict administration.
 
+import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.monad.Cont;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.MFiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
+import com.tgac.logic.ckanren.store.Suspension;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.LVar;
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
-import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Stored;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
-import java.util.ArrayList;
-import java.util.stream.Collectors;
+import java.util.function.BiFunction;
+import java.util.stream.Stream;
 
 /**
  * Data and its only interpreter in one class: the {@link Agenda} worklist — what
@@ -61,9 +62,9 @@ public final class Propagation {
 			if (prefix.isEmpty()) {
 				return Cont.just(p);
 			}
-			if (constraintStores(p).isEmpty()) {
-				// pure-relational fast path: no revisions, no agenda — the prefix is
-				// already the delta, so extension is a put per binding
+			if (!constraintStores(p).findAny().isPresent() && !suspensionsPending(p)) {
+				// pure-relational fast path: no revisions, no suspensions to ripen,
+				// no agenda — the prefix is already the delta, a put per binding
 				return Cont.just(p.withSubstitutions(prefix.appliedTo(p.getSubstitutions())));
 			}
 			return enqueue(p, new Agenda.Bind(prefix));
@@ -80,6 +81,20 @@ public final class Propagation {
 	}
 
 	/**
+	 * The suspension entry: park {@code body} until {@code ripe} holds — checked
+	 * when a watched chain binds. {@code ripe} must be monotone in the
+	 * substitution and depend on nothing else. Already ripe at statement time:
+	 * the body runs right here, at its own search position.
+	 */
+	public static Goal suspend(Iterable<? extends Term<?>> watched,
+			java.util.function.Predicate<com.tgac.logic.unification.Substitutions> ripe, Goal body) {
+		return s -> ripe.test(s.substitution()) ?
+				body.apply(s) :
+				Cont.just(s.withStore(Suspensions.EMPTY)
+						.updateStore(Suspensions.class, sus -> sus.park(Suspension.of(watched, ripe, body))));
+	}
+
+	/**
 	 * Folds a trigger over the constraint stores as one fiber: each store answers
 	 * a {@link Revision} — at most its own factor swapped — possibly across many
 	 * deferred steps (the store's scheduling choice); the driver routes the
@@ -89,47 +104,78 @@ public final class Propagation {
 	 */
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
-			java.util.function.BiFunction<ConstraintStore, Package, Fiber<Revision>> trigger) {
-		return Cont.defer(() -> fold(s, constraintStores(s), 0,
-				new ArrayList<>(), new ArrayList<>(), trigger));
+			BiFunction<ConstraintStore, Package, Fiber<Revision>> trigger) {
+		return Cont.defer(() ->
+				constraintStores(s)
+						.reduce(MFiber.mdone(s),
+								(chain, cs) ->
+										chain.flatMap(pkg -> MFiber.ofFiber(trigger.apply(cs, pkg))
+												.flatMap(revision -> revision.match(
+														MFiber::none,            // fail: branch dies
+														() -> MFiber.mdone(pkg), // unchanged
+														upd -> MFiber.mdone(queue(pkg.putStore(upd.factor()), upd))))),
+								Exceptions.throwingBiOp(UnsupportedOperationException::new))
+						.map(Cont::<Package, Nothing>just)
+						.getOrElse(() -> Cont.complete(Nothing.nothing())));
 	}
 
-	private static Fiber<Cont<Package, Nothing>> fold(
-			Package current,
-			java.util.List<ConstraintStore> stores,
-			int i,
-			java.util.List<Prefix> inferred,
-			java.util.List<Goal> runs,
-			java.util.function.BiFunction<ConstraintStore, Package, Fiber<Revision>> trigger) {
-		if (i == stores.size()) {
-			Agenda agenda = (Agenda) current.getConstraints().get(Agenda.class).get();
-			for (Prefix prefix : inferred) {
-				agenda = agenda.append(new Agenda.Bind(prefix));
-			}
-			for (Goal run : runs) {
-				agenda = agenda.appendRun(run);
-			}
-			return Fiber.done(Cont.just(current.putStore(agenda)));
+	/** Queues a revision's harvest: binds to the agenda, suspensions ripe-or-parked. */
+	private static Package queue(Package pkg, Revision.Updated upd) {
+		Package current = pkg;
+		for (Suspension suspension : upd.suspensions()) {
+			current = suspension.isRipe(current) ?
+					current.putStore(agendaOf(current).appendRun(suspension.body())) :
+					current.withStore(Suspensions.EMPTY)
+							.updateStore(Suspensions.class, sus -> sus.park(suspension));
 		}
-		ConstraintStore cs = stores.get(i);
-		Package before = current;
-		return Fiber.defer(() -> trigger.apply(cs, before)
-				.flatMap(revision -> revision.<Fiber<Cont<Package, Nothing>>> match(
-						() -> Fiber.done(Cont.complete(Nothing.nothing())),
-						() -> fold(before, stores, i + 1, inferred, runs, trigger),
-						upd -> {
-							inferred.addAll(upd.inferred());
-							runs.addAll(upd.runs());
-							return fold(before.putStore(upd.factor()), stores, i + 1,
-									inferred, runs, trigger);
-						})));
+		return current.putStore(agendaOf(current).queue(upd));
 	}
 
-	private static java.util.List<ConstraintStore> constraintStores(Package p) {
+	private static Agenda agendaOf(Package pkg) {
+		return (Agenda) pkg.getConstraints().get(Agenda.class).get();
+	}
+
+	/**
+	 * Ripens suspensions after a binding: parked bodies whose watched chains
+	 * touch the bound variables and whose condition now holds move to the run
+	 * lane — fired once, forever.
+	 */
+	private static Goal ripen(Prefix prefix) {
+		return s -> {
+			if (!s.getConstraints().get(Suspensions.class).isDefined()) {
+				return Cont.just(s);
+			}
+			Package current = s;
+			Suspensions parked = (Suspensions) s.getConstraints().get(Suspensions.class).get();
+			for (Suspension suspension : parked.parked) {
+				boolean touched = false;
+				for (Tuple2<com.tgac.logic.unification.LVar<?>, com.tgac.logic.unification.Term<?>> b : prefix.bindings()) {
+					if (suspension.watchesAny(current, b._1)) {
+						touched = true;
+						break;
+					}
+				}
+				if (touched && suspension.isRipe(current)) {
+					current = current
+							.updateStore(Suspensions.class, sus -> sus.without(suspension))
+							.putStore(agendaOf(current).appendRun(suspension.body()));
+				}
+			}
+			return Cont.just(current);
+		};
+	}
+
+	/** Answers may not leave while suspensions pend. */
+	public static boolean suspensionsPending(Package p) {
+		return p.getConstraints().get(Suspensions.class)
+				.map(sus -> !((Suspensions) sus).parked.isEmpty())
+				.getOrElse(false);
+	}
+
+	private static Stream<ConstraintStore> constraintStores(Package p) {
 		return p.getConstraints().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
-				.map(ConstraintStore.class::cast)
-				.collect(Collectors.toList());
+				.map(ConstraintStore.class::cast);
 	}
 
 	/**
@@ -164,6 +210,45 @@ public final class Propagation {
 					.and(drain())
 					.apply(s.putStore(popped._2));
 		});
+	}
+
+	/** Parked suspensions — persistent, branch-local, driver-owned. */
+	static final class Suspensions implements Store {
+		static final Suspensions EMPTY = new Suspensions(List.empty());
+
+		final List<Suspension> parked;
+
+		private Suspensions(List<Suspension> parked) {
+			this.parked = parked;
+		}
+
+		Suspensions park(Suspension s) {
+			return new Suspensions(parked.append(s));
+		}
+
+		Suspensions without(Suspension s) {
+			return new Suspensions(parked.remove(s));
+		}
+
+		@Override
+		public Store remove(Stored c) {
+			return this;
+		}
+
+		@Override
+		public Store prepend(Stored c) {
+			return this;
+		}
+
+		@Override
+		public boolean contains(Stored c) {
+			return false;
+		}
+
+		@Override
+		public String toString() {
+			return "suspensions" + parked;
+		}
 	}
 
 	/**
@@ -214,7 +299,9 @@ public final class Propagation {
 					Package extended = s.withSubstitutions(kept.appliedTo(s.getSubstitutions()));
 					// each store's revise is COMPLETE: custody, its own watchers of the
 					// newly bound variables, and its own cascade
-					return reviseAll(extended, (cs, p) -> cs.revise(kept, p));
+					return ((Goal) s2 -> reviseAll(s2, (cs, p) -> cs.revise(kept, p)))
+							.and(ripen(kept))
+							.apply(extended);
 				};
 			}
 
@@ -264,6 +351,15 @@ public final class Propagation {
 
 		Agenda appendRun(Goal goal) {
 			return new Agenda(items, runs.append(goal));
+		}
+
+		/** A revision's inferred prefixes, queued as Bind items. */
+		Agenda queue(Revision.Updated upd) {
+			Agenda queued = this;
+			for (Prefix prefix : upd.inferred()) {
+				queued = queued.append(new Bind(prefix));
+			}
+			return queued;
 		}
 
 		boolean itemsExhausted() {

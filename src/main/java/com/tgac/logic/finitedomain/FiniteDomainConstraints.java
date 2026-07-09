@@ -4,6 +4,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
+import com.tgac.logic.ckanren.store.Suspension;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
@@ -172,7 +173,9 @@ class FiniteDomainConstraints implements ConstraintStore {
 			result = result.withInferred(prefix);
 		}
 		for (Goal run : runs) {
-			result = result.withRun(run);
+			// a store-level search effect is a degenerate (already ripe) suspension
+			result = result.withSuspend(Suspension.of(
+					java.util.Collections.emptyList(), p -> true, run));
 		}
 		return Fiber.done(result);
 	}

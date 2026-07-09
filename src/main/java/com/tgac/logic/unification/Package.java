@@ -50,6 +50,11 @@ public class Package {
 		return (Term<T>) result;
 	}
 
+	/** The substitution factor as a read-only view — see {@link Substitutions}. */
+	public Substitutions substitution() {
+		return new Substitutions(substitutions);
+	}
+
 	public long size() {
 		return substitutions.size();
 	}
