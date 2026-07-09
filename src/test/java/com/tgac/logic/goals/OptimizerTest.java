@@ -72,6 +72,25 @@ public class OptimizerTest {
 	}
 
 	@Test
+	public void sameOptimizerUnwrapsAndFusesNestedOptimized() {
+		Goal a = leaf(), b = leaf(), c = leaf();
+		CascadingOptimizer optimizer = new CascadingOptimizer();
+		// a wrapped subtree fuses into the surrounding plan: no wrapper survives,
+		// and its clauses flatten into the outer conjunction
+		Goal flat = a.and(b.and(c).optimize(optimizer)).accept(optimizer).get();
+		assertThat(flat).isInstanceOf(Conjunction.class);
+		assertThat(((Conjunction) flat).getClauses()).containsExactly(a, b, c);
+	}
+
+	@Test
+	public void foreignOptimizedIsALeaf() {
+		Goal a = leaf(), b = leaf(), c = leaf();
+		Goal foreign = b.and(c).optimize(new CascadingOptimizer());
+		Goal walked = a.and(foreign).accept(new CascadingOptimizer()).get();
+		assertThat(((Conjunction) walked).getClauses()).containsExactly(a, foreign);
+	}
+
+	@Test
 	public void optimizedGoalSolvesToTheSameAnswers() {
 		Unifiable<Integer> x = lvar();
 		Goal g = unify(x, lval(3)).and(Goal.success().and(Goal.success()));

@@ -34,4 +34,6 @@ public interface Optimizer {
 	Fiber<Goal> visit(NamedGoal named);
 
 	Fiber<Goal> visit(Guard guard);
+
+	Fiber<Goal> visit(Optimized optimized);
 }

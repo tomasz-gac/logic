@@ -4,6 +4,7 @@ package com.tgac.logic.goals;
 // ABOUTME: time is the only time recursive unfoldings are visible to rewriting.
 
 import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -25,6 +26,11 @@ public class Optimized implements Goal {
 	public Cont<Package, Nothing> apply(Package s) {
 		return Cont.defer(() -> goal.accept(optimizer)
 				.map(g -> g.apply(s)));
+	}
+
+	@Override
+	public Fiber<Goal> accept(Optimizer o) {
+		return o.visit(this);
 	}
 
 	@Override

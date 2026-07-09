@@ -67,4 +67,15 @@ public class CascadingOptimizer implements Optimizer {
 	public Fiber<Goal> visit(Guard guard) {
 		return done(guard);
 	}
+
+	@Override
+	public Fiber<Goal> visit(Optimized optimized) {
+		// this pass IS the wrapper's job: unwrap so the subtree fuses into the
+		// surrounding plan (idempotence). A foreign wrapper is another pass's
+		// ownership claim — a leaf, like Guard; pipelines compose as a pipeline
+		// optimizer, not by nesting wrappers.
+		return optimized.getOptimizer() == this ?
+				optimized.getGoal().accept(this) :
+				done(optimized);
+	}
 }
