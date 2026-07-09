@@ -37,6 +37,11 @@ public class Package {
 		return (Term<T>) substitutions.binding(v);
 	}
 
+	/** Renders a value for a trace label — a {@link Term} is deep-walked to its current bindings. */
+	public String format(Object o) {
+		return MiniKanren.format(substitutions, o);
+	}
+
 	public <T> Term<T> walk(Term<T> v) {
 		return substitutions.walk(v);
 	}

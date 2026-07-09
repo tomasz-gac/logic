@@ -55,7 +55,7 @@ public class Logic {
 	}
 
 	public static <T> String formatLList(Package s, Unifiable<LList<T>> first) {
-		Term<LList<T>> walked = MiniKanren.walkAll(s, first).get();
+		Term<LList<T>> walked = s.substitution().walkAll(first);
 		return walked.asVar()
 				.map(v -> "[" + v + "]")
 				.getOrElse(() -> walked.get().toString());
@@ -73,7 +73,7 @@ public class Logic {
 		return matche(lst, Matche.llist((a, d) ->
 				unify(a, x)
 						.or(defer((() -> membero(x, d))))))
-				.named(s -> MiniKanren.format(s, x) + " ⊂ " + formatLList(s, lst));
+				.named(s -> s.format(x) + " ⊂ " + formatLList(s, lst));
 	}
 
 	public static Goal booleanGoal(
@@ -214,7 +214,7 @@ public class Logic {
 
 	public static Goal ground(Unifiable<?> v) {
 		return (Package s) -> Cont.defer(() ->
-				MiniKanren.walkAll(s, v)
+				MiniKanren.walkAll(s.substitution(), v)
 						.map(u -> u.asVal()
 								.<Cont<Package, Nothing>> map(_lv -> Cont.just(s))
 								.getOrElse(k -> Fiber.done(Nothing.nothing()))));
@@ -222,7 +222,7 @@ public class Logic {
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
 		return s -> Cont.defer(() ->
-				MiniKanren.walkAll(s, v1)
+				MiniKanren.walkAll(s.substitution(), v1)
 						.map(v -> v.asVal()
 								.map(f)
 								.map(g -> g.named("projected(" + g + ")"))
@@ -279,7 +279,7 @@ public class Logic {
 	public static Goal projectMultiType(IndexedSeq<Unifiable<?>> goals, Function<IndexedSeq<Term<Object>>, Goal> f) {
 		return s -> Cont.defer(() ->
 				goals.toJavaStream()
-						.map(v -> MiniKanren.walkAll(s, v)
+						.map(v -> MiniKanren.walkAll(s.substitution(), v)
 								.map(Stream::of))
 						.reduce((l, r) -> Fiber.zip(l, r)
 								.map(lr -> lr.apply(Stream::concat)))
@@ -294,7 +294,7 @@ public class Logic {
 	public static <T> Goal project(IndexedSeq<Unifiable<T>> values, Function<IndexedSeq<T>, Goal> f) {
 		return s -> Cont.defer(() ->
 				values.toJavaStream()
-						.map(v -> MiniKanren.walkAll(s, v)
+						.map(v -> MiniKanren.walkAll(s.substitution(), v)
 								.map(Stream::of))
 						.reduce((l, r) -> Fiber.zip(l, r)
 								.map(lr -> lr.apply(Stream::concat)))

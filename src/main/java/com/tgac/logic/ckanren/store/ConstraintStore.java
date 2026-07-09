@@ -3,6 +3,7 @@ package com.tgac.logic.ckanren.store;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
@@ -68,6 +69,6 @@ public interface ConstraintStore extends Store {
 	 * @param unifiable - the reified answer built so far
 	 * @param renameSubstitutions - substitutions used in variable renaming
 	 */
-	<A> Term<A> reify(Term<A> unifiable, Package renameSubstitutions, Package p);
+	<A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package p);
 
 }

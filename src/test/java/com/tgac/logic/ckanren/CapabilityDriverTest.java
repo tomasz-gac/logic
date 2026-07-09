@@ -14,6 +14,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Store;
 import com.tgac.logic.unification.Stored;
@@ -51,7 +52,7 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public <A> Term<A> reify(Term<A> unifiable, Package renameSubstitutions, Package p) {
+		public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package p) {
 			return unifiable;
 		}
 
@@ -110,9 +111,9 @@ public class CapabilityDriverTest {
 
 		Package root = root(
 				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
-						.withInferred(Prefix.binding(state, q, lval(1L)).get())),
+						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())),
 				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()))
-						.withInferred(Prefix.binding(state, q, lval(2L)).get())));
+						.withInferred(Prefix.binding(state.substitution(), q, lval(2L)).get())));
 
 		// two stores infer q=1 and q=2 in one pass: the branch is inconsistent and
 		// must DIE — the silent keep-first would instead emit a wrong answer
@@ -125,9 +126,9 @@ public class CapabilityDriverTest {
 
 		Package root = root(
 				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
-						.withInferred(Prefix.binding(state, q, lval(1L)).get())),
+						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())),
 				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()))
-						.withInferred(Prefix.binding(state, q, lval(1L)).get())));
+						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())));
 
 		assertThat(solutions(root)).isEqualTo(1);
 	}
@@ -143,7 +144,7 @@ public class CapabilityDriverTest {
 
 		Package root = root(
 				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
-						.withInferred(Prefix.binding(state, q, lval(1L)).get())));
+						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())));
 
 		Unifiable<Long> x = lvar();
 		long count = x.unifies(0L)

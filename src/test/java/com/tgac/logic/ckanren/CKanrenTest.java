@@ -25,7 +25,7 @@ public class CKanrenTest {
 		Cont<Package, Nothing> s = CKanren.unify(u, v)
 				.apply(Package.empty());
 		List<Integer> map = Utils.collect(s
-				.map(p -> Fiber.done(MiniKanren.walk(p, v))
+				.map(p -> Fiber.done(p.walk(v))
 						.map(v1 -> Utils.collect(CKanren.
 										reify(p, v1))
 								.stream()

@@ -26,8 +26,8 @@ public final class Prefix {
 	 * A single inferred binding — none when {@code x} is already bound (walk it and
 	 * unify instead; asserting over a bound variable is the silent-no-op trap).
 	 */
-	public static Option<Prefix> binding(Package p, LVar<?> x, Term<?> value) {
-		return MiniKanren.walk(p, x) == x ?
+	public static Option<Prefix> binding(Substitutions s, LVar<?> x, Term<?> value) {
+		return s.walk(x) == x ?
 				Option.of(new Prefix(HashMap.of(x, value))) :
 				Option.none();
 	}
@@ -52,10 +52,10 @@ public final class Prefix {
 	 * opposite polarity, over structural re-unification rather than equality — see
 	 * the Step 3 consolidation note in the capability doc.)
 	 */
-	public Option<Prefix> revalidate(Package s) {
+	public Option<Prefix> revalidate(Substitutions s) {
 		HashMap<LVar<?>, Term<?>> kept = HashMap.empty();
 		for (Tuple2<LVar<?>, Term<?>> binding : delta) {
-			Term<?> walked = MiniKanren.walk(s, binding._1);
+			Term<?> walked = s.walk(binding._1);
 			if (walked.asVar().isDefined()) {
 				kept = kept.put((LVar<?>) walked.asVar().get(), binding._2);
 			} else if (!walked.equals(binding._2)) {

@@ -28,7 +28,7 @@ public class ProjectionConstraints {
 		return Propagation.suspend(
 				Collections.singletonList(x),
 				sub -> sub.isGround(x),
-				s -> f.apply((T) MiniKanren.walkAll(s, x).get().get()).apply(s));
+				s -> f.apply((T) MiniKanren.walkAll(s.substitution(), x).get().get()).apply(s));
 	}
 
 	/** Two-variable projection, watched jointly. */

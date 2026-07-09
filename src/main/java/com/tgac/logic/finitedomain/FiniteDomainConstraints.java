@@ -8,6 +8,7 @@ import com.tgac.logic.ckanren.store.Suspension;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
@@ -208,7 +209,7 @@ class FiniteDomainConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <A> Term<A> reify(Term<A> unifiable, Package renameSubstitutions, Package p) {
+	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package p) {
 		Set<LVar<?>> varsWithDomains = domains.keySet().toJavaStream()
 				.map(p::walk)
 				.flatMap(u -> u.asVar().toJavaStream())

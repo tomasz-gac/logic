@@ -89,10 +89,6 @@ public class MiniKanren {
 				.map(c -> (Collector<Object, ?, ?>) c);
 	}
 
-	private static <T> Package extendNoCheck(Package s, LVar<T> lhs, Term<T> rhs) {
-		return s.put(lhs, rhs);
-	}
-
 	private static <T> Substitutions extendNoCheck(Substitutions s, LVar<T> lhs, Term<T> rhs) {
 		return s.extend(lhs, rhs);
 	}
@@ -109,29 +105,13 @@ public class MiniKanren {
 				extendNoCheck(s, lhs, rhs);
 	}
 
-	public static <T> Term<T> walk(Package s, Term<T> v) {
-		return s.walk(v);
-	}
-
 	/**
 	 * Renders a value for a trace label: a {@link Term} is deep-walked to its
 	 * current bindings, anything else is printed as-is. Used by goal labels so a
 	 * trace shows arguments fully substituted rather than as raw variable names.
 	 */
-	public static String format(Package s, Object o) {
+	public static String format(Substitutions s, Object o) {
 		return o instanceof Term ? walkAll(s, (Term<?>) o).get().toString() : String.valueOf(o);
-	}
-
-	public static <T> Boolean occursCheck(Package s, LVar<T> x, Term<T> v) {
-		return walk(s, v).asVar()
-				.map(vv -> vv == x)
-				.getOrElse(false);
-	}
-
-	public static <T> Package extend(Package s, LVar<T> lhs, Term<T> rhs) {
-		return occursCheck(s, lhs, rhs) ?
-				s :
-				extendNoCheck(s, lhs, rhs);
 	}
 
 	private interface Extender {
@@ -248,32 +228,18 @@ public class MiniKanren {
 		return unify(MiniKanren::extend, s, lhs, rhs);
 	}
 
-	public static <T> MFiber<Package> unify(Package s, Term<T> lhs, Term<T> rhs) {
-		return unify(s.substitution(), lhs, rhs)
-				.map(s::withSubstitutions);
-	}
-
-	public static <T> MFiber<Package> unifyUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
-		return unify(MiniKanren::extendNoCheck, s.substitution(), lhs, rhs)
-				.map(s::withSubstitutions);
-	}
-
 	/**
 	 * Unification as a {@link Prefix} mint: computes exactly the newly added
 	 * bindings without applying them — none = the terms cannot unify, an empty
 	 * prefix = they already unify. The delta is collected as the unifier extends,
 	 * so no post-hoc map diff is needed.
 	 */
-	public static <T> MFiber<Prefix> unifyPrefix(Package s, Term<T> lhs, Term<T> rhs) {
-		return unifyPrefix(s.substitution(), lhs, rhs);
-	}
-
 	public static <T> MFiber<Prefix> unifyPrefix(Substitutions s, Term<T> lhs, Term<T> rhs) {
 		return unifyPrefix(MiniKanren::extend, s, lhs, rhs);
 	}
 
-	public static <T> MFiber<Prefix> unifyPrefixUnsafe(Package s, Term<T> lhs, Term<T> rhs) {
-		return unifyPrefix(MiniKanren::extendNoCheck, s.substitution(), lhs, rhs);
+	public static <T> MFiber<Prefix> unifyPrefixUnsafe(Substitutions s, Term<T> lhs, Term<T> rhs) {
+		return unifyPrefix(MiniKanren::extendNoCheck, s, lhs, rhs);
 	}
 
 	private static <T> MFiber<Prefix> unifyPrefix(Extender extend, Substitutions s, Term<T> lhs, Term<T> rhs) {
@@ -292,8 +258,8 @@ public class MiniKanren {
 				.map(s1 -> new Prefix(HashMap.ofEntries(collected)));
 	}
 
-	public static <T> Fiber<Term<T>> walkAll(Package s, Term<T> u) {
-		return done(walk(s, u))
+	public static <T> Fiber<Term<T>> walkAll(Substitutions s, Term<T> u) {
+		return done(s.walk(u))
 				.flatMap(v -> v.asVar()
 						.map(w -> Fiber.<Term<T>> done(w))
 						.orElse(() -> MiniKanren.<T> mapStructure(v, e -> walkAll(s, e)))
@@ -434,19 +400,19 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Fiber<Reified<T>> reify(Package s, Term<T> item) {
+	public static <T> Fiber<Reified<T>> reify(Substitutions s, Term<T> item) {
 		// after renaming, every node is an LVal or a ReifiedVar — both Reified
 		return walkAll(s, item)
-				.flatMap(v -> reifyS(Package.empty(), v)
+				.flatMap(v -> reifyS(Substitutions.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)))
 				.map(v -> (Reified<T>) v);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static Fiber<Package> reifyS(Package s, Term<?> val) {
+	public static Fiber<Substitutions> reifyS(Substitutions s, Term<?> val) {
 		// shallow walk only: a deep walk would rebuild structures with rename
 		// vars substituted in, and nested calls would rename the rename vars
-		return done(walk(s, val))
+		return done(s.walk(val))
 				.flatMap(v -> v.asVar()
 						// a var that walked to something else is already renamed
 						.map(u -> u == val ?
@@ -458,7 +424,7 @@ public class MiniKanren {
 						.getOrElse(done(s)));
 	}
 
-	private static Fiber<Package> reifyMembers(Package s, Iterator<Term<?>> members) {
+	private static Fiber<Substitutions> reifyMembers(Substitutions s, Iterator<Term<?>> members) {
 		if (!members.hasNext()) {
 			return done(s);
 		}
@@ -472,7 +438,7 @@ public class MiniKanren {
 	 * Reification numbers holes canonically and reified vars carry value
 	 * equality by name, so plain equality on the reified forms decides it.
 	 */
-	public static <T> Fiber<Boolean> alphaEquiv(Term<T> x, Term<T> y, Package s) {
+	public static <T> Fiber<Boolean> alphaEquiv(Term<T> x, Term<T> y, Substitutions s) {
 		return reify(s, x).flatMap(xReified ->
 				reify(s, y).map(xReified::equals));
 	}

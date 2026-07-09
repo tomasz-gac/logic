@@ -12,6 +12,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -25,17 +26,17 @@ import lombok.NoArgsConstructor;
 public class CKanren {
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefix(s, u, v)
+		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), u, v)
 				.map(prefix -> resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
-		return goal.named(pkg -> MiniKanren.format(pkg, u) + " ≣ " + MiniKanren.format(pkg, v));
+		return goal.named(pkg -> pkg.format(u) + " ≣ " + pkg.format(v));
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefixUnsafe(s, u, v)
+		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefixUnsafe(s.substitution(), u, v)
 				.map(prefix -> resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
-		return goal.named(pkg -> MiniKanren.format(pkg, u) + " ≣_nc " + MiniKanren.format(pkg, v));
+		return goal.named(pkg -> pkg.format(u) + " ≣_nc " + pkg.format(v));
 	}
 
 	public static <T> Goal unify(Unifiable<T> u, T v) {
@@ -51,9 +52,9 @@ public class CKanren {
 		return enforce(s, x).apply(s)
 				.flatMap(CKanren::verifyNoPendingSuspensions)
 				.flatMap(s1 -> Cont.defer(() ->
-						calculateSubstitutionAndRenamePackage(x, s1)
+						walkAndRename(x, s1)
 								.flatMap(vr -> vr.apply((v, r) ->
-										r.getSubstitutions().isEmpty() ?
+										r.isEmpty() ?
 												Fiber.done(v) :
 												MiniKanren.walkAll(r, v)
 														.map(result ->
@@ -72,9 +73,9 @@ public class CKanren {
 		return Cont.just(s);
 	}
 
-	public static <T> Fiber<Tuple2<Term<T>, Package>> calculateSubstitutionAndRenamePackage(Term<T> x, Package s1) {
-		return MiniKanren.walkAll(s1, x)
-				.flatMap(v -> MiniKanren.reifyS(Package.empty(), v)
+	public static <T> Fiber<Tuple2<Term<T>, Substitutions>> walkAndRename(Term<T> x, Package s1) {
+		return MiniKanren.walkAll(s1.substitution(), x)
+				.flatMap(v -> MiniKanren.reifyS(Substitutions.empty(), v)
 						.map(r -> Tuple.of(v, r)));
 	}
 
@@ -89,7 +90,7 @@ public class CKanren {
 	}
 
 	/** Every store renders its residual constraints into the reified answer. */
-	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Package renameSubstitutions) {
+	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Substitutions renameSubstitutions) {
 		return p.getStores().values()
 				.toJavaStream()
 				.filter(ConstraintStore.class::isInstance)

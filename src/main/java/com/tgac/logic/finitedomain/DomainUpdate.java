@@ -50,7 +50,7 @@ final class DomainUpdate {
 			Object v = ((Singleton) effective).getValue().getValue();
 			// only open variables collapse, so the mint succeeds; the defensive
 			// branch mirrors the old already-bound no-op
-			return Prefix.binding(state, x, lval(v))
+			return Prefix.binding(state.substitution(), x, lval(v))
 					.<Update> map(prefix -> Update.applied(factor).withInferred(prefix))
 					.getOrElse(Update.unchanged());
 		}

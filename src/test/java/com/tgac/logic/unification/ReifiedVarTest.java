@@ -64,7 +64,7 @@ public class ReifiedVarTest {
 		Unifiable<Integer> x = lvar();
 		ReifiedVar<Integer> hole = ReifiedVar.of("_.0");
 
-		assertThatThrownBy(() -> MiniKanren.unify(Package.empty(), x, hole).get())
+		assertThatThrownBy(() -> MiniKanren.unify(Substitutions.empty(), x, hole).get())
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -73,7 +73,7 @@ public class ReifiedVarTest {
 		Unifiable<Object> x = lvar();
 		Unifiable<Object> smuggled = lval(Tuple.of(ReifiedVar.of("_.0"), 1));
 
-		assertThatThrownBy(() -> MiniKanren.unify(Package.empty(), x, smuggled)
+		assertThatThrownBy(() -> MiniKanren.unify(Substitutions.empty(), x, smuggled)
 				.flatMap(s -> MiniKanren.unify(s, x, lval(Tuple.of(lvar(), 1))))
 				.get())
 				.isInstanceOf(IllegalStateException.class);

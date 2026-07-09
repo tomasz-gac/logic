@@ -33,7 +33,7 @@ public class FiniteDomain {
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
 		return fdGoal()
 				.and(applyDom(u, d))
-				.named(pkg -> MiniKanren.format(pkg, u) + " ⊂ " + MiniKanren.format(pkg, d));
+				.named(pkg -> pkg.format(u) + " ⊂ " + pkg.format(d));
 	}
 
 	/**
@@ -80,7 +80,7 @@ public class FiniteDomain {
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
 		return Option.of(us.toJavaStream()
-						.map(u -> MiniKanren.walk(p, u))
+						.map(u -> p.walk(u))
 						.flatMap(v -> v.asVal()
 								.map(val -> VarWithDomain.of(v, Singleton.of(Arithmetic.ofCasted(v.get()))))
 								.map(Stream::of)
@@ -127,27 +127,27 @@ public class FiniteDomain {
 	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
 		return fdGoal()
 				.and(leqFD(less, more))
-				.named(pkg -> MiniKanren.format(pkg, less) + " ≤ " + MiniKanren.format(pkg, more));
+				.named(pkg -> pkg.format(less) + " ≤ " + pkg.format(more));
 	}
 
 	public static <T> Goal lss(Unifiable<T> less, Unifiable<T> more) {
 		return fdGoal()
 				.and(leqFD(less, more))
 				.and(separate(less, more))
-				.named(pkg -> MiniKanren.format(pkg, less) + " < " + MiniKanren.format(pkg, more));
+				.named(pkg -> pkg.format(less) + " < " + pkg.format(more));
 	}
 
 	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
 		return fdGoal()
 				.and(leqFD(more, less))
 				.and(separate(more, less))
-				.named(pkg -> MiniKanren.format(pkg, more) + " > " + MiniKanren.format(pkg, less));
+				.named(pkg -> pkg.format(more) + " > " + pkg.format(less));
 	}
 
 	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
 		return fdGoal()
 				.and(leqFD(more, less))
-				.named(pkg -> MiniKanren.format(pkg, more) + " ≥ " + MiniKanren.format(pkg, less));
+				.named(pkg -> pkg.format(more) + " ≥ " + pkg.format(less));
 	}
 
 	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
@@ -178,12 +178,12 @@ public class FiniteDomain {
 	public static <T> Goal addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return fdGoal()
 				.and(addoFD(a, b, c))
-				.named(pkg -> MiniKanren.format(pkg, a) + " + " + MiniKanren.format(pkg, b) + " = " + MiniKanren.format(pkg, c));
+				.named(pkg -> pkg.format(a) + " + " + pkg.format(b) + " = " + pkg.format(c));
 	}
 
 	public static <T> Goal subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return addo(c, b, a)
-				.named(pkg -> MiniKanren.format(pkg, a) + " - " + MiniKanren.format(pkg, b) + " = " + MiniKanren.format(pkg, c));
+				.named(pkg -> pkg.format(a) + " - " + pkg.format(b) + " = " + pkg.format(c));
 	}
 
 	static <T> Goal addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
@@ -230,12 +230,12 @@ public class FiniteDomain {
 	public static <T> Goal multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return fdGoal()
 				.and(mulFD(a, b, c))
-				.named(pkg -> MiniKanren.format(pkg, a) + " * " + MiniKanren.format(pkg, b) + " = " + MiniKanren.format(pkg, c));
+				.named(pkg -> pkg.format(a) + " * " + pkg.format(b) + " = " + pkg.format(c));
 	}
 
 	public static <T> Goal divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {
 		return multo(result, divisor, divided)
-				.named(pkg -> MiniKanren.format(pkg, divided) + " / " + MiniKanren.format(pkg, divisor) + " = " + MiniKanren.format(pkg, result));
+				.named(pkg -> pkg.format(divided) + " / " + pkg.format(divisor) + " = " + pkg.format(result));
 	}
 
 	static <T> Goal mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
@@ -326,7 +326,7 @@ public class FiniteDomain {
 	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {
 		return fdGoal()
 				.and(separateFDC(l, r))
-				.named(pkg -> MiniKanren.format(pkg, l) + " ≠_fd " + MiniKanren.format(pkg, r));
+				.named(pkg -> pkg.format(l) + " ≠_fd " + pkg.format(r));
 	}
 
 	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
@@ -396,6 +396,6 @@ public class FiniteDomain {
 								.map(Singleton::of))
 						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get()))))
 						.apply(s))
-				.named(pkg -> String.format("copyDom(%s, %s)", MiniKanren.format(pkg, from), MiniKanren.format(pkg, to)));
+				.named(pkg -> String.format("copyDom(%s, %s)", pkg.format(from), pkg.format(to)));
 	}
 }

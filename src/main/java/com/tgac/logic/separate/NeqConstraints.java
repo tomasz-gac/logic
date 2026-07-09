@@ -9,6 +9,7 @@ import com.tgac.logic.ckanren.store.ConstraintStore;
 import com.tgac.logic.ckanren.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Package;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Stored;
 import com.tgac.logic.unification.Term;
@@ -72,12 +73,12 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	@Override
-	public <A> Term<A> reify(Term<A> unifiable, Package renamePackage, Package s) {
-		return walkAllConstraints(getConstraints(s), s)
+	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package s) {
+		return walkAllConstraints(getConstraints(s), s.substitution())
 				.flatMap(c_star -> removeSubsumed(
-						purify(c_star, renamePackage),
+						purify(c_star, renameSubstitutions),
 						List.empty())
-						.flatMap(c1 -> Disequality.renameForDisplay(c1, renamePackage)))
+						.flatMap(c1 -> Disequality.renameForDisplay(c1, renameSubstitutions)))
 				.map(c1 -> c1.isEmpty() ?
 						unifiable :
 						Constrained.of(unifiable, c1))

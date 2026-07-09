@@ -4,7 +4,6 @@ package com.tgac.logic.unification;
 // ABOUTME: to shared knowledge (suspension conditions) may see: bindings, nothing else.
 
 import io.vavr.collection.HashMap;
-import io.vavr.collection.LinkedHashMap;
 import java.util.ArrayDeque;
 
 /**
@@ -89,7 +88,7 @@ public final class Substitutions {
 
 	/** The term deep-walked to its current bindings. */
 	public <T> Term<T> walkAll(Term<T> t) {
-		return MiniKanren.walkAll(Package.of(this, LinkedHashMap.empty()), t).get();
+		return MiniKanren.walkAll(this, t).get();
 	}
 
 	/**

@@ -293,7 +293,7 @@ public final class Propagation {
 				return s -> {
 					// the asserted prefix trichotomy: open binds its representative, same
 					// drops, different is a contradiction between domains — the branch dies
-					Prefix kept = prefix.revalidate(s).getOrNull();
+					Prefix kept = prefix.revalidate(s.substitution()).getOrNull();
 					if (kept == null) {
 						return Cont.complete(Nothing.nothing());
 					}

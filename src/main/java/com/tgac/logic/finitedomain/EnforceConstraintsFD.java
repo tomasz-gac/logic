@@ -41,7 +41,7 @@ class EnforceConstraintsFD {
 	}
 
 	public static <T> Goal forceAns(Term<T> x) {
-		return s -> Fiber.done(MiniKanren.walk(s, x))
+		return s -> Fiber.done(s.walk(x))
 				.map(v -> v.asVar()
 						.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv))
 						.map(d -> unifyWithAllDomainValues(x, d))
@@ -80,7 +80,7 @@ class EnforceConstraintsFD {
 
 	// because of ambiguity in CKanren
 	private static <T> Goal unifyTerms(Term<T> u, Unifiable<T> v) {
-		return s -> Cont.defer(() -> MiniKanren.unifyPrefix(s, u, v)
+		return s -> Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), u, v)
 				.map(prefix -> Propagation.resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(Nothing.nothing())));
 	}

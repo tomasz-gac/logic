@@ -86,7 +86,7 @@ public class Tabling {
 		Unifiable<T> argsTerm = lval(args);
 		return pkg -> k -> {
 			assertNoConstraints(pkg, "at a tabled call");
-			return MiniKanren.reify(pkg, argsTerm).flatMap(reifiedArgs -> {
+			return MiniKanren.reify(pkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
 				Call key = Call.of(relation, reifiedArgs);
 				Table table = pkg.getStore(Table.class);
 				TableEntry entry = table.getOrCreateEntry(key);
@@ -131,7 +131,7 @@ public class Tabling {
 			Fiber.Fn<Package, Nothing> k) {
 		return goal.apply(initialPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
-			return MiniKanren.reify(answerPkg, argsTerm).flatMap(answerTerm ->
+			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
 					entry.addAnswer(answerTerm)
 							.map(parked -> respawn(entry, parked)
 									.flatMap(__ -> k.apply(answerPkg)))
@@ -171,7 +171,8 @@ public class Tabling {
 			// Fresh variables per consumption, so separate consumptions of the
 			// same answer don't alias each other's free variables
 			return MiniKanren.instantiate(answerTerm).flatMap(freshTerm ->
-					MiniKanren.unify(initialPkg, argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
+					MiniKanren.unify(initialPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
+							.map(initialPkg::withSubstitutions)
 							.map(unifiedPkg -> k.apply(unifiedPkg)
 									.flatMap(__ -> Fiber.defer(() ->
 											consume(entry, k, initialPkg, argsTerm, index + 1))))

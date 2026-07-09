@@ -35,7 +35,7 @@ public class Disequality {
 			Package s = NeqConstraints.register(a);
 			// trial unification: the prefix IS the disequality's meaning — the exact
 			// simultaneous bindings that must never all hold
-			return Cont.defer(() -> MiniKanren.unifyPrefix(s, lhs, rhs)
+			return Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), lhs, rhs)
 					.map(prefix -> prefix.isEmpty() ?
 							// they already unify: the disequality is violated
 							Cont.<Package, Nothing> complete(Nothing.nothing()) :
@@ -58,7 +58,7 @@ public class Disequality {
 						separate(a, x)
 								.and(unify(out, LList.of(a, res)))
 								.and(Goal.defer(() -> rembero(d, x, res)))))))
-				.named(pkg -> format(pkg, x) + " ⊄ " + Logic.formatLList(pkg, ls) + " ≣ " + format(pkg, out));
+				.named(pkg -> pkg.format(x) + " ⊄ " + Logic.formatLList(pkg, ls) + " ≣ " + pkg.format(out));
 	}
 
 	public static <A> Goal distincto(Unifiable<LList<A>> distinct) {
@@ -145,7 +145,7 @@ public class Disequality {
 
 	static Fiber<List<NeqConstraint>> walkAllConstraints(
 			List<NeqConstraint> constraints,
-			Package s) {
+			Substitutions s) {
 		return constraints.toJavaStream()
 				.map(c -> walkAllConstraint(s, c.getSeparate())
 						.map(Stream::of))
@@ -157,7 +157,7 @@ public class Disequality {
 						.collect(List.collector()));
 	}
 
-	private static Fiber<HashMap<LVar<?>, Term<?>>> walkAllConstraint(Package s, HashMap<LVar<?>, Term<?>> c) {
+	private static Fiber<HashMap<LVar<?>, Term<?>>> walkAllConstraint(Substitutions s, HashMap<LVar<?>, Term<?>> c) {
 		return c.toJavaStream()
 				.map(valSub -> valSub.map(
 								val -> walkAll(s, val)
@@ -173,9 +173,9 @@ public class Disequality {
 
 	static Fiber<List<HashMap<Term<?>, Term<?>>>> renameForDisplay(
 			List<NeqConstraint> constraints,
-			Package renamePackage) {
+			Substitutions renameSubstitutions) {
 		return constraints.toJavaStream()
-				.map(c -> renameConstraint(renamePackage, c.getSeparate())
+				.map(c -> renameConstraint(renameSubstitutions, c.getSeparate())
 						.map(Stream::of))
 				.reduce((l, r) -> Fiber.zip(l, r)
 						.map(lr -> lr.apply(Stream::concat)))
@@ -183,7 +183,7 @@ public class Disequality {
 				.map(stream -> stream.collect(List.collector()));
 	}
 
-	private static Fiber<HashMap<Term<?>, Term<?>>> renameConstraint(Package r, HashMap<LVar<?>, Term<?>> c) {
+	private static Fiber<HashMap<Term<?>, Term<?>>> renameConstraint(Substitutions r, HashMap<LVar<?>, Term<?>> c) {
 		return c.toJavaStream()
 				.map(pair -> Fiber.zip(
 						walkAll(r, pair._1.getObjectTerm()),
@@ -194,7 +194,7 @@ public class Disequality {
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	static List<NeqConstraint> purify(List<NeqConstraint> c, Package r) {
+	static List<NeqConstraint> purify(List<NeqConstraint> c, Substitutions r) {
 		return c.toJavaStream()
 				.map(cc -> purifySingle(cc, r))
 				.map(Stream::of)
@@ -205,15 +205,15 @@ public class Disequality {
 	}
 
 	/** Whether the term denotes something in {@code p}: a value, or a bound variable. */
-	private static boolean isBound(Package p, Term<?> v) {
+	private static boolean isBound(Substitutions p, Term<?> v) {
 		return v.asVar()
-				.map(lvar -> MiniKanren.walk(p, lvar) != lvar)
+				.map(lvar -> p.walk(lvar) != lvar)
 				.getOrElse(true);
 	}
 
 	private static NeqConstraint purifySingle(
 			NeqConstraint constraints,
-			Package r) {
+			Substitutions r) {
 		return NeqConstraint.of(
 				constraints.getSeparate().toJavaStream()
 						.filter(c -> isBound(r, c._1) && isBound(r, c._2))

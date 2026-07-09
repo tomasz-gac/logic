@@ -215,7 +215,7 @@ public class Matche {
 
 	public static <T> Case<T> variable(Supplier<Goal> sup) {
 		return u -> s -> Cont.defer(() ->
-				MiniKanren.walkAll(s, u)
+				MiniKanren.walkAll(s.substitution(), u)
 						.map(v -> v.asVar()
 								.map(__ -> sup.get())
 								.getOrElse(Goal::failure)
@@ -224,7 +224,7 @@ public class Matche {
 
 	public static <T> Case<T> value(Function1<T, Goal> f) {
 		return u -> s -> Cont.defer(() ->
-				MiniKanren.walkAll(s, u)
+				MiniKanren.walkAll(s.substitution(), u)
 						.map(v -> v.asVal()
 								.map(f)
 								.getOrElse(Goal::failure)
