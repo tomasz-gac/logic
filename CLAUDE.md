@@ -158,6 +158,10 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/tabled-constraints.md` — DESIGN SKETCH: merging tabling and constraints
   (TCLP): three intra-domain store hooks (project/entails/restate), pointwise product-order
   entailment, the antichain termination gate. Read before weakening the tabling guard tests.
+- `docs/design/substitutions-migration.md` — PLANNED: retype the unifier onto the
+  Substitutions interface (completes capability §2.1), one kind-tagged decompose
+  shared by unify and members, representation swaps gated on benchmarks. Read
+  before touching MiniKanren internals.
 - `docs/design/suspensions.md` — parked goals woken by bindings (freeze/when): the
   concept behind Verdict.run(Goal), its reify policy, and the extraction plan gated
   on a second customer (pldb deferred lookups).
