@@ -1,7 +1,10 @@
 # The goal optimizer — rewriting search structure before it runs
 
-**Status: seam SHIPPED (branch `optimizer`: Optimizer/CascadingOptimizer/
-Optimized/Guard, 334 green); the ordering layer is DESIGNED, not implemented.
+**Status: SHIPPED on branch `optimizer` — the seam (Optimizer/
+CascadingOptimizer), the ambient delivery (OptimizerStore, solve seeding,
+the defer hook), the ordering layer (Bounded, OrderingOptimizer, pipeline)
+and the single boundary type `Barrier` (Guard and Optimized converged and
+are gone — see ambient-optimizer.md §5).
 The pldb planner (`pldb/docs/design/query-planning.md`) is the first customer
 and its doc holds the database-specific half (LookupGoal, estimate, phases,
 benchmark). This doc is the engine-side theory and catalog.**
@@ -11,7 +14,7 @@ benchmark). This doc is the engine-side theory and catalog.**
 ## 1. The seam (as shipped)
 
 - **`Optimizer`** — a visitor over the goal combinators (`Conjunction`,
-  `Conde`, `NamedGoal`, `Guard`, `Optimized`) with a generic `visit(Goal)`
+  `Conde`, `NamedGoal`, `Barrier`) with a generic `visit(Goal)`
   fallback. Dispatch via `Goal.accept(Optimizer)`; opaque lambdas and
   committed choice land in the fallback and are barriers by construction.
   The combinators are a CLOSED set → visitor overloads. Leaf capabilities
@@ -24,15 +27,11 @@ benchmark). This doc is the engine-side theory and catalog.**
   parameterless `Goal.optimize()` was a dangling seam — never called from
   the solve path — and its dead `Conde` override had an or→and flattening
   bug. Both died with the seam.)
-- **`Optimized`** — wraps a goal to rewrite it at APPLY time; construction
-  time sees a `defer` wall around recursion, so apply-per-layer is the only
-  way unfoldings are rewritable. Visiting one: carrying THIS pass → unwrap
-  and fuse (idempotence; apply-time re-planning belongs to the outermost
-  owner); carrying a foreign pass → leaf (an ownership claim, morally a
-  Guard with a job).
-- **`Guard`** — the explicit leaf. NamedGoal is transparent (tracing must
-  not disable optimization), so wrapping alone protects nothing; Guard says
-  "this order is deliberate" and makes the barrier contract testable.
+- **`Barrier`** — the one explicit leaf (Guard and Optimized both
+  converged into it once delivery went ambient): optimize outside and
+  inside, never across. NamedGoal is transparent (tracing must not disable
+  optimization), so wrapping alone protects nothing; Barrier says "this
+  order is deliberate" and makes the contract testable.
 - **Composition is sequencing, never merging**: `Optimizer.pipeline(a, b)`
   — every visit = `n.accept(a).flatMap(g -> g.accept(b))`; entry is always
   at the root, each pass runs its full traversal. Subclassing is ONLY for
