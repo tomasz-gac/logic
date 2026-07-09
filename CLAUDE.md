@@ -43,7 +43,7 @@ Small, local, well-tested changes elsewhere don't need to ask.
 
 - A **goal** is `Package -> Cont<Package, Nothing>` (CPS). Success = calling the
   continuation; failure = staying silent. `Goal` is the central interface (`goals/Goal.java`).
-- A **`Package`** (`unification/Package.java`) is the solver state:
+- A **`Package`** (`goals/Package.java`) is the solver state:
   `substitutions (HashMap<LVar,Term>)` + `constraints (LinkedHashMap<Class,Store>)`. It is
   **immutable/persistent** — this is why backtracking is free (each branch keeps its own).
 - **`Term` / `Unifiable` / `Reified`** (`unification/`): `Term` is the structural root;
