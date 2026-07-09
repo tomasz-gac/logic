@@ -28,18 +28,8 @@ public class Conjunction implements Goal {
 	}
 
 	@Override
-	public Fiber<Goal> optimize() {
-		return clauses.stream()
-				.map(Goal::optimize)
-				.map(v -> v.map(g -> g instanceof Conjunction ?
-						((Conjunction) g).clauses.stream() :
-						Stream.of(g)))
-				.reduce((acc, r) -> Fiber.zip(acc, r)
-						.map(lr -> lr.apply(Stream::concat)))
-				.map(r -> r.map(s -> s.toArray(Goal[]::new))
-						.map(new Conjunction()::and)
-						.map(Goal.class::cast))
-				.orElseGet(() -> done(Goal.success()));
+	public Fiber<Goal> accept(Optimizer optimizer) {
+		return optimizer.visit(this);
 	}
 
 	@Override

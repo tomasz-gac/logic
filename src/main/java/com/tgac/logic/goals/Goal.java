@@ -219,17 +219,20 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	}
 
 	/**
-	 * Provides an opportunity to optimize this goal.
-	 * <pre>
-	 * The default implementation performs no optimization and returns the goal itself
-	 * wrapped in a completed {@link Fiber} object.
-	 * </pre>
-	 *
-	 * @return A {@link Fiber} containing the (potentially optimized) goal.
-	 * 		By default, returns {@code Fiber.done(this)}.
+	 * Dispatch into an {@link Optimizer}. Combinators override this to route to
+	 * their own overload; everything else — including plain lambda goals — lands
+	 * in the generic {@code visit(Goal)} and is a barrier by construction.
 	 */
-	default Fiber<Goal> optimize() {
-		return done(this);
+	default Fiber<Goal> accept(Optimizer optimizer) {
+		return optimizer.visit(this);
+	}
+
+	/**
+	 * Wraps this goal so the optimizer rewrites it at apply time — per layer of
+	 * a recursive unfolding, since construction time sees only a defer wall.
+	 */
+	default Goal optimize(Optimizer optimizer) {
+		return Optimized.of(this, optimizer);
 	}
 
 	/**

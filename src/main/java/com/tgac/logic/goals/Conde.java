@@ -44,17 +44,8 @@ public class Conde implements Goal {
 	}
 
 	@Override
-	public Fiber<Goal> optimize() {
-		return clauses.stream()
-				.map(Goal::optimize)
-				.map(v -> v.map(g ->
-						g instanceof Conde ?
-								((Conde) g).clauses.stream() :
-								Stream.of(g)))
-				.reduce(done(new Conde()),
-						(l, r) -> Fiber.zip(l, r).map(t -> t._1
-								.or(t._2.toArray(Goal[]::new))),
-						Exceptions.throwingBiOp(UnsupportedOperationException::new));
+	public Fiber<Goal> accept(Optimizer optimizer) {
+		return optimizer.visit(this);
 	}
 
 	@Override

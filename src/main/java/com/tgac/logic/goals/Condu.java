@@ -61,19 +61,6 @@ public class Condu implements Goal {
 		}));
 	}
 
-	@Override
-	public Fiber<Goal> optimize() {
-		return clauses.stream()
-				.map(Goal::optimize)
-				.map(v -> v.map(g ->
-						g instanceof Condu ?
-								((Condu) g).clauses.stream() :
-								Stream.of(g)))
-				.reduce(done(new Condu()),
-						(l, r) -> Fiber.zip(l, r).map(t -> t._1
-								.orElse(t._2.toArray(Goal[]::new))),
-						Exceptions.throwingBiOp(UnsupportedOperationException::new));
-	}
 
 	@Override
 	public String toString() {

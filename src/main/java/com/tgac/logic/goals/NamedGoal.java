@@ -1,6 +1,7 @@
 package com.tgac.logic.goals;
 
 import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.debug.DebugStore;
 import com.tgac.logic.debug.Trace;
@@ -22,6 +23,11 @@ class NamedGoal implements Goal {
 						aPackage.putStore(store.push(label.apply(aPackage))),
 						answer -> answer.putStore(store)))
 				.getOrElse(() -> goal.apply(aPackage));
+	}
+
+	@Override
+	public Fiber<Goal> accept(Optimizer optimizer) {
+		return optimizer.visit(this);
 	}
 
 	@Override
