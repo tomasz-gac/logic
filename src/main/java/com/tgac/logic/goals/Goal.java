@@ -247,7 +247,11 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @return A new {@link Goal} that defers the creation of the actual goal.
 	 */
 	static Goal defer(Supplier<Goal> g) {
-		return goal(s -> g.get().apply(s))
+		return goal(s -> OptimizerStore.from(s)
+				.map(store -> Cont.<Package, Nothing> defer(() ->
+						store.rewrite(g.get(), s.substitution())
+								.map(body -> body.apply(s))))
+				.getOrElse(() -> g.get().apply(s)))
 				.named("recursive call");
 	}
 
@@ -443,6 +447,18 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 */
 	default <T> Stream<Reified<T>> solve(Unifiable<T> out) {
 		return solve(out, BreadthFirstScheduler::new);
+	}
+
+	/**
+	 * Solve with an ambient optimizer: the root tree is rewritten once against
+	 * the initial substitution (the static tier), and the store rides the
+	 * package so each recursion layer is rewritten as it unfolds at the
+	 * {@link #defer} hook (docs/design/ambient-optimizer.md).
+	 */
+	default <T> Stream<Reified<T>> solve(Unifiable<T> out, Optimizer optimizer) {
+		return accept(optimizer).get()
+				.solveFrom(Package.empty().putStore(OptimizerStore.of(optimizer)),
+						out, BreadthFirstScheduler::new);
 	}
 
 }

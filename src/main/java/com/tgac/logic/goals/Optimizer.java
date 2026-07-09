@@ -4,6 +4,7 @@ package com.tgac.logic.goals;
 // ABOUTME: The generic visit(Goal) overload is the extension hook for foreign goal types.
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.unification.Substitutions;
 
 /**
  * Rewrites goal trees before execution. Dispatch is double: goals implement
@@ -36,4 +37,57 @@ public interface Optimizer {
 	Fiber<Goal> visit(Guard guard);
 
 	Fiber<Goal> visit(Optimized optimized);
+
+	/**
+	 * Pass-state injection: a substitution-aware pass returns a copy carrying
+	 * {@code s}; static passes ignore it. Called by {@link OptimizerStore} at
+	 * the defer hook with the live bindings.
+	 */
+	default Optimizer with(Substitutions s) {
+		return this;
+	}
+
+	/** Sequential composition — passes compose as a pipeline, never by merging. */
+	static Optimizer pipeline(Optimizer first, Optimizer second) {
+		return new Optimizer() {
+			private Fiber<Goal> both(Goal g) {
+				return g.accept(first).flatMap(r -> r.accept(second));
+			}
+
+			@Override
+			public Fiber<Goal> visit(Goal goal) {
+				return both(goal);
+			}
+
+			@Override
+			public Fiber<Goal> visit(Conjunction conjunction) {
+				return both(conjunction);
+			}
+
+			@Override
+			public Fiber<Goal> visit(Conde conde) {
+				return both(conde);
+			}
+
+			@Override
+			public Fiber<Goal> visit(NamedGoal named) {
+				return both(named);
+			}
+
+			@Override
+			public Fiber<Goal> visit(Guard guard) {
+				return both(guard);
+			}
+
+			@Override
+			public Fiber<Goal> visit(Optimized optimized) {
+				return both(optimized);
+			}
+
+			@Override
+			public Optimizer with(Substitutions s) {
+				return pipeline(first.with(s), second.with(s));
+			}
+		};
+	}
 }
