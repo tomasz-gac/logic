@@ -1,6 +1,5 @@
 package com.tgac.logic.unification;
 
-import static com.tgac.functional.Exceptions.throwingBiOp;
 import static com.tgac.functional.fibers.Fiber.defer;
 import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.functional.fibers.MFiber.mdefer;
@@ -11,7 +10,6 @@ import static io.vavr.Predicates.not;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
-import com.tgac.functional.Streams;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.reflection.Types;
@@ -49,9 +47,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collector;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
 /**
  * @author TGa
@@ -176,19 +178,19 @@ public class MiniKanren {
 				return mdefer(() -> unify(extend, s, lFirst, rFirst))
 						.flatMap(s1 -> unify(extend, s1, lSecond, rSecond));
 			default:
-				if (memberStream(l.getMembers()).count() != memberStream(r.getMembers()).count()) {
-					return none();
+				// single pass: zip while both sides last; a leftover on either
+				// side is an arity mismatch, and the unrun chain is just dropped
+				// (MFiber is lazy — nothing unifies until stepped)
+				MFiber<Substitutions> state = mdone(s);
+				Iterator<Term<?>> li = l.getMembers().iterator();
+				Iterator<Term<?>> ri = r.getMembers().iterator();
+				while (li.hasNext() && ri.hasNext()) {
+					Term<Object> lt = castTerm(li.next());
+					Term<Object> rt = castTerm(ri.next());
+					state = state.flatMap(s1 -> unify(extend, s1, lt, rt));
 				}
-				return Streams.zip(memberStream(l.getMembers()), memberStream(r.getMembers()), Tuple::of)
-						.reduce(mdone(s),
-								(state, ms) -> state.flatMap(s1 ->
-										unify(extend, s1, MiniKanren.<Object> castTerm(ms._1), castTerm(ms._2))),
-								throwingBiOp(UnsupportedOperationException::new));
+				return li.hasNext() || ri.hasNext() ? none() : state;
 		}
-	}
-
-	private static java.util.stream.Stream<Term<?>> memberStream(Iterable<Term<?>> members) {
-		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(members.iterator(), 0), false);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -264,26 +266,14 @@ public class MiniKanren {
 	}
 
 	/** A term's one-level structural decomposition: its kind and a lazy view of its members. */
-	public static final class Decomposition {
+	@Value
+	@RequiredArgsConstructor
+	public static class Decomposition {
 		public enum Kind {
 			ITERABLE, TUPLE, LLIST, LTREE
 		}
-
-		private final Kind kind;
-		private final Iterable<Term<?>> members;
-
-		private Decomposition(Kind kind, Iterable<Term<?>> members) {
-			this.kind = kind;
-			this.members = members;
-		}
-
-		public Kind getKind() {
-			return kind;
-		}
-
-		public Iterable<Term<?>> getMembers() {
-			return members;
-		}
+		Kind kind;
+		Iterable<Term<?>> members;
 	}
 
 	/**
@@ -570,7 +560,7 @@ public class MiniKanren {
 		return (Term<T>) v;
 	}
 
-	private static java.util.stream.Stream<Object> toJavaStream(Iterable<Object> it) {
+	private static Stream<Object> toJavaStream(Iterable<Object> it) {
 		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(it.iterator(), 0), false);
 	}
 
