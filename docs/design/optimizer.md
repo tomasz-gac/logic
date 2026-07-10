@@ -60,17 +60,23 @@ and `project` are the impurity half of the same rule.
 
 Two kinds of goals, distinguished by one number:
 
-**`order(g, s)` = g's out-degree at apply — the maximum number of
-continuations it may invoke when it RUNS from state s.** Not the eventual
-answer count of the query: the two diverge exactly when a store defers
-disjunction as data. `dom(x, 1..10)` represents a 10-way choice but
-branches ONCE — the ten-ness is store-data, not tree structure — so it is
-order 1 like every constraint post; the branching is cashed in later by
-LABELLING, whose order is the then-current domain size (min-domain /
-fail-first falls out of the ascending sort). unify: 1 (fail = 0, but 0 is
-only knowable when foldable to `failure()`). Pure propagators (≤, +,
-≠fd): 1 — they only prune; there is no deferred disjunction in them at
-all. `conde` of k clauses: ≤ k. A lookup: ≤ its index bucket. **Widening** = no bound
+**`order(g, s)` = an upper bound on the bindings/answers g's relation
+admits under the knowledge in s** — DENOTATIONAL, a property of the
+relation, not of when the engine cashes it into branches. This is the
+global spec any library implements from its own data, with no engine
+knowledge: unify admits 1; `dom(x, d)` admits |d| (read off its own
+argument); a propagator like `pluso` gives whatever cheap bound it has
+(e.g. a result-domain size); labelling admits the current domain size
+(min-domain/fail-first falls out); a lookup admits its bucket. Sorting
+consequence: unifications pin first, doms by width, propagators and
+labelling late, generators by size. Cost of the denotational choice,
+accepted deliberately: a wide post can sort behind a narrower brancher
+and be re-posted once per branch — linear waste, relying on the existing
+FD contract that propagators tolerate posting before their variables
+have domains. (An out-degree definition was tried and rejected: it is
+not denotational — dom and its labelling price differently on identical
+knowledge — contradicting the key-stability argument and requiring
+implementors to know engine operational detail.) **Widening** = no bound
 estimable: bare `defer` (transparent widening — sortable to the back;
 fair BFS keeps completeness order-independent) vs tabled calls (KEYED
 widening — barriers, immovable in both directions, §2). Committed choice
