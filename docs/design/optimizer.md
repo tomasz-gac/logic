@@ -60,10 +60,17 @@ and `project` are the impurity half of the same rule.
 
 Two kinds of goals, distinguished by one number:
 
-**`order(g, s)` = the maximum number of answers g may emit from state s**
-(upper bound on search-tree out-degree). unify and constraint posts: 1
-(fail = 0, but 0 is only knowable when foldable to `failure()`). `conde`
-of k clauses: ≤ k. A lookup: ≤ its index bucket. **Widening** = no bound
+**`order(g, s)` = g's out-degree at apply — the maximum number of
+continuations it may invoke when it RUNS from state s.** Not the eventual
+answer count of the query: the two diverge exactly when a store defers
+disjunction as data. `dom(x, 1..10)` represents a 10-way choice but
+branches ONCE — the ten-ness is store-data, not tree structure — so it is
+order 1 like every constraint post; the branching is cashed in later by
+LABELLING, whose order is the then-current domain size (min-domain /
+fail-first falls out of the ascending sort). unify: 1 (fail = 0, but 0 is
+only knowable when foldable to `failure()`). Pure propagators (≤, +,
+≠fd): 1 — they only prune; there is no deferred disjunction in them at
+all. `conde` of k clauses: ≤ k. A lookup: ≤ its index bucket. **Widening** = no bound
 estimable: bare `defer` (transparent widening — sortable to the back;
 fair BFS keeps completeness order-independent) vs tabled calls (KEYED
 widening — barriers, immovable in both directions, §2). Committed choice
