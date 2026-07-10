@@ -26,10 +26,8 @@ import lombok.NoArgsConstructor;
 public class Constraints {
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), u, v)
-				.map(prefix -> resolve(prefix).apply(s))
-				.getOrElse(() -> Cont.complete(nothing())));
-		return goal.named(pkg -> pkg.format(u) + " ≣ " + pkg.format(v));
+		return UnifyGoal.of(u, v)
+				.named(pkg -> pkg.format(u) + " ≣ " + pkg.format(v));
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
