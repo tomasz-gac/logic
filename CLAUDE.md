@@ -15,16 +15,20 @@ tests.
    deleted or emptied a test — don't.
 3. **Test output must be pristine.** No `System.out.println` in tests or in `src/main`.
    Assert results; don't print them. (One intentional exception is documented below.)
-4. **Git discipline.** Work on a branch (`git checkout -b <name>`), commit with explicit
+4. **Never commit documentation changes without explicit approval.** Docs (`docs/`,
+   `README.md`, this file) are read through by the human before they land — write them,
+   announce them, wait. Code commits may include doc edits only when the human already
+   approved those edits.
+5. **Git discipline.** Work on a branch (`git checkout -b <name>`), commit with explicit
    paths (`git add <path> ...`), NEVER `git add -A` (it once swept a stray debug line into
    a commit). Merge to master with `git checkout master && git merge --ff-only <branch>`,
    then `git push`. End commit messages with the Co-Authored-By trailer.
-5. **Java 8 only.** No `var` in main, no records, no switch-expressions. vavr tuples and
+6. **Java 8 only.** No `var` in main, no records, no switch-expressions. vavr tuples and
    functions max out at arity 8, accessors are 1-indexed (`._1`).
    **Always import at the top level — NEVER inline-qualify** (`io.vavr.Function2 f`
    is wrong; import it). The only excuse is a genuine simple-name clash in the same
    file (e.g. `java.util.stream.Stream` vs vavr's `Stream`).
-6. **`functional` is a separate repo and a Maven dependency.** It lives at
+7. **`functional` is a separate repo and a Maven dependency.** It lives at
    `../functional`. If you change it, `cd ../functional && mvn -q install` before `logic`
    can see the change. Schedulers, fibers, `Cont`, `Nothing` all live there.
 
