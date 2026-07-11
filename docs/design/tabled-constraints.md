@@ -52,7 +52,13 @@ become REGIONS — a term plus the descending knowledge around it.
    call's region CONTAINS the new call's region. A master that ran tight and
    a slave that arrives loose = the slave silently misses answers it is
    entitled to. Variant equality is correct exactly when every region is ⊤ —
-   the condition the wall enforces.
+   the condition the wall enforces. *(branching-as-data)* This is one
+   continuum with the optimizer's variant analysis: a free arg is a ⊤
+   region (one general entry), a bound arg a width-1 region (entry per
+   value — the variant explosion), a call under `dom(x, 1..3)` a width-3
+   region — partially-spent branching. The wall enforces "endpoints only";
+   this design admits the middle; region containment is the generalization
+   of the keyed-widening rule.
 2. **Answer time (termination hazard).** Answers become regions too
    ("x, provided x ≠ 3"). Deduplication by alpha-equivalence must become
    deduplication by SUBSUMPTION (`x ∈ {1..5}` makes `x ∈ {2,3}` redundant but
@@ -66,7 +72,14 @@ become REGIONS — a term plus the descending knowledge around it.
    which is what `resolve` already does. Soundness at consumption is nearly
    free, PROVIDED the answer's residue is actually re-imposed (§5.3); the
    silent-generalization failure the second guard test pins is exactly what
-   happens when it isn't.
+   happens when it isn't. *(branching-as-data)* Consumption is easy BECAUSE
+   it is data→data: `restate` moves deferred branching from table-data back
+   into store-data at ZERO branches — the fifth move of the optimizer's
+   conversion table ("transfer"), and the cheapest. A constrained answer
+   consumes at order 1 (a post) where a ground answer materializes
+   1-per-answer: `x ∈ {1..5}` replays as one knowledge injection instead of
+   five branches. TCLP is defer-materialization applied to the table's own
+   contents.
 
 ## 4. The key insight: the order decomposes per store
 
@@ -102,7 +115,23 @@ identities line up between the reified arguments and every store's residue.
 
 ### 5.2 `entails(mine, other) → boolean`
 
-The intra-domain order — the one genuinely new word. For FD: domain-wise ⊆.
+The intra-domain order — and NOT actually a new word *(July 2026,
+Residue = Domain)*: entailment is FREE from the meet — `A ⊑ B` iff
+`A.intersect(B).equals(A)` — and the kernel has computed exactly this all
+along: `DomainUpdate`'s equal-domain termination guard IS the entailment
+test `dom ⊒ previous`. For FD the whole §5 hook set is exposure, not
+machinery: Residue IS `Domain` values (project), `restate` is the public
+`dom` factory, `answers` is the width `Bounded` wants — one object serves
+TCLP and the optimizer. The §5.5 gate then reads structurally: a store
+participates iff its knowledge factors into Domain-like lattice values
+(meet → entailment, width → pricing, statement form → restate); Neq fails
+for lack of exactly this. Follow-up (same conversation): with `Lattice<L>`
+   F-bounded on the VALUES (`Domain implements Lattice<Domain>`), this
+   hook is SUBSUMED — comparison is value-side, written once in the
+   driver's fold; only `project` (and conditionally `restate`) remain
+   store-side. See `lattice.md` §6. This is also the deferred `Lattice<L>`'s
+adoption moment ("adoption not rewrite, when a customer exists" — the
+customer arrived twice at once); Domain is the prototype instance. For FD: domain-wise ⊆.
 For Neq: record-set implication (hard in general; see §6). Reflexive,
 transitive; `entails` need not be complete (a conservative `false` costs
 reuse, not soundness).
@@ -141,6 +170,23 @@ variable set form a finite lattice"** (equivalently: no infinite antichains).
 
 A store that declines the gate keeps today's wall; the guard tests become
 per-store rather than global.
+
+*(branching-as-data)* The gate is an instance of the direction rule
+(`fixpoint-machine.md` §10) — and the danger analysis above omits the
+symmetric BENEFIT: answers-as-data also SHORTENS the ascending chain (one
+region-answer subsumes many ground answers → fewer entries → earlier
+completion), and completion is what turns a tabled call into the
+optimizer's exact pricing oracle. Regions can lengthen the ascent
+(antichains) or shorten it (subsumption); the finite-lattice gate is
+exactly the line between the two cases. Also note the API convergence: the
+hook set here (project/entails/restate) and the optimizer's store
+capabilities (answers/Forcing) are one per-store,
+driver-folds-opaque-verdicts family — a `Residue` that knows its WIDTH
+serves TCLP keys, subsumption dedup, AND the pricing of consuming that
+answer. Design them together when either is built. (The
+suspension≡consumer triple survives the merge unchanged: consumers of
+constrained entries still wake on an upward-closed condition over table
+growth.)
 
 ## 6. Staging, if ever implemented
 

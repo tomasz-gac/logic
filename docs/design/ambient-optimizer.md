@@ -36,11 +36,11 @@ Two facts about the tree matter for everything that follows:
 
 ## 2. The wrapper architecture and its hole
 
-The shipped seam (branch `optimizer`): `Optimizer` is a visitor;
-`goal.optimize(opt)` wraps the tree in `Optimized`, which reruns the
-visitor at APPLY time and executes the rewritten tree. Apply-time matters
-because of §1's second fact: construction time sees a defer wall, so
-applying per-layer is the only chance to rewrite unfoldings.
+The first shipped design (since superseded — `Optimized` is gone, §5):
+`goal.optimize(opt)` wrapped the tree in an `Optimized` goal that reran
+the visitor at APPLY time and executed the rewritten tree. Apply-time
+matters because of §1's second fact: construction time sees a defer
+wall, so applying per-layer is the only chance to rewrite unfoldings.
 
 But the wrapper has a delivery hole: it rewrites what it WRAPS. When a
 bare defer inside the tree forces its supplier mid-search, the fresh body

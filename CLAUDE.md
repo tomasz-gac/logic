@@ -147,6 +147,9 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   shipped (package product, Propagation's three entries, the store protocol and
   2×2 vocabulary, FD's toolkit, structure's one owner, the contracts, the
   lineage). Read before touching the constraint core.
+- `docs/design/lattice.md` — the engine's one algebra: lattice/semiring theory,
+  instance inventory, consumer map, capability ladder, the two freedoms. Read
+  before the optimizer/TCLP docs — they lean on its vocabulary.
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
 - `docs/design/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
   together, AND why NOT to merge them into one engine prematurely.

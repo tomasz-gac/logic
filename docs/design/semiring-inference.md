@@ -175,6 +175,88 @@ Caveats (do not ignore):
 
 ---
 
+## 7a. Semiring tabling — the mechanics settled (July 2026 conversations)
+
+Derived with the human against the shipped tabling; supplements §7.
+
+- **The cell is a map, and always was**: `TableEntry = Map<AnswerTerm, V>`
+  — answer terms lattice-compared (alpha-equivalence today, entailment
+  under TCLP), values semiring-folded. Set-tabling is the degenerate
+  V = "present" (the boolean plug), which is why the value column has
+  been invisible. ⊕ fires at ANSWER ARRIVAL (another derivation of the
+  same answer reaches the master: V ⊕ contribution); ⊗ fires at
+  CONSUMPTION (a replayed answer's value multiplies into the consuming
+  derivation's running value). Packages are NEVER combined — each branch
+  CARRIES its derivation's running value as a package store (the same
+  plain-store pattern as DebugStore/OptimizerStore).
+- **The call-boundary cut, both columns**: keys must exclude
+  caller-specific bindings (else variant explosion) and values must
+  exclude caller-specific weight (else the cell is poisoned for other
+  callers) — cell value = fold of derivations FROM the call's inputs TO
+  the answer, caller-agnostic; arrival history multiplies in at replay:
+  total = callerValue ⊗ cellValue. This is DP's optimal substructure as
+  an engine invariant.
+- **The units have jobs**: 1 = the weight a fresh branch is born with
+  (empty product; success contributes 1). 0 = "no way" — empty cell,
+  failed replay unification, seed of every ⊕-fold — and is normally
+  REPRESENTED BY ABSENCE: CPS failure is silence (the continuation never
+  called), which contributes 0 structurally; 0 materializes only in cell
+  initialization and empty-search aggregates (counting: 0; min-plus:
+  +∞ — the 0 is a role, not the number). The optimizer's algebra pass IS
+  the unit laws: failure∨g=g is 0⊕x=x, success∧g=g is 1⊗x=x,
+  failure∧g=failure is 0⊗x=0.
+- **Idempotence is tabling's cycle-termination, not a detail**:
+  tabling = memoization + idempotence. Sharing (memoization) works for
+  ANY plug on acyclic call structures (classical DP). Termination on
+  CYCLIC programs requires the ascent to go stationary: a⊕a=a makes
+  "no new answers" detectable. Idempotent plugs (set, bool, min, max)
+  tabulate freely; non-idempotent (count, probability) tabulate only on
+  acyclic queries — or with a **closed semiring** (Kleene star), which
+  solves the cycle analytically instead of iterating it (geometric
+  series 1/(1−p); min-plus star = Floyd–Warshall). Star support is the
+  real Phase-4 frontier for cyclic weighted queries.
+- **The algebraic junction**: an idempotent-⊕ semiring IS a
+  join-semilattice — the set quotient is literally where the structure
+  algebra (semiring/tree) becomes the state algebra (lattice/data).
+  Tabling is the shipped branch→data fold; the free cell (provenance
+  polynomials — the free commutative semiring, Green–Tannen) is the
+  yardstick that prices every quotient, never the runtime choice.
+- **The lawfulness certificate is executable**: foldEarly (in cells) ==
+  foldLate (enumerate then fold, today's aggregate) on fixtures —
+  distributivity as a property test; a failure means "history matters,
+  DP will silently lie".
+
+## 7b. Failure provenance — "why did this fail" is the dual plug (sketch)
+
+Two structural facts (July 2026):
+
+1. **Failure today is ABSENCE** (CPS silence — the zeros never
+   materialize), so reasons require reifying them — and the seams
+   half-exist: `MFiber`'s `none` (a payload-less 0, upgradeable to
+   `Either<Reason, A>`), `Revision.fail()` (store vetoes are values with
+   room for "domain wiped: had {1..3}, met {5}"), and the tracer's Fail
+   port (v0.5 of the feature ships today as `trace(out)`; this upgrades
+   log → algebra). Delivery: an opt-in reason-collector store riding the
+   package (tracer pattern, zero cost absent) — un-silencing every zero
+   unconditionally taxes the hottest path for a debug feature.
+2. **The reason algebra is the De Morgan DUAL of the answer algebra**: a
+   conjunction fails if ANY conjunct fails (reasons merge ⊕-like); a
+   disjunction fails only if ALL branches fail (reasons chain ⊗-like) —
+   success's ⊕/⊗ placement, swapped. Hence the honest hardness (the
+   literature's "why-not provenance"): a COMPLETE explanation is a
+   product over the whole tree, exponential. The practical move is the
+   architecture's usual one — a lossy plug: deepest-failure (the Prolog
+   debugger heuristic, a max-progress fold), first-k reasons,
+   reasons-mentioning-x. Explanation quality is a plug choice, like
+   answer aggregation.
+
+Bonus from tabling: a COMPLETED entry with zero answers is a cached
+"no", and under the reason plug its cell value is the folded explanation
+— failure explanations with sharing and exact pricing (the pricing
+ladder, dual side). Status: two plugs deep in the future (needs Phase 1
+Semiring + the Phase 2 value-riding store); recorded because it shows
+the semiring seam is infrastructure, not just an inference feature.
+
 ## 8. Learning — the expectation/gradient semiring (Phase 4b, advanced)
 
 To *learn* weights θ from data you need `∂P(query;θ)/∂θ`. The expectation semiring computes it

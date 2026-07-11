@@ -6,11 +6,12 @@ and (b) **stop a future implementer from prematurely merging them into one engin
 elegant unification below is seductive; read the recommendation (§4) before acting on it.
 **Reviewed July 2026 (with Tom), after the narrowing instance was built: the recommendation
 HELD — see §9 for what the intervening work taught, including the unification question asked
-and answered again.**
+and answered again. Extended July 2026 (§10): the optimizer arrived as the THIRD leg — the
+scheduler over both fixpoints — and the recommendation held a third time, now with the
+structural reason visible.**
 
 Companion docs (the concrete instances):
-- `docs/design/constraint-kernel.md` — the *narrowing* instance (historical record);
-  `constraint-kernel.md` and `constraint-kernel.md` are the shape it
+- `docs/design/constraint-kernel.md` — the *narrowing* instance, the shape it
   actually shipped in.
 - `docs/design/semiring-inference.md` — the *accumulating* instance (still planned).
 - `docs/design/tabled-constraints.md` — the two instances MEETING (design sketch): what it
@@ -205,3 +206,38 @@ we unify?" conversation starts where this one ended.
   Deferred until such a customer is real; recorded so it is proposed as adoption, never
   as an engine rewrite. The §4 verdict on the engine merge is unchanged and, per the
   above, stronger.
+
+---
+
+## 10. The third leg: the optimizer as the scheduler over both fixpoints (July 2026)
+
+The optimizer work (`optimizer.md`, `ambient-optimizer.md`) surfaced what the two
+fixpoint machines share WITHOUT being one computation: both are **pending branching
+reified as data with monotone evolution**, differing in direction.
+
+- The narrowing machine holds deferred disjunction that SHRINKS (a domain: declared
+  wide, propagation narrows it, labelling spends it at the last moment).
+- The accumulating machine holds recursive enumeration that GROWS (a table entry:
+  the master's fixpoint adds answers, slaves spend them as replay branches, parking
+  when they catch up).
+
+The optimizer is the layer that prices and schedules the conversions between tree
+and data in both directions (order = upper bound on surviving branches; the four
+moves: domainify/force/park/wake — `optimizer.md` §5a). Two consequences:
+
+1. **The direction of monotonicity decides pricing soundness.** A stale width from
+   the shrinking machine is a sound upper bound; a stale count from the growing
+   machine is an under-estimate — so incomplete tabled calls price ∞ and are
+   immovable (keyed widening), while a COMPLETED table entry prices exactly (the
+   one perfect oracle in the system). Same rule as the ground-cache: only
+   safe-direction facts survive staleness.
+2. **The old question "should the two machines merge?" gets its structural answer.**
+   What they share is not the fixpoint computation (§2's duality stands) but the
+   branch↔data *scheduling vocabulary* — and that now has its own home. The
+   optimizer generalizes the DECISION layer (timing, cost, confluence-protected);
+   each machine keeps its data, its monotone evolution, and its correctness
+   argument. Three legs: the narrowing fixpoint, the growing fixpoint, and the
+   scheduler that prices both. The §4 veto has now survived three temptations, and
+   this section records why it keeps surviving: the seductive shared shape was
+   never the engines — it was the scheduling layer above them, which wanted to be
+   its own thing all along.
