@@ -21,16 +21,26 @@ import lombok.Value;
 class UnifyGoal<T> implements Goal, Bounded {
 	Unifiable<T> u;
 	Unifiable<T> v;
+	boolean noCheck;
 
 	@Override
 	public Cont<Package, Nothing> apply(Package s) {
-		return Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), u, v)
+		return Cont.defer(() -> (noCheck ?
+				MiniKanren.unifyPrefixUnsafe(s.substitution(), u, v) :
+				MiniKanren.unifyPrefix(s.substitution(), u, v))
 				.map(prefix -> Propagation.resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
 	}
 
+	/**
+	 * Dynamic order: ground-ground unification is decidable at pricing time —
+	 * 0 sorts first and kills the segment before anything generates.
+	 */
 	@Override
 	public long answers(Substitutions s) {
+		if (s.isGround(u) && s.isGround(v)) {
+			return s.walkAll(u).equals(s.walkAll(v)) ? 1 : 0;
+		}
 		return 1;
 	}
 }

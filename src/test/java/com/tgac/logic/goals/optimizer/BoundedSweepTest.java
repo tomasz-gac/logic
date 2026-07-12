@@ -84,6 +84,26 @@ public class BoundedSweepTest {
 		assertThat(planned.get() * 10).isLessThan(plain.get());
 	}
 
+	@Test
+	public void groundFalseUnificationPricesZeroAndKillsItsSegment() {
+		// the dead filter is written LAST; dynamic pricing sorts it first
+		Unifiable<Long> x = lvar();
+		AtomicLong plain = new AtomicLong();
+		assertThat(oneOf(x, plain).and(lval(1L).unifies(lval(2L))).solve(x).count()).isZero();
+		assertThat(plain.get()).isEqualTo(N);
+
+		Unifiable<Long> x2 = lvar();
+		AtomicLong planned = new AtomicLong();
+		assertThat(oneOf(x2, planned).and(lval(1L).unifies(lval(2L)))
+				.solve(x2, new OrderingOptimizer()).count()).isZero();
+		assertThat(planned.get()).isZero();
+
+		// and the ground-TRUE twin stays order 1: the segment survives
+		Unifiable<Long> x3 = lvar();
+		assertThat(oneOf(x3, new AtomicLong()).and(lval(1L).unifies(lval(1L)))
+				.solve(x3, new OrderingOptimizer()).count()).isEqualTo(N);
+	}
+
 	private static Goal misOrdered(Unifiable<Long> x, Unifiable<Long> y, AtomicLong spawns) {
 		return oneOf(x, spawns).and(oneOf(y, spawns))
 				.and(FiniteDomain.dom(x, EnumeratedDomain.range(7L, 8L)))

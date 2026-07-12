@@ -1,20 +1,16 @@
 package com.tgac.logic.constraints;
 
-import com.tgac.logic.goals.optimizer.Bounded;
-import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.logic.constraints.Propagation.resolve;
-
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.goals.Package;
-import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -27,15 +23,13 @@ import lombok.NoArgsConstructor;
 public class Constraints {
 
 	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
-		return UnifyGoal.of(u, v)
+		return UnifyGoal.of(u, v, false)
 				.named(pkg -> pkg.format(u) + " ≣ " + pkg.format(v));
 	}
 
 	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
-		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefixUnsafe(s.substitution(), u, v)
-				.map(prefix -> resolve(prefix).apply(s))
-				.getOrElse(() -> Cont.complete(nothing())));
-		return Bounded.of(1, goal.named(pkg -> pkg.format(u) + " ≣_nc " + pkg.format(v)));
+		return UnifyGoal.of(u, v, true)
+				.named(pkg -> pkg.format(u) + " ≣_nc " + pkg.format(v));
 	}
 
 	public static <T> Goal unify(Unifiable<T> u, T v) {
