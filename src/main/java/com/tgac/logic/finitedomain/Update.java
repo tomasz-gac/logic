@@ -4,8 +4,8 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: answer type, distinct from the store→driver Revision.
 
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.goals.Store;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import java.util.ArrayList;
 import java.util.Collections;

@@ -1,8 +1,5 @@
 package com.tgac.logic.goals;
 
-import com.tgac.logic.goals.optimizer.Bounded;
-import com.tgac.logic.goals.optimizer.Optimizer;
-import com.tgac.logic.goals.optimizer.OptimizerStore;
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 
@@ -16,6 +13,9 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.debug.DebugStore;
 import com.tgac.logic.debug.Trace;
+import com.tgac.logic.goals.optimizer.Bounded;
+import com.tgac.logic.goals.optimizer.Optimizer;
+import com.tgac.logic.goals.optimizer.OptimizerStore;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
@@ -229,7 +229,6 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	default Fiber<Goal> accept(Optimizer optimizer) {
 		return optimizer.visit(this);
 	}
-
 
 	/**
 	 * Defers the creation of a goal, typically used for defining recursive goals.

@@ -6,8 +6,8 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.unification.LVal.lval;
 
 import com.tgac.logic.finitedomain.domains.Singleton;
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import java.util.ArrayList;

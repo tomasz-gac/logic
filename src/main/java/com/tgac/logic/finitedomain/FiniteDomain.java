@@ -1,8 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.logic.unification.Substitutions;
-import java.util.function.IntPredicate;
-import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
@@ -11,8 +8,10 @@ import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.optimizer.Bounded;
+import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -24,6 +23,7 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
+import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;

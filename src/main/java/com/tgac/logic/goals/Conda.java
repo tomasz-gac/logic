@@ -1,7 +1,5 @@
 package com.tgac.logic.goals;
 
-import static com.tgac.functional.fibers.Fiber.done;
-
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -11,7 +9,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.Value;
@@ -54,7 +51,6 @@ public class Conda implements Goal {
 					);
 		}));
 	}
-
 
 	@Override
 	public String toString() {

@@ -3,13 +3,13 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: The base optimizer: bottom-up structural recursion that flattens nested
 // ABOUTME: conjunctions and disjunctions; NamedGoal is transparent, everything else a leaf.
 
+import static com.tgac.functional.fibers.Fiber.done;
+
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.NamedGoal;
-import static com.tgac.functional.fibers.Fiber.done;
-
-import com.tgac.functional.fibers.Fiber;
 import java.util.stream.Stream;
 
 /**

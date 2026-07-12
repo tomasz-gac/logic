@@ -3,8 +3,8 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: A store's revised self after a trigger — its own updated factor plus the
 // ABOUTME: cross-store consequences (bindings, suspensions); never a whole package.
 
-import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.goals.Store;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import java.util.ArrayList;
 import java.util.Collections;

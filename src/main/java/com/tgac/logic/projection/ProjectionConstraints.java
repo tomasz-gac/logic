@@ -3,9 +3,9 @@ package com.tgac.logic.projection;
 // ABOUTME: Projection as a facade: a kernel suspension that waits for deep-groundness
 // ABOUTME: and runs the projected goal with the walked value.
 
-import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Function2;

@@ -1,8 +1,8 @@
 package com.tgac.logic.separate;
 
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
 import lombok.RequiredArgsConstructor;

@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.Value;
@@ -60,7 +59,6 @@ public class Condu implements Goal {
 							Exceptions.throwingBiOp(UnsupportedOperationException::new));
 		}));
 	}
-
 
 	@Override
 	public String toString() {

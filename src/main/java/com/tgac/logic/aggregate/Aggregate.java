@@ -3,7 +3,6 @@ package com.tgac.logic.aggregate;
 // ABOUTME: Reflects a sub-search's solutions into a value — findall and its count/sum/max/min folds.
 // ABOUTME: Runs the goal to exhaustion, copies each answer, and yields one result to the continuation.
 
-import com.tgac.logic.goals.optimizer.Bounded;
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.unification.LVal.lval;
@@ -12,6 +11,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;

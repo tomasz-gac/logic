@@ -3,11 +3,11 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: The one explicit boundary: optimize outside and inside, never across.
 // ABOUTME: A leaf to every pass; interior structure still optimizes as it unfolds.
 
-import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Package;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 

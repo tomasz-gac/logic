@@ -4,10 +4,10 @@ package com.tgac.logic.debug;
 // ABOUTME: derived state can report box-model ports. A plain Store, inert to constraint solving.
 
 import com.tgac.logic.debug.Trace.Tracer;
-import com.tgac.logic.tabling.Table;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
+import com.tgac.logic.tabling.Table;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;

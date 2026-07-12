@@ -5,6 +5,7 @@ package com.tgac.logic.goals.optimizer;
 
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Substitutions;
+import java.util.function.ToLongFunction;
 
 /**
  * The capability interface of the narrowing/widening taxonomy: leaves declare
@@ -27,7 +28,7 @@ public interface Bounded {
 	 * forever — monotone). Must stay O(walk)-class; store-level trials belong
 	 * to the probe pass, not pricing.
 	 */
-	static Goal of(java.util.function.ToLongFunction<Substitutions> order, Goal goal) {
+	static Goal of(ToLongFunction<Substitutions> order, Goal goal) {
 		return BoundedGoal.of(order, goal);
 	}
 }

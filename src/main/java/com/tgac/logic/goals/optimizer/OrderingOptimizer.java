@@ -3,11 +3,11 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: Sorts barrier-delimited conjunction segments by ascending order (max
 // ABOUTME: answers), pricing and rebuilding the tree in one bottom-up traversal.
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.NamedGoal;
-import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Substitutions;
 import java.util.ArrayList;
 import java.util.Comparator;
