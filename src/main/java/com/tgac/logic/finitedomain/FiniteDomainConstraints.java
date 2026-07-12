@@ -191,17 +191,20 @@ class FiniteDomainConstraints implements ConstraintStore,
 	/**
 	 * This store's propagation loop: one iteration is one term whose watchers
 	 * re-examine; verdict updates discover further terms. The loop is the
-	 * checked {@link MonotoneDrain}: the store is the descending state
-	 * (domains narrow, subsumption discharges propagators), a failing update
-	 * transitions to ⊥ and short-circuits, and a step that discovers work
-	 * without strictly descending — the wake-on-narrowing divergence — throws
-	 * instead of looping. Synchronous, so the whole cascade stays one fiber
-	 * step; a store hosting expensive propagators would use the fibered
+	 * unchecked {@link MonotoneDrain}: the store is the descending state
+	 * (domains narrow, subsumption discharges propagators) and a failing
+	 * update transitions to ⊥, short-circuiting the drain — but the
+	 * contraction laws hold by construction, not verification:
+	 * {@link DomainUpdate} couples re-examination to strict narrowing
+	 * (DomainUpdateContractTest pins it), so the per-step leq/equals sweeps
+	 * of the checked twin would verify what the toolkit cannot express
+	 * violating. Synchronous, so the whole cascade stays one fiber step; a
+	 * store hosting expensive propagators would use the fibered
 	 * {@code Worklist} twin instead — granularity is the store author's choice.
 	 */
 	private Fiber<Revision> cascade(Package state, FiniteDomainConstraints start,
 			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
-		FiniteDomainConstraints factor = MonotoneDrain.drain(start, queue, (current, next) -> {
+		FiniteDomainConstraints factor = MonotoneDrain.drainUnsafe(start, queue, (current, next) -> {
 			FiniteDomainConstraints stepped = current;
 			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
 			for (Propagator p : stepped.constraints.toJavaList()) {
