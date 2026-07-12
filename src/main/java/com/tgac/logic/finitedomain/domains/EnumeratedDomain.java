@@ -19,20 +19,21 @@ import lombok.Value;
 public class EnumeratedDomain<T> extends Domain<T> {
 	Array<Arithmetic<T>> elements;
 
-	public static <T> EnumeratedDomain<T> of(Iterable<Arithmetic<T>> e) {
-		return new EnumeratedDomain<>(Array.ofAll(e));
+	/** Canonical: an empty argument is the Empty domain, one element a Singleton. */
+	public static <T> Domain<T> of(Iterable<Arithmetic<T>> e) {
+		return normalized(Array.ofAll(e));
 	}
 
-	public static EnumeratedDomain<Long> range(Long start, Long endExclusive) {
-		return new EnumeratedDomain<>(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
+	public static Domain<Long> range(Long start, Long endExclusive) {
+		return normalized(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
 	}
 
-	public static EnumeratedDomain<Integer> range(int start, int endExclusive) {
-		return new EnumeratedDomain<>(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
+	public static Domain<Integer> range(int start, int endExclusive) {
+		return normalized(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
 	}
 
-	public static EnumeratedDomain<BigInteger> range(BigInteger start, BigInteger endExclusive) {
-		return new EnumeratedDomain<>(
+	public static Domain<BigInteger> range(BigInteger start, BigInteger endExclusive) {
+		return normalized(
 				Iterator.iterate(start, i -> i.add(BigInteger.ONE))
 						.takeWhile(v -> v.compareTo(endExclusive) < 0)
 						.map(Arithmetic::of)
@@ -73,7 +74,7 @@ public class EnumeratedDomain<T> extends Domain<T> {
 		return result.isEmpty() ? Empty.instance() :
 				result.size() == 1 ?
 						Singleton.of(result.get(0)) :
-						EnumeratedDomain.of(result);
+						new EnumeratedDomain<>(result);
 	}
 
 	@Override
@@ -134,6 +135,6 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public String toString() {
-		return "[" + min().getValue() + " … " + max().getValue() + "]";
+		return elements.isEmpty() ? "[]" : "[" + min().getValue() + " … " + max().getValue() + "]";
 	}
 }

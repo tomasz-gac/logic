@@ -1,11 +1,12 @@
 package com.tgac.logic.finitedomain.domains;
 
+import com.tgac.logic.finitedomain.Domain;
 import io.vavr.collection.Array;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 public class EnumeratedDomainTest {
-	private static final EnumeratedDomain<Integer> INTERVAL =
+	private static final Domain<Integer> INTERVAL =
 			EnumeratedDomain.of(Array.of(2, 3, 5).map(Arithmetic::of));
 
 	@Test
