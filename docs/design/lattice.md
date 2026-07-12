@@ -96,6 +96,105 @@ nothing; this is our negative witness alongside Neq.
   - plan-cache subsumption over the adornment lattice (and over region
     keys if TCLP lands — same interface, same move as TCLP stage 1→2).
 
+## 3a. The operators — the kernel's functions have literature names
+
+The instances are the nouns; the kernel's moving parts are the verbs, and
+they are all one kind of verb: functions over lattices constrained by the
+order. The vocabulary (each name buys its theorem):
+
+- **monotone**: `x ⊑ y ⇒ f(x) ⊑ f(y)` — the minimum for any of this to work.
+- **deflationary** (reductive): `f(x) ⊑ x` — only shrinks. Mirror:
+  **inflationary** (extensive), `f(x) ⊒ x` — only grows.
+- **closure operator**: monotone + inflationary + idempotent. "Propagate to
+  quiescence" IS applying one; AC-3 computes one. The lattice cousin of the
+  Kleene star (§5a): `fix(f)` is `f*`, iterate-until-stable.
+- **chaotic iteration** (Cousot & Cousot): a finite family of monotone
+  deflationary functions applied in any fair order reaches the same greatest
+  fixpoint. This is the "agenda order can't change answers" freedom of §3,
+  with a citation — and it is exactly what `MonotoneDrain` (functional's
+  `algebra`) mechanizes: its two per-step checks are "deflationary" and
+  "strict-descent-or-stop" enforced pointwise.
+- **ask/tell** (Saraswat's concurrent constraint programming): agents over a
+  store lattice built from two primitives — tell (add information: our
+  `Prefix`/`resolve`) and ask (block until the store entails a condition:
+  our ripeness). CCP's semantics: agents denote closure operators; asks must
+  be upward-closed or scheduling leaks into meaning. A finitely-expressible
+  ask is a principal filter — "everything ⊒ this threshold" — which is why
+  suspension ripeness wants a threshold vocabulary, not a predicate.
+  Modern kin: LVars (monotone writes, threshold reads — deterministic
+  parallelism because monotone) and Radul–Sussman propagator networks.
+
+The kernel's types, mapped:
+
+| kernel | operator |
+|---|---|
+| `Propagator` body's own-factor action | deflationary monotone endofunction on the store; the cascade composes a family to their common fixpoint — the closure |
+| `Revision` (own-factor swap, descending) | one application, observed at the store boundary; `fail` = the map to ⊥ |
+| `Suspension` | an ask: an upward-closed condition plus the agent released when the store enters it |
+| `MonotoneDrain` | the chaotic-iteration engine, generic over `MeetSemilattice & Bottomed` |
+| propagate-to-quiescence | the closure operator |
+
+The caveat that keeps this honest: `Propagator` is not literally `L → L` —
+the algebraic core rides inside a protocol carrying effects (inferred
+prefixes, runs: a writer-monoid on the side) and lifecycle (`keep`,
+`subsumed`). The operator view captures the termination-relevant
+projection, which is the projection the theorems are about; custody is the
+protocol's business (constraint-kernel.md §3).
+
+**The placement rule** (where algebra goes, decided by what a thing is):
+
+- **Data becomes algebraic.** Knowledge carriers — domains, record sets,
+  domain maps, answer sets — implement the interface: they ARE lattice
+  elements, their equality is knowledge equality, their laws are checked by
+  the gate. Test: entailment between two values means something (TCLP could
+  compare them).
+- **Control gets its ARGUMENTS parameterized, for free theorems.** Loops,
+  parked continuations, wake indexes are not lattice elements — a set of
+  closures is only trivially a set, and dressing bookkeeping as algebra is
+  fabrication (the `Revision.combine` trap). Instead their argument types
+  carry the bounds: `MonotoneDrain`'s `S extends MeetSemilattice & Bottomed`
+  buys termination; ripeness-as-threshold buys fire-once soundness and
+  scheduler independence; `Reductor` bounds a body. The theorem arrives
+  through the parameter, not through an `implements` on the control
+  structure.
+
+- **Free syntax gets its laws checked against a supplied equivalence.** A
+  third case, neither data nor control: goal trees are free algebra terms
+  whose laws hold not on the syntax (no decidable equality) but on its
+  denotation — the quotient by observational equivalence (same answers, all
+  states). Annotating the syntax with equality-based laws is impossible;
+  bounding arguments misses the structure. The correct instrument is
+  Eq-parameterized law kits: check the axioms against the quotient's
+  equality, sampled by solving. Consumers act by HOMOMORPHISM — the pricing
+  pass is a semiring homomorphism from goal trees to `SATURATING`, which is
+  why law-checking the count model was ever evidence about goal reordering:
+  homomorphisms out of free syntax transport the laws. Note the ⊕ fragment
+  is a join-semilattice only in the idempotent quotient (set-of-answers) —
+  which is what tabling's duplicate check imposes; under multiset semantics
+  (the counting semiring, the untabled engine) ⊕ is only a commutative
+  monoid. "Are goals a join-lattice" and "which semiring runs the search"
+  are the same question.
+
+One test distinguishes the cases: ask what `equals` should mean. If two
+values with the same content must be the same knowledge (Neq's record sets),
+it is data — annotate it. If equality is identity of parked behavior
+(suspensions), it is control — bound its arguments. If equality is
+observational, it is free syntax — quotient, Eq-parameterized laws,
+homomorphic consumers.
+
+Deferred, with triggers:
+- **`Reductor<L>`** (`f(x) ⊑ x`, monotone) plus a sample-chain law kit, so a
+  new propagator body can be law-tested at the desk before wiring into a
+  store — the mulIntervals sign-guard bug was a monotonicity violation, and
+  this is the cheap net for the next one. Trigger: the next propagator or
+  store author.
+- **Algebraic ripeness**: replace `Suspension`'s `Predicate<Substitutions>`
+  with the threshold vocabulary (per-term instantiation degrees, positive
+  combinations only) — monotonicity and NAF-exclusion by construction, the
+  watched/condition coupling collapses into one value. Trigger: the second
+  ripeness author (freeze, width-gated labelling, or the aggregate
+  completion gate — the last has a live soundness caveat attached).
+
 ## 4. The capability ladder (from `optimizer.md` §5c)
 
 Stores opt in per tier; FD is the model organism implementing all of them:
@@ -191,6 +290,66 @@ annotation family (Barrier = don't move; Bounded = here's my price;
 dom = defer this disjunction; tabled = fold and share this subtree) —
 the user licenses folds, the optimizer only schedules and prices them.
 
+**The mode framing (July 2026).** Search and optimization are the engine's
+primary modes; constraints, tabling and aggregation are three converters
+performing one move — reify search into data where operations are cheaper.
+Constraints convert PROSPECTIVELY (compress branching into a lattice value
+before it spawns; meet kills branches unborn), tabling RETROSPECTIVELY
+(freeze a completed sub-search into an answer table; lookup replaces
+re-search), aggregation WHOLESALE (reflect a sub-search into one value).
+Three consequences that were separate facts:
+
+- **Barriers are conversion boundaries.** A tabled call prices ∞ because it
+  is MID-CONVERSION — neither searchable nor readable; the immovability
+  transition (∞ → exact at completion) is the conversion completing. The
+  accounting identity at the other boundary: order(forcing) = width = split
+  arity — the semiring's count and the lattice's measure are one number
+  read from opposite sides of a data→search conversion.
+- **TCLP is a coherence requirement, not a feature.** If converters compose
+  with search, `table(constrain(g))` must work; today it is the hole —
+  tabling a constrained goal loses the residue. TCLP is the closure of the
+  conversion move under composition (answers = (tuple, residue) pairs, data
+  paired with data); the antichain gate is the demand that composed data
+  stay finitely latticed.
+- **Conversion is partial, so search stays primary.** Infinite relations do
+  not complete, unbounded variables do not domainify; flounders and
+  permanent barriers are where conversion fails and search carries it. The
+  claim is never "data replaces search" — it is that the optimizer's job is
+  CHOOSING THE MODE, and the converters are what give it a choice.
+
+**The triad.** Search executes — the only part that produces answers;
+everything else exists to make it do less. Optimization speculates — it
+never runs the program, it runs cheap previews of it (a price is a preview
+by counting; the {0,1} probe is a preview by rehearsal; a shadow, if ever
+built, is a bigger rehearsal) and reorders the real run by what they say.
+Converters persist the speculation — and that is what data IS:
+
+| the thing | what it actually is |
+|---|---|
+| a price | a speculation too cheap to keep — computed, used for one sort, gone |
+| a domain | a persisted speculation — the shadow of an enumeration nobody ran |
+| a completed table | a speculation run to certainty, frozen |
+
+Not three kinds of thing: one thing — knowledge about a search that has not
+happened (or will not happen again) — at three durabilities. The framing
+pays for itself by explaining three design facts with one principle: prices,
+domains and tables all live in lattices because a persisted preview is only
+usable if it stays true while the real run proceeds — it must move one-way
+or it lies (the direction principle, §5); a barrier is speculation IN
+PROGRESS — a mid-fill table is a preview that cannot be read yet, so it
+prices ∞ and holds position; and the optimizer is entitled to read stores
+(the `answers(Package)` widening) because store data is congealed
+speculation — a domain's width is the preview of an enumeration, exactly
+the optimizer's diet. At a disjunction the optimizer's choices are then
+three verbs, all priceable in its own arithmetic: SEARCH IT (fork, the
+tail's order multiplies by the arity), IT IS DATA (a dom — a meet), or
+SHADOW IT (§5c: excursion the disjuncts, post their join now, defer the
+fork to the cheap end — declared like every fold, never inferred). The
+boundary that keeps this honest: "optimization speculates" names the
+architecture, not the current depth — today's abstract preview is counts
+with ∞, the rehearsal previews are one tiny probe; the triad says where
+each future instrument belongs, not that it is built.
+
 ## 5b. Beyond the fold: infinite knowledge, residuation, AI-widening
 
 The fold story covers only the FINITE fragment. `dom(x, 1..5)` is a
@@ -226,6 +385,79 @@ wrong-only-slow). TERMINOLOGY LANDMINE: this is NOT the goal taxonomy's
 "widening" (branch-creating goals) — an unlucky collision with a
 standard term; call the operator AI-widening wherever both could be
 meant.
+
+## 5c. Speculation — computing ahead of certainty
+
+Two distinct speculations, one lattice discipline; both are "reading
+mid-conversion" in §5a's terms.
+
+**Speculating on INCOMPLETE data** (the join-side systems: Bellman-Ford's
+label-correcting, semi-naive deltas, CRDTs, LVars; CALM: coordination-free
+⟺ monotone). If all updates are monotone, intermediate states are never
+wrong, only incomplete — so compute on them: safe reads are UPWARD-CLOSED
+questions (threshold reads — our ripeness, the ground-cache, a tabling
+consumer's answer index, a stale FD width as a price: all shipped);
+self-correcting work publishes provisional values and improves them
+monotonically. We run the safe-read half everywhere and none of the
+self-correcting half — an answer emitted is final, an incomplete table is a
+barrier. Failure modes, exactly four: non-monotone reads of provisional
+data (negation, count-before-complete — Aggregate's caveat); premature
+commitment (Dijkstra's label-setting is legal only under superiority —
+Sobrinho's `a ⊕ (a⊗b) = a`; one negative edge and it silently lies while
+label-correcting still converges); deletion (monotone systems can't take
+back — DRed/counting, tombstones); non-idempotent ⊕ (at-least-once safety
+dies — counting double-counts what a join would absorb). The
+self-correcting half becomes available exactly in semiring tabling: min-plus
+cells could publish provisional bounds, sound as prices before completion —
+completion needed for final exactness, not for safety.
+
+**Speculating on HYPOTHESES** (excursions: shaving / singleton arc
+consistency / probing; constructive disjunction). Joins combine
+ALTERNATIVES where meets combine certainties — run join-propagation within
+one world and chaotic iteration terminates at ⊤, vacuous; joins need worlds
+to range over. So manufacture them: hypothesize `x=v`, propagate a scratch
+package. What may cross back is derivable: a ⊥ excursion exports a certain
+refutation (meet `x≠v` into the real store); a surviving excursion exports
+NOTHING (propagation is incomplete — "didn't fail" is not "consistent");
+a COMPLETE alternative set exports the JOIN of its surviving worlds — the
+weakest common consequence, constructive disjunction's harvest. Failure
+modes: exporting a survival; joining over a non-covering set; hull widening
+(sound, lossy — exact `Union` spares us where interval solvers pay);
+unbudgeted cost (shaving is width × propagation); and the sandbox boundary
+IS the data/search boundary — an excursion that would fire a suspension has
+left the pure fragment and must stop. Shipped instances of the refutation
+half, unnamed until now: Disequality's trial unification (why raw `unify`
+is legal there and nowhere else) and `UnifyGoal`'s {0,1} pricing probe.
+Persistent packages make sandboxes free — no trail, no undo, drop the
+scratch world. The join half is a fourth converter — a disjunction's data
+shadow extracted without forking — and `Domain implements JoinSemilattice`
+(join = union, exact) is its one-law-test prerequisite, gated on
+constructive disjunction being wanted.
+
+**Excursions, plainly, and where they fit.** The idea in one line: make a
+guess, try it in a throwaway copy, and the only things allowed out are
+failures (a guess that dies is dead for real) and unanimity (what every
+alternative's world agrees on is true without choosing). The niche is
+exact: STRONGER THAN PROPAGATION, CHEAPER THAN BRANCHING — the move for
+when propagation plateaus but forking is expensive. The industrial record
+says the niche is real: SAT's failed-literal probing (every serious
+preprocessor), MIP's probing and strong branching (the heuristic flavor —
+excursions scored to pick the branch variable, no soundness export at all,
+and a pillar of why modern MIP works), job-shop shaving (Carlier–Pinson
+time-window tightening), Sudoku's Nishio. Relation to DP, since the two
+keep being confused: both are ONE move — enumerate alternatives, evaluate
+each in its own world, fold the outcomes with an operator — at different
+throttles. Full depth + memoize the fold as THE ANSWER = DP (the
+100%-converted endpoint of the spectrum). One ply + discard, fold kept only
+as a tightening = excursion. Ordinary search sits between. They merge in
+semiring tabling's label-correcting future: a cell publishing provisional
+bounds is DP becoming readable mid-flight, exactly as an excursion's join
+is. Where it fits HERE: the refutation micro-instances are shipped (trial
+unification, the pricing probe); the optimizer's use is the SHADOW verb
+(§5a triad — excursion a disjunction now, defer its fork to the cheap
+end); the full mechanism (shaving, constructive disjunction) is gated on a
+workload that needs it — our FD problems are small and propagation
+suffices, so the door is documented, not built.
 
 ## 6. Adoption sketch (not scheduled)
 

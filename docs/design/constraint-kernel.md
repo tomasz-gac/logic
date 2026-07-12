@@ -122,6 +122,36 @@ Suspension conditions in a store's own language (domain-shaped ripeness —
 adaptive labelling, guarded statement, prune-to-enumerate handovers) are
 propagators whose updates emit suspensions: private trigger, same lane.
 
+**Shelved: Neq on the verdict protocol.** Neq's records are propagators in
+disguise — `verificationStep`'s three outcomes are, case for case,
+`subsumed` (trial unification fails: the record can never be violated,
+forget it), `fail` (empty delta: violated), and `update` (non-empty delta:
+replace the record with its residual), with `keep` as the degenerate
+equal-residual update. `verifyAndSimplify` is a hand-rolled
+`examine`/`consume` sweep encoding those verdicts through nested `Option` —
+two semantically different `None`s in one channel is the store's one
+genuinely cryptic spot. Rewriting Neq on the toolkit would name the
+verdicts, unify the propagation vocabulary across both stores, and open
+watch-based waking (re-verify only records watching a bound variable,
+instead of wholesale on every binding — the only real performance headroom
+here). The cost is the reason it is shelved: `Verdict`/`Update` are
+FD-private by the lineage decision above (demoted from the driver boundary
+when the audit found zero cross-domain traffic), and Neq would be the first
+second user — promoting the toolkit to `constraints/store` is a framework
+decision, not a store-local edit. Wholesale re-verification is also cheap at
+Neq's record counts, so the watch payoff is speculative. Revisit when a
+third store wants the toolkit or Neq shows up in a profile.
+
+Related, subsumed by the above: normalize-at-meet (maintain the store as a
+canonical antichain — union + subsumption-prune at every entry point instead
+of display-time `removeSubsumed`). Assessed and declined on its own: revise
+already prunes satisfied records, rewrites survivors to residuals, and
+merges equal residuals via set identity; the remaining gap (coexisting
+strict-inclusion records) is a rare statement-time artifact. Its one live
+payoff — the Smyth-order `leq` ("every record of B has a stronger
+representative in A"), the honest `entails` — belongs to TCLP and should be
+built with it.
+
 ## 5. Structure has one owner
 
 `MiniKanren` defines what structure is. Three verbs, one decomposition:
@@ -166,7 +196,8 @@ narrowing vocabulary, engine-level fixpoint unification
 (`fixpoint-machine.md` §4/§9). Deliberately deferred: `Lattice<L>` (adoption
 not rewrite, when a customer exists), representation swaps
 (`substitutions-migration.md` §5, benchmark-gated), TCLP
-(`tabled-constraints.md`, entailment-gated).
+(`tabled-constraints.md`, entailment-gated), Neq on the verdict protocol
+(§4 — gated on a third toolkit user or a profile showing Neq).
 
 The composition model in two rules, kept from the capability design: (B) domains
 couple to shared concepts, never to each other by name; (C) custody transfer,
