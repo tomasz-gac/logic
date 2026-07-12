@@ -287,7 +287,14 @@ forks. Statuses: SHIPPED / NEXT / QUEUED / GATED / PARKED.
     Apache 2.0 decision; public-API vocabulary pass (front door says
     match/solve/explain); FD javadoc.
 
-**Parked, deliberately**: cut/`once`/`ifte` (wants its own design
+**Parked, deliberately**: propagation strategy knob (July 2026 — naive
+while-loop / fiber-sequential / fiber-concurrent): store-level forking
+alone is 2–3 units (built on the jacobi branch, verified equivalent,
+reverted); real parallelism is STORE-INTERNAL (a cascade forking its
+propagators via Folds.forkAll) — and once stores have it, a sequential
+outer chain actively fights it, so the outer strategy must be chosen
+WITH the inner one. Revisit when a store forks its cascade; the
+primitives (forkAll, foldChained, Worklist monotone) are ready; cut/`once`/`ifte` (wants its own design
 conversation); domainify as a pass (manual idiom only); quantales;
 bilattices/negation; virtual-threads engine (separate module,
 `virtual-threads-engine.md`); representation swaps (benchmark-gated,
