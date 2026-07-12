@@ -11,6 +11,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.tabling.Tabling;
@@ -63,9 +64,9 @@ public class OrderingOptimizerTest {
 
 	@Test
 	public void saturationClampsAndZeroAnnihilates() {
-		assertThat(OrderingOptimizer.times(Long.MAX_VALUE / 2, 3)).isEqualTo(Long.MAX_VALUE);
-		assertThat(OrderingOptimizer.plus(Long.MAX_VALUE, 1)).isEqualTo(Long.MAX_VALUE);
-		assertThat(OrderingOptimizer.times(0, Long.MAX_VALUE)).isEqualTo(0);
+		assertThat(Semirings.SATURATING.times(Long.MAX_VALUE / 2, 3L)).isEqualTo(Long.MAX_VALUE);
+		assertThat(Semirings.SATURATING.plus(Long.MAX_VALUE, 1L)).isEqualTo(Long.MAX_VALUE);
+		assertThat(Semirings.SATURATING.times(0L, Long.MAX_VALUE)).isEqualTo(0);
 	}
 
 	@Test

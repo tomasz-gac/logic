@@ -3,6 +3,7 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: Sorts barrier-delimited conjunction segments by ascending order (max
 // ABOUTME: answers), pricing and rebuilding the tree in one bottom-up traversal.
 
+import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Conjunction;
@@ -114,36 +115,18 @@ public class OrderingOptimizer extends CascadingOptimizer {
 	}
 
 	private static long productOf(List<Priced> ps) {
-		long order = 1L;
+		long order = Semirings.SATURATING.one();
 		for (Priced p : ps) {
-			order = times(order, p.getOrder());
+			order = Semirings.SATURATING.times(order, p.getOrder());
 		}
 		return order;
 	}
 
 	private static long sumOf(List<Priced> ps) {
-		long order = 0L;
+		long order = Semirings.SATURATING.zero();
 		for (Priced p : ps) {
-			order = plus(order, p.getOrder());
+			order = Semirings.SATURATING.plus(order, p.getOrder());
 		}
 		return order;
-	}
-
-	static long times(long a, long b) {
-		if (a == 0 || b == 0) {
-			return 0;
-		}
-		if (a == Long.MAX_VALUE || b == Long.MAX_VALUE) {
-			return Long.MAX_VALUE;
-		}
-		return a > Long.MAX_VALUE / b ? Long.MAX_VALUE : a * b;
-	}
-
-	static long plus(long a, long b) {
-		if (a == Long.MAX_VALUE || b == Long.MAX_VALUE) {
-			return Long.MAX_VALUE;
-		}
-		long s = a + b;
-		return s < 0 ? Long.MAX_VALUE : s;
 	}
 }
