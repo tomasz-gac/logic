@@ -4,6 +4,7 @@ import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
+import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Revision;
@@ -13,15 +14,16 @@ import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
+import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class NeqConstraints implements ConstraintStore {
-	public static final NeqConstraints EMPTY = NeqConstraints.of(List.empty());
-	List<NeqConstraint> constraints;
+class NeqConstraints implements ConstraintStore, MeetSemilattice<NeqConstraints> {
+	public static final NeqConstraints EMPTY = NeqConstraints.of(LinkedHashSet.empty());
+	LinkedHashSet<NeqConstraint> constraints;
 
 	private static ConstraintStore empty() {
 		return EMPTY;
@@ -32,7 +34,18 @@ class NeqConstraints implements ConstraintStore {
 	}
 
 	public static List<NeqConstraint> getConstraints(Package p) {
-		return get(p).getConstraints();
+		// newest-first, the iteration order reify has always rendered
+		return get(p).getConstraints().toList().reverse();
+	}
+
+	/**
+	 * More records = more known: meet is record union, so the derived leq is
+	 * record superset. The store is a set semantically — revise re-verifies
+	 * wholesale and subsumption prunes — so union is exact, not a widening.
+	 */
+	@Override
+	public NeqConstraints meet(NeqConstraints other) {
+		return NeqConstraints.of(constraints.addAll(other.constraints));
 	}
 
 	public static Package register(Package a) {
@@ -51,7 +64,7 @@ class NeqConstraints implements ConstraintStore {
 
 	@Override
 	public ConstraintStore prepend(Stored c) {
-		return NeqConstraints.of(constraints.prepend((NeqConstraint) c));
+		return NeqConstraints.of(constraints.add((NeqConstraint) c));
 	}
 
 	@Override
@@ -67,8 +80,8 @@ class NeqConstraints implements ConstraintStore {
 
 	@Override
 	public Fiber<Revision> revise(Prefix prefix, Package state) {
-		return Fiber.done(Disequality.verifyAndSimplify(constraints, state.substitution())
-				.map(c -> (Revision) Revision.updated(NeqConstraints.of(c)))
+		return Fiber.done(Disequality.verifyAndSimplify(constraints.toList(), state.substitution())
+				.map(c -> (Revision) Revision.updated(NeqConstraints.of(LinkedHashSet.ofAll(c))))
 				.getOrElse(Revision::fail));
 	}
 
