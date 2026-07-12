@@ -8,6 +8,7 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Substitutions;
+import io.vavr.collection.LinkedHashMap;
 import java.util.function.ToLongFunction;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -15,7 +16,7 @@ import lombok.Value;
 @Value
 @RequiredArgsConstructor(staticName = "of")
 class BoundedGoal implements Goal, Bounded {
-	ToLongFunction<Substitutions> order;
+	ToLongFunction<Package> order;
 	Goal goal;
 
 	@Override
@@ -25,7 +26,13 @@ class BoundedGoal implements Goal, Bounded {
 
 	@Override
 	public long answers(Substitutions s) {
-		return order.applyAsLong(s);
+		// the blind view is a store-less package
+		return order.applyAsLong(Package.of(s, LinkedHashMap.empty()));
+	}
+
+	@Override
+	public long answers(Package p) {
+		return order.applyAsLong(p);
 	}
 
 	@Override

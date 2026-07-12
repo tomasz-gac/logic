@@ -40,6 +40,15 @@ public interface Bounded {
 	 * to the probe pass, not pricing.
 	 */
 	static Goal of(ToLongFunction<Substitutions> order, Goal goal) {
+		return BoundedGoal.of(p -> order.applyAsLong(p.substitution()), goal);
+	}
+
+	/**
+	 * Wrap a goal with a PACKAGE-SIGHTED order: same contract as the
+	 * substitution variant plus read access to store knowledge (live domains,
+	 * table state). Still O(walk)-class — store lookups, never store trials.
+	 */
+	static Goal sighted(ToLongFunction<Package> order, Goal goal) {
 		return BoundedGoal.of(order, goal);
 	}
 }

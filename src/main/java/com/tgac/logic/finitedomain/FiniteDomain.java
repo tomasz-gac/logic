@@ -10,6 +10,7 @@ import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
@@ -34,7 +35,7 @@ import lombok.Value;
 public class FiniteDomain {
 
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
-		return Bounded.of(s -> domOrder(s, u, d), fdGoal()
+		return Bounded.sighted(p -> domOrder(p, u, d), fdGoal()
 				.and(applyDom(u, d))
 				.named(pkg -> pkg.format(u) + " ⊂ " + pkg.format(d)));
 	}
@@ -45,9 +46,17 @@ public class FiniteDomain {
 	 * collapse, narrowed for a strict narrowing.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	private static long domOrder(Substitutions s, Term<?> u, Domain<?> d) {
-		Term<?> w = s.walk(u);
-		return w.asVal().isDefined() ? (((Domain) d).contains(w.get()) ? 1 : 0) : 1;
+	private static long domOrder(Package p, Term<?> u, Domain<?> d) {
+		Term<?> w = p.substitution().walk(u);
+		if (w.asVal().isDefined()) {
+			return ((Domain) d).contains(w.get()) ? 1 : 0;
+		}
+		// open variable: a live store domain disjoint with the post is failure now
+		boolean deadPost = p.getStores().get(FiniteDomainConstraints.class)
+				.map(FiniteDomainConstraints.class::cast)
+				.flatMap(store -> store.getDomain((LVar) w.asVar().get()))
+				.exists(existing -> ((Domain) existing).isDisjoint((Domain) d));
+		return deadPost ? 0 : 1;
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
