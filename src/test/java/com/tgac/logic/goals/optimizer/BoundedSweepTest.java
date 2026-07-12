@@ -113,6 +113,22 @@ public class BoundedSweepTest {
 				.solve(x3, new OrderingOptimizer()).count()).isEqualTo(N);
 	}
 
+	@Test
+	public void deadPostsPriceZeroAndKillTheirSegments() {
+		Goal[] dead = {
+				FiniteDomain.dom(lval(5L), EnumeratedDomain.range(0L, 3L)),
+				FiniteDomain.leq(lval(5L), lval(2L)),
+				FiniteDomain.<Long> separate(lval(1L), lval(1L)),
+				Disequality.<Long> separate(lval(1L), lval(1L))};
+		for (Goal deadPost : dead) {
+			Unifiable<Long> x = lvar();
+			AtomicLong planned = new AtomicLong();
+			assertThat(oneOf(x, planned).and(deadPost)
+					.solve(x, new OrderingOptimizer()).count()).isZero();
+			assertThat(planned.get()).describedAs(deadPost.toString()).isZero();
+		}
+	}
+
 	private static Goal misOrdered(Unifiable<Long> x, Unifiable<Long> y, AtomicLong spawns) {
 		return oneOf(x, spawns).and(oneOf(y, spawns))
 				.and(FiniteDomain.dom(x, EnumeratedDomain.range(7L, 8L)))

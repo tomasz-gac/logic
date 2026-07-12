@@ -31,7 +31,11 @@ import java.util.stream.Stream;
 public class Disequality {
 
 	public static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return Bounded.of(1, a -> {
+		// self-pricing: the trial unification is separate's whole substitution-
+		// level semantics — an empty prefix means provably violated, order 0
+		return Bounded.of(s -> MiniKanren.unifyPrefix(s, lhs, rhs).get()
+				.map(prefix -> prefix.isEmpty() ? 0L : 1L)
+				.getOrElse(1L), a -> {
 			Package s = NeqConstraints.register(a);
 			// trial unification: the prefix IS the disequality's meaning — the exact
 			// simultaneous bindings that must never all hold

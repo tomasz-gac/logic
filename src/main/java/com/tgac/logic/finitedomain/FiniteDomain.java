@@ -1,5 +1,7 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.unification.Substitutions;
+import java.util.function.IntPredicate;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
@@ -32,7 +34,7 @@ import lombok.Value;
 public class FiniteDomain {
 
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
-		return Bounded.of(1, fdGoal()
+		return Bounded.of(s -> domOrder(s, u, d), fdGoal()
 				.and(applyDom(u, d))
 				.named(pkg -> pkg.format(u) + " ⊂ " + pkg.format(d)));
 	}
@@ -42,6 +44,22 @@ public class FiniteDomain {
 	 * FD factor, and route the outcome through the public entries — resolve for a
 	 * collapse, narrowed for a strict narrowing.
 	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static long domOrder(Substitutions s, Term<?> u, Domain<?> d) {
+		Term<?> w = s.walk(u);
+		return w.asVal().isDefined() ? (((Domain) d).contains(w.get()) ? 1 : 0) : 1;
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static long cmpOrder(Substitutions s, Term<?> l, Term<?> r, IntPredicate satisfied) {
+		Term<?> lw = s.walk(l);
+		Term<?> rw = s.walk(r);
+		if (lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get() instanceof Comparable) {
+			return satisfied.test(((Comparable) lw.get()).compareTo(rw.get())) ? 1 : 0;
+		}
+		return 1;
+	}
+
 	private static Goal applyDom(Term<?> target, Domain<?> d) {
 		return s -> DomainUpdate
 				.apply(s, FiniteDomainConstraints.getFDStore(s), s.walk(target), d)
@@ -126,27 +144,27 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
-		return Bounded.of(1, fdGoal()
+		return Bounded.of(s -> cmpOrder(s, less, more, c -> c <= 0), fdGoal()
 				.and(leqFD(less, more))
 				.named(pkg -> pkg.format(less) + " ≤ " + pkg.format(more)));
 	}
 
 	public static <T> Goal lss(Unifiable<T> less, Unifiable<T> more) {
-		return Bounded.of(1, fdGoal()
+		return Bounded.of(s -> cmpOrder(s, less, more, c -> c < 0), fdGoal()
 				.and(leqFD(less, more))
 				.and(separate(less, more))
 				.named(pkg -> pkg.format(less) + " < " + pkg.format(more)));
 	}
 
 	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
-		return Bounded.of(1, fdGoal()
+		return Bounded.of(s -> cmpOrder(s, more, less, c -> c > 0), fdGoal()
 				.and(leqFD(more, less))
 				.and(separate(more, less))
 				.named(pkg -> pkg.format(more) + " > " + pkg.format(less)));
 	}
 
 	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
-		return Bounded.of(1, fdGoal()
+		return Bounded.of(s -> cmpOrder(s, more, less, c -> c >= 0), fdGoal()
 				.and(leqFD(more, less))
 				.named(pkg -> pkg.format(more) + " ≥ " + pkg.format(less)));
 	}
@@ -325,7 +343,11 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {
-		return Bounded.of(1, fdGoal()
+		return Bounded.of(s -> {
+			Term<?> lw = s.walk(l);
+			Term<?> rw = s.walk(r);
+			return lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get().equals(rw.get()) ? 0 : 1;
+		}, fdGoal()
 				.and(separateFDC(l, r))
 				.named(pkg -> pkg.format(l) + " ≠_fd " + pkg.format(r)));
 	}

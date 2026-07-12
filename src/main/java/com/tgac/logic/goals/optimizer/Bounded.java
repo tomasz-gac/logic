@@ -18,6 +18,16 @@ public interface Bounded {
 
 	/** Wrap a goal with a declared constant order — the retrofit for opaque factories. */
 	static Goal of(long order, Goal goal) {
+		return BoundedGoal.of(s -> order, goal);
+	}
+
+	/**
+	 * Wrap a goal with a SELF-PRICING order: the goal's own substitution-level
+	 * decision fragment, run at pricing time (failure found there is failure
+	 * forever — monotone). Must stay O(walk)-class; store-level trials belong
+	 * to the probe pass, not pricing.
+	 */
+	static Goal of(java.util.function.ToLongFunction<Substitutions> order, Goal goal) {
 		return BoundedGoal.of(order, goal);
 	}
 }

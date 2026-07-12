@@ -8,13 +8,14 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Substitutions;
+import java.util.function.ToLongFunction;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
 class BoundedGoal implements Goal, Bounded {
-	long order;
+	ToLongFunction<Substitutions> order;
 	Goal goal;
 
 	@Override
@@ -24,7 +25,7 @@ class BoundedGoal implements Goal, Bounded {
 
 	@Override
 	public long answers(Substitutions s) {
-		return order;
+		return order.applyAsLong(s);
 	}
 
 	@Override
