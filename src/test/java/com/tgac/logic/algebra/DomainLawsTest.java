@@ -4,6 +4,7 @@ package com.tgac.logic.algebra;
 // ABOUTME: own samples — claimed via @LawsFor for the coverage gate.
 
 import com.tgac.functional.algebra.laws.BottomedLaws;
+import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.finitedomain.Domain;
@@ -16,10 +17,16 @@ import com.tgac.logic.finitedomain.domains.Union;
 import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.List;
+import org.junit.AfterClass;
 import org.junit.Test;
 
 @LawsFor({EnumeratedDomain.class, Interval.class, Singleton.class, Union.class, Empty.class})
 public class DomainLawsTest {
+
+	@AfterClass
+	public static void lawClaimsExercised() {
+		LawCoverage.verifyClaimsExercised(DomainLawsTest.class);
+	}
 
 	private static void laws(List<Domain<Long>> featured) {
 		SemilatticeLaws.checkMeet(featured);
