@@ -70,21 +70,31 @@ class FiniteDomainConstraints implements ConstraintStore,
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public FiniteDomainConstraints meet(FiniteDomainConstraints other) {
+		if (isBottom() || other.isBottom()) {
+			return BOTTOM;
+		}
 		LinkedHashMap<LVar<?>, Domain<?>> met = domains;
 		for (Tuple2<LVar<?>, Domain<?>> entry : other.domains) {
 			Domain<?> mine = met.get(entry._1).getOrNull();
-			met = met.put(entry._1, mine == null ? entry._2
-					: (Domain<?>) ((Domain) mine).meet((Domain) entry._2));
-		}
-		if (met.values().exists(Domain::isBottom)) {
-			return BOTTOM;
+			Domain<?> narrowed = mine == null ? entry._2
+					: (Domain<?>) ((Domain) mine).meet((Domain) entry._2);
+			if (narrowed.isBottom()) {
+				return BOTTOM;
+			}
+			met = met.put(entry._1, narrowed);
 		}
 		return new FiniteDomainConstraints(met, constraints.intersect(other.constraints));
 	}
 
+	/**
+	 * Identity against the canonical instance: a live store never holds an
+	 * empty domain ({@link DomainUpdate} fails before storing one, and meet
+	 * short-circuits to {@link #BOTTOM}), so the dead store has exactly one
+	 * representative.
+	 */
 	@Override
 	public boolean isBottom() {
-		return domains.values().exists(Domain::isBottom);
+		return this == BOTTOM;
 	}
 
 	@Override
