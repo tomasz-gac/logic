@@ -3,7 +3,6 @@ package com.tgac.logic.separate;
 import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.MiniKanren.applyOnBoth;
-import static com.tgac.logic.unification.MiniKanren.format;
 import static com.tgac.logic.unification.MiniKanren.walkAll;
 
 import com.tgac.functional.Exceptions;
@@ -13,11 +12,12 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
+import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 public class Disequality {
 
 	public static <T> Goal separate(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return a -> {
+		return Bounded.of(1, a -> {
 			Package s = NeqConstraints.register(a);
 			// trial unification: the prefix IS the disequality's meaning — the exact
 			// simultaneous bindings that must never all hold
@@ -42,7 +42,7 @@ public class Disequality {
 							Cont.<Package, Nothing> just(s.withStored(NeqConstraint.of(prefix.toMap()))))
 					// they cannot unify: already separate, nothing to record
 					.getOrElse(() -> Cont.just(s)));
-		};
+		});
 	}
 
 	public static <T> Goal separate(Unifiable<T> lhs, T rhs) {

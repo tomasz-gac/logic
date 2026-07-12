@@ -1,5 +1,6 @@
 package com.tgac.logic.constraints;
 
+import com.tgac.logic.goals.optimizer.Bounded;
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.logic.constraints.Propagation.resolve;
 
@@ -34,7 +35,7 @@ public class Constraints {
 		Goal goal = s -> Cont.defer(() -> MiniKanren.unifyPrefixUnsafe(s.substitution(), u, v)
 				.map(prefix -> resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
-		return goal.named(pkg -> pkg.format(u) + " ≣_nc " + pkg.format(v));
+		return Bounded.of(1, goal.named(pkg -> pkg.format(u) + " ≣_nc " + pkg.format(v)));
 	}
 
 	public static <T> Goal unify(Unifiable<T> u, T v) {

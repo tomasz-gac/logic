@@ -3,6 +3,7 @@ package com.tgac.logic.aggregate;
 // ABOUTME: Reflects a sub-search's solutions into a value — findall and its count/sum/max/min folds.
 // ABOUTME: Runs the goal to exhaustion, copies each answer, and yields one result to the continuation.
 
+import com.tgac.logic.goals.optimizer.Bounded;
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.unification.LVal.lval;
@@ -47,7 +48,7 @@ public class Aggregate {
 	 * into {@code result}, in the order the scheduler produces them.
 	 */
 	public static <T> Goal findall(Unifiable<T> template, Goal goal, Unifiable<LList<T>> result) {
-		return pkg -> k -> {
+		return Bounded.of(1, (Goal) pkg -> k -> {
 			Collection<Reified<T>> collected = new ConcurrentLinkedQueue<>();
 			return goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, template).apply(reified -> {
@@ -56,14 +57,14 @@ public class Aggregate {
 							}))
 					.flatMap(exhausted -> buildList(collected).flatMap(list ->
 							Constraints.unify(result, list).apply(pkg).apply(k)));
-		};
+		});
 	}
 
 	/**
 	 * Count the solutions of {@code goal}.
 	 */
 	public static Goal count(Goal goal, Unifiable<Integer> result) {
-		return pkg -> k -> {
+		return Bounded.of(1, (Goal) pkg -> k -> {
 			AtomicInteger n = new AtomicInteger(0);
 			return goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, lvar()).apply(reified -> {
@@ -71,7 +72,7 @@ public class Aggregate {
 								return done(nothing());
 							}))
 					.flatMap(exhausted -> Constraints.unify(result, lval(n.get())).apply(pkg).apply(k));
-		};
+		});
 	}
 
 	/**
@@ -102,7 +103,7 @@ public class Aggregate {
 			Integer initial,
 			IntBinaryOperator combine,
 			boolean failWhenEmpty) {
-		return pkg -> k -> {
+		return Bounded.of(1, (Goal) pkg -> k -> {
 			AtomicReference<Integer> acc = new AtomicReference<>(initial);
 			return goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, expr).apply(reified -> {
@@ -117,7 +118,7 @@ public class Aggregate {
 						}
 						return Constraints.unify(result, lval(total == null ? 0 : total)).apply(pkg).apply(k);
 					});
-		};
+		});
 	}
 
 	private static <T> Fiber<Unifiable<LList<T>>> buildList(Collection<Reified<T>> collected) {

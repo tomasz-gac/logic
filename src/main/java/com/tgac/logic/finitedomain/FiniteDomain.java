@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
@@ -31,9 +32,9 @@ import lombok.Value;
 public class FiniteDomain {
 
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(applyDom(u, d))
-				.named(pkg -> pkg.format(u) + " ⊂ " + pkg.format(d));
+				.named(pkg -> pkg.format(u) + " ⊂ " + pkg.format(d)));
 	}
 
 	/**
@@ -125,29 +126,29 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(leqFD(less, more))
-				.named(pkg -> pkg.format(less) + " ≤ " + pkg.format(more));
+				.named(pkg -> pkg.format(less) + " ≤ " + pkg.format(more)));
 	}
 
 	public static <T> Goal lss(Unifiable<T> less, Unifiable<T> more) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(leqFD(less, more))
 				.and(separate(less, more))
-				.named(pkg -> pkg.format(less) + " < " + pkg.format(more));
+				.named(pkg -> pkg.format(less) + " < " + pkg.format(more)));
 	}
 
 	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(leqFD(more, less))
 				.and(separate(more, less))
-				.named(pkg -> pkg.format(more) + " > " + pkg.format(less));
+				.named(pkg -> pkg.format(more) + " > " + pkg.format(less)));
 	}
 
 	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(leqFD(more, less))
-				.named(pkg -> pkg.format(more) + " ≥ " + pkg.format(less));
+				.named(pkg -> pkg.format(more) + " ≥ " + pkg.format(less)));
 	}
 
 	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
@@ -176,9 +177,9 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(addoFD(a, b, c))
-				.named(pkg -> pkg.format(a) + " + " + pkg.format(b) + " = " + pkg.format(c));
+				.named(pkg -> pkg.format(a) + " + " + pkg.format(b) + " = " + pkg.format(c)));
 	}
 
 	public static <T> Goal subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
@@ -228,9 +229,9 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(mulFD(a, b, c))
-				.named(pkg -> pkg.format(a) + " * " + pkg.format(b) + " = " + pkg.format(c));
+				.named(pkg -> pkg.format(a) + " * " + pkg.format(b) + " = " + pkg.format(c)));
 	}
 
 	public static <T> Goal divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {
@@ -324,9 +325,9 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(separateFDC(l, r))
-				.named(pkg -> pkg.format(l) + " ≠_fd " + pkg.format(r));
+				.named(pkg -> pkg.format(l) + " ≠_fd " + pkg.format(r)));
 	}
 
 	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
@@ -388,7 +389,7 @@ public class FiniteDomain {
 	}
 
 	public static <T> Goal copyDomain(Unifiable<T> from, Unifiable<T> to) {
-		return fdGoal()
+		return Bounded.of(1, fdGoal()
 				.and(s -> applyDom(to, from.asVar()
 						.flatMap(l -> FiniteDomainConstraints.<T> getDom(s, l))
 						.orElse(() -> s.walk(from).asVal()
@@ -396,6 +397,6 @@ public class FiniteDomain {
 								.map(Singleton::of))
 						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get()))))
 						.apply(s))
-				.named(pkg -> String.format("copyDom(%s, %s)", pkg.format(from), pkg.format(to)));
+				.named(pkg -> String.format("copyDom(%s, %s)", pkg.format(from), pkg.format(to))));
 	}
 }

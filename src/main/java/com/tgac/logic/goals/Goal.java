@@ -1,5 +1,6 @@
 package com.tgac.logic.goals;
 
+import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.goals.optimizer.Optimizer;
 import com.tgac.logic.goals.optimizer.OptimizerStore;
 import static com.tgac.functional.category.Nothing.nothing;
@@ -273,8 +274,8 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @return A {@link Goal} that always succeeds.
 	 */
 	static Goal success() {
-		return goal(Cont::just)
-				.named("success");
+		return Bounded.of(1, goal(Cont::just)
+				.named("success"));
 	}
 
 	/**
@@ -287,8 +288,8 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @return A {@link Goal} that always fails.
 	 */
 	static Goal failure() {
-		return goal(s -> k -> done(nothing()))
-				.named("failure");
+		return Bounded.of(0, goal(s -> k -> done(nothing()))
+				.named("failure"));
 	}
 
 	/**

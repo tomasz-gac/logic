@@ -3,6 +3,7 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: A goal that can bound how many answers it may emit from a given state —
 // ABOUTME: the order function driving the ordering optimizer's ascending sort.
 
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Substitutions;
 
 /**
@@ -14,4 +15,9 @@ import com.tgac.logic.unification.Substitutions;
  */
 public interface Bounded {
 	long answers(Substitutions s);
+
+	/** Wrap a goal with a declared constant order — the retrofit for opaque factories. */
+	static Goal of(long order, Goal goal) {
+		return BoundedGoal.of(order, goal);
+	}
 }
