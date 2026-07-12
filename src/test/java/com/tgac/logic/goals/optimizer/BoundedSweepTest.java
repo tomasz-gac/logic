@@ -8,6 +8,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.vavr.Tuple;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -97,6 +98,14 @@ public class BoundedSweepTest {
 		assertThat(oneOf(x2, planned).and(lval(1L).unifies(lval(2L)))
 				.solve(x2, new OrderingOptimizer()).count()).isZero();
 		assertThat(planned.get()).isZero();
+
+		// partially-ground contradiction: heads clash through free tails — 0 too
+		Unifiable<Long> xp = lvar();
+		AtomicLong partial = new AtomicLong();
+		assertThat(oneOf(xp, partial)
+				.and(lval(Tuple.of(lvar(), 1L)).unifies(lval(Tuple.of(lvar(), 2L))))
+				.solve(xp, new OrderingOptimizer()).count()).isZero();
+		assertThat(partial.get()).isZero();
 
 		// and the ground-TRUE twin stays order 1: the segment survives
 		Unifiable<Long> x3 = lvar();

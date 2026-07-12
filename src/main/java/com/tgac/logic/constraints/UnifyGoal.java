@@ -33,14 +33,15 @@ class UnifyGoal<T> implements Goal, Bounded {
 	}
 
 	/**
-	 * Dynamic order: ground-ground unification is decidable at pricing time —
-	 * 0 sorts first and kills the segment before anything generates.
+	 * Dynamic order: RUN the unification against the pricing substitutions —
+	 * one pass, and it prices partially-ground contradictions the groundness
+	 * gate would miss. Sound as a bound because unification failure is
+	 * monotone under binding growth: a 0 priced now stays 0 at any later
+	 * execution state; a success prices 1, an upper bound regardless of what
+	 * stores or later bindings veto at runtime.
 	 */
 	@Override
 	public long answers(Substitutions s) {
-		if (s.isGround(u) && s.isGround(v)) {
-			return s.walkAll(u).equals(s.walkAll(v)) ? 1 : 0;
-		}
-		return 1;
+		return MiniKanren.unifyPrefix(s, u, v).get().isDefined() ? 1 : 0;
 	}
 }
