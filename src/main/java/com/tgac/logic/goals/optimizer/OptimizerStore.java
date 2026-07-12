@@ -8,7 +8,6 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
-import com.tgac.logic.unification.Substitutions;
 import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -28,8 +27,8 @@ public class OptimizerStore implements Store {
 		return pkg.getStores().get(OptimizerStore.class).map(OptimizerStore.class::cast);
 	}
 
-	public Fiber<Goal> rewrite(Goal body, Substitutions s) {
-		return body.accept(pipeline.with(s));
+	public Fiber<Goal> rewrite(Goal body, Package p) {
+		return body.accept(pipeline.with(p));
 	}
 
 	@Override

@@ -9,7 +9,7 @@ import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.NamedGoal;
-import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.goals.Package;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -28,19 +28,19 @@ import lombok.Value;
  */
 public class OrderingOptimizer extends CascadingOptimizer {
 
-	private final Substitutions bound;
+	private final Package bound;
 
 	public OrderingOptimizer() {
-		this(Substitutions.empty());
+		this(Package.empty());
 	}
 
-	private OrderingOptimizer(Substitutions bound) {
+	private OrderingOptimizer(Package bound) {
 		this.bound = bound;
 	}
 
 	@Override
-	public Optimizer with(Substitutions s) {
-		return new OrderingOptimizer(s);
+	public Optimizer with(Package p) {
+		return new OrderingOptimizer(p);
 	}
 
 	@Override

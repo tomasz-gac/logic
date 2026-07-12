@@ -244,7 +244,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	static Goal defer(Supplier<Goal> g) {
 		return goal(s -> OptimizerStore.from(s)
 				.map(store -> Cont.<Package, Nothing> defer(() ->
-						store.rewrite(g.get(), s.substitution())
+						store.rewrite(g.get(), s)
 								.map(body -> body.apply(s))))
 				.getOrElse(() -> g.get().apply(s)))
 				.named("recursive call");

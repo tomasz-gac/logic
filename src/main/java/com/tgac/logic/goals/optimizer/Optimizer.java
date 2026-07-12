@@ -8,7 +8,7 @@ import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.NamedGoal;
-import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.goals.Package;
 
 /**
  * Rewrites goal trees before execution. Dispatch is double: goals implement
@@ -41,11 +41,11 @@ public interface Optimizer {
 	Fiber<Goal> visit(Barrier barrier);
 
 	/**
-	 * Pass-state injection: a substitution-aware pass returns a copy carrying
-	 * {@code s}; static passes ignore it. Called by {@link OptimizerStore} at
-	 * the defer hook with the live bindings.
+	 * Pass-state injection: a state-aware pass returns a copy carrying
+	 * {@code p}; static passes ignore it. Called by {@link OptimizerStore} at
+	 * the defer hook with the live state.
 	 */
-	default Optimizer with(Substitutions s) {
+	default Optimizer with(Package p) {
 		return this;
 	}
 
@@ -82,8 +82,8 @@ public interface Optimizer {
 			}
 
 			@Override
-			public Optimizer with(Substitutions s) {
-				return pipeline(first.with(s), second.with(s));
+			public Optimizer with(Package p) {
+				return pipeline(first.with(p), second.with(p));
 			}
 		};
 	}

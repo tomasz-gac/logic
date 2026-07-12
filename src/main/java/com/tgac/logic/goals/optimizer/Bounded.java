@@ -4,6 +4,7 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: the order function driving the ordering optimizer's ascending sort.
 
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Substitutions;
 import java.util.function.ToLongFunction;
 
@@ -16,6 +17,16 @@ import java.util.function.ToLongFunction;
  */
 public interface Bounded {
 	long answers(Substitutions s);
+
+	/**
+	 * Package-sighted order: store knowledge (live domains, completed table
+	 * counts) is congealed speculation — exactly the estimator's diet
+	 * (docs/design/lattice.md §5a). Store-aware leaves override; the default
+	 * delegates to the substitution-blind estimate.
+	 */
+	default long answers(Package p) {
+		return answers(p.substitution());
+	}
 
 	/** Wrap a goal with a declared constant order — the retrofit for opaque factories. */
 	static Goal of(long order, Goal goal) {

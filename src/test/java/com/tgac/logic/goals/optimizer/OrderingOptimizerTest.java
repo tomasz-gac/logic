@@ -42,6 +42,34 @@ public class OrderingOptimizerTest {
 		return s -> Cont.just(s);
 	}
 
+	/** Prices 5 blind, 1 sighted — pins that the pass prices with the package. */
+	@Value
+	private static class StoreSighted implements Goal, Bounded {
+		@Override
+		public long answers(Substitutions s) {
+			return 5;
+		}
+
+		@Override
+		public long answers(Package p) {
+			return 1;
+		}
+
+		@Override
+		public Cont<Package, Nothing> apply(Package s) {
+			return Cont.just(s);
+		}
+	}
+
+	@Test
+	public void pricesWithThePackageNotJustTheSubstitution() {
+		Goal sighted = new StoreSighted();
+		Goal b3 = new FixedOrder(3);
+		Goal sorted = b3.and(sighted).accept(new OrderingOptimizer()).get();
+		assertThat(((Conjunction) sorted).getClauses())
+				.containsExactly(sighted, b3);
+	}
+
 	@Test
 	public void sortsSegmentsAscendingAroundBarriers() {
 		Goal b5 = new FixedOrder(5), b1 = new FixedOrder(1), b3 = new FixedOrder(3), b2 = new FixedOrder(2);
