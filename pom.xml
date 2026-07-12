@@ -22,9 +22,8 @@
 		</dependency>
 		<dependency>
 			<groupId>com.tgac</groupId>
-			<artifactId>functional</artifactId>
+			<artifactId>functional-laws</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
-			<type>test-jar</type>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
