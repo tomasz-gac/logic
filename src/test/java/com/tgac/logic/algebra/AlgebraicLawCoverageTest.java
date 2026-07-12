@@ -15,11 +15,13 @@ import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.laws.BottomedLaws;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Empty;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.finitedomain.domains.Union;
+import io.vavr.collection.Array;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
@@ -39,24 +41,40 @@ public class AlgebraicLawCoverageTest {
 			MeetSemilattice.class, JoinSemilattice.class, Lattice.class,
 			Monoid.class, CommutativeMonoid.class, Semiring.class, Bottomed.class};
 
-	private static final Runnable DOMAIN_LAWS = () -> {
-		List<Domain<Long>> xs = Arrays.asList(
-				EnumeratedDomain.range(0L, 11L),
-				EnumeratedDomain.range(3L, 7L),
-				EnumeratedDomain.range(8L, 15L),
-				EnumeratedDomain.range(0L, 0L));
-		SemilatticeLaws.checkMeet(xs);
-		BottomedLaws.check(xs);
-	};
+	private static Runnable domainLaws(List<Domain<Long>> featured) {
+		return () -> {
+			SemilatticeLaws.checkMeet(featured);
+			BottomedLaws.check(featured);
+		};
+	}
 
 	private static final Map<Class<?>, Runnable> LAWS = new LinkedHashMap<>();
 
 	static {
-		LAWS.put(EnumeratedDomain.class, DOMAIN_LAWS);
-		LAWS.put(Empty.class, DOMAIN_LAWS);
-		LAWS.put(Interval.class, DOMAIN_LAWS);
-		LAWS.put(Singleton.class, DOMAIN_LAWS);
-		LAWS.put(Union.class, DOMAIN_LAWS);
+		LAWS.put(EnumeratedDomain.class, domainLaws(Arrays.asList(
+				EnumeratedDomain.of(Array.of(2L, 3L, 5L, 8L).map(Arithmetic::ofCasted)),
+				EnumeratedDomain.of(Array.of(3L, 5L, 9L).map(Arithmetic::ofCasted)),
+				EnumeratedDomain.of(Array.of(1L, 7L).map(Arithmetic::ofCasted)),
+				Empty.instance())));
+		LAWS.put(Interval.class, domainLaws(Arrays.asList(
+				Interval.of(0L, 10L),
+				Interval.of(3L, 6L),
+				Interval.of(8L, 15L),
+				Empty.instance())));
+		LAWS.put(Singleton.class, domainLaws(Arrays.asList(
+				Singleton.of(Arithmetic.ofCasted(5L)),
+				Singleton.of(Arithmetic.ofCasted(9L)),
+				Interval.of(3L, 6L),
+				Empty.instance())));
+		LAWS.put(Union.class, domainLaws(Arrays.asList(
+				Interval.of(0L, 15L).difference(Interval.of(5L, 9L)),
+				Interval.of(2L, 12L).difference(Interval.of(6L, 7L)),
+				Interval.of(4L, 11L),
+				Empty.instance())));
+		LAWS.put(Empty.class, domainLaws(Arrays.asList(
+				Empty.instance(),
+				Interval.of(0L, 4L),
+				EnumeratedDomain.of(Array.of(2L, 3L).map(Arithmetic::ofCasted)))));
 	}
 
 	@Test

@@ -94,7 +94,7 @@ public class Interval<T> extends Domain<T> {
 		return other.accept(new DomainVisitor<T, Domain<T>>() {
 			@Override
 			public Domain<T> visit(Empty<T> domain) {
-				return that;
+				return domain;
 			}
 
 			@Override
