@@ -12,6 +12,7 @@ public class AlgebraicLawCoverageTest {
 
 	@Test
 	public void everyAlgebraicInstanceIsClaimedByALawsForTest() throws IOException {
-		LawCoverage.verify(Paths.get("target", "classes"), Paths.get("target", "test-classes"));
+		LawCoverage.verify(Paths.get("target", "classes"), Paths.get("target", "test-classes"),
+				org.junit.AfterClass.class);
 	}
 }
