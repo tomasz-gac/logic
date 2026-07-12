@@ -87,7 +87,7 @@ public class Tabling {
 		Unifiable<T> argsTerm = lval(args);
 		// keyed widening: the call pattern is the table key, so no optimizer may
 		// move binders across it — the contract as a type, not an accident of opacity
-		return Barrier.of(pkg -> k -> {
+		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), pkg -> k -> {
 			assertNoConstraints(pkg, "at a tabled call");
 			return MiniKanren.reify(pkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
 				Call key = Call.of(relation, reifiedArgs);
@@ -98,6 +98,23 @@ public class Tabling {
 						consume(entry, k, pkg, argsTerm, 0);
 			});
 		});
+	}
+
+	/**
+	 * The ∞→exact transition (docs/design/optimizer.md): an incomplete entry
+	 * prices MAX — a barrier — because its answer count is still growing; a
+	 * completed entry prices its exact count. Sound under reordering:
+	 * execution is always at-or-more-bound than pricing, and a more-bound
+	 * variant emits a subset of the priced variant's answers.
+	 */
+	private static <T> long tabledOrder(Package p, Tabled<T> relation, Unifiable<T> argsTerm) {
+		return p.getStores().get(Table.class)
+				.map(Table.class::cast)
+				.map(table -> table.getEntry(Call.of(relation,
+						MiniKanren.reify(p.substitution(), argsTerm).get())))
+				.filter(entry -> entry != null && entry.isComplete())
+				.map(entry -> (long) entry.getAnswerCount())
+				.getOrElse(Long.MAX_VALUE);
 	}
 
 	/**

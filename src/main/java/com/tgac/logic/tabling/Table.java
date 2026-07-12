@@ -6,6 +6,7 @@ package com.tgac.logic.tabling;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
+import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -42,6 +43,10 @@ public class Table implements Store {
 	/**
 	 * Get an existing table entry, or null if the call hasn't been tabled yet.
 	 */
+	public Collection<TableEntry> entries() {
+		return entries.values();
+	}
+
 	public TableEntry getEntry(Call call) {
 		return entries.get(call);
 	}

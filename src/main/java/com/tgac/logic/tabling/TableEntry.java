@@ -42,6 +42,22 @@ public class TableEntry {
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
 	/**
+	 * KEYS-FINAL: no new answer bindings will ever arrive
+	 * (docs/design/table-completion.md §5). Upward-closed — once set, forever
+	 * set — so racy reads are sound: a stale false prices ∞, a true is
+	 * permanent. Flipped manually until completion detection (Tier 1) lands.
+	 */
+	private final AtomicBoolean complete = new AtomicBoolean(false);
+
+	public void markComplete() {
+		complete.set(true);
+	}
+
+	public boolean isComplete() {
+		return complete.get();
+	}
+
+	/**
 	 * A consumer parked as data: its continuation, the state it was consuming
 	 * in, the arguments it unifies answers against, and the cache index it
 	 * will resume from.

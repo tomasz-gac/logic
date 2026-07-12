@@ -8,7 +8,9 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import lombok.RequiredArgsConstructor;
+import com.tgac.logic.unification.Substitutions;
+import io.vavr.collection.LinkedHashMap;
+import java.util.function.ToLongFunction;
 import lombok.Value;
 
 /**
@@ -22,9 +24,38 @@ import lombok.Value;
  * delegates unchanged.
  */
 @Value
-@RequiredArgsConstructor(staticName = "of")
-public class Barrier implements Goal {
+public class Barrier implements Goal, Bounded {
 	Goal goal;
+	ToLongFunction<Package> order;
+
+	private Barrier(Goal goal, ToLongFunction<Package> order) {
+		this.goal = goal;
+		this.order = order;
+	}
+
+	public static Barrier of(Goal goal) {
+		return new Barrier(goal, p -> Long.MAX_VALUE);
+	}
+
+	/**
+	 * A barrier that can price itself against the live state — a tabled call
+	 * pricing its completed entry. MAX (the incomplete case) holds position
+	 * exactly as an unpriced barrier does; a finite price is the immovability
+	 * transition (docs/design/optimizer.md).
+	 */
+	public static Barrier priced(ToLongFunction<Package> order, Goal goal) {
+		return new Barrier(goal, order);
+	}
+
+	@Override
+	public long answers(Substitutions s) {
+		return order.applyAsLong(Package.of(s, LinkedHashMap.empty()));
+	}
+
+	@Override
+	public long answers(Package p) {
+		return order.applyAsLong(p);
+	}
 
 	@Override
 	public Cont<Package, Nothing> apply(Package s) {
