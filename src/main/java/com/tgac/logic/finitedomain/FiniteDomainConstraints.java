@@ -1,10 +1,14 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.functional.algebra.Bottomed;
+import com.tgac.functional.algebra.MeetSemilattice;
+import com.tgac.functional.algebra.MonotoneDrain;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
+import com.tgac.logic.finitedomain.domains.Empty;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
@@ -29,8 +33,15 @@ import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class FiniteDomainConstraints implements ConstraintStore {
+class FiniteDomainConstraints implements ConstraintStore,
+		MeetSemilattice<FiniteDomainConstraints>, Bottomed {
 	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
+
+	// the canonical dead store: any-empty-domain meets normalize to it, and the
+	// cascade transitions to it on a failing update, so ⊥ IS the branch death
+	private static final LVar<?> SENTINEL = (LVar<?>) LVar.lvar().asVar().get();
+	private static final FiniteDomainConstraints BOTTOM = new FiniteDomainConstraints(
+			LinkedHashMap.of(SENTINEL, Empty.instance()), HashSet.empty());
 
 	public static Package register(Package p) {
 		return p.withStore(EMPTY);
@@ -44,6 +55,36 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	public static FiniteDomainConstraints empty() {
 		return EMPTY;
+	}
+
+	static FiniteDomainConstraints bottom() {
+		return BOTTOM;
+	}
+
+	/**
+	 * The store as a product order: domains pointwise (a missing variable is ⊤),
+	 * propagators by set intersection. Both components only ever descend during
+	 * propagation — narrowing shrinks domains, subsumption discharges propagators
+	 * — so this is the cascade's termination measure.
+	 */
+	@Override
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public FiniteDomainConstraints meet(FiniteDomainConstraints other) {
+		LinkedHashMap<LVar<?>, Domain<?>> met = domains;
+		for (Tuple2<LVar<?>, Domain<?>> entry : other.domains) {
+			Domain<?> mine = met.get(entry._1).getOrNull();
+			met = met.put(entry._1, mine == null ? entry._2
+					: (Domain<?>) ((Domain) mine).meet((Domain) entry._2));
+		}
+		if (met.values().exists(Domain::isBottom)) {
+			return BOTTOM;
+		}
+		return new FiniteDomainConstraints(met, constraints.intersect(other.constraints));
+	}
+
+	@Override
+	public boolean isBottom() {
+		return domains.values().exists(Domain::isBottom);
 	}
 
 	@Override
@@ -139,33 +180,38 @@ class FiniteDomainConstraints implements ConstraintStore {
 
 	/**
 	 * This store's propagation loop: one iteration is one term whose watchers
-	 * re-examine; verdict updates discover further terms; contraction
-	 * ({@link DomainUpdate} only ever shrinks domains) is what terminates it.
-	 * A plain synchronous loop — every propagator here is cheap, so the whole
-	 * cascade is one fiber step. A store hosting expensive propagators would
-	 * defer between items instead ({@code functional}'s {@code Worklist} is
-	 * that loop, fiber-stepped) — granularity is the store author's choice.
+	 * re-examine; verdict updates discover further terms. The loop is the
+	 * checked {@link MonotoneDrain}: the store is the descending state
+	 * (domains narrow, subsumption discharges propagators), a failing update
+	 * transitions to ⊥ and short-circuits, and a step that discovers work
+	 * without strictly descending — the wake-on-narrowing divergence — throws
+	 * instead of looping. Synchronous, so the whole cascade stays one fiber
+	 * step; a store hosting expensive propagators would use the fibered
+	 * {@code Worklist} twin instead — granularity is the store author's choice.
 	 */
 	private Fiber<Revision> cascade(Package state, FiniteDomainConstraints start,
 			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
-		FiniteDomainConstraints factor = start;
-		while (!queue.isEmpty()) {
-			Term<?> next = queue.poll();
-			List<Propagator> snapshot = factor.constraints.toJavaList();
-			for (Propagator p : snapshot) {
-				if (!factor.contains(p)) {
+		FiniteDomainConstraints factor = MonotoneDrain.drain(start, queue, (current, next) -> {
+			FiniteDomainConstraints stepped = current;
+			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
+			for (Propagator p : stepped.constraints.toJavaList()) {
+				if (!stepped.contains(p)) {
 					// an earlier verdict of this same trigger removed it
 					continue;
 				}
-				Package live = state.putStore(factor);
+				Package live = state.putStore(stepped);
 				if (!p.watches(live, next)) {
 					continue;
 				}
-				factor = consume(examine(p, live, factor), factor, inferred, runs, queue);
-				if (factor == null) {
-					return Fiber.done(Revision.fail());
+				stepped = consume(examine(p, live, stepped), stepped, inferred, runs, discovered);
+				if (stepped == null) {
+					return MonotoneDrain.Step.stop(BOTTOM);
 				}
 			}
+			return MonotoneDrain.Step.proceed(stepped, discovered);
+		});
+		if (factor.isBottom()) {
+			return Fiber.done(Revision.fail());
 		}
 		if (factor == this && inferred.isEmpty() && runs.isEmpty()) {
 			return Fiber.done(Revision.unchanged());
