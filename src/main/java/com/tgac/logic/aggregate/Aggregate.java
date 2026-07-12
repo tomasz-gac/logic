@@ -8,6 +8,8 @@ import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
+import com.tgac.functional.algebra.Monoid;
+import com.tgac.functional.algebra.Monoids;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
@@ -21,9 +23,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.IntBinaryOperator;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -79,44 +81,50 @@ public class Aggregate {
 	 * Sum {@code expr} over the solutions of {@code goal} (0 if none).
 	 */
 	public static Goal sum(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
-		return fold(expr, goal, result, 0, Integer::sum, false);
+		return fold(expr, goal, result, Monoids.INT_SUM, false);
 	}
 
 	/**
 	 * Largest {@code expr} over the solutions of {@code goal}; fails if none.
 	 */
 	public static Goal max(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
-		return fold(expr, goal, result, null, Math::max, true);
+		return fold(expr, goal, result, Monoids.INT_MAX, true);
 	}
 
 	/**
 	 * Smallest {@code expr} over the solutions of {@code goal}; fails if none.
 	 */
 	public static Goal min(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
-		return fold(expr, goal, result, null, Math::min, true);
+		return fold(expr, goal, result, Monoids.INT_MIN, true);
 	}
 
+	/**
+	 * Folds {@code expr} over the goal's answers through a monoid witness. The
+	 * identity is a safe starting accumulator whenever at least one answer
+	 * arrives; the seen flag keeps "no answers" distinguishable from a fold
+	 * that happens to equal the identity.
+	 */
 	private static Goal fold(
 			Unifiable<Integer> expr,
 			Goal goal,
 			Unifiable<Integer> result,
-			Integer initial,
-			IntBinaryOperator combine,
+			Monoid<Integer> monoid,
 			boolean failWhenEmpty) {
 		return Bounded.of(1, (Goal) pkg -> k -> {
-			AtomicReference<Integer> acc = new AtomicReference<>(initial);
+			AtomicReference<Integer> acc = new AtomicReference<>(monoid.empty());
+			AtomicBoolean seen = new AtomicBoolean(false);
 			return goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, expr).apply(reified -> {
 								int v = requireInt(reified);
-								acc.updateAndGet(cur -> cur == null ? v : combine.applyAsInt(cur, v));
+								seen.set(true);
+								acc.updateAndGet(cur -> monoid.combine(cur, v));
 								return done(nothing());
 							}))
 					.flatMap(exhausted -> {
-						Integer total = acc.get();
-						if (total == null && failWhenEmpty) {
+						if (!seen.get() && failWhenEmpty) {
 							return done(nothing());
 						}
-						return Constraints.unify(result, lval(total == null ? 0 : total)).apply(pkg).apply(k);
+						return Constraints.unify(result, lval(acc.get())).apply(pkg).apply(k);
 					});
 		});
 	}
