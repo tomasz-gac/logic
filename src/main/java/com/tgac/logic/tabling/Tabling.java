@@ -83,24 +83,23 @@ public class Tabling {
 	 * </pre>
 	 */
 	/*
-	 * ONE package lineage flows through tabling, wearing one of THREE STAMPS —
-	 * the Producer store, which records whose production's body a state is
-	 * executing:
+	 * THE ONE RULE: state follows the data, the coat follows the CODE. A
+	 * package's EnclosingBody coat names the goal body the executing code is
+	 * a line of, and it changes exactly where control crosses a body
+	 * boundary — nowhere else:
 	 *
-	 *   callerPkg      the state at this call site, stamped by whatever
-	 *                  production ENCLOSES the call (top level: no stamp).
-	 *   productionPkg  callerPkg re-stamped with THIS entry before the body
-	 *                  runs, so tabled calls nested in the body know whose
-	 *                  work they are — the stamp is mail for the body's
-	 *                  descendants, not for produce itself.
-	 *   answerPkg      a body success, still wearing the production stamp;
-	 *                  before its downstream k is detached it is re-stamped
-	 *                  back to the caller (the downstream is the CALLER's
-	 *                  work: it parks and counts as the caller).
+	 *   callerPkg   the state at this call site, wearing the coat of
+	 *               whatever body the call is written in (top level: none).
+	 *   bodyPkg     callerPkg re-coated with THIS entry on body ENTRY — the
+	 *               coat is mail for the calls written inside the body.
+	 *   answerPkg   a body success, still wearing the body's coat; on body
+	 *               EXIT (the answer's downstream is the CALLER's code) it
+	 *               is re-coated back to the caller.
 	 *
-	 * A consumer parks callerPkg in its Registration, which is how a parked
-	 * registration knows who it works for (its producer field) as opposed to
-	 * what it waits for (the entry whose list it sits in).
+	 * Forks inherit the coat, parked registrations freeze it, wakes resume
+	 * it. A registration's coat is how billing works: the entry it parks IN
+	 * is what it waits for; the coat says whose definition it is a line of,
+	 * and so whose ledger pays for its work.
 	 */
 	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
 		Unifiable<T> argsTerm = lval(args);
@@ -113,10 +112,10 @@ public class Tabling {
 				Table table = callerPkg.getStore(Table.class);
 				TableEntry entry = table.getOrCreateEntry(key);
 				if (entry.tryBecomeMaster()) {
-					Producer callerProduction = Producer.current(callerPkg);
-					Package productionPkg = callerPkg.putStore(new Producer(entry));
+					EnclosingBody callerBody = EnclosingBody.current(callerPkg);
+					Package bodyPkg = callerPkg.putStore(new EnclosingBody(entry));
 					return Completion.track(entry,
-							produce(entry, body.get(), productionPkg, argsTerm, k, callerProduction));
+							produce(entry, body.get(), bodyPkg, argsTerm, k, callerBody));
 				}
 				return consume(entry, k, callerPkg, argsTerm, 0);
 			});
@@ -169,31 +168,30 @@ public class Tabling {
 	private static <T> Fiber<Nothing> produce(
 			TableEntry entry,
 			Goal goal,
-			Package productionPkg,
+			Package bodyPkg,
 			Unifiable<T> argsTerm,
 			Fiber.Fn<Package, Nothing> k,
-			Producer callerProduction) {
-		return goal.apply(productionPkg).apply(answerPkg -> {
+			EnclosingBody callerBody) {
+		return goal.apply(bodyPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
 					entry.addAnswer(answerTerm)
 							.map(parked -> respawn(entry, parked)
 									// detach-k: the answer's downstream is the CALLER's
-									// work, not this production's — detaching it makes
-									// this fiber's completion mean BODY EXHAUSTED, the
-									// event the counters need. The answer leaves this
-									// production, so it is re-stamped from the
-									// production's tag back to the caller's before k
-									// runs: the downstream parks AND counts as the
+									// code, not this body's — detaching it makes this
+									// fiber's completion mean BODY EXHAUSTED, the event
+									// the counters need. Control exits the body here,
+									// so the answer is re-coated to the caller before k
+									// runs: the downstream parks AND is billed as the
 									// caller (a nested master's downstream can still
 									// derive caller answers, so the caller must not
 									// complete under it — table-completion.md §4).
 									.flatMap(__ -> {
-										Package callerAnswerPkg = answerPkg.putStore(callerProduction);
+										Package callerAnswerPkg = answerPkg.putStore(callerBody);
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(
-												Completion.track(callerProduction.entry(), downstream));
+												Completion.track(callerBody.entry(), downstream));
 									}))
 							.getOrElse(() -> done(nothing())));
 		});
@@ -206,13 +204,13 @@ public class Tabling {
 	private static Fiber<Nothing> respawn(TableEntry entry, List<Registration> parked) {
 		Fiber<Nothing> result = done(nothing());
 		for (Registration r : parked) {
-			TableEntry producer = r.getProducer();
-			if (producer != null) {
-				producer.getLedger().awake(r);
+			TableEntry body = r.getEnclosingBody();
+			if (body != null) {
+				body.getLedger().awake(r);
 			}
 			Fiber<Nothing> consumer = Fiber.defer(() ->
 					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()));
-			result = result.flatMap(__ -> Fiber.detach(Completion.track(producer, consumer)));
+			result = result.flatMap(__ -> Fiber.detach(Completion.track(body, consumer)));
 		}
 		return result;
 	}
@@ -246,24 +244,24 @@ public class Tabling {
 							.flatMap(fib -> fib));
 		}
 
-		// the parked state is callerPkg: its stamp names the production this
-		// consumer works for — the registration's producer, as opposed to
-		// {@code entry}, the production it waits for
-		TableEntry producer = Producer.of(callerPkg);
-		Registration registration = new Registration(k, callerPkg, argsTerm, index, producer);
-		if (producer != null) {
+		// the parked state is callerPkg: its coat names the body this reader
+		// is a line of — the registration's enclosingBody, as opposed to
+		// {@code entry}, the body it waits for
+		TableEntry body = EnclosingBody.entryOf(callerPkg);
+		Registration registration = new Registration(k, callerPkg, argsTerm, index, body);
+		if (body != null) {
 			// ledger first, then park: a respawn can only drain a parked
 			// registration, so the sleeping record is always there to remove
-			producer.getLedger().sleeping(registration, entry);
+			body.getLedger().sleeping(registration, entry);
 		}
 		if (entry.park(registration)) {
-			if (producer != null) {
-				Completion.cascade(producer);
+			if (body != null) {
+				Completion.cascade(body);
 			}
 			return done(nothing());
 		}
-		if (producer != null) {
-			producer.getLedger().awake(registration);
+		if (body != null) {
+			body.getLedger().awake(registration);
 		}
 
 		// An answer arrived while registering — keep consuming

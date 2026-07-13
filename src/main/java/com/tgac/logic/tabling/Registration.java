@@ -12,9 +12,10 @@ import lombok.Value;
 /**
  * The parked subscriber: its continuation, the state it was consuming in,
  * the arguments it unifies answers against, the cache index it will resume
- * from, and THE ENTRY WHOSE PRODUCTION IT CONTINUES (null at top level).
- * Where it parks says what it WAITS FOR; {@code producer} says who it WORKS
- * FOR — resolved once from the parked package's {@link Producer} tag.
+ * from, and THE ENTRY WHOSE BODY IT IS A LINE OF (null at top level).
+ * Where it parks says what it WAITS FOR; {@code enclosingBody} says whose
+ * definition it belongs to — and so whose ledger its work is billed to —
+ * resolved once from the parked package's {@link EnclosingBody} coat.
  */
 @Value
 public class Registration {
@@ -22,5 +23,5 @@ public class Registration {
 	Package pkg;
 	Unifiable<?> argsTerm;
 	int nextIndex;
-	TableEntry producer;
+	TableEntry enclosingBody;
 }

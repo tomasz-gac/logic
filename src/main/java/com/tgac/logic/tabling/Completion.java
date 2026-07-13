@@ -18,8 +18,9 @@ import lombok.NoArgsConstructor;
  * finish.
  *
  * <p>{@link #cascade} walks completions bottom-up: when an entry completes,
- * the sleepers parked on it are dead, and each one's PRODUCER loses its
- * obstruction ("parks on a complete entry" now holds), so it is rechecked.
+ * the sleepers parked on it are dead, and each one's ENCLOSING BODY loses
+ * its obstruction ("parks on a complete entry" now holds), so it is
+ * rechecked.
  * Monitors are never nested: each entry's rule runs under its own locks,
  * the walk happens outside them.
  */
@@ -27,15 +28,15 @@ import lombok.NoArgsConstructor;
 final class Completion {
 
 	/**
-	 * Count {@code work} as one unit of {@code production}'s running work.
-	 * A null production is the TOP-LEVEL QUERY's region: it has no ledger,
-	 * needs no completion, and gates nothing — its work runs unbilled.
+	 * Bill {@code work} to the entry whose body it is a line of. A null body
+	 * is the TOP-LEVEL QUERY: no ledger, no completion, gates nothing — its
+	 * work runs unbilled.
 	 */
-	static Fiber<Nothing> track(TableEntry production, Fiber<Nothing> work) {
-		if (production == null) {
+	static Fiber<Nothing> track(TableEntry body, Fiber<Nothing> work) {
+		if (body == null) {
 			return work;
 		}
-		return production.getLedger().counted(work, () -> cascade(production));
+		return body.getLedger().counted(work, () -> cascade(body));
 	}
 
 	static void cascade(TableEntry entry) {
@@ -47,10 +48,10 @@ final class Completion {
 				continue;
 			}
 			for (Registration r : dead) {
-				TableEntry producer = r.getProducer();
-				if (producer != null) {
-					producer.getLedger().awake(r);
-					queue.add(producer);
+				TableEntry body = r.getEnclosingBody();
+				if (body != null) {
+					body.getLedger().awake(r);
+					queue.add(body);
 				}
 			}
 		}
