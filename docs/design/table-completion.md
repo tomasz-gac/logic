@@ -303,16 +303,18 @@ because the multiplicity model deliberately does not see cache affinity
 (and the abandoning plan is SOMETIMES right: restricted fresh runs can
 beat enumerate-and-filter — the bound-join tradeoff).
 
-The repair is engine-side, not a fence: SUBSUMPTIVE REUSE (task #44,
-gated on Tier 1). A completed entry is a read-only relation; tabled()'s
-lookup, before minting a variant entry, checks for a COMPLETED
-subsuming entry (one-way instance matching on reified args — a
-structural walk, far cheaper than anti-unification; per-relation scan
-suffices before SubsumptionMap). Consumption needs NO new machinery:
-consume() already unifies cached answers against the caller's args —
-the filter more-bound calls need — and against a completed entry it
-degenerates further (no parking, no registrations; iterate a frozen
-list and end). Enabled by the per-solve shared Table: a completed entry
+The repair is engine-side, not a fence: SUBSUMPTIVE REUSE (SHIPPED July
+2026). A sealed entry is a read-only relation; on an exact miss,
+tabled() scans for a sealed entry whose call subsumes the key
+(Call.subsumes: one-way instance matching on reified patterns — holes
+bind consistently, repeated holes demand equal subterms via
+canonical-name equality; no unification, no anti-unification) and reads
+it through consume()'s existing unification filter instead of minting a
+master. Readers that catch up on a sealed entry finish instead of
+parking. Pricing rides the same lookup: a subsumed call's exact-miss
+falls through to the sealed subsumer, whose count bounds the instance's
+emissions. The linear scan is SubsumptionMap's placeholder; the matcher
+IS the leq that map will take. Enabled by the per-solve shared Table: a completed entry
 produced in one branch is consumable from every other. With reuse in
 place, the sort may order freely and the cache is never abandoned —
 "Herbrand call subsumption is the precondition for reordering completed

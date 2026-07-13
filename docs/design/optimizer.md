@@ -319,8 +319,11 @@ key, and exact-variant lookup mints a fresh master even though a
 completed general entry contains every needed answer. Herbrand
 subsumption (term matching on reified args, no TCLP machinery) is the
 constraint-free base case, and it is the SubsumptionMap's second
-customer alongside the adornment memo. Until it ships, the §2 invariant
-stands even for completed entries. The failure mode, derived (July
+customer alongside the adornment memo. SHIPPED (July 2026): sealed
+entries serve instance calls through consume()'s filter and price their
+count as the instance's bound — completed entries are genuinely mobile,
+because reordered binders splinter into reads of the sealed cache, never
+into recomputation. The failure mode, derived (July
 2026): answers and price bounds survive any reordering (commutativity;
 the subset property — more-bound variants emit ≤ the priced count), but
 COST does not — a binder crossing a completed call splinters execution
