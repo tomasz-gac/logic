@@ -290,9 +290,172 @@ annotation family (Barrier = don't move; Bounded = here's my price;
 dom = defer this disjunction; tabled = fold and share this subtree) —
 the user licenses folds, the optimizer only schedules and prices them.
 
+**The junction, generalized: the quotient tower (July 2026).** The junction
+is one rung of a ladder, and the ladder is the theory that connects the two
+algebras (Tom's synthesis; the literature had already built it in pieces).
+The program denotes a value in a FREE semiring — the space of derivations
+(provenance polynomials, Green–Tannen); the substitution is the accumulated
+⊗-residue along a derivation, which is why it is native to search. Every
+other execution artifact is a homomorphic image of that free object, and
+the images form a tower of quotients:
+
+    free (derivations; search's native object; everything representable, nothing cheap)
+      → counting        (forget WHICH derivations — pricing's model)
+      → set / Boolean   (add IDEMPOTENCE — ⊕ becomes a join; semilattices
+                         appear; tabling's dedup IS this quotient map)
+      → per-variable    (forget CORRELATIONS — Galois abstraction; domains,
+                         stores; propagation = chaotic iteration here)
+      → saturating counts, masks, adornments (further compressions)
+
+Three theorem shapes ride the tower:
+
+- **Homomorphisms transport laws** (free-object property) — why checking
+  the SATURATING model was ever evidence about goal reordering, and why the
+  optimizer's rearrangements are sound in every model at once.
+- **Each law added at a quotient enlarges BOTH freedoms.** Idempotence
+  completes ACI — the license for unordered, redundant work — cashed
+  independently as chaotic iteration (constraints), CRDTs (distribution),
+  LVars (deterministic parallelism), CALM (coordination-freeness), and
+  parallel-worlds-joined excursions (§5c). The sharp contrast: parallel
+  COUNTING needs exactly-once delivery — real coordination — because it
+  sits above the idempotent quotient; parallel EXISTENCE does not.
+  Absorption/superiority (Sobrinho) buys greedy commitment (Dijkstra) and
+  finite convergence over cycles. Compression ⇒ parallelism is not a
+  coincidence of implementations; it is the same law read as a schedule.
+- **Execution mode = choosing the quotient to compute the fixpoint in.**
+  Search computes in the free object (complete, expensive); propagation
+  and excursions compute in a quotient (cheap, incomplete — the cartesian
+  abstraction loses correlations); the solving loop alternates
+  (propagate-split; solvers exist built on exactly this identification —
+  the AbSolute line, constraint solving AS abstract interpretation). The
+  fragments where the quotient is LOSSLESS are the fragments that
+  industrialized: Horn (unit propagation complete), Datalog (bottom-up
+  complete). There is no primacy of search over propagation — only the
+  free object's completeness against the quotient's cost; "search stays
+  primary" below means primary as the completeness backstop, not as the
+  preferred mode.
+
+The finiteness gate splits the tower's citizens by WHO CERTIFIES THEIR OWN
+FIXPOINT. A store descends a finite-height lattice: quiescence is
+self-certifying — the step that does not move says so (the equal-domain
+guard is a local no-change witness). A table ascends a lattice of
+unbounded height (unbounded recursion is tabling's point): arrival of the
+fixpoint is not observable in the value — it is semi-decidable, and the
+only certificate is producer exhaustion, i.e. a termination-detection
+protocol (table-completion.md's counters), not a value check. That is why
+completion detection is where tabling hurts: it is the runtime admission
+test for the finiteness gate. When the certificate arrives, the entry
+DESCENDS THE TOWER AT RUNTIME — a growing set becomes a finite constant, a
+store-grade finite-semilattice citizen — and every store privilege
+switches on at once: exact price (∞→const), reorderability, negation
+soundness, reclamation. TCLP's antichain condition is the same gate
+imposed on residues. Tabling does not fail to unify with constraints; it
+unifies CONDITIONALLY, and the condition has a certificate.
+
+**The license table — how semiring laws project onto compressions.** A
+compression FORGETS something; it is safe exactly when the target semiring
+could not have depended on what was forgotten. Each compression is
+licensed by one law; a target may use it iff the target satisfies that law:
+
+| law | licenses | who has it |
+|---|---|---|
+| `0⊗x = 0` | refutation pruning: kill a branch with NO derivations | EVERY semiring — "impossible" is the one judgment all levels agree on |
+| `x⊕x = x` | dedup, merge-as-answer: tabling's contains-check, a join of worlds read as a result | Boolean, min-plus (min is idempotent) — NOT counting |
+| `x⊗x = x` | free re-application: wake a constraint arbitrarily often, twice = once | Boolean (∧) — NOT weighted (+ double-charges) |
+| `a⊕(a⊗b) = a` | dominance pruning, commitment: branch-and-bound, Dijkstra's pop, condu | selective semirings only |
+| commutativity/assoc. | reordering, parallel merging: the optimizer's sort | all our targets — one optimizer serves every future plug |
+
+**Exports vs iteration — where the Boolean assumption actually lives.**
+Constraints are NOT Boolean-only. What a store exports through the
+chokepoint is `fail` ("zero derivations here") and inferred prefixes
+("every derivation here shares this binding") — the first is 0-licensed,
+the second creates and destroys no derivations; both port to every
+semiring. Domains as PRUNING devices are universally sound (pruning only
+removes zero-derivation values, and zero is absolute) — which is why
+"stores prune, search enumerates" is the semiring-generic architecture:
+multiplicities and weights always come from the free-level residue (the
+substitution); stores only ever say "not here". The Boolean quotient is
+load-bearing in two other places:
+
+- **The store's ITERATION DISCIPLINE.** The cascade re-examines
+  propagators freely, no application bookkeeping — paid for by
+  ⊗-idempotence (applying ∧ twice is a no-op). A WEIGHTED store loses
+  that luxury: re-propagation double-charges costs, which is why the
+  soft-constraint literature exists (semiring-CSP, Bistarelli–Montanari–
+  Rossi; the soft-arc-consistency repairs, EDAC). The store's CONCLUSIONS
+  port everywhere; its cheap fixpoint style is a set-level luxury.
+- **Tabling's dedup.** `addAnswer`'s contains-check is ⊕-idempotence
+  baked in — right for existence and min-plus, silently wrong for
+  counting. Semiring tabling's opening move is un-baking exactly that
+  line into Map<Answer, V> with ⊕ at arrival.
+
+The audit, per component: unification/substitutions — free level, always
+sound. Optimizer reorderings — commutative level, sound for every target
+(one optimizer, all plugs). FD/Neq as refuters, dead-post pricing at 0 —
+universal. Pricing — saturating counting as an UPPER BOUND, advisory,
+sound by direction. Tabling dedup, aggregate folds, a
+constructive-disjunction join read as an answer — idempotent levels.
+conda/condu — superiority ASSUMED without checking: committed choice over
+a weighted search is Dijkstra without the non-negative-edges
+precondition (already branded "not a pure semiring element" in §5a).
+
+**The plug taxonomy — which semirings may compress to what.** The license
+table pivoted from laws to plugs. The generating rule: answer-path
+compressions available to target T are exactly the quotients BETWEEN the
+free object and T in the congruence order (merging by L is safe iff
+everything L merges, T merges too — coarser question, longer interval,
+bigger repertoire). Refutation-path abstractions are exempt from the rule:
+they export only zero-judgments, so they serve EVERY target — but their
+internal discipline needs a ⊗-idempotent internal algebra, so a store is
+not "in" the plug's semiring at all; it is a foreign distributive lattice
+with a universal-judgment interface. That is the deep reason the
+constraint core survives every semiring conversation unscathed.
+
+| plug | class | reorder | refute-prune | dedup / tabling | greedy commit | native store discipline | self-cert. fixpoint |
+|---|---|---|---|---|---|---|---|
+| derivation forests | free commutative | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| counting ℕ | no ⊕-idempotence | ✓ | ✓ | ✗ — weighted cells + star on cycles | ✗ | ✗ | ✗ |
+| probability | no ⊕-idempotence | ✓ | ✓ | ✗ (same) | ✗ | ✗ | ✗ |
+| min-plus | selective dioid, superior | ✓ | ✓ | ✓ (min per key) | ✓ — Dijkstra legal | ✗ (+ double-charges → soft-AC) | bounded chains only |
+| max-min / fuzzy | distributive lattice | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ on finite chains |
+| Boolean | 2-point distributive lattice | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+Column readings: reorder and refute are universal — why ONE optimizer and
+ONE constraint core serve every plug. Dedup switches on at ⊕-idempotence;
+commitment at superiority; NATIVE constraint iteration at ⊗-idempotence —
+exactly the distributive-lattice rung, and that is a theorem, not an
+observation: c-semirings with idempotent ⊗ collapse to distributive
+lattices (the Bistarelli–Montanari–Rossi line). Constraint-native
+semirings ARE lattices.
+
+Not future work: the witness API already carries the taxonomy —
+`Semiring<S>` declares `isIdempotentPlus`/`isClosed`/`isSuperior`, and the
+law kits VERIFY the declarations. When `solve(out, semiring)` arrives
+(semiring-inference.md), the engine derives its feature gates from the
+plug's checked predicates: contains-check vs weighted cell in addAnswer,
+condu legal vs rejected loudly, dedup on or off — every gate justified by
+a law, not a comment. This table is the compatibility matrix
+semiring-inference.md was missing, and the DUAL of the capability ladder
+(§4): the ladder classifies stores by what they offer upward; this
+classifies plugs by what they may consume downward. Two tables, one
+interface between them.
+
+Modern umbrella for the fixpoint side: Datalog over (pre-)semirings — POPS
+(Abo Khamis–Ngo–Pichler–Suciu–Wang, PODS 2022): recursion over a semiring
+whose ⊕ induces the order, convergence characterized by exactly these
+properties (idempotence, absorption, finite height). Acceleration:
+Newtonian program analysis (Esparza–Kiefer–Luttenberger). Consequence
+already cashed: #35's Eq parameter is a CHOICE OF QUOTIENT — multiset
+equality checks the counting level (disj(g,g) ≢ g there), set equality
+checks the idempotent level (it holds there, and tabling lives there) —
+so the kit takes the quotient explicitly and varies the law set with it.
+
 **The mode framing (July 2026).** Search and optimization are the engine's
 primary modes; constraints, tabling and aggregation are three converters
 performing one move — reify search into data where operations are cheaper.
+Reified data is not inert: propagation and excursions EXECUTE it in its
+quotient (the tower above — abstract execution). A converter changes WHERE
+execution happens, not whether.
 Constraints convert PROSPECTIVELY (compress branching into a lattice value
 before it spawns; meet kills branches unborn), tabling RETROSPECTIVELY
 (freeze a completed sub-search into an answer table; lookup replaces
@@ -317,8 +480,13 @@ Three consequences that were separate facts:
   claim is never "data replaces search" — it is that the optimizer's job is
   CHOOSING THE MODE, and the converters are what give it a choice.
 
-**The triad.** Search executes — the only part that produces answers;
-everything else exists to make it do less. Optimization speculates — it
+**The triad.** Search executes in the free object; propagation and
+excursions execute residues in their quotients — execution happens at
+every level of the tower, and what distinguishes search is COMPLETENESS,
+not execution: it is the only executor that produces ANSWERS, while
+quotient execution produces judgments about them (refutations,
+tightenings), never answers themselves. Everything else exists to make
+the free-level run do less. Optimization speculates — it
 never runs the program, it runs cheap previews of it (a price is a preview
 by counting; the {0,1} probe is a preview by rehearsal; a shadow, if ever
 built, is a bigger rehearsal) and reorders the real run by what they say.

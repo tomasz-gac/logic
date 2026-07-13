@@ -62,6 +62,14 @@ Instances to write (each is trivial):
 - `TropicalSemiring` : `+∞/0` (double), `min`, `+`, `star = 0`.
 - `ProbabilitySemiring` : `0/1` (double), `+`, `×`, star only under §6 assumptions.
 
+Which engine machinery each plug may keep is not a per-plug design
+decision: it derives from the plug's checked law predicates
+(`isIdempotentPlus`/`isClosed`/`isSuperior`) via the plug taxonomy —
+lattice.md §5a's compatibility matrix (dedup at ⊕-idempotence, commitment
+at superiority, native store discipline at ⊗-idempotence, reordering and
+refutation universal). Feature gates justified by verified laws, not
+per-instance reasoning.
+
 ---
 
 ## 3. First, refactor `aggregate` onto it (Phase 1, low risk, do this first)
