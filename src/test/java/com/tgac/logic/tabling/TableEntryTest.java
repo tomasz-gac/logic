@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.tabling.TableEntry.Registration;
+
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.ReifiedVar;
@@ -91,8 +91,8 @@ public class TableEntryTest {
 	public void testRegistrationParksAtCacheEnd() {
 		TableEntry entry = entry();
 
-		assertThat(entry.register(registrationAt(0))).isTrue();
-		assertThat(entry.getRegistrationCount()).isEqualTo(1);
+		assertThat(entry.park(registrationAt(0))).isTrue();
+		assertThat(entry.registrationCount()).isEqualTo(1);
 	}
 
 	@Test
@@ -102,23 +102,23 @@ public class TableEntryTest {
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")));
 
 		// The consumer has not seen answer 0 yet — it must keep consuming
-		assertThat(entry.register(registrationAt(0))).isFalse();
-		assertThat(entry.getRegistrationCount()).isEqualTo(0);
+		assertThat(entry.park(registrationAt(0))).isFalse();
+		assertThat(entry.registrationCount()).isEqualTo(0);
 	}
 
 	@Test
 	public void testAddAnswerDrainsRegistrations() {
 		TableEntry entry = entry();
 
-		assertThat(entry.register(registrationAt(0))).isTrue();
-		assertThat(entry.register(registrationAt(0))).isTrue();
-		assertThat(entry.register(registrationAt(0))).isTrue();
+		assertThat(entry.park(registrationAt(0))).isTrue();
+		assertThat(entry.park(registrationAt(0))).isTrue();
+		assertThat(entry.park(registrationAt(0))).isTrue();
 
 		Option<List<Registration>> drained = entry.addAnswer(answer(Tuple.of("charlie", "dave")));
 
 		assertThat(drained.isDefined()).isTrue();
 		assertThat(drained.get()).hasSize(3);
-		assertThat(entry.getRegistrationCount()).isEqualTo(0);
+		assertThat(entry.registrationCount()).isEqualTo(0);
 	}
 
 	@Test
@@ -127,9 +127,9 @@ public class TableEntryTest {
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")));
 
-		assertThat(entry.register(registrationAt(1))).isTrue();
+		assertThat(entry.park(registrationAt(1))).isTrue();
 
 		assertThat(entry.addAnswer(answer(Tuple.of("charlie", "dave"))).isDefined()).isFalse();
-		assertThat(entry.getRegistrationCount()).isEqualTo(1);
+		assertThat(entry.registrationCount()).isEqualTo(1);
 	}
 }

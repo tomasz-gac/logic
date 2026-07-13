@@ -13,12 +13,10 @@ import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Barrier;
-import com.tgac.logic.tabling.TableEntry.Registration;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
-import java.util.ArrayDeque;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -117,12 +115,8 @@ public class Tabling {
 				if (entry.tryBecomeMaster()) {
 					Producer callerProduction = Producer.current(callerPkg);
 					Package productionPkg = callerPkg.putStore(new Producer(entry));
-					return produce(entry, body.get(), productionPkg, argsTerm, k, callerProduction)
-							.flatMap(__ -> {
-								entry.workFinished();
-								tryComplete(entry);
-								return done(nothing());
-							});
+					return Completion.track(entry,
+							produce(entry, body.get(), productionPkg, argsTerm, k, callerProduction));
 				}
 				return consume(entry, k, callerPkg, argsTerm, 0);
 			});
@@ -199,15 +193,8 @@ public class Tabling {
 										TableEntry callerEntry = callerProduction.entry();
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
-										if (callerEntry == null) {
-											return Fiber.detach(downstream);
-										}
-										callerEntry.workStarted();
-										return Fiber.detach(downstream.flatMap(___ -> {
-											callerEntry.workFinished();
-											tryComplete(callerEntry);
-											return done(nothing());
-										}));
+										return Fiber.detach(callerEntry == null ? downstream
+												: Completion.track(callerEntry, downstream));
 									}))
 							.getOrElse(() -> done(nothing())));
 		});
@@ -222,45 +209,15 @@ public class Tabling {
 		for (Registration r : parked) {
 			TableEntry producer = r.getProducer();
 			if (producer != null) {
-				producer.removeOutpost(r);
-				producer.workStarted();
+				producer.getLedger().awake(r);
 			}
 			Fiber<Nothing> consumer = Fiber.defer(() ->
 					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()));
-			Fiber<Nothing> counted = producer == null ? consumer :
-					consumer.flatMap(__ -> {
-						producer.workFinished();
-						tryComplete(producer);
-						return done(nothing());
-					});
+			Fiber<Nothing> counted = producer == null ? consumer
+					: Completion.track(producer, consumer);
 			result = result.flatMap(__ -> Fiber.detach(counted));
 		}
 		return result;
-	}
-
-	/**
-	 * The completion cascade: try the entry's self-SCC rule; when it fires,
-	 * the registrations that were parked there are dead, and each one's
-	 * PRODUCER may now satisfy its own rule ("parks on a complete entry") —
-	 * DAG dependencies complete bottom-up. Monitors are never nested: the
-	 * rule runs under one entry's lock, the cascade walks outside it.
-	 */
-	static void tryComplete(TableEntry entry) {
-		ArrayDeque<TableEntry> queue = new ArrayDeque<>();
-		queue.add(entry);
-		while (!queue.isEmpty()) {
-			List<Registration> dead = queue.poll().tryCompleteHere();
-			if (dead == null) {
-				continue;
-			}
-			for (Registration r : dead) {
-				TableEntry producer = r.getProducer();
-				if (producer != null) {
-					producer.removeOutpost(r);
-					queue.add(producer);
-				}
-			}
-		}
 	}
 
 	/**
@@ -298,18 +255,18 @@ public class Tabling {
 		TableEntry producer = Producer.of(callerPkg);
 		Registration registration = new Registration(k, callerPkg, argsTerm, index, producer);
 		if (producer != null) {
-			// outpost first, then park: a respawn can only drain a parked
-			// registration, so the outpost is always there for it to remove
-			producer.addOutpost(registration, entry);
+			// ledger first, then park: a respawn can only drain a parked
+			// registration, so the sleeping record is always there to remove
+			producer.getLedger().sleeping(registration, entry);
 		}
-		if (entry.register(registration)) {
+		if (entry.park(registration)) {
 			if (producer != null) {
-				tryComplete(producer);
+				Completion.cascade(producer);
 			}
 			return done(nothing());
 		}
 		if (producer != null) {
-			producer.removeOutpost(registration);
+			producer.getLedger().awake(registration);
 		}
 
 		// An answer arrived while registering — keep consuming
