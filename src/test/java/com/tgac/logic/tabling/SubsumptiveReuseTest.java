@@ -9,7 +9,9 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Substitutions;
@@ -87,6 +89,21 @@ public class SubsumptiveReuseTest {
 				.collect(Collectors.toList()))
 				.containsExactly("{10}");
 		assertThat(p.getStore(Table.class).entries()).hasSize(1);
+	}
+
+	@Test
+	public void boundCallsPriceTheSealedGeneralsCountAsAnUpperBound() {
+		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> rel = pairs();
+		Package p = Package.empty().withStore(Table.empty());
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		rel.apply(Tuple.of(x, y)).solveFrom(p, y, BreadthFirstScheduler::new).count();
+
+		// exact miss, sealed subsumer: ∞ improves to the general's count —
+		// sound, since the instance emits a subset of the general's answers
+		Unifiable<Integer> out = lvar();
+		Goal bound = rel.apply(Tuple.of(lval(1), out));
+		assertThat(((Bounded) bound).answers(p)).isEqualTo(2);
 	}
 
 	@Test

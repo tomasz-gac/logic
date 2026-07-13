@@ -152,8 +152,14 @@ public class Tabling {
 	private static <T> long tabledOrder(Package p, Tabled<T> relation, Unifiable<?> argsTerm) {
 		return p.getStores().get(Table.class)
 				.map(Table.class::cast)
-				.map(table -> table.getEntry(Call.of(relation,
-						MiniKanren.reify(p.substitution(), argsTerm).get())))
+				.map(table -> {
+					Call key = Call.of(relation,
+							MiniKanren.reify(p.substitution(), argsTerm).get());
+					TableEntry entry = table.getEntry(key);
+					// a sealed subsumer's count bounds the instance's emissions
+					// (subset property) — the same lookup reuse consumes through
+					return entry != null ? entry : table.findSealedSubsumer(key);
+				})
 				.filter(entry -> entry != null && entry.isComplete())
 				.map(entry -> (long) entry.getAnswerCount())
 				.getOrElse(Long.MAX_VALUE);
