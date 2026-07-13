@@ -3,6 +3,8 @@ package com.tgac.logic.tabling;
 // ABOUTME: One tabled call's entry: its answer log (what it has found) and its
 // ABOUTME: production ledger (what is still working for it), behind one facade.
 
+import com.tgac.logic.tabling.primitives.MonotoneCell;
+import com.tgac.logic.tabling.primitives.WorkLedger;
 import com.tgac.logic.unification.Reified;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -12,22 +14,26 @@ import lombok.Getter;
 /**
  * A table entry for a specific tabled goal call — the call's notebook.
  *
- * The first invocation becomes the MASTER and executes the body, appending
- * each new answer to the {@link AnswerLog}; later invocations are CONSUMERS
- * reading the log, parking in it when they catch up. The
- * {@link ProductionLedger} tracks everything working FOR this entry —
- * running fibers and sleeping consumers — so {@link #completeIfQuiescent()}
- * can decide that no new answer can ever arrive.
+ * The first invocation becomes the MASTER and executes the body, growing the
+ * answer cell; later invocations are CONSUMERS reading it by index, parking
+ * in it when they catch up. The ledger tracks everything working FOR this
+ * entry — running fibers and sleeping consumers — so
+ * {@link #completeIfQuiescent()} can decide that no new answer can ever
+ * arrive. Both components are the generic primitives with this entry's
+ * domain plugged in: the cell's value is an {@link AnswerSet}, the caught-up
+ * check is the consumer's resume index, and "cannot wake" means parked home
+ * or on a completed entry.
  */
 public class TableEntry {
 	/** The call being tabled */
 	@Getter
 	private final Call call;
 
-	private final AnswerLog log = new AnswerLog();
+	private final MonotoneCell<AnswerSet, Registration> answers =
+			new MonotoneCell<>(AnswerSet.empty());
 
 	@Getter
-	private final ProductionLedger ledger = new ProductionLedger();
+	private final WorkLedger<Registration, TableEntry> ledger = new WorkLedger<>();
 
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
@@ -65,13 +71,15 @@ public class TableEntry {
 	 * @return the dead subscribers, or null when the rule does not fire
 	 */
 	List<Registration> completeIfQuiescent() {
-		if (!ledger.quiescentAndBlockedOnlyBy(this)) {
+		// home-parked sleepers cannot wake without a new answer here, which
+		// needs running work here, which quiescence just ruled out
+		if (!ledger.quiescent(at -> at == this || at.isComplete())) {
 			return null;
 		}
 		if (!complete.compareAndSet(false, true)) {
 			return null;
 		}
-		return log.drainParked();
+		return answers.drainParked();
 	}
 
 	/**
@@ -82,26 +90,27 @@ public class TableEntry {
 		return masterActive.compareAndSet(false, true);
 	}
 
-	/** @see AnswerLog#append */
+	/** @return the drained subscribers to respawn, or none if the answer is a duplicate */
 	public Option<List<Registration>> addAnswer(Reified<?> answerTerm) {
-		return log.append(answerTerm);
+		return answers.grow(v -> v.append(answerTerm));
 	}
 
-	/** @see AnswerLog#park */
+	/** @return false if answers arrived past the consumer's index — keep reading */
 	public boolean park(Registration registration) {
-		return log.park(registration);
+		return answers.park(registration,
+				v -> registration.getNextIndex() >= v.size());
 	}
 
 	public Reified<?> getAnswerAt(int index) {
-		return log.answerAt(index);
+		return answers.read().answerAt(index);
 	}
 
 	public int getAnswerCount() {
-		return log.answerCount();
+		return answers.read().size();
 	}
 
 	public int registrationCount() {
-		return log.parkedCount();
+		return answers.parkedCount();
 	}
 
 	@Override
