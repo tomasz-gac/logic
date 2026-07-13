@@ -3,6 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: One tabled call's entry: its answer log (what it has found) and its
 // ABOUTME: production ledger (what is still working for it), behind one facade.
 
+import com.tgac.logic.tabling.primitives.JoinSet;
 import com.tgac.logic.tabling.primitives.MonotoneCell;
 import com.tgac.logic.tabling.primitives.WorkLedger;
 import com.tgac.logic.unification.Reified;
@@ -20,17 +21,18 @@ import lombok.Getter;
  * entry — running fibers and sleeping consumers — so
  * {@link #completeIfQuiescent()} can decide that no new answer can ever
  * arrive. Both components are the generic primitives with this entry's
- * domain plugged in: the cell's value is an {@link AnswerSet}, the caught-up
- * check is the consumer's resume index, and "cannot wake" means parked home
- * or on a completed entry.
+ * domain plugged in: the cell's value is a {@link JoinSet} of reified answer
+ * terms (alpha-equivalence rides their equality), the caught-up check is the
+ * consumer's resume index, and "cannot wake" means parked home or on a
+ * completed entry.
  */
 public class TableEntry {
 	/** The call being tabled */
 	@Getter
 	private final Call call;
 
-	private final MonotoneCell<AnswerSet, Registration> answers =
-			new MonotoneCell<>(AnswerSet.empty());
+	private final MonotoneCell<JoinSet<Reified<?>>, Registration> answers =
+			new MonotoneCell<>(JoinSet.empty());
 
 	@Getter
 	private final WorkLedger<Registration, TableEntry> ledger = new WorkLedger<>();
@@ -102,7 +104,7 @@ public class TableEntry {
 	}
 
 	public Reified<?> getAnswerAt(int index) {
-		return answers.read().answerAt(index);
+		return answers.read().get(index);
 	}
 
 	public int getAnswerCount() {
