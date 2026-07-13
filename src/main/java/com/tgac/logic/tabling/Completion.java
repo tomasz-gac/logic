@@ -26,8 +26,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 final class Completion {
 
-	/** Count {@code work} as one unit of {@code production}'s running work. */
+	/**
+	 * Count {@code work} as one unit of {@code production}'s running work.
+	 * A null production is the TOP-LEVEL QUERY's region: it has no ledger,
+	 * needs no completion, and gates nothing — its work runs unbilled.
+	 */
 	static Fiber<Nothing> track(TableEntry production, Fiber<Nothing> work) {
+		if (production == null) {
+			return work;
+		}
 		return production.getLedger().counted(work, () -> cascade(production));
 	}
 

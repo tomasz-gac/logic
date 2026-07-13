@@ -190,11 +190,10 @@ public class Tabling {
 									// complete under it — table-completion.md §4).
 									.flatMap(__ -> {
 										Package callerAnswerPkg = answerPkg.putStore(callerProduction);
-										TableEntry callerEntry = callerProduction.entry();
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
-										return Fiber.detach(callerEntry == null ? downstream
-												: Completion.track(callerEntry, downstream));
+										return Fiber.detach(
+												Completion.track(callerProduction.entry(), downstream));
 									}))
 							.getOrElse(() -> done(nothing())));
 		});
@@ -213,9 +212,7 @@ public class Tabling {
 			}
 			Fiber<Nothing> consumer = Fiber.defer(() ->
 					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()));
-			Fiber<Nothing> counted = producer == null ? consumer
-					: Completion.track(producer, consumer);
-			result = result.flatMap(__ -> Fiber.detach(counted));
+			result = result.flatMap(__ -> Fiber.detach(Completion.track(producer, consumer)));
 		}
 		return result;
 	}
