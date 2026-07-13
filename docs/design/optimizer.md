@@ -320,7 +320,17 @@ completed general entry contains every needed answer. Herbrand
 subsumption (term matching on reified args, no TCLP machinery) is the
 constraint-free base case, and it is the SubsumptionMap's second
 customer alongside the adornment memo. Until it ships, the §2 invariant
-stands even for completed entries. Mechanism note: completion is a
+stands even for completed entries. The failure mode, derived (July
+2026): answers and price bounds survive any reordering (commutativity;
+the subset property — more-bound variants emit ≤ the priced count), but
+COST does not — a binder crossing a completed call splinters execution
+into fresh variants and abandons the paid-for cache, a dimension the
+multiplicity model deliberately does not see. The repair is engine-side
+subsumptive reuse of completed entries (table-completion.md §8a):
+consume() is already the unification filter, only the subsuming lookup
+is missing, and once reuse is automatic the sort may order freely — the
+asymmetric-fence alternative (sortable but uncrossable) was considered
+and dropped as moot. Mechanism note: completion is a
 runtime event and the Table rides the package, so completed-entry
 re-pricing is ambient-tier and needs answers to read the PACKAGE — the
 THIRD customer for the answers(Package) widening, after force-early and

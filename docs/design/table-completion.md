@@ -45,6 +45,32 @@ dependency graph.
 - **The only free signal is global.** Scheduler-dry completes everything at
   once, at end of search — useless for mid-solve pricing.
 
+**The delimited-region reading (what the counting actually is).** What
+completion wants is a DELIMITED drain — "run this production as its own
+little search, tell me when IT reaches quiescence" — and a private
+scheduler would give it free: its empty queue IS the region's fixpoint.
+All frames share one queue, so the producer token re-attaches the region
+identity the shared queue erases, and the counters reconstruct the
+emptiness event: counting is how you virtualize a delimited scheduler
+inside a global one, and it is the PRICE OF FAIRNESS — an actual nested
+drain (SLG's local evaluation) detects trivially but lets the region
+monopolize the search. This is also the second application of one move.
+The engine's original quiescence problem (master/slave deadlock) was
+solved by PARK-AS-DATA: a consumer that catches up ends its fiber instead
+of waiting, which makes "fiber alive" mean "real work exists" — and then
+the global drain became a sound fixpoint signal for free. Detach-k is the
+same lifetime-restructuring one level down: it makes "master fiber alive"
+mean "PRODUCTION work exists", so fiber-end carries the semantic the
+counters need. The pattern's third shipped instance: Fiber.fork's
+countdown latch is a spawned/finished pair for TREE-shaped regions
+(children cannot leak); tabling needs tokens because its regions are
+graph-shaped — parked continuations escape through the shared table.
+The same escape is exactly why Aggregate (a REAL delimited drain: the
+sub-search fused into one fiber, fiber-end = exhaustion) is unsound over
+tabled goals: parking leaks work out of its region, and the completion
+flag is the repair — for escaped work, region-end must be replaced by
+entry-completion.
+
 ## 4. The design, tiered
 
 **Tier 0 (free, already implicitly true):** scheduler-dry ⇒ all entries
@@ -84,6 +110,40 @@ prefetch. VALUES-FINAL is a separate future flag belonging to semiring
 tabling's star machinery: cyclic derivations diverge under counting unless
 closed-semiring star computes them algebraically; on acyclic SCCs it
 coincides with keys-final for free. Do not conflate the two flags.
+
+## 5a. Coverage and limits (Tier 1)
+
+The completion graph is over VARIANTS, not predicates — which makes Tier 1
+stronger than "no mutual recursion" suggests. Mutually recursive
+PREDICATES whose variants form a DAG complete fine: even/odd over
+naturals spawns even(2) → odd(1) → even(0), each depending on strictly
+smaller variants, and the completion cascade walks it bottom-up. The true
+limit is a CYCLE IN THE VARIANT GRAPH (p() and q() waiting on each
+other), and the counters are structurally blind to it: both drain — no
+live frames anywhere, which is true — but the residual waiting is a ring
+of PARKED REGISTRATIONS, data in the table, not frames in the queue.
+"Can anything ever run again" is a reachability question over that ring,
+not a counting question. A scheduler Region facility in its naive form
+(per-tag frame counting) does not help — regions see frames, the cycle
+lives in what isn't a frame. What cracks it is REGION MERGING: union the
+regions when a consumer parks on an incomplete entry of another region,
+making the ring intra-region — Tier 2, SLG-WAM's approximate-SCC design,
+over-merging sound (entries complete later, together). The merge
+knowledge (who parked on whom, incomplete at the time) lives in the
+Table either way, so Tier 2 is table-side union-find over entries;
+the scheduler stays untouched.
+
+Degradation per customer when Tier 1 cannot detect (variant cycles):
+pricing → ∞, wrong-only-slow; prefetch → stays a barrier, graceful;
+reclamation → deferred to end-of-solve; the completion-GATED features
+(sound aggregate/negation/ifte) → the gate never opens — an
+expressiveness boundary, not a performance one, failing CLOSED: a
+suspension parked on a completion that never arrives is flushed as a
+failed branch at end of search (no answer, never a wrong answer). The
+asymmetry is by construction — every customer treats "undetected" as the
+sound side — and it locates Tier 2's real motivation: the optimizer
+merely goes faster with it; negation over variant cycles does not EXIST
+without it.
 
 ## 6. What the substrate pays us (and what it doesn't)
 
@@ -157,6 +217,45 @@ A failure continuation supplies neither half — not the reasons (branches
 do not know them) and not the certificate (branch events do not
 aggregate). Explainability therefore queues BEHIND completion detection,
 not beside it.
+
+## 8a. Subsumptive reuse — closing the reorder loop
+
+Completed-entry pricing dissolves the barrier, so goals may cross a
+completed tabled call — and crossing a BINDER over it splinters
+execution into fresh more-bound variants. Three ledgers, because "safe"
+means three things: ANSWERS are safe unconditionally (conjunction
+commutativity; each variant self-contained); PRICE BOUNDS are safe by
+the subset property (a more-bound call emits ≤ the priced count, so
+every product the sort computed stays an upper bound — the
+MonotoneLaws pin); COST is the blind spot — the sort can choose a
+placement that abandons the completed cache and recomputes per binding,
+because the multiplicity model deliberately does not see cache affinity
+(and the abandoning plan is SOMETIMES right: restricted fresh runs can
+beat enumerate-and-filter — the bound-join tradeoff).
+
+The repair is engine-side, not a fence: SUBSUMPTIVE REUSE (task #44,
+gated on Tier 1). A completed entry is a read-only relation; tabled()'s
+lookup, before minting a variant entry, checks for a COMPLETED
+subsuming entry (one-way instance matching on reified args — a
+structural walk, far cheaper than anti-unification; per-relation scan
+suffices before SubsumptionMap). Consumption needs NO new machinery:
+consume() already unifies cached answers against the caller's args —
+the filter more-bound calls need — and against a completed entry it
+degenerates further (no parking, no registrations; iterate a frozen
+list and end). Enabled by the per-solve shared Table: a completed entry
+produced in one branch is consumable from every other. With reuse in
+place, the sort may order freely and the cache is never abandoned —
+"Herbrand call subsumption is the precondition for reordering completed
+calls" (optimizer.md), now with its failure-mode derivation attached.
+The asymmetric-fence alternative (completed calls sortable but
+uncrossable) was considered and DROPPED as moot: nothing needs to hold
+position for sharing reasons once sharing is automatic. Caveats: forced
+reuse always picks enumerate-and-filter (a policy, benchmark-refinable,
+not a theorem — a huge general entry against a tiny restriction can
+favor fresh computation); completion is not strictly required for
+soundness (mid-fill subsumptive consumption is sound in Herbrand:
+stream, park, filter) — the completion gate buys simplicity and
+profit-certainty first, mid-fill is a later relaxation.
 
 ## 9. Test anchors
 
