@@ -141,6 +141,10 @@ public class Tabling {
 				.getOrElse(Long.MAX_VALUE);
 	}
 
+	private static Region<JoinSet<Reified<?>>, Registration> regionOf(TableEntry entry) {
+		return entry == null ? null : entry.getRegion();
+	}
+
 	/**
 	 * Tabling does not capture constraints yet: variant keys ignore
 	 * constraint stores, and answers are cached as plain reified terms. A
@@ -148,10 +152,6 @@ public class Tabling {
 	 * would silently generalize answers, so any active constraint store
 	 * around a tabled call or answer is rejected loudly instead.
 	 */
-	private static Region<JoinSet<Reified<?>>, Registration> regionOf(TableEntry entry) {
-		return entry == null ? null : entry.getRegion();
-	}
-
 	private static void assertNoConstraints(Package pkg, String when) {
 		pkg.getStores().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
