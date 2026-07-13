@@ -119,7 +119,18 @@ public class Tabling {
 			return MiniKanren.reify(callerPkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
 				Call key = Call.of(relation, reifiedArgs);
 				Table table = callerPkg.getStore(Table.class);
-				TableEntry entry = table.getOrCreateEntry(key);
+				TableEntry entry = table.getEntry(key);
+				if (entry == null) {
+					// subsumptive reuse: a sealed general entry is a read-only
+					// relation containing every answer this instance call could
+					// produce (subset property) — read it through consume's
+					// unification filter instead of minting a master
+					TableEntry sealedGeneral = table.findSealedSubsumer(key);
+					if (sealedGeneral != null) {
+						return consume(sealedGeneral, k, callerPkg, argsTerm, 0);
+					}
+					entry = table.getOrCreateEntry(key);
+				}
 				if (entry.tryBecomeMaster()) {
 					EnclosingCall callerCall = EnclosingCall.current(callerPkg);
 					Package bodyPkg = callerPkg.putStore(new EnclosingCall(entry));
@@ -257,6 +268,13 @@ public class Tabling {
 							.flatMap(fib -> fib));
 		}
 
+		if (entry.isComplete()) {
+			// sealed: no new answers can ever arrive — the caught-up reader is
+			// a finished branch, not a sleeper (racy read is safe: a stale
+			// false parks a dead registration, which ledgers accept as
+			// sealed-parked)
+			return done(nothing());
+		}
 		// the parked state is callerPkg: its coat names the call this reader
 		// belongs to — the registration's enclosingCall, as opposed to
 		// {@code entry}, the call it waits for

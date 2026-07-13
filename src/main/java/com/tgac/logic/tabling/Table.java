@@ -47,6 +47,21 @@ public class Table implements Store {
 		return entries.values();
 	}
 
+	/**
+	 * A SEALED entry whose call subsumes {@code key}, or null. Linear scan:
+	 * entries per solve are few, and the scan runs only on exact misses —
+	 * SubsumptionMap is this lookup's planned generalization when its next
+	 * customer (the adornment memo) arrives.
+	 */
+	public TableEntry findSealedSubsumer(Call key) {
+		for (TableEntry e : entries.values()) {
+			if (e.isComplete() && e.getCall().subsumes(key)) {
+				return e;
+			}
+		}
+		return null;
+	}
+
 	public TableEntry getEntry(Call call) {
 		return entries.get(call);
 	}
