@@ -166,6 +166,12 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/table-completion.md` — AS BUILT: per-call completion detection
   (the EnclosingCall coat, detach-k, the Region/ledger primitives, the
   two-edge graph and its seal criterion). Read before touching tabling.
+- `docs/design/group-seal.md` — AS BUILT: Tier 2 — sealing sleeper rings via
+  the closure walk and the two-phase monotone-counter snapshot; why full SLG
+  completion came out to ~60 lines.
+- `docs/design/goals-as-data.md` — DESIGN SKETCH: the distribution story in
+  three layers (Program front door, call-boundary runtime, fold-planner),
+  none touching the engine.
 - `docs/design/method.md` — how this design process works: the loop, the
   moves, the placement razors, shelving with triggers.
 - This file — architecture, landmines, workflow.

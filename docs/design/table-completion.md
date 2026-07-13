@@ -108,10 +108,19 @@ complete. End-of-search only.
   leaves first. The ONE domain input is `ownerOf`: a sleeper belongs to
   the region of the call whose body it is a line of — its coat.
 
-**Tier 2 (deferred):** seal the strongly-connected components of the
-sleeper-edge graph atomically (§5a) — table-side union-find over entries,
-SLG-WAM's approximate-SCC design, over-merging sound. The scheduler stays
-untouched.
+**Tier 2 (SHIPPED July 2026, `Region.groupSeal` — full story:
+group-seal.md):** when the singleton
+rule refuses on a drained region, its sleeper-closure is walked and sealed
+as a group — every member drained, every sleeper inside the set or at a
+sealed region, so no growth can arrive anywhere (growth is billed to the
+grower's own region; nothing outside injects). Verification is two-phase
+over the MONOTONE started counters: two equal reads bracket a spawn-free
+interval — a consistent global snapshot with no nested monitors; racing
+groups arbitrate per member by the flag CAS; a running member aborts the
+walk and its own finish event retries. On-demand walk, no union-find, no
+scheduler involvement — rings in real programs are small. Detection is
+now TOTAL for finite solves: every semantically keys-final event seals as
+early as its dependency closure finishes (full SLG completion).
 
 ## 5. Flag semantics: keys-final, NOT values-final
 
@@ -152,16 +161,17 @@ the Table's entries, master edges = who tracked whose produce, sleeper
 edges = the (registration → parked-at) pairs in each ledger's sleeping
 map; the cascade is the backwards edge-walk as a queue.
 
-**THE SEAL CRITERION: the sleeper-edge graph is acyclic up to self-loops.**
-A node seals when its fiber work drains and its outgoing sleeper edges all
-point home (self-loop: waking would need a new answer here, circularly
-impossible) or at sealed nodes; sealing kills the sleepers parked here and
-rechecks their owners — seals propagate backwards along sleeper edges,
-leaves first. A CYCLE of sleeper edges through distinct unsealed nodes
-never seals: each refuses on the other's account, no counter event
-remains. NOTE what the criterion is NOT: it is not "no cycle in the
+**THE SEAL CRITERION (with Tier 2): every event seals once its dependency
+closure is finished.** The singleton rule seals a node whose fiber work
+drained and whose sleeper edges all point home (self-loop: waking would
+need a new answer here, circularly impossible) or at sealed nodes; the
+GROUP seal handles the rest — a cycle of sleeper edges through drained
+nodes seals atomically as its own closure. What never seals, correctly:
+anything with genuinely live work in its closure (infinite relations and
+their downstreams). NOTE what the criterion never was: "no cycle in the
 variant call graph" — nested mutual recursion IS a variant-graph cycle
-and seals fine, because its p→q direction is a master edge.
+and seals through the ordinary cascade, because its p→q direction is a
+master edge.
 
 How recursion maps: at each recursive call occurrence one question decides
 the shape — DOES THE CALL REIFY TO A FRESH PATTERN OR THE SAME ONE?
@@ -179,41 +189,37 @@ cross-linked with another, a cycle (Tier 2). The five pinned cases
     nested mutual                cross-root ring
     query ═ p ═ q                query ═ p     query ═ q
             ↑┈┈┈┘                        └┈┈> q       └┈┈> p
-    seals: one edge, no cycle    unsealed: sleeper cycle
-    (nestedMutualRecursion-      (crossConsumingRingStaysIncomplete)
+    seals: one edge, no cycle    seals: GROUP SEAL over the cycle
+    (nestedMutualRecursion-      (crossConsumingRingSealsByGroupSeal)
      CompletesBottomUp)
 
     single-root double-read ring:  p :- 42 | q | q.  q :- p.
     the SECOND q-occurrence is a reader (masters are once-per-event):
-    p ┈> q and q ┈> p — a cycle from one root; both stay unsealed
-    (secondReaderInsideNestingFormsARingAndStaysUnsealed)
+    p ┈> q and q ┈> p — a cycle from one root; seals as a group
+    (secondReaderRingSealsByGroupSeal)
 
 Why counters alone cannot see a ring: both ledgers drain — no live frames
 anywhere, which is TRUE — but the residual waiting is a ring of parked
 registrations: data in the table, not frames in the queue. "Can anything
-ever run again" is reachability over sleeper edges, not counting. A
-scheduler Region facility in its naive form (per-tag frame counting) does
-not help — regions see frames, the cycle lives in what isn't a frame.
-Tier 2 seals sleeper-SCCs atomically: union-find over entries, merging
-when a reader parks at an unsealed foreign entry; over-merging is sound
-(entries seal later, together). Billing note for nested masters: the new
+ever run again" is reachability over sleeper edges, not counting — which
+is exactly what the shipped group seal computes: the closure walk over
+sleeper edges, verified by the two-phase monotone-counter read. Billing note for nested masters: the new
 event's BODY is billed to the new event's own ledger; the caller pays only
 for CONSUMING the answers (each answer-exit downstream re-coated and
 billed to the caller). "Does the existing entry contain what I need" is
 answered today by PATTERN EQUALITY only — upgrading that check to
 entailment against a SEALED general entry is subsumptive reuse (§8a).
 
-Degradation per customer when Tier 1 cannot detect (sleeper cycles):
-pricing → ∞, wrong-only-slow; prefetch → stays a barrier, graceful;
-reclamation → deferred to end-of-solve; the completion-GATED features
-(sound aggregate/negation/ifte) → the gate never opens — an
-expressiveness boundary, not a performance one, failing CLOSED: a
+Degradation per customer when sealing cannot fire (genuinely live
+closures — infinite relations and their downstreams): pricing → ∞,
+wrong-only-slow; prefetch → stays a barrier, graceful; reclamation →
+deferred to end-of-solve; the completion-GATED features (sound
+aggregate/negation/ifte) → the gate never opens, failing CLOSED: a
 suspension parked on a completion that never arrives is flushed as a
-failed branch at end of search (no answer, never a wrong answer). The
-asymmetry is by construction — every customer treats "undetected" as the
-sound side — and it locates Tier 2's real motivation: the optimizer
-merely goes faster with it; negation over variant cycles does not EXIST
-without it.
+failed branch at end of search (no answer, never a wrong answer). Every
+customer treats "unsealed" as the sound side — and with the group seal
+shipped, "unsealed" now means only what it should: the closure genuinely
+is not finished.
 
 ## 6. What the substrate pays us (and what it doesn't)
 
