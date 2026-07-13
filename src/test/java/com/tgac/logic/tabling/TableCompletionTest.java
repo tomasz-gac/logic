@@ -82,10 +82,10 @@ public class TableCompletionTest {
 	}
 
 	@Test
-	public void crossConsumingRingStaysIncomplete() {
+	public void crossConsumingRingSealsByGroupSeal() {
 		// both relations mastered independently at the top level, each then
-		// CONSUMING the other: a genuine parked ring — each entry's outposts
-		// point at the incomplete other, and Tier 1 correctly refuses both
+		// CONSUMING the other: a genuine parked ring — the singleton rule
+		// refuses both, and the GROUP SEAL completes the sleeper-SCC at once
 		Tabled<Tuple1<Unifiable<Integer>>>[] rels = new Tabled[2];
 		rels[0] = Tabling.define(t -> t.apply(x ->
 				unify(x, lval(1)).or(Goal.defer(() -> rels[1].apply(t)))));
@@ -97,8 +97,8 @@ public class TableCompletionTest {
 		Goal query = rels[0].apply(Tuple.of(a)).or(rels[1].apply(Tuple.of(a)));
 		assertThat(query.solveFrom(pkg, a, BreadthFirstScheduler::new).distinct().count())
 				.isEqualTo(2);
-		assertThat(pkg.getStore(Table.class).entries().stream()
-				.noneMatch(TableEntry::isComplete)).isTrue();
+		assertThat(pkg.getStore(Table.class).entries())
+				.allMatch(TableEntry::isComplete);
 	}
 
 	@Test
@@ -124,11 +124,10 @@ public class TableCompletionTest {
 	}
 
 	@Test
-	public void secondReaderInsideNestingFormsARingAndStaysUnsealed() {
+	public void secondReaderRingSealsByGroupSeal() {
 		// p :- 42 | q | q.   q :- p.  — single root, but the SECOND q-call is
-		// a reader (masters are once-per-call): it parks at q wearing [p]
-		// while q's reader parks at p wearing [q] — two sleeper edges, a
-		// cycle, mutual refusal: nesting alone does not guarantee sealing
+		// a reader: two sleeper edges, a cycle from one root — the group
+		// seal completes both together
 		Tabled<Tuple1<Unifiable<Integer>>>[] q = new Tabled[1];
 		Tabled<Tuple1<Unifiable<Integer>>> pRel = Tabling.defineRecursive(self -> t -> t.apply(x ->
 				unify(x, lval(42))
@@ -141,8 +140,8 @@ public class TableCompletionTest {
 
 		assertThat(pRel.apply(Tuple.of(out)).solveFrom(pkg, out, BreadthFirstScheduler::new).count())
 				.isEqualTo(1);
-		assertThat(pkg.getStore(Table.class).entries().stream()
-				.noneMatch(TableEntry::isComplete)).isTrue();
+		assertThat(pkg.getStore(Table.class).entries())
+				.allMatch(TableEntry::isComplete);
 	}
 
 	@Test

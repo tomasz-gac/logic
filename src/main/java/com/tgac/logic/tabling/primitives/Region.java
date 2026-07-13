@@ -8,6 +8,8 @@ import com.tgac.functional.fibers.Fiber;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.ArrayDeque;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -108,9 +110,18 @@ public final class Region<V, S> {
 		ArrayDeque<Region<V, S>> queue = new ArrayDeque<>();
 		queue.add(this);
 		while (!queue.isEmpty()) {
-			List<S> dead = queue.poll().sealIfQuiescent();
+			Region<V, S> region = queue.poll();
+			List<S> dead = region.sealIfQuiescent();
 			if (dead == null) {
-				continue;
+				// the singleton rule refused; if the region is drained and
+				// unsealed, the obstruction is a foreign-unsealed sleeper —
+				// try sealing its sleeper-closure as a group
+				if (!region.isSealed() && region.ledger.drained()) {
+					dead = groupSeal(region);
+				}
+				if (dead == null) {
+					continue;
+				}
 			}
 			for (S sleeper : dead) {
 				Region<V, S> owner = ownerOf.apply(sleeper);
@@ -130,5 +141,58 @@ public final class Region<V, S> {
 			return null;
 		}
 		return cell.drainParked();
+	}
+
+	/**
+	 * THE GROUP SEAL (Tier 2): if a set S of unsealed regions has every
+	 * member drained and every sleeper parked inside S or at a sealed
+	 * region, then no new growth can arrive anywhere in S — a wake inside S
+	 * needs new growth in S, which needs running S-work, which drainedness
+	 * rules out; nothing outside can inject work (growth is billed to the
+	 * grower's own region). Seal all of S.
+	 *
+	 * <p>Verification is two-phase over the MONOTONE started counters:
+	 * phase one walks the sleeper-closure recording each member's count
+	 * while checking it drained (any running member aborts — its own finish
+	 * event retries the group); phase two re-reads every count and demands
+	 * it unchanged. Two equal reads of a monotone counter bracket a
+	 * spawn-free interval: a consistent global snapshot with no nested
+	 * monitors. Racing group seals are arbitrated per member by the flag
+	 * CAS — a lost CAS just skips that member's drain.
+	 *
+	 * @return the dead sleepers drained from every sealed member, or null
+	 * 		when the group cannot seal yet
+	 */
+	private List<S> groupSeal(Region<V, S> start) {
+		LinkedHashMap<Region<V, S>, Long> members = new LinkedHashMap<>();
+		ArrayDeque<Region<V, S>> frontier = new ArrayDeque<>();
+		frontier.add(start);
+		while (!frontier.isEmpty()) {
+			Region<V, S> region = frontier.poll();
+			if (members.containsKey(region) || region.isSealed()) {
+				continue;
+			}
+			if (!region.ledger.drained()) {
+				return null;
+			}
+			members.put(region, region.ledger.startedCount());
+			for (Region<V, S> at : region.ledger.sleepingAt()) {
+				if (at != region && !at.isSealed()) {
+					frontier.add(at);
+				}
+			}
+		}
+		for (Map.Entry<Region<V, S>, Long> m : members.entrySet()) {
+			if (m.getKey().ledger.startedCount() != m.getValue()) {
+				return null;
+			}
+		}
+		List<S> dead = List.empty();
+		for (Region<V, S> member : members.keySet()) {
+			if (member.sealed.compareAndSet(false, true)) {
+				dead = dead.appendAll(member.cell.drainParked());
+			}
+		}
+		return dead;
 	}
 }

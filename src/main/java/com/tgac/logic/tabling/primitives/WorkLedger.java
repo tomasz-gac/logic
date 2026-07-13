@@ -8,7 +8,9 @@ import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -52,6 +54,21 @@ public final class WorkLedger<S, P> {
 
 	public synchronized void awake(S sleeper) {
 		sleeping.remove(sleeper);
+	}
+
+	/** Monotone — two equal reads bracket a spawn-free interval. */
+	public synchronized long startedCount() {
+		return started;
+	}
+
+	/** Counters drained: the region has run and all its fibers ended. */
+	public synchronized boolean drained() {
+		return started > 0 && finished == started;
+	}
+
+	/** The places this region's sleepers park at — a snapshot. */
+	public synchronized List<P> sleepingAt() {
+		return new ArrayList<>(sleeping.values());
 	}
 
 	public synchronized boolean quiescent(Predicate<P> cannotWake) {
