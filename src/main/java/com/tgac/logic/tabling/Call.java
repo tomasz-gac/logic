@@ -7,7 +7,10 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.ReifiedVar;
 import com.tgac.logic.unification.Term;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.control.Option;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -43,36 +46,53 @@ public class Call {
 				&& match(arguments, other.arguments, new HashMap<>());
 	}
 
+	/**
+	 * Iterative on an explicit worklist: reified structures nest linearly
+	 * (an LList's spine is one frame per element), so a recursive walk
+	 * overflows on long list arguments — depth goes to the heap instead.
+	 */
 	private static boolean match(Term<?> general, Term<?> specific, Map<String, Term<?>> binding) {
-		if (general instanceof ReifiedVar) {
-			String hole = ((ReifiedVar<?>) general).getName();
-			Term<?> bound = binding.get(hole);
-			if (bound == null) {
-				binding.put(hole, specific);
-				return true;
+		ArrayDeque<Tuple2<Term<?>, Term<?>>> pending = new ArrayDeque<>();
+		pending.push(Tuple.of(general, specific));
+		while (!pending.isEmpty()) {
+			Tuple2<Term<?>, Term<?>> pair = pending.pop();
+			Term<?> g = pair._1;
+			Term<?> s = pair._2;
+			if (g instanceof ReifiedVar) {
+				String hole = ((ReifiedVar<?>) g).getName();
+				Term<?> bound = binding.get(hole);
+				if (bound == null) {
+					binding.put(hole, s);
+				} else if (!bound.equals(s)) {
+					return false;
+				}
+				continue;
 			}
-			return bound.equals(specific);
-		}
-		if (specific instanceof ReifiedVar) {
-			// a concrete general position cannot cover the hole's instances
-			return false;
-		}
-		Option<Iterable<Term<?>>> gm = MiniKanren.members(general);
-		Option<Iterable<Term<?>>> sm = MiniKanren.members(specific);
-		if (gm.isEmpty() && sm.isEmpty()) {
-			return general.equals(specific);
-		}
-		if (gm.isEmpty() || sm.isEmpty()) {
-			return false;
-		}
-		Iterator<Term<?>> gi = gm.get().iterator();
-		Iterator<Term<?>> si = sm.get().iterator();
-		while (gi.hasNext() && si.hasNext()) {
-			if (!match(gi.next(), si.next(), binding)) {
+			if (s instanceof ReifiedVar) {
+				// a concrete general position cannot cover the hole's instances
+				return false;
+			}
+			Option<Iterable<Term<?>>> gm = MiniKanren.members(g);
+			Option<Iterable<Term<?>>> sm = MiniKanren.members(s);
+			if (gm.isEmpty() && sm.isEmpty()) {
+				if (!g.equals(s)) {
+					return false;
+				}
+				continue;
+			}
+			if (gm.isEmpty() || sm.isEmpty()) {
+				return false;
+			}
+			Iterator<Term<?>> gi = gm.get().iterator();
+			Iterator<Term<?>> si = sm.get().iterator();
+			while (gi.hasNext() && si.hasNext()) {
+				pending.push(Tuple.of(gi.next(), si.next()));
+			}
+			if (gi.hasNext() || si.hasNext()) {
 				return false;
 			}
 		}
-		return !gi.hasNext() && !si.hasNext();
+		return true;
 	}
 
 	@Override

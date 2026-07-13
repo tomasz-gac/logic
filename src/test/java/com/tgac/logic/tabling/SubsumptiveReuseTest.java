@@ -12,11 +12,13 @@ import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
+import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
+import io.vavr.Tuple1;
 import io.vavr.Tuple2;
 import java.util.stream.Collectors;
 import org.junit.Test;
@@ -65,6 +67,22 @@ public class SubsumptiveReuseTest {
 		Call a = Call.of(pairs(), pattern(Tuple.of(lvar(), lvar())));
 		Call b = Call.of(pairs(), pattern(Tuple.of(lvar(), lvar())));
 		assertThat(a.subsumes(b)).isFalse();
+	}
+
+	@Test
+	public void matchingWalksDeepSpinesWithoutRecursion() {
+		// an LList reifies as a nested (head, tail) spine: linear depth. The
+		// matcher must walk it iteratively — a recursive walk overflows here
+		Tabled<Tuple1<Unifiable<LList<Integer>>>> rel = Tabling.define(t -> t.apply(xs ->
+				unify(xs, xs)));
+		Integer[] many = new Integer[20_000];
+		for (int i = 0; i < many.length; i++) {
+			many[i] = i;
+		}
+		Call a = Call.of(rel, pattern(Tuple.of(LList.ofAll(many))));
+		Call b = Call.of(rel, pattern(Tuple.of(LList.ofAll(many))));
+
+		assertThat(a.subsumes(b)).isTrue();
 	}
 
 	// ---- the reuse flow ----
