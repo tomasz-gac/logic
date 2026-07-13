@@ -13,6 +13,8 @@ import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Barrier;
+import com.tgac.logic.tabling.primitives.JoinSet;
+import com.tgac.logic.tabling.primitives.Region;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
@@ -114,7 +116,7 @@ public class Tabling {
 				if (entry.tryBecomeMaster()) {
 					EnclosingCall callerCall = EnclosingCall.current(callerPkg);
 					Package bodyPkg = callerPkg.putStore(new EnclosingCall(entry));
-					return Completion.track(entry,
+					return Region.track(entry.getRegion(),
 							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall));
 				}
 				return consume(entry, k, callerPkg, argsTerm, 0);
@@ -146,6 +148,10 @@ public class Tabling {
 	 * would silently generalize answers, so any active constraint store
 	 * around a tabled call or answer is rejected loudly instead.
 	 */
+	private static Region<JoinSet<Reified<?>>, Registration> regionOf(TableEntry entry) {
+		return entry == null ? null : entry.getRegion();
+	}
+
 	private static void assertNoConstraints(Package pkg, String when) {
 		pkg.getStores().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
@@ -191,7 +197,7 @@ public class Tabling {
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(
-												Completion.track(callerCall.entry(), downstream));
+												Region.track(regionOf(callerCall.entry()), downstream));
 									}))
 							.getOrElse(() -> done(nothing())));
 		});
@@ -210,7 +216,7 @@ public class Tabling {
 			}
 			Fiber<Nothing> consumer = Fiber.defer(() ->
 					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()));
-			result = result.flatMap(__ -> Fiber.detach(Completion.track(enclosingCall, consumer)));
+			result = result.flatMap(__ -> Fiber.detach(Region.track(regionOf(enclosingCall), consumer)));
 		}
 		return result;
 	}
@@ -252,11 +258,11 @@ public class Tabling {
 		if (enclosingCall != null) {
 			// ledger first, then park: a respawn can only drain a parked
 			// registration, so the sleeping record is always there to remove
-			enclosingCall.getRegion().sleeping(registration, entry);
+			enclosingCall.getRegion().sleeping(registration, entry.getRegion());
 		}
 		if (entry.park(registration)) {
 			if (enclosingCall != null) {
-				Completion.cascade(enclosingCall);
+				enclosingCall.getRegion().sealCascade();
 			}
 			return done(nothing());
 		}

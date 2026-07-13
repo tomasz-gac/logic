@@ -1,12 +1,13 @@
 package com.tgac.logic.tabling.primitives;
 
 // ABOUTME: A sealable region of work: a growing value, the work producing it,
-// ABOUTME: and the seal — "this value is final" — decided by quiescence.
+// ABOUTME: the seal, and the cascade — termination detection as one value.
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
+import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -15,31 +16,38 @@ import java.util.function.Predicate;
  * The termination-detection unit: a {@link MonotoneCell} (the region's
  * published value, growing monotonically, waking parked subscribers) paired
  * with a {@link WorkLedger} (everything working for the region — running
- * fibers and sleeping subscribers) and a SEAL — the upward-closed,
- * CAS'd-once declaration that the value is final. Racy reads of the seal
- * are sound: a stale false only defers.
+ * fibers and sleeping subscribers, each recorded with the region it sleeps
+ * at) and a SEAL — the upward-closed, CAS'd-once declaration that the value
+ * is final. Racy seal reads are sound: a stale false only defers.
  *
- * <p>{@link #track} is the billing door: every unit of the region's work
- * passes through it exactly once (start ticks at wrap time — no gap for a
- * racing seal check — finish at fiber end, then the caller's hook, e.g. a
- * completion cascade).
+ * <p>The one domain-specific input is {@code ownerOf}: given a subscriber,
+ * which region's work is it (null = unowned top-level work, unbilled,
+ * gating nothing). Everything else is the theorem:
  *
- * <p>{@link #sealIfQuiescent} is the seal rule: ledger quiescent (counters
- * drained, every sleeper parked where the caller's predicate says it cannot
- * wake) → flag CAS (arbitrates racing checks; after a true quiescent
- * snapshot no legal transition can start new work — waking a home sleeper
- * needs new growth here, which needs running work here) → the parked
- * subscribers are provably dead, drained and returned for the caller's
- * cascade.
+ * <p>{@link #track} is the billing door — every unit of the region's work
+ * passes through exactly once (start ticks at wrap time, no gap for a
+ * racing seal; finish at fiber end, then a cascade attempt).
+ *
+ * <p>The SEAL RULE (internal): counters drained and every sleeper parked
+ * HOME (waking needs new growth here, which needs running work here — just
+ * ruled out) or at an already-sealed region (never grows again). Then flag
+ * CAS, then the parked subscribers are provably dead.
+ *
+ * <p>{@link #sealCascade} propagates seals backwards along sleeper edges:
+ * sealing kills the sleepers parked here; each dead sleeper's owner loses
+ * an obstruction and is rechecked. Monitors never nest — each region's
+ * rule runs under its own locks, the walk happens outside them.
  */
-public final class Region<V, S, P> {
+public final class Region<V, S> {
 
 	private final MonotoneCell<V, S> cell;
-	private final WorkLedger<S, P> ledger = new WorkLedger<>();
+	private final WorkLedger<S, Region<V, S>> ledger = new WorkLedger<>();
 	private final AtomicBoolean sealed = new AtomicBoolean(false);
+	private final Function<S, Region<V, S>> ownerOf;
 
-	public Region(V initial) {
+	public Region(V initial, Function<S, Region<V, S>> ownerOf) {
 		this.cell = new MonotoneCell<>(initial);
+		this.ownerOf = ownerOf;
 	}
 
 	// ---- the value half ----
@@ -64,12 +72,19 @@ public final class Region<V, S, P> {
 
 	// ---- the work half ----
 
-	/** Bill {@code work} as one unit of this region's running work. */
-	public Fiber<Nothing> track(Fiber<Nothing> work, Runnable onFinished) {
-		return ledger.counted(work, onFinished);
+	/**
+	 * Bill {@code work} as one unit of this region's running work, with a
+	 * cascade attempt on finish. Null-tolerant statically: unowned work
+	 * runs unbilled.
+	 */
+	public static <V, S> Fiber<Nothing> track(Region<V, S> region, Fiber<Nothing> work) {
+		if (region == null) {
+			return work;
+		}
+		return region.ledger.counted(work, region::sealCascade);
 	}
 
-	public void sleeping(S sleeper, P at) {
+	public void sleeping(S sleeper, Region<V, S> at) {
 		ledger.sleeping(sleeper, at);
 	}
 
@@ -88,12 +103,27 @@ public final class Region<V, S, P> {
 		sealed.set(true);
 	}
 
-	/**
-	 * The seal rule. @return the dead subscribers for the caller's cascade,
-	 * or null when the rule does not fire.
-	 */
-	public List<S> sealIfQuiescent(Predicate<P> cannotWake) {
-		if (!ledger.quiescent(cannotWake)) {
+	/** Seal this region if quiescent and propagate along sleeper edges. */
+	public void sealCascade() {
+		ArrayDeque<Region<V, S>> queue = new ArrayDeque<>();
+		queue.add(this);
+		while (!queue.isEmpty()) {
+			List<S> dead = queue.poll().sealIfQuiescent();
+			if (dead == null) {
+				continue;
+			}
+			for (S sleeper : dead) {
+				Region<V, S> owner = ownerOf.apply(sleeper);
+				if (owner != null) {
+					owner.awake(sleeper);
+					queue.add(owner);
+				}
+			}
+		}
+	}
+
+	private List<S> sealIfQuiescent() {
+		if (!ledger.quiescent(at -> at == this || at.isSealed())) {
 			return null;
 		}
 		if (!sealed.compareAndSet(false, true)) {
