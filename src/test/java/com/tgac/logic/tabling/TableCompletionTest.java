@@ -102,6 +102,28 @@ public class TableCompletionTest {
 	}
 
 	@Test
+	public void variantChainOfNestedMastersSealsBottomUp() {
+		// RIGHT recursion splits variants: path(1,_) mints path(2,_) mints
+		// path(3,_) — each a fresh call event mastered under its own coat,
+		// the caller's coat remembered only for answer billing. A pure DAG
+		// of master edges, no sleeper anywhere: every variant seals.
+		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> path =
+				Tabling.defineRecursive(self -> args -> args.apply((x, y) ->
+						edge(x, y).or(Goal.defer(() -> {
+							Unifiable<Integer> z = lvar();
+							return edge(x, z).and(self.apply(Tuple.of(z, y)));
+						}))));
+		Unifiable<Integer> y = lvar();
+		Package p = Package.empty().withStore(Table.empty());
+
+		assertThat(path.apply(Tuple.of(lval(1), y)).solveFrom(p, y, BreadthFirstScheduler::new).count())
+				.isEqualTo(2);
+		assertThat(p.getStore(Table.class).entries())
+				.hasSize(3)
+				.allMatch(TableEntry::isComplete);
+	}
+
+	@Test
 	public void secondReaderInsideNestingFormsARingAndStaysUnsealed() {
 		// p :- 42 | q | q.   q :- p.  — single root, but the SECOND q-call is
 		// a reader (masters are once-per-call): it parks at q wearing [p]
