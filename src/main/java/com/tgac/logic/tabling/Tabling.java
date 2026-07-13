@@ -206,7 +206,7 @@ public class Tabling {
 		for (Registration r : parked) {
 			TableEntry enclosingCall = r.getEnclosingCall();
 			if (enclosingCall != null) {
-				enclosingCall.getLedger().awake(r);
+				enclosingCall.getRegion().awake(r);
 			}
 			Fiber<Nothing> consumer = Fiber.defer(() ->
 					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()));
@@ -252,7 +252,7 @@ public class Tabling {
 		if (enclosingCall != null) {
 			// ledger first, then park: a respawn can only drain a parked
 			// registration, so the sleeping record is always there to remove
-			enclosingCall.getLedger().sleeping(registration, entry);
+			enclosingCall.getRegion().sleeping(registration, entry);
 		}
 		if (entry.park(registration)) {
 			if (enclosingCall != null) {
@@ -261,7 +261,7 @@ public class Tabling {
 			return done(nothing());
 		}
 		if (enclosingCall != null) {
-			enclosingCall.getLedger().awake(registration);
+			enclosingCall.getRegion().awake(registration);
 		}
 
 		// An answer arrived while registering — keep consuming

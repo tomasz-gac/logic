@@ -36,7 +36,7 @@ final class Completion {
 		if (enclosingCall == null) {
 			return work;
 		}
-		return enclosingCall.getLedger().counted(work, () -> cascade(enclosingCall));
+		return enclosingCall.getRegion().track(work, () -> cascade(enclosingCall));
 	}
 
 	static void cascade(TableEntry entry) {
@@ -50,7 +50,7 @@ final class Completion {
 			for (Registration r : dead) {
 				TableEntry enclosingCall = r.getEnclosingCall();
 				if (enclosingCall != null) {
-					enclosingCall.getLedger().awake(r);
+					enclosingCall.getRegion().awake(r);
 					queue.add(enclosingCall);
 				}
 			}
