@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
  * finish.
  *
  * <p>{@link #cascade} walks completions bottom-up: when an entry completes,
- * the sleepers parked on it are dead, and each one's ENCLOSING BODY loses
+ * the sleepers parked on it are dead, and each one's ENCLOSING CALL loses
  * its obstruction ("parks on a complete entry" now holds), so it is
  * rechecked.
  * Monitors are never nested: each entry's rule runs under its own locks,
@@ -28,15 +28,15 @@ import lombok.NoArgsConstructor;
 final class Completion {
 
 	/**
-	 * Bill {@code work} to the entry whose body it is a line of. A null body
-	 * is the TOP-LEVEL QUERY: no ledger, no completion, gates nothing — its
-	 * work runs unbilled.
+	 * Bill {@code work} to the call whose execution it is part of. A null
+	 * call is the TOP-LEVEL QUERY: no ledger, no completion, gates nothing —
+	 * its work runs unbilled.
 	 */
-	static Fiber<Nothing> track(TableEntry body, Fiber<Nothing> work) {
-		if (body == null) {
+	static Fiber<Nothing> track(TableEntry enclosingCall, Fiber<Nothing> work) {
+		if (enclosingCall == null) {
 			return work;
 		}
-		return body.getLedger().counted(work, () -> cascade(body));
+		return enclosingCall.getLedger().counted(work, () -> cascade(enclosingCall));
 	}
 
 	static void cascade(TableEntry entry) {
@@ -48,10 +48,10 @@ final class Completion {
 				continue;
 			}
 			for (Registration r : dead) {
-				TableEntry body = r.getEnclosingBody();
-				if (body != null) {
-					body.getLedger().awake(r);
-					queue.add(body);
+				TableEntry enclosingCall = r.getEnclosingCall();
+				if (enclosingCall != null) {
+					enclosingCall.getLedger().awake(r);
+					queue.add(enclosingCall);
 				}
 			}
 		}

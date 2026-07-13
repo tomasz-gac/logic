@@ -84,22 +84,22 @@ public class Tabling {
 	 */
 	/*
 	 * THE ONE RULE: state follows the data, the coat follows the CODE. A
-	 * package's EnclosingBody coat names the goal body the executing code is
-	 * a line of, and it changes exactly where control crosses a body
-	 * boundary — nowhere else:
+	 * package's EnclosingCall coat names the innermost tabled call whose
+	 * execution this code is part of, and it changes exactly where control
+	 * crosses a call boundary — nowhere else:
 	 *
 	 *   callerPkg   the state at this call site, wearing the coat of
-	 *               whatever body the call is written in (top level: none).
-	 *   bodyPkg     callerPkg re-coated with THIS entry on body ENTRY — the
+	 *               whatever call the site is executing inside (top: none).
+	 *   bodyPkg     callerPkg re-coated with THIS entry on call ENTRY — the
 	 *               coat is mail for the calls written inside the body.
-	 *   answerPkg   a body success, still wearing the body's coat; on body
+	 *   answerPkg   a body success, still wearing this call's coat; on call
 	 *               EXIT (the answer's downstream is the CALLER's code) it
 	 *               is re-coated back to the caller.
 	 *
 	 * Forks inherit the coat, parked registrations freeze it, wakes resume
 	 * it. A registration's coat is how billing works: the entry it parks IN
-	 * is what it waits for; the coat says whose definition it is a line of,
-	 * and so whose ledger pays for its work.
+	 * is what it waits for; the coat says which call's execution it belongs
+	 * to, and so whose ledger pays for its work.
 	 */
 	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
 		Unifiable<T> argsTerm = lval(args);
@@ -112,10 +112,10 @@ public class Tabling {
 				Table table = callerPkg.getStore(Table.class);
 				TableEntry entry = table.getOrCreateEntry(key);
 				if (entry.tryBecomeMaster()) {
-					EnclosingBody callerBody = EnclosingBody.current(callerPkg);
-					Package bodyPkg = callerPkg.putStore(new EnclosingBody(entry));
+					EnclosingCall callerCall = EnclosingCall.current(callerPkg);
+					Package bodyPkg = callerPkg.putStore(new EnclosingCall(entry));
 					return Completion.track(entry,
-							produce(entry, body.get(), bodyPkg, argsTerm, k, callerBody));
+							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall));
 				}
 				return consume(entry, k, callerPkg, argsTerm, 0);
 			});
@@ -171,7 +171,7 @@ public class Tabling {
 			Package bodyPkg,
 			Unifiable<T> argsTerm,
 			Fiber.Fn<Package, Nothing> k,
-			EnclosingBody callerBody) {
+			EnclosingCall callerCall) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
@@ -187,11 +187,11 @@ public class Tabling {
 									// derive caller answers, so the caller must not
 									// complete under it — table-completion.md §4).
 									.flatMap(__ -> {
-										Package callerAnswerPkg = answerPkg.putStore(callerBody);
+										Package callerAnswerPkg = answerPkg.putStore(callerCall);
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(
-												Completion.track(callerBody.entry(), downstream));
+												Completion.track(callerCall.entry(), downstream));
 									}))
 							.getOrElse(() -> done(nothing())));
 		});
@@ -204,13 +204,13 @@ public class Tabling {
 	private static Fiber<Nothing> respawn(TableEntry entry, List<Registration> parked) {
 		Fiber<Nothing> result = done(nothing());
 		for (Registration r : parked) {
-			TableEntry body = r.getEnclosingBody();
-			if (body != null) {
-				body.getLedger().awake(r);
+			TableEntry enclosingCall = r.getEnclosingCall();
+			if (enclosingCall != null) {
+				enclosingCall.getLedger().awake(r);
 			}
 			Fiber<Nothing> consumer = Fiber.defer(() ->
 					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()));
-			result = result.flatMap(__ -> Fiber.detach(Completion.track(body, consumer)));
+			result = result.flatMap(__ -> Fiber.detach(Completion.track(enclosingCall, consumer)));
 		}
 		return result;
 	}
@@ -244,24 +244,24 @@ public class Tabling {
 							.flatMap(fib -> fib));
 		}
 
-		// the parked state is callerPkg: its coat names the body this reader
-		// is a line of — the registration's enclosingBody, as opposed to
-		// {@code entry}, the body it waits for
-		TableEntry body = EnclosingBody.entryOf(callerPkg);
-		Registration registration = new Registration(k, callerPkg, argsTerm, index, body);
-		if (body != null) {
+		// the parked state is callerPkg: its coat names the call this reader
+		// belongs to — the registration's enclosingCall, as opposed to
+		// {@code entry}, the call it waits for
+		TableEntry enclosingCall = EnclosingCall.entryOf(callerPkg);
+		Registration registration = new Registration(k, callerPkg, argsTerm, index, enclosingCall);
+		if (enclosingCall != null) {
 			// ledger first, then park: a respawn can only drain a parked
 			// registration, so the sleeping record is always there to remove
-			body.getLedger().sleeping(registration, entry);
+			enclosingCall.getLedger().sleeping(registration, entry);
 		}
 		if (entry.park(registration)) {
-			if (body != null) {
-				Completion.cascade(body);
+			if (enclosingCall != null) {
+				Completion.cascade(enclosingCall);
 			}
 			return done(nothing());
 		}
-		if (body != null) {
-			body.getLedger().awake(registration);
+		if (enclosingCall != null) {
+			enclosingCall.getLedger().awake(registration);
 		}
 
 		// An answer arrived while registering — keep consuming
