@@ -62,9 +62,10 @@ per-factor; the product order under-approximates semantic entailment
 |---|---|---|---|
 | `Domain` (FD) | ⊆, meet = intersect | SHRINKS | the prototype: finite, measured (width), splittable (enumeration), restatable (`dom`) — every tier of the ladder |
 | `Substitutions` | extension, meet n/a (grows by extend) | GROWS | ripeness and the ground-cache are upward-closed sets over it |
-| Table entries | answer-set ⊆ | GROWS | completion = the ascent's fixpoint; completed entry = exact count |
+| Table entries | answer-set ⊆ | GROWS | completion = the ascent's fixpoint; completed entry = exact count; the answer set SHIPPED as `JoinSet` (tabling/primitives) — the growing half's first native instance, join-idempotence = the dedup discipline, gate-checked |
 | Adornments | pointwise bound/free (Boolean lattice per arity) | static | the optimizer's plan-memo key space; subsumption lookup = "reuse the plan of a less-bound pattern" (sound: wrong-only-slow) |
 | Residues (TCLP) | per-store ⊑ | shrink | = `Domain` for FD, by construction (tabled-constraints.md §5.2) |
+| `FiniteDomainConstraints` | pointwise domain meet × propagator-set ∩ | SHRINKS | SHIPPED: the store as a product order, canonical ⊥; the cascade's termination measure |
 | `Package` | product of the above | mixed | pointwise entailment; the accepted under-approximation |
 | Neq record sets | record implication (syntactic superset as the sound approximation) | GROWS | ordered ONLY — no useful measure, no split, infinite antichains: tier 1 of the ladder and correctly nothing more |
 
@@ -627,41 +628,18 @@ end); the full mechanism (shaving, constructive disjunction) is gated on a
 workload that needs it — our FD problems are small and propagation
 suffices, so the door is documented, not built.
 
-## 6. Adoption sketch (not scheduled)
+## 6. Adoption — as it actually happened (lineage)
 
-The algebra lives ON THE VALUES, F-bounded (the `Comparable` pattern):
-
-```java
-public interface Lattice<L extends Lattice<L>> {
-	L meet(L other);
-	boolean isBottom();
-	default boolean leq(L other) {          // entailment, free from the meet
-		return meet(other).equals(this);
-	}
-}
-```
-
-- `Domain<T> implements Lattice<Domain<T>>` with existing operations
-  (meet = intersect; isBottom = isEmpty); the adornment type implements it
-  trivially. Adoption, not rewrite; the kernel does not change.
-- **TCLP consequence: the `entails` store hook is SUBSUMED** — `project`
-  returns a Lattice-implementing residue and the driver compares values
-  directly (`mine.leq(other)`), written once. Custody is not violated:
-  custody governs writes, comparison is read-only. What irreducibly stays
-  store-side: `project` (only the store can create its residue) and
-  `restate` as a hook with a note (FD could restate value-side through the
-  public `dom` factory; other stores may need private context).
-- The typing residue: the driver holds residues as class-keyed wildcards
-  and Java cannot prove two wildcards share an L — ONE unchecked
-  class-keyed cast in the generic fold, the same idiom `Package.getStore`
-  already uses. The old store-mediated `entails` was a type witness
-  dressed as an operation.
-- The generic consumers that justify the interface: the TCLP pointwise
-  fold and `SubsumptionMap<K extends Lattice<K>, V>` (exact-miss →
-  nearest ⊑-larger key), shared by the adornment plan-memo and TCLP
-  stage-2 region keys.
-- Home: `functional` (pure algebra, sibling of the planned `Semiring`) —
-  pending the human's call given functional's release-prep status.
+The original sketch here proposed one logic-side `Lattice<L>` adopted "when
+a customer exists". Reality (July 2026) went further and differently: the
+algebra lives in `functional.algebra` as a HIERARCHY (`MeetSemilattice`,
+`JoinSemilattice`, `Lattice`, `Bottomed`, the monoid/semiring families with
+capability subtypes), policed by the law-kit + coverage-gate architecture,
+and adoption ran ahead of consumers under the completeness principle — the
+gate, not a caller, is the honesty check. Shipped instances: `Domain`,
+`FiniteDomainConstraints`, `NeqConstraints`, `JoinSet`, the witnesses. The
+sketch's TCLP consequence (entails subsumed by `leq`) and `SubsumptionMap`
+remain live consumers-to-be, unchanged in design.
 
 ## 7. Non-goals
 

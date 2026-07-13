@@ -4,9 +4,9 @@
 directly, skipping a separate static phase: the tiers are configurations of
 this one machine (§6), so the cost argument constrains configurations, not
 the architecture. Build milestones: (1) store + solve seeding + root
-rewrite (subsumes the static tier, unblocks pldb's LookupGoal); (2) the
-Goal.defer hook, with a PINNED zero-cost-when-absent property; (3) memos
-when live answers(s) ships. The pldb benchmark becomes a tuning input; the
+rewrite — SHIPPED; (2) the Goal.defer hook, zero-cost-when-absent —
+SHIPPED (and widened to the live Package, July 2026); (3) memos — pending
+SubsumptionMap. The pldb benchmark becomes a tuning input; the
 one remaining XOR (dynamic ordering vs deferred lookups) is decided later,
 inside this machine. Companion to `optimizer.md` (theory + pass catalog);
 this doc rebuilds the architecture from first principles.**

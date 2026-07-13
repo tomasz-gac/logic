@@ -208,7 +208,7 @@ onto the single knowledge order).
 Ordered; each item lands green on the full suite; benchmarks gate the
 forks. Statuses: SHIPPED / NEXT / QUEUED / GATED / PARKED.
 
-**Phase 0 — land the platform (NEXT)**
+**Phase 0 — land the platform (SHIPPED July 2026)**
 1. Merge branch `optimizer` (12 commits: seam, ambient delivery, Barrier,
    ordering layer, UnifyGoal, spawn-count benchmark, design corpus).
 2. pldb `LookupGoal implements Goal, Bounded` + `estimate()` — the second
@@ -229,7 +229,18 @@ forks. Statuses: SHIPPED / NEXT / QUEUED / GATED / PARKED.
    membero-as-data-goal (a rewrite, stretch), Matche cases (opaque by
    construction, correctly barriers).
 
-**Phase 1 — the plug socket (NEXT after 0)**
+**Phase 1 — the plug socket (SHIPPED July 2026: the algebra package +
+law-kit/coverage-gate architecture in `functional` with the `functional-laws`
+module; capability types `IdempotentSemiring`/`ClosedSemiring`/
+`SuperiorSemiring` replacing the predicate defaults; `aggregate` on Monoid
+witnesses; the optimizer on `Semirings.SATURATING`; the `answers(Package)`
+widening with store-sighted post pricing and completed-entry pricing.
+LANDED BEYOND PLAN, same period: Tier-1 TABLE COMPLETION DETECTION —
+`table-completion.md`: the EnclosingCall coat, detach-k, Region/WorkLedger/
+MonotoneCell/JoinSet primitives, the two-edge graph and its seal criterion —
+making the optimizer fully table-aware and opening the gates this roadmap
+had QUEUED: subsumptive reuse, Tier-2 group seal, sound aggregate/negation
+over tabled goals.)**
 4. **The algebra package** (decided July 2026: the abstractions have paid
    for engine-level presence): `Lattice<L>` (F-bounded), `Semiring<S>`,
    `CommutativeMonoid<M>` + LAW KITS (property-test harnesses:

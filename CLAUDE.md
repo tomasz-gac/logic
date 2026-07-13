@@ -159,9 +159,14 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/tabled-constraints.md` — DESIGN SKETCH: merging tabling and constraints
   (TCLP): three intra-domain store hooks (project/entails/restate), pointwise product-order
   entailment, the antichain termination gate. Read before weakening the tabling guard tests.
-- `docs/design/substitutions-migration.md` — PLANNED: retype the unifier onto the
-  Substitutions interface (completes capability §2.1), one kind-tagged decompose
-  shared by unify and members, representation swaps gated on benchmarks. Read
+- `docs/design/substitutions-migration.md` — MOSTLY SHIPPED (Steps A–C: the
+  unifier typed over Substitutions, the kind-tagged decompose shared by unify
+  and members); Step D (representation swaps) remains, benchmark-gated. Read
   before touching MiniKanren internals.
+- `docs/design/table-completion.md` — AS BUILT: per-call completion detection
+  (the EnclosingCall coat, detach-k, the Region/ledger primitives, the
+  two-edge graph and its seal criterion). Read before touching tabling.
+- `docs/design/method.md` — how this design process works: the loop, the
+  moves, the placement razors, shelving with triggers.
 - This file — architecture, landmines, workflow.
 - Commit history is descriptive; read it when a change looks surprising.

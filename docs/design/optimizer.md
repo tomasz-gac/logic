@@ -332,9 +332,9 @@ is missing, and once reuse is automatic the sort may order freely — the
 asymmetric-fence alternative (sortable but uncrossable) was considered
 and dropped as moot. Mechanism note: completion is a
 runtime event and the Table rides the package, so completed-entry
-re-pricing is ambient-tier and needs answers to read the PACKAGE — the
-THIRD customer for the answers(Package) widening, after force-early and
-live labelling; three customers ends its speculative status.
+re-pricing is ambient-tier and reads the PACKAGE — the answers(Package)
+widening SHIPPED (July 2026) with completed-entry pricing wired end to end;
+completion detection (table-completion.md) flips the flag in real solves.
 
 **The suspension≡consumer triple.** Kernel suspensions and tabling
 consumers are one shape: (parked continuation, upward-closed wake

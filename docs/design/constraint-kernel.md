@@ -193,8 +193,9 @@ content is the owner's business); store-emitted runs → subsumed by
 suspensions before ever shipping a user. Deliberately foreclosed (do not
 resurrect without new evidence): the data-shaped Neq→FD bridge, cross-store
 narrowing vocabulary, engine-level fixpoint unification
-(`fixpoint-machine.md` §4/§9). Deliberately deferred: `Lattice<L>` (adoption
-not rewrite, when a customer exists), representation swaps
+(`fixpoint-machine.md` §4/§9). Deliberately deferred, since adopted: `Lattice<L>` shipped July 2026 as the
+`functional.algebra` hierarchy (lattice.md §6 records the as-built shape).
+Still deferred: representation swaps
 (`substitutions-migration.md` §5, benchmark-gated), TCLP
 (`tabled-constraints.md`, entailment-gated), Neq on the verdict protocol
 (§4 — gated on a third toolkit user or a profile showing Neq).

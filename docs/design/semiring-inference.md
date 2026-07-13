@@ -37,7 +37,7 @@ different things depending on which semiring you plug in. The engine enumerates 
 
 ---
 
-## 2. The `Semiring<S>` abstraction (Phase 1)
+## 2. The `Semiring<S>` abstraction (SHIPPED, as capability types)
 
 Java 8. This is the whole abstraction — a few methods. The work lives in the instances,
 and the instances are each a few lines.
@@ -49,11 +49,15 @@ public interface Semiring<S> {
     S plus(S a, S b);         // ⊕ : combine across proofs (disjunction)
     S times(S a, S b);        // ⊗ : combine along a proof (conjunction)
 
-    // Kleene closure 1 ⊕ a ⊕ (a⊗a) ⊕ ... — only needed for RECURSIVE programs (§7).
-    // For non-recursive use it is never called. Idempotent semirings: star(a) = one().
-    default S star(S a) { throw new UnsupportedOperationException("no closure for recursion"); }
 }
 ```
+
+As shipped, the optional capabilities are TYPES, not flags or throwing
+defaults: `ClosedSemiring` declares `star` (so "no closure" is
+unrepresentable), `IdempotentSemiring` carries ⊕-idempotence,
+`SuperiorSemiring extends IdempotentSemiring` (the subtyping is a theorem).
+Kit signatures demand the capability; the coverage gate audits every
+implementor.
 
 Instances to write (each is trivial):
 - `BooleanSemiring` : `false/true`, `||`, `&&`, `star = true`.
@@ -72,7 +76,7 @@ per-instance reasoning.
 
 ---
 
-## 3. First, refactor `aggregate` onto it (Phase 1, low risk, do this first)
+## 3. First, refactor `aggregate` onto it (SHIPPED: sum/max/min fold through Monoid witnesses; count untouched)
 
 `aggregate`/`findall` (in `com.tgac.logic.aggregate`) already folds solution values —
 `count` is `+` with `1` per solution, `sum`/`max`/`min` fold a projected value. These are

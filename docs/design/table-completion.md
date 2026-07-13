@@ -100,11 +100,13 @@ complete. End-of-search only.
   the CALLER's code, re-coated and billed to the caller (a nested master's
   downstream can still derive caller answers). The master's fiber
   completion then means BODY EXHAUSTED, the event the counters need.
-- **The seal rule, no Tarjan** (`completeIfQuiescent`): ledger quiescent
-  (counters drained, every sleeper parked home or at a sealed entry) →
-  flag CAS → drain the cell's parked subscribers (provably dead). The
-  CASCADE rechecks each dead sleeper's enclosing call — seals propagate
-  backwards along sleeper edges, leaves first.
+- **The seal rule, no Tarjan** (fused into `Region.sealCascade`): ledger
+  quiescent (counters drained, every sleeper parked home or at a sealed
+  region — the predicate is the theorem, not domain input) → flag CAS →
+  drain the parked subscribers (provably dead). The cascade rechecks each
+  dead sleeper's owner — seals propagate backwards along sleeper edges,
+  leaves first. The ONE domain input is `ownerOf`: a sleeper belongs to
+  the region of the call whose body it is a line of — its coat.
 
 **Tier 2 (deferred):** seal the strongly-connected components of the
 sleeper-edge graph atomically (§5a) — table-side union-find over entries,
