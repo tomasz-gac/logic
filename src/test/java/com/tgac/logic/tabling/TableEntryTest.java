@@ -32,7 +32,8 @@ public class TableEntryTest {
 				p -> Fiber.done(Nothing.nothing()),
 				Package.empty(),
 				lvar().getObjectUnifiable(),
-				index);
+				index,
+				null);
 	}
 
 	@Test

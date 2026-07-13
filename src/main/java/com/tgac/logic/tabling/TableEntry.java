@@ -120,8 +120,10 @@ public class TableEntry {
 
 	/**
 	 * A consumer parked as data: its continuation, the state it was consuming
-	 * in, the arguments it unifies answers against, and the cache index it
-	 * will resume from.
+	 * in, the arguments it unifies answers against, the cache index it will
+	 * resume from, and THE ENTRY WHOSE PRODUCTION IT CONTINUES (null at top
+	 * level) — where it parks says what it waits for; this says who it works
+	 * for, resolved once from the parked package's Producer tag.
 	 */
 	@Value
 	public static class Registration {
@@ -129,6 +131,7 @@ public class TableEntry {
 		Package pkg;
 		Unifiable<?> argsTerm;
 		int nextIndex;
+		TableEntry producer;
 	}
 
 	public TableEntry(Call call) {

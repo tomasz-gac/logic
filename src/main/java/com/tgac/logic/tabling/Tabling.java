@@ -197,7 +197,7 @@ public class Tabling {
 	private static Fiber<Nothing> respawn(TableEntry entry, List<Registration> parked) {
 		Fiber<Nothing> result = done(nothing());
 		for (Registration r : parked) {
-			TableEntry producer = Producer.of(r.getPkg());
+			TableEntry producer = r.getProducer();
 			if (producer != null) {
 				producer.removeOutpost(r);
 				producer.workStarted();
@@ -231,7 +231,7 @@ public class Tabling {
 				continue;
 			}
 			for (Registration r : dead) {
-				TableEntry producer = Producer.of(r.getPkg());
+				TableEntry producer = r.getProducer();
 				if (producer != null) {
 					producer.removeOutpost(r);
 					queue.add(producer);
@@ -269,8 +269,8 @@ public class Tabling {
 							.flatMap(fib -> fib));
 		}
 
-		Registration registration = new Registration(k, initialPkg, argsTerm, index);
 		TableEntry producer = Producer.of(initialPkg);
+		Registration registration = new Registration(k, initialPkg, argsTerm, index, producer);
 		if (producer != null) {
 			// outpost first, then park: a respawn can only drain a parked
 			// registration, so the outpost is always there for it to remove
