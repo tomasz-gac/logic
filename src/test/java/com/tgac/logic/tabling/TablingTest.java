@@ -398,4 +398,24 @@ public class TablingTest {
 				Tuple.of("bob", "charlie"),
 				Tuple.of("charlie", "david"));
 	}
+
+	@Test
+	public void bareUnifiableArgumentsWorkViaInternalWrapping() {
+		// a bare Unifiable is an equality atom to decompose, which once
+		// silently collapsed all answers into one (#41); the chokepoint now
+		// wraps it in a Tuple1 internally, so keys, answers and consumption
+		// all take the structural path — the body still sees the bare arg
+		Tabled<Unifiable<Integer>> rel = Tabling.define(x ->
+				x.unifies(1).or(x.unifies(2)));
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+
+		// second call consumes the cache: 2 × 2 pairs proves both the
+		// producer and the consumer paths see through the wrapping
+		List<String> pairs = rel.apply(a).and(rel.apply(b))
+				.solve(lval(Tuple.of(a, b)))
+				.map(Object::toString)
+				.collect(Collectors.toList());
+		assertThat(pairs).hasSize(4);
+	}
 }

@@ -15,6 +15,8 @@ import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.tabling.Tabling;
+import io.vavr.Tuple;
+import io.vavr.Tuple1;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Unifiable;
 import java.util.stream.Collectors;
@@ -99,8 +101,8 @@ public class OrderingOptimizerTest {
 
 	@Test
 	public void tabledCallsAreExplicitBarriers() {
-		Goal tabled = Tabling.<Unifiable<Integer>> define(x -> Goal.success())
-				.apply(lvar());
+		Goal tabled = Tabling.<Tuple1<Unifiable<Integer>>> define(t -> Goal.success())
+				.apply(Tuple.of(lvar()));
 		assertThat(tabled).isInstanceOf(Barrier.class);
 
 		Goal b5 = new FixedOrder(5), b1 = new FixedOrder(1), b3 = new FixedOrder(3), b2 = new FixedOrder(2);

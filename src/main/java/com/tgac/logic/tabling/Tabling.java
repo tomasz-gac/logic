@@ -17,7 +17,9 @@ import com.tgac.logic.tabling.primitives.JoinSet;
 import com.tgac.logic.tabling.primitives.Region;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
 import io.vavr.collection.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -104,7 +106,12 @@ public class Tabling {
 	 * to, and so whose ledger pays for its work.
 	 */
 	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
-		Unifiable<T> argsTerm = lval(args);
+		// a bare Unifiable is an equality ATOM to decompose (no wrapped-Term
+		// kind: tuple MEMBERS decompose via wrapTerm, a bare wrapping does
+		// not), which would collapse every answer into one. Wrap it in a
+		// Tuple1 internally — keys, answers and consumption all take the
+		// structural path; the body still receives the bare argument
+		Unifiable<?> argsTerm = lval(args instanceof Term ? Tuple.of(args) : args);
 		// keyed widening: the call pattern is the table key, so no optimizer may
 		// move binders across it — the contract as a type, not an accident of opacity
 		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k -> {
@@ -131,7 +138,7 @@ public class Tabling {
 	 * execution is always at-or-more-bound than pricing, and a more-bound
 	 * variant emits a subset of the priced variant's answers.
 	 */
-	private static <T> long tabledOrder(Package p, Tabled<T> relation, Unifiable<T> argsTerm) {
+	private static <T> long tabledOrder(Package p, Tabled<T> relation, Unifiable<?> argsTerm) {
 		return p.getStores().get(Table.class)
 				.map(Table.class::cast)
 				.map(table -> table.getEntry(Call.of(relation,
@@ -171,11 +178,11 @@ public class Tabling {
 	 * respawned, and the answer flows on through the query. Duplicate
 	 * answers fail their branch.
 	 */
-	private static <T> Fiber<Nothing> produce(
+	private static Fiber<Nothing> produce(
 			TableEntry entry,
 			Goal goal,
 			Package bodyPkg,
-			Unifiable<T> argsTerm,
+			Unifiable<?> argsTerm,
 			Fiber.Fn<Package, Nothing> k,
 			EnclosingCall callerCall) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
