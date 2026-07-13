@@ -84,27 +84,47 @@ public class Tabling {
 	 * 4. An existing call consumes cached answer terms, parking when it catches up
 	 * </pre>
 	 */
+	/*
+	 * ONE package lineage flows through tabling, wearing one of THREE STAMPS —
+	 * the Producer store, which records whose production's body a state is
+	 * executing:
+	 *
+	 *   callerPkg      the state at this call site, stamped by whatever
+	 *                  production ENCLOSES the call (top level: no stamp).
+	 *   productionPkg  callerPkg re-stamped with THIS entry before the body
+	 *                  runs, so tabled calls nested in the body know whose
+	 *                  work they are — the stamp is mail for the body's
+	 *                  descendants, not for produce itself.
+	 *   answerPkg      a body success, still wearing the production stamp;
+	 *                  before its downstream k is detached it is re-stamped
+	 *                  back to the caller (the downstream is the CALLER's
+	 *                  work: it parks and counts as the caller).
+	 *
+	 * A consumer parks callerPkg in its Registration, which is how a parked
+	 * registration knows who it works for (its producer field) as opposed to
+	 * what it waits for (the entry whose list it sits in).
+	 */
 	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
 		Unifiable<T> argsTerm = lval(args);
 		// keyed widening: the call pattern is the table key, so no optimizer may
 		// move binders across it — the contract as a type, not an accident of opacity
-		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), pkg -> k -> {
-			assertNoConstraints(pkg, "at a tabled call");
-			return MiniKanren.reify(pkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
+		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k -> {
+			assertNoConstraints(callerPkg, "at a tabled call");
+			return MiniKanren.reify(callerPkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
 				Call key = Call.of(relation, reifiedArgs);
-				Table table = pkg.getStore(Table.class);
+				Table table = callerPkg.getStore(Table.class);
 				TableEntry entry = table.getOrCreateEntry(key);
 				if (entry.tryBecomeMaster()) {
-					return produce(entry, body.get(),
-							pkg.putStore(new Producer(entry)), argsTerm, k,
-							Producer.current(pkg))
+					Producer callerProduction = Producer.current(callerPkg);
+					Package productionPkg = callerPkg.putStore(new Producer(entry));
+					return produce(entry, body.get(), productionPkg, argsTerm, k, callerProduction)
 							.flatMap(__ -> {
 								entry.workFinished();
 								tryComplete(entry);
 								return done(nothing());
 							});
 				}
-				return consume(entry, k, pkg, argsTerm, 0);
+				return consume(entry, k, callerPkg, argsTerm, 0);
 			});
 		});
 	}
@@ -155,11 +175,11 @@ public class Tabling {
 	private static <T> Fiber<Nothing> produce(
 			TableEntry entry,
 			Goal goal,
-			Package initialPkg,
+			Package productionPkg,
 			Unifiable<T> argsTerm,
 			Fiber.Fn<Package, Nothing> k,
-			Producer caller) {
-		return goal.apply(initialPkg).apply(answerPkg -> {
+			Producer callerProduction) {
+		return goal.apply(productionPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
 					entry.addAnswer(answerTerm)
@@ -167,15 +187,18 @@ public class Tabling {
 									// detach-k: the answer's downstream is the CALLER's
 									// work, not this production's — detaching it makes
 									// this fiber's completion mean BODY EXHAUSTED, the
-									// event the counters need. It runs under the
-									// caller's tag AND counts as the caller's live work:
-									// a nested master's downstream can still derive
-									// caller answers, so the caller must not complete
-									// under it (table-completion.md §4).
+									// event the counters need. The answer leaves this
+									// production, so it is re-stamped from the
+									// production's tag back to the caller's before k
+									// runs: the downstream parks AND counts as the
+									// caller (a nested master's downstream can still
+									// derive caller answers, so the caller must not
+									// complete under it — table-completion.md §4).
 									.flatMap(__ -> {
-										TableEntry callerEntry = caller.entry();
+										Package callerAnswerPkg = answerPkg.putStore(callerProduction);
+										TableEntry callerEntry = callerProduction.entry();
 										Fiber<Nothing> downstream = Fiber.defer(() ->
-												k.apply(answerPkg.putStore(caller)));
+												k.apply(callerAnswerPkg));
 										if (callerEntry == null) {
 											return Fiber.detach(downstream);
 										}
@@ -250,7 +273,7 @@ public class Tabling {
 	private static Fiber<Nothing> consume(
 			TableEntry entry,
 			Fiber.Fn<Package, Nothing> k,
-			Package initialPkg,
+			Package callerPkg,
 			Unifiable<?> argsTerm,
 			int index) {
 
@@ -259,18 +282,21 @@ public class Tabling {
 			// Fresh variables per consumption, so separate consumptions of the
 			// same answer don't alias each other's free variables
 			return MiniKanren.instantiate(answerTerm).flatMap(freshTerm ->
-					MiniKanren.unify(initialPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
-							.map(initialPkg::withSubstitutions)
+					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
+							.map(callerPkg::withSubstitutions)
 							.map(unifiedPkg -> k.apply(unifiedPkg)
 									.flatMap(__ -> Fiber.defer(() ->
-											consume(entry, k, initialPkg, argsTerm, index + 1))))
+											consume(entry, k, callerPkg, argsTerm, index + 1))))
 							.getOrElse(() -> Fiber.defer(() ->
-									consume(entry, k, initialPkg, argsTerm, index + 1)))
+									consume(entry, k, callerPkg, argsTerm, index + 1)))
 							.flatMap(fib -> fib));
 		}
 
-		TableEntry producer = Producer.of(initialPkg);
-		Registration registration = new Registration(k, initialPkg, argsTerm, index, producer);
+		// the parked state is callerPkg: its stamp names the production this
+		// consumer works for — the registration's producer, as opposed to
+		// {@code entry}, the production it waits for
+		TableEntry producer = Producer.of(callerPkg);
+		Registration registration = new Registration(k, callerPkg, argsTerm, index, producer);
 		if (producer != null) {
 			// outpost first, then park: a respawn can only drain a parked
 			// registration, so the outpost is always there for it to remove
@@ -287,6 +313,6 @@ public class Tabling {
 		}
 
 		// An answer arrived while registering — keep consuming
-		return Fiber.defer(() -> consume(entry, k, initialPkg, argsTerm, index));
+		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index));
 	}
 }
