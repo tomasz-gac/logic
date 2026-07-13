@@ -49,7 +49,7 @@ dependency graph.
 completion wants is a DELIMITED drain — "run this production as its own
 little search, tell me when IT reaches quiescence" — and a private
 scheduler would give it free: its empty queue IS the region's fixpoint.
-All frames share one queue, so the producer token re-attaches the region
+All frames share one queue, so the EnclosingCall coat re-attaches the region
 identity the shared queue erases, and the counters reconstruct the
 emptiness event: counting is how you virtualize a delimited scheduler
 inside a global one, and it is the PRICE OF FAIRNESS — an actual nested
@@ -76,25 +76,40 @@ entry-completion.
 **Tier 0 (free, already implicitly true):** scheduler-dry ⇒ all entries
 complete. End-of-search only.
 
-**Tier 1 (this task):**
-- **Producer token**: a plain transport Store riding the Package (the Table
-  pattern). produce sets CurrentProducer(X) before running the body; any
-  tabled() call inside reads it; a Registration carries it FOR FREE because
-  it already parks the pkg. Branch-local by construction — packages fork
-  per branch, no trail, no unwind.
-- **Live work as TWO MONOTONE COUNTERS** per entry (Dijkstra–Scholten):
-  `spawned` (master start; each respawn), `finished` (produce's fiber and
-  each detached consumer fiber wrapped with an andThen-decrement). Both
-  only grow; liveWork = spawned − finished.
-- **Completion without Tarjan**: when finished == spawned and every
-  X-registration parks on X itself (the self-SCC), flip the flag and
-  discard the entry's registrations (provably dead — memory win). Covers
-  non-recursive and left-recursive calls (path); mutual recursion stays
-  incomplete under Tier 1 — ∞ forever, sound-only-slow.
+**Tier 1 (as built):**
+- **The coat (`EnclosingCall`)**: a plain transport Store riding the
+  Package, naming the innermost enclosing tabled CALL — the event whose
+  ledger pays for this work (goals are text, calls are events; one goal
+  object under two bindings is two calls, two ledgers, two seals). THE ONE
+  RULE: state follows the data, the coat follows the CODE — it changes
+  exactly where control crosses a call boundary (stamped on entry, restored
+  to the remembered caller's coat on answer exit) and is carried untouched
+  everywhere else: forks inherit it, parked Registrations freeze it, wakes
+  resume it. Branch-local by construction — no trail, no unwind, no
+  thread-locals.
+- **The primitives** (tabling/primitives, logic-free, generic): a
+  `MonotoneCell<V,S>` holds each entry's answers — a persistent
+  `JoinSet<A>` value (join-semilattice; join-idempotence IS the dedup
+  discipline, gate-checked) plus parked subscribers, grow-wakes,
+  park-races-grow; a `WorkLedger<S,P>` holds each entry's work — the
+  RUNNING half as the Dijkstra–Scholten monotone counter pair, the
+  SLEEPING half as who-sleeps-where. `counted()` is the ONE pairing
+  discipline every unit of work passes through (start ticks at wrap time —
+  no gap for a racing seal — finish at fiber end).
+- **detach-k**: produce caches each answer, then detaches its downstream —
+  the CALLER's code, re-coated and billed to the caller (a nested master's
+  downstream can still derive caller answers). The master's fiber
+  completion then means BODY EXHAUSTED, the event the counters need.
+- **The seal rule, no Tarjan** (`completeIfQuiescent`): ledger quiescent
+  (counters drained, every sleeper parked home or at a sealed entry) →
+  flag CAS → drain the cell's parked subscribers (provably dead). The
+  CASCADE rechecks each dead sleeper's enclosing call — seals propagate
+  backwards along sleeper edges, leaves first.
 
-**Tier 2 (deferred):** the dependency graph over parked-on edges plus a
-Tarjan SCC check when a counter drains — full SLG completion for mutual
-recursion. Same bookkeeping, more surface.
+**Tier 2 (deferred):** seal the strongly-connected components of the
+sleeper-edge graph atomically (§5a) — table-side union-find over entries,
+SLG-WAM's approximate-SCC design, over-merging sound. The scheduler stays
+untouched.
 
 ## 5. Flag semantics: keys-final, NOT values-final
 
@@ -111,29 +126,82 @@ tabling's star machinery: cyclic derivations diverge under counting unless
 closed-semiring star computes them algebraically; on acyclic SCCs it
 coincides with keys-final for free. Do not conflate the two flags.
 
-## 5a. Coverage and limits (Tier 1)
+## 5a. Coverage and limits: the two-edge graph
 
-The completion graph is over VARIANTS, not predicates — which makes Tier 1
-stronger than "no mutual recursion" suggests. Mutually recursive
-PREDICATES whose variants form a DAG complete fine: even/odd over
-naturals spawns even(2) → odd(1) → even(0), each depending on strictly
-smaller variants, and the completion cascade walks it bottom-up. The true
-limit is a CYCLE IN THE VARIANT GRAPH (p() and q() waiting on each
-other), and the counters are structurally blind to it: both drain — no
-live frames anywhere, which is true — but the residual waiting is a ring
-of PARKED REGISTRATIONS, data in the table, not frames in the queue.
-"Can anything ever run again" is a reachability question over that ring,
-not a counting question. A scheduler Region facility in its naive form
-(per-tag frame counting) does not help — regions see frames, the cycle
-lives in what isn't a frame. What cracks it is REGION MERGING: union the
-regions when a consumer parks on an incomplete entry of another region,
-making the ring intra-region — Tier 2, SLG-WAM's approximate-SCC design,
-over-merging sound (entries complete later, together). The merge
-knowledge (who parked on whom, incomplete at the time) lives in the
-Table either way, so Tier 2 is table-side union-find over entries;
-the scheduler stays untouched.
+The runtime structure is a graph whose NODES are call events (table
+entries — born when a call reifies to an unseen pattern; `path(1,_)` and
+`path(2,_)` are two nodes) and whose EDGES are what a tabled call
+occurrence inside a body turns into — exactly one of two kinds:
 
-Degradation per customer when Tier 1 cannot detect (variant cycles):
+- **Master edge** (the pattern is FRESH): this occurrence masters the new
+  event; the new body splices into the current fiber. Discharged by
+  ordinary control flow — never in any ledger, can never block a seal.
+  Every event is mastered exactly once, so master edges form a TREE: the
+  call tree of events, rooted at the query.
+- **Sleeper edge** (the pattern ALREADY HAS a master): this occurrence
+  reads the existing event; if it catches up before that event seals, it
+  parks — recorded in ITS OWN call's ledger ("a piece of me sleeps at E").
+  The only edge kind a seal waits on. Discharged by E growing (wake) or E
+  sealing (dead sleeper, owner rechecked).
+
+The picture is always A TREE OF MASTER EDGES DECORATED WITH SLEEPER
+CROSS-LINKS, and it is not an analysis — it is literally the data: nodes =
+the Table's entries, master edges = who tracked whose produce, sleeper
+edges = the (registration → parked-at) pairs in each ledger's sleeping
+map; the cascade is the backwards edge-walk as a queue.
+
+**THE SEAL CRITERION: the sleeper-edge graph is acyclic up to self-loops.**
+A node seals when its fiber work drains and its outgoing sleeper edges all
+point home (self-loop: waking would need a new answer here, circularly
+impossible) or at sealed nodes; sealing kills the sleepers parked here and
+rechecks their owners — seals propagate backwards along sleeper edges,
+leaves first. A CYCLE of sleeper edges through distinct unsealed nodes
+never seals: each refuses on the other's account, no counter event
+remains. NOTE what the criterion is NOT: it is not "no cycle in the
+variant call graph" — nested mutual recursion IS a variant-graph cycle
+and seals fine, because its p→q direction is a master edge.
+
+How recursion maps: at each recursive call occurrence one question decides
+the shape — DOES THE CALL REIFY TO A FRESH PATTERN OR THE SAME ONE?
+Arguments that change (descending/right recursion) mint fresh events:
+recursion-as-TREE, no sleepers, seals trivially. Arguments that revisit
+the same question park: recursion-as-BACK-EDGE — a self-loop (fine) or,
+cross-linked with another, a cycle (Tier 2). The five pinned cases
+(`═` master, `┈` sleeper; tests in TableCompletionTest):
+
+    left recursion               variant chain
+    query ═ path(1,_) ⟲┈         query ═ p(1) ═ p(2) ═ p(3)
+    seals: home rule             seals: no sleepers at all
+    (leftRecursivePathCompletes) (variantChainOfNestedMastersSealsBottomUp)
+
+    nested mutual                cross-root ring
+    query ═ p ═ q                query ═ p     query ═ q
+            ↑┈┈┈┘                        └┈┈> q       └┈┈> p
+    seals: one edge, no cycle    unsealed: sleeper cycle
+    (nestedMutualRecursion-      (crossConsumingRingStaysIncomplete)
+     CompletesBottomUp)
+
+    single-root double-read ring:  p :- 42 | q | q.  q :- p.
+    the SECOND q-occurrence is a reader (masters are once-per-event):
+    p ┈> q and q ┈> p — a cycle from one root; both stay unsealed
+    (secondReaderInsideNestingFormsARingAndStaysUnsealed)
+
+Why counters alone cannot see a ring: both ledgers drain — no live frames
+anywhere, which is TRUE — but the residual waiting is a ring of parked
+registrations: data in the table, not frames in the queue. "Can anything
+ever run again" is reachability over sleeper edges, not counting. A
+scheduler Region facility in its naive form (per-tag frame counting) does
+not help — regions see frames, the cycle lives in what isn't a frame.
+Tier 2 seals sleeper-SCCs atomically: union-find over entries, merging
+when a reader parks at an unsealed foreign entry; over-merging is sound
+(entries seal later, together). Billing note for nested masters: the new
+event's BODY is billed to the new event's own ledger; the caller pays only
+for CONSUMING the answers (each answer-exit downstream re-coated and
+billed to the caller). "Does the existing entry contain what I need" is
+answered today by PATTERN EQUALITY only — upgrading that check to
+entailment against a SEALED general entry is subsumptive reuse (§8a).
+
+Degradation per customer when Tier 1 cannot detect (sleeper cycles):
 pricing → ∞, wrong-only-slow; prefetch → stays a barrier, graceful;
 reclamation → deferred to end-of-solve; the completion-GATED features
 (sound aggregate/negation/ifte) → the gate never opens — an
@@ -150,7 +218,7 @@ without it.
 - **Immutability kills the classically-hardest layer.** SLG-WAM's most
   intricate machinery is stack freezing — preserving a suspended consumer's
   environment across backtracking. Our Registrations park a package VALUE:
-  no freeze/melt protocol, and the producer token is branch-local with zero
+  no freeze/melt protocol, and the EnclosingCall coat is branch-local with zero
   maintenance.
 - **The flag is an upward-closed fact** (direction principle): once
   complete, forever complete. Racy reads are sound in one direction — a
