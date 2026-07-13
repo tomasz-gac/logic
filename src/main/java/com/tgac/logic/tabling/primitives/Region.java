@@ -144,21 +144,30 @@ public final class Region<V, S> {
 	}
 
 	/**
-	 * THE GROUP SEAL (Tier 2): if a set S of unsealed regions has every
-	 * member drained and every sleeper parked inside S or at a sealed
-	 * region, then no new growth can arrive anywhere in S — a wake inside S
-	 * needs new growth in S, which needs running S-work, which drainedness
-	 * rules out; nothing outside can inject work (growth is billed to the
-	 * grower's own region). Seal all of S.
+	 * THE GROUP SEAL (Tier 2) — the singleton rule applied to a VIRTUAL
+	 * MERGE (docs/design/group-seal.md). Define the merge of a set S of
+	 * regions: ledger = sum of the members', sleepers = union, HOME =
+	 * membership in S. The group condition is then the ordinary seal rule
+	 * on merge(S), verbatim — merged ledger drained, every merged sleeper
+	 * home or at a sealed region — and its soundness argument transfers
+	 * with it: growth inside S needs running S-work (none), and nothing
+	 * outside injects, because growth is billed to the grower's own region.
 	 *
-	 * <p>Verification is two-phase over the MONOTONE started counters:
-	 * phase one walks the sleeper-closure recording each member's count
-	 * while checking it drained (any running member aborts — its own finish
-	 * event retries the group); phase two re-reads every count and demands
-	 * it unchanged. Two equal reads of a monotone counter bracket a
-	 * spawn-free interval: a consistent global snapshot with no nested
-	 * monitors. Racing group seals are arbitrated per member by the flag
-	 * CAS — a lost CAS just skips that member's drain.
+	 * <p>WHICH merge: the smallest one that makes all sleepers home — the
+	 * walk below is a fixpoint ascent in the finite join-semilattice of
+	 * region sets, closing {start} under sleeper-targets (a closure
+	 * operator; running members abort the ascent, and their own finish
+	 * events retry it).
+	 *
+	 * <p>The two-phase read is the price of evaluating the merged rule
+	 * WITHOUT materializing a merged ledger: constituents keep their own
+	 * monitors, and atomicity across them is reconstructed from the
+	 * MONOTONE started counters — two equal reads bracket a spawn-free
+	 * interval, a consistent snapshot with no nested monitors. Racing
+	 * group seals are arbitrated per member by the flag CAS — a lost CAS
+	 * just skips that member's drain. The merge exists for the duration of
+	 * one rule-evaluation and is then discarded; eager permanent merging
+	 * (SLG's ASCC) is the same algorithm with a different merge lifetime.
 	 *
 	 * @return the dead sleepers drained from every sealed member, or null
 	 * 		when the group cannot seal yet
