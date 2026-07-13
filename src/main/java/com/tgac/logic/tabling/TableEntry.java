@@ -11,6 +11,8 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 import lombok.Value;
@@ -45,9 +47,25 @@ public class TableEntry {
 	 * KEYS-FINAL: no new answer bindings will ever arrive
 	 * (docs/design/table-completion.md §5). Upward-closed — once set, forever
 	 * set — so racy reads are sound: a stale false prices ∞, a true is
-	 * permanent. Flipped manually until completion detection (Tier 1) lands.
+	 * permanent. Flipped by {@link #tryCompleteHere()} when this entry's
+	 * production drains; manual marking remains for tests.
 	 */
 	private final AtomicBoolean complete = new AtomicBoolean(false);
+
+	/**
+	 * Dijkstra–Scholten as two monotone counters: production work units
+	 * started (the master, each respawned consumer) and finished (their
+	 * fibers completing). Guarded by this — no read-ordering subtleties.
+	 */
+	private long spawned;
+	private long finished;
+
+	/**
+	 * Registrations created DURING THIS ENTRY'S PRODUCTION, parked elsewhere:
+	 * latent work that could still derive answers here. Maps each to the entry
+	 * it parks on. Guarded by this.
+	 */
+	private final Map<Registration, TableEntry> outposts = new HashMap<>();
 
 	public void markComplete() {
 		complete.set(true);
@@ -55,6 +73,49 @@ public class TableEntry {
 
 	public boolean isComplete() {
 		return complete.get();
+	}
+
+	synchronized void workStarted() {
+		spawned++;
+	}
+
+	synchronized void workFinished() {
+		finished++;
+	}
+
+	synchronized void addOutpost(Registration r, TableEntry parkedOn) {
+		outposts.put(r, parkedOn);
+	}
+
+	synchronized void removeOutpost(Registration r) {
+		outposts.remove(r);
+	}
+
+	public synchronized int registrationCount() {
+		return registrations.size();
+	}
+
+	/**
+	 * The self-SCC completion rule (docs/design/table-completion.md §4):
+	 * counters drained AND every outpost parks here or on an already-complete
+	 * entry. Returns the registrations that were parked HERE when the flag
+	 * flipped — provably dead, handed to the caller for the completion
+	 * cascade — or null when the rule does not fire. Foreign flags are read
+	 * without their locks (upward-closed: a stale false only defers).
+	 */
+	synchronized List<Registration> tryCompleteHere() {
+		if (complete.get() || spawned == 0 || finished != spawned) {
+			return null;
+		}
+		for (Map.Entry<Registration, TableEntry> o : outposts.entrySet()) {
+			if (o.getValue() != this && !o.getValue().isComplete()) {
+				return null;
+			}
+		}
+		complete.set(true);
+		List<Registration> dead = List.ofAll(registrations);
+		registrations.clear();
+		return dead;
 	}
 
 	/**
@@ -79,7 +140,11 @@ public class TableEntry {
 	 * Returns true if this caller became the master, false if another master exists.
 	 */
 	public boolean tryBecomeMaster() {
-		return masterActive.compareAndSet(false, true);
+		if (masterActive.compareAndSet(false, true)) {
+			workStarted();
+			return true;
+		}
+		return false;
 	}
 
 	/**

@@ -18,6 +18,7 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
+import java.util.ArrayDeque;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -93,9 +94,17 @@ public class Tabling {
 				Call key = Call.of(relation, reifiedArgs);
 				Table table = pkg.getStore(Table.class);
 				TableEntry entry = table.getOrCreateEntry(key);
-				return entry.tryBecomeMaster() ?
-						produce(entry, body.get(), pkg, argsTerm, k) :
-						consume(entry, k, pkg, argsTerm, 0);
+				if (entry.tryBecomeMaster()) {
+					return produce(entry, body.get(),
+							pkg.putStore(new Producer(entry)), argsTerm, k,
+							Producer.current(pkg))
+							.flatMap(__ -> {
+								entry.workFinished();
+								tryComplete(entry);
+								return done(nothing());
+							});
+				}
+				return consume(entry, k, pkg, argsTerm, 0);
 			});
 		});
 	}
@@ -148,13 +157,35 @@ public class Tabling {
 			Goal goal,
 			Package initialPkg,
 			Unifiable<T> argsTerm,
-			Fiber.Fn<Package, Nothing> k) {
+			Fiber.Fn<Package, Nothing> k,
+			Producer caller) {
 		return goal.apply(initialPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
 					entry.addAnswer(answerTerm)
 							.map(parked -> respawn(entry, parked)
-									.flatMap(__ -> k.apply(answerPkg)))
+									// detach-k: the answer's downstream is the CALLER's
+									// work, not this production's — detaching it makes
+									// this fiber's completion mean BODY EXHAUSTED, the
+									// event the counters need. It runs under the
+									// caller's tag AND counts as the caller's live work:
+									// a nested master's downstream can still derive
+									// caller answers, so the caller must not complete
+									// under it (table-completion.md §4).
+									.flatMap(__ -> {
+										TableEntry callerEntry = caller.entry();
+										Fiber<Nothing> downstream = Fiber.defer(() ->
+												k.apply(answerPkg.putStore(caller)));
+										if (callerEntry == null) {
+											return Fiber.detach(downstream);
+										}
+										callerEntry.workStarted();
+										return Fiber.detach(downstream.flatMap(___ -> {
+											callerEntry.workFinished();
+											tryComplete(callerEntry);
+											return done(nothing());
+										}));
+									}))
 							.getOrElse(() -> done(nothing())));
 		});
 	}
@@ -166,10 +197,47 @@ public class Tabling {
 	private static Fiber<Nothing> respawn(TableEntry entry, List<Registration> parked) {
 		Fiber<Nothing> result = done(nothing());
 		for (Registration r : parked) {
-			result = result.flatMap(__ -> Fiber.detach(Fiber.defer(() ->
-					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()))));
+			TableEntry producer = Producer.of(r.getPkg());
+			if (producer != null) {
+				producer.removeOutpost(r);
+				producer.workStarted();
+			}
+			Fiber<Nothing> consumer = Fiber.defer(() ->
+					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()));
+			Fiber<Nothing> counted = producer == null ? consumer :
+					consumer.flatMap(__ -> {
+						producer.workFinished();
+						tryComplete(producer);
+						return done(nothing());
+					});
+			result = result.flatMap(__ -> Fiber.detach(counted));
 		}
 		return result;
+	}
+
+	/**
+	 * The completion cascade: try the entry's self-SCC rule; when it fires,
+	 * the registrations that were parked there are dead, and each one's
+	 * PRODUCER may now satisfy its own rule ("parks on a complete entry") —
+	 * DAG dependencies complete bottom-up. Monitors are never nested: the
+	 * rule runs under one entry's lock, the cascade walks outside it.
+	 */
+	static void tryComplete(TableEntry entry) {
+		ArrayDeque<TableEntry> queue = new ArrayDeque<>();
+		queue.add(entry);
+		while (!queue.isEmpty()) {
+			List<Registration> dead = queue.poll().tryCompleteHere();
+			if (dead == null) {
+				continue;
+			}
+			for (Registration r : dead) {
+				TableEntry producer = Producer.of(r.getPkg());
+				if (producer != null) {
+					producer.removeOutpost(r);
+					queue.add(producer);
+				}
+			}
+		}
 	}
 
 	/**
@@ -201,8 +269,21 @@ public class Tabling {
 							.flatMap(fib -> fib));
 		}
 
-		if (entry.register(new Registration(k, initialPkg, argsTerm, index))) {
+		Registration registration = new Registration(k, initialPkg, argsTerm, index);
+		TableEntry producer = Producer.of(initialPkg);
+		if (producer != null) {
+			// outpost first, then park: a respawn can only drain a parked
+			// registration, so the outpost is always there for it to remove
+			producer.addOutpost(registration, entry);
+		}
+		if (entry.register(registration)) {
+			if (producer != null) {
+				tryComplete(producer);
+			}
 			return done(nothing());
+		}
+		if (producer != null) {
+			producer.removeOutpost(registration);
 		}
 
 		// An answer arrived while registering — keep consuming
