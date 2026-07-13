@@ -8,6 +8,7 @@ import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.ArrayList;
 
+
 /**
  * The answer half of a table entry, as the concurrency primitive it is.
  * Invariants, all under this monitor:
@@ -23,15 +24,17 @@ import java.util.ArrayList;
  */
 final class AnswerLog {
 
-	private final ArrayList<Reified<?>> answers = new ArrayList<>();
+	/** The value half: a persistent join-semilattice element, only ever grown. */
+	private AnswerSet answers = AnswerSet.empty();
 	private final ArrayList<Registration> parked = new ArrayList<>();
 
 	/** @return the drained subscribers to respawn, or none if the answer is a duplicate */
 	synchronized Option<List<Registration>> append(Reified<?> answerTerm) {
-		if (answers.contains(answerTerm)) {
+		Option<AnswerSet> grown = answers.append(answerTerm);
+		if (grown.isEmpty()) {
 			return Option.none();
 		}
-		answers.add(answerTerm);
+		answers = grown.get();
 		List<Registration> drained = List.ofAll(parked);
 		parked.clear();
 		return Option.of(drained);
@@ -47,7 +50,7 @@ final class AnswerLog {
 	}
 
 	synchronized Reified<?> answerAt(int index) {
-		return index < answers.size() ? answers.get(index) : null;
+		return answers.answerAt(index);
 	}
 
 	synchronized int answerCount() {
