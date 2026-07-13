@@ -77,6 +77,51 @@ The machinery-reuse requirement is met by NOT distributing goals at all.
   shard. CALM's prediction made exact: coordination retreats to
   precisely the engine's one non-monotone operation.
 
+**Constraint stores — the meet side, distributed.** Meet is ACI like
+join, so the dual licenses all hold: narrowings apply in any order
+(chaotic iteration's confluence IS the async-message-tolerance theorem),
+redeliver harmlessly, merge from concurrent propagators. Distributed
+propagation to a common fixpoint is lawful — and still wrong to build,
+for two reasons. Economics: the Jacobi lesson amplified — store-level
+parallelism did not pay for THREADS at our store counts; a network hop
+per narrowing is that verdict times four orders of magnitude. Semantics —
+the real asymmetry: a store is BRANCH-LOCAL BY MEANING, knowledge
+conditional on a hypothesis; meeting two sibling branches' stores is
+algebraically defined and semantically nonsense (x∈{1,2} ⊓ x∈{3} = ∅
+conflates worlds, it does not detect failure). An answer, by contrast,
+is an UNCONDITIONAL fact about its relation — which is exactly why
+tables cross branches and stores do not. The direction principle,
+distributed edition: THE GROWING SIDE HOLDS GLOBAL TRUTHS AND SHARES
+EAGERLY; THE SHRINKING SIDE HOLDS CONDITIONAL TRUTHS AND STAYS HOME.
+
+Stores therefore enter distribution through the same one door everything
+crosses branches by — the table:
+
+- **TCLP residues** (the honest route): when tabling captures
+  constraints, answers become (tuple, residue) pairs — a residue is a
+  store REIFIED INTO A VALUE, and unlike goals, domains already
+  serialize. Store distribution then comes free with table distribution:
+  residues ride published answers; dedup at the home shard is the
+  antichain/entailment check — the lattice leq already declared and
+  law-checked on Domain and FiniteDomainConstraints; TCLP's finiteness
+  gate (capability ladder tier 5) doubles as the distribution-worthiness
+  gate. Sealed constrained relations are frozen (tuple, residue) sets —
+  immutable, replicable, servable from any node.
+- **Learned nogoods** (gated on learning machinery that does not exist):
+  a conflict yields a branch-INDEPENDENT implication — shrink-side
+  knowledge promoted to global truth by recording its conditions.
+  Distributed SAT shares exactly these between workers; our door is the
+  failure-provenance/CDCL line (semiring-inference §7b).
+- **Within each node, unchanged**: stores keep doing everything they do
+  today — per-branch, fiber-parallel, cascades under the MonotoneDrain
+  discipline — because layer two ships the whole engine to every node
+  precisely so this needs no redesign.
+
+The compressed rule: joins distribute because they are unconditional;
+meets distribute only after being reified into the table (TCLP residues)
+or promoted to unconditional (nogoods) — otherwise they are hypotheses,
+and hypotheses do not travel.
+
 ## 3. Layer three — the fold-planner (the semiring builds the plan)
 
 "Use the semiring passing through the goals to build the distributed
