@@ -102,6 +102,28 @@ public class TableCompletionTest {
 	}
 
 	@Test
+	public void secondReaderInsideNestingFormsARingAndStaysUnsealed() {
+		// p :- 42 | q | q.   q :- p.  — single root, but the SECOND q-call is
+		// a reader (masters are once-per-call): it parks at q wearing [p]
+		// while q's reader parks at p wearing [q] — two sleeper edges, a
+		// cycle, mutual refusal: nesting alone does not guarantee sealing
+		Tabled<Tuple1<Unifiable<Integer>>>[] q = new Tabled[1];
+		Tabled<Tuple1<Unifiable<Integer>>> pRel = Tabling.defineRecursive(self -> t -> t.apply(x ->
+				unify(x, lval(42))
+						.or(Goal.defer(() -> q[0].apply(t)))
+						.or(Goal.defer(() -> q[0].apply(t)))));
+		q[0] = Tabling.define(t -> t.apply(x ->
+				Goal.defer(() -> pRel.apply(Tuple.of(x)))));
+		Unifiable<Integer> out = lvar();
+		Package pkg = Package.empty().withStore(Table.empty());
+
+		assertThat(pRel.apply(Tuple.of(out)).solveFrom(pkg, out, BreadthFirstScheduler::new).count())
+				.isEqualTo(1);
+		assertThat(pkg.getStore(Table.class).entries().stream()
+				.noneMatch(TableEntry::isComplete)).isTrue();
+	}
+
+	@Test
 	public void duplicateHeavyRelationStillCompletes() {
 		// both branches derive the same answer: the duplicate fails its branch,
 		// the counters must still drain
