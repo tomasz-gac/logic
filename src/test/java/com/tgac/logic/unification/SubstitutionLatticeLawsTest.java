@@ -5,6 +5,7 @@ package com.tgac.logic.unification;
 
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
@@ -53,5 +54,20 @@ public class SubstitutionLatticeLawsTest {
 				Substitutions.empty().extend(a, lval(1)).extend(b, lval(2)));
 
 		SemilatticeLaws.checkJoin(samples, BY_SOLVED_FORM);
+	}
+
+	@Test
+	public void clashingSubstitutionsJoinToTheTopSingletonAbsence() {
+		LVar<Integer> a = var();
+		Substitutions boundToOne = Substitutions.empty().extend(a, lval(1));
+		Substitutions boundToTwo = Substitutions.empty().extend(a, lval(2));
+
+		// no substitution is more specific than both — ⊤, the none singleton
+		assertThat(boundToOne.tryJoin(boundToTwo)).isEmpty();
+		assertThat(boundToTwo.tryJoin(boundToOne)).isEmpty();
+
+		// compatible joins stay present (⊤ is reached only by a real clash)
+		Substitutions boundToOneAgain = Substitutions.empty().extend(a, lval(1));
+		assertThat(boundToOne.tryJoin(boundToOneAgain)).isNotEmpty();
 	}
 }

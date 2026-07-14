@@ -46,24 +46,36 @@ public final class Substitutions implements JoinSemilattice<Substitutions> {
 
 	/**
 	 * Unification as the lattice join: the least substitution more specific than
-	 * both. Throws when they clash — a clash has no ⊤ value here (it is
-	 * failure-as-absence in the CPS engine), so join is a total function only on
-	 * compatible substitutions.
+	 * both. Throws when they clash — the {@link JoinSemilattice} view is total,
+	 * but a clash has no ⊤ VALUE here (see {@link #tryJoin}), so this partial
+	 * function is defined only on compatible substitutions.
 	 */
 	@Override
 	public Substitutions join(Substitutions other) {
+		return tryJoin(other).getOrElseThrow(() -> new IllegalStateException(
+				"join of incompatible substitutions"));
+	}
+
+	/**
+	 * The join made total by ABSENCE: {@code none} is ⊤ (the clash), represented
+	 * the way the CPS engine represents all failure — as absence, not a value.
+	 * This is the ⊤-aware form; {@code none} is the top singleton.
+	 */
+	public Option<Substitutions> tryJoin(Substitutions other) {
 		Substitutions acc = this;
 		for (Tuple2<LVar<?>, Term<?>> binding : other.bindings) {
-			acc = unifyInto(acc, binding._1, binding._2);
+			Option<Substitutions> step = unifyInto(acc, binding._1, binding._2);
+			if (step.isEmpty()) {
+				return Option.none();
+			}
+			acc = step.get();
 		}
-		return acc;
+		return Option.some(acc);
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	private static Substitutions unifyInto(Substitutions acc, LVar<?> v, Term<?> t) {
-		Option<Substitutions> unified = MiniKanren.unify(acc, (Term) v, (Term) t).get();
-		return unified.getOrElseThrow(() -> new IllegalStateException(
-				"join of incompatible substitutions"));
+	private static Option<Substitutions> unifyInto(Substitutions acc, LVar<?> v, Term<?> t) {
+		return MiniKanren.unify(acc, (Term) v, (Term) t).get();
 	}
 
 	/** The number of bindings. Reified variable numbering derives from it. */
