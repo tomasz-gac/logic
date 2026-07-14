@@ -10,13 +10,19 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.Scheduler;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.tabling.Table;
+import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -45,13 +51,43 @@ public final class Weights {
 	 */
 	public static SemiringStore solve(Goal goal, Semiring<SemiringStore> product,
 			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
-		Package root = Package.empty().withStore(Table.empty()).withStore(product.one());
 		Queue<SemiringStore> perAnswer = new ConcurrentLinkedQueue<>();
-
-		Fiber<Nothing> recur = goal.apply(root).run(s -> {
+		runToCompletion(goal.apply(seed(product)).run(s -> {
 			perAnswer.add(s.getStore(SemiringStore.class));
 			return nothing();
-		});
+		}), factory);
+
+		SemiringStore total = product.zero();
+		for (SemiringStore s : perAnswer) {
+			total = product.plus(total, s);
+		}
+		return total;
+	}
+
+	/**
+	 * Each answer paired with its own branch's weight — the per-answer view the
+	 * fold in {@link #solve} discards. Lets a caller ask which branch is
+	 * cheapest, not just the folded extremum. Eager, like {@link #solve}.
+	 */
+	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveEach(Goal goal, Unifiable<T> out,
+			Semiring<SemiringStore> product, Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
+		Queue<Tuple2<Reified<T>, SemiringStore>> perAnswer = new ConcurrentLinkedQueue<>();
+		runToCompletion(goal.apply(seed(product))
+				.flatMap(s -> Constraints.reify(s, out)
+						.map(answer -> Tuple.of(answer, s.getStore(SemiringStore.class))))
+				.run(pair -> {
+					perAnswer.add(pair);
+					return nothing();
+				}), factory);
+		return perAnswer.stream();
+	}
+
+	private static Package seed(Semiring<SemiringStore> product) {
+		return Package.empty().withStore(Table.empty()).withStore(product.one());
+	}
+
+	private static void runToCompletion(Fiber<Nothing> recur,
+			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
 		Scheduler<Nothing> scheduler = factory.apply(recur);
 		try {
 			while (!scheduler.run(64, v -> {
@@ -65,11 +101,5 @@ public final class Weights {
 				throw new RuntimeException("Failed to close engine", e);
 			}
 		}
-
-		SemiringStore total = product.zero();
-		for (SemiringStore s : perAnswer) {
-			total = product.plus(total, s);
-		}
-		return total;
 	}
 }

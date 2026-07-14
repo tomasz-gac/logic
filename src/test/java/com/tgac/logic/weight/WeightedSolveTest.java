@@ -16,7 +16,12 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.projection.ProjectionConstraints;
 import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple2;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Test;
 
 public class WeightedSolveTest {
@@ -83,6 +88,31 @@ public class WeightedSolveTest {
 
 		assertThat(total.get(Semirings.COUNTING)).isEqualTo(2L);   // two routes
 		assertThat(total.get(Semirings.MIN_PLUS)).isEqualTo(4L);   // the cheaper one
+	}
+
+	@Test
+	public void perAnswerWeightsRevealWhichBranchIsCheapest() {
+		Unifiable<String> mid = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.MIN_PLUS);
+
+		Goal viaB = unify(mid, lval("B"))
+				.and(Weights.factor(Semirings.MIN_PLUS, 1L)).and(Weights.factor(Semirings.MIN_PLUS, 5L));
+		Goal viaC = unify(mid, lval("C"))
+				.and(Weights.factor(Semirings.MIN_PLUS, 2L)).and(Weights.factor(Semirings.MIN_PLUS, 2L));
+
+		List<Tuple2<Reified<String>, SemiringStore>> answers =
+				Weights.solveEach(viaB.or(viaC), mid, product, BreadthFirstScheduler::new)
+						.collect(Collectors.toList());
+
+		assertThat(answers).hasSize(2);
+		assertThat(answers).extracting(p -> p._2.get(Semirings.MIN_PLUS))
+				.containsExactlyInAnyOrder(6L, 4L);
+
+		Tuple2<Reified<String>, SemiringStore> cheapest = answers.stream()
+				.min(Comparator.comparingLong(p -> p._2.get(Semirings.MIN_PLUS)))
+				.get();
+		assertThat(cheapest._2.get(Semirings.MIN_PLUS)).isEqualTo(4L);
+		assertThat(cheapest._1.toString()).contains("C");
 	}
 
 	@Test
