@@ -6,8 +6,7 @@ package com.tgac.logic.goals.optimizer;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Packaged;
 import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -20,7 +19,7 @@ import lombok.Value;
  */
 @Value
 @RequiredArgsConstructor(staticName = "of")
-public class OptimizerStore implements Store {
+public class OptimizerStore implements Packaged {
 	Optimizer pipeline;
 
 	public static Option<OptimizerStore> from(Package pkg) {
@@ -29,20 +28,5 @@ public class OptimizerStore implements Store {
 
 	public Fiber<Goal> rewrite(Goal body, Package p) {
 		return body.accept(pipeline.with(p));
-	}
-
-	@Override
-	public Store remove(Stored c) {
-		return this;
-	}
-
-	@Override
-	public Store prepend(Stored c) {
-		return this;
-	}
-
-	@Override
-	public boolean contains(Stored c) {
-		return false;
 	}
 }

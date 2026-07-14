@@ -3,8 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: The innermost enclosing tabled call — the EVENT whose ledger pays for
 // ABOUTME: this work. Goals are text; calls are events; fibers spawn from events.
 
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.Package;
 import io.vavr.control.Option;
 
@@ -23,7 +22,7 @@ import io.vavr.control.Option;
  * work is billed to the call it executes, never to the entry that happened
  * to wake it (docs/design/table-completion.md §4).
  */
-final class EnclosingCall implements Store {
+final class EnclosingCall implements Packaged {
 
 	/** Top level: the query's code is inside no tabled call — unbilled, ungated. */
 	static final EnclosingCall NONE = new EnclosingCall(null);
@@ -40,28 +39,13 @@ final class EnclosingCall implements Store {
 
 	/** The entry of the call {@code pkg} is executing, or null at top level. */
 	static TableEntry entryOf(Package pkg) {
-		Option<Store> store = pkg.getStores().get(EnclosingCall.class);
+		Option<Packaged> store = pkg.getStores().get(EnclosingCall.class);
 		return store.isDefined() ? ((EnclosingCall) store.get()).entry : null;
 	}
 
 	static EnclosingCall current(Package pkg) {
-		Option<Store> store = pkg.getStores().get(EnclosingCall.class);
+		Option<Packaged> store = pkg.getStores().get(EnclosingCall.class);
 		return store.isDefined() ? (EnclosingCall) store.get() : NONE;
-	}
-
-	@Override
-	public Store remove(Stored c) {
-		return this;
-	}
-
-	@Override
-	public Store prepend(Stored c) {
-		return this;
-	}
-
-	@Override
-	public boolean contains(Stored c) {
-		return false;
 	}
 
 	@Override

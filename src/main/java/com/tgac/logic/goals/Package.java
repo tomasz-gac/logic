@@ -17,14 +17,14 @@ public class Package {
 
 	Substitutions substitutions;
 
-	LinkedHashMap<Class<? extends Store>, Store> stores;
+	LinkedHashMap<Class<? extends Packaged>, Packaged> stores;
 
 	public static Package empty() {
 		return Package.of(Substitutions.empty(), LinkedHashMap.empty());
 	}
 
 	public static Package of(HashMap<LVar<?>, Term<?>> substitutions,
-			LinkedHashMap<Class<? extends Store>, Store> stores) {
+			LinkedHashMap<Class<? extends Packaged>, Packaged> stores) {
 		return Package.of(Substitutions.of(substitutions), stores);
 	}
 
@@ -50,7 +50,7 @@ public class Package {
 		return substitutions.size();
 	}
 
-	public Package withStore(Store empty) {
+	public Package withStore(Packaged empty) {
 		if (stores.get(empty.getClass()).isDefined()) {
 			return this;
 		} else {
@@ -58,17 +58,17 @@ public class Package {
 		}
 	}
 
-	public Package putStore(Store store) {
+	public Package putStore(Packaged store) {
 		return Package.of(substitutions, stores.put(store.getClass(), store));
 	}
 
-	public Package withoutStore(Class<? extends Store> cls) {
+	public Package withoutStore(Class<? extends Packaged> cls) {
 		return Package.of(substitutions, stores.remove(cls));
 	}
 
-	/** The store registered under {@code cls}; throws when absent. */
+	/** The payload registered under {@code cls}; throws when absent. */
 	@SuppressWarnings("unchecked")
-	public <T extends Store> T getStore(Class<T> cls) {
+	public <T extends Packaged> T getStore(Class<T> cls) {
 		return (T) stores.get(cls)
 				.getOrElseThrow(() -> new IllegalStateException(
 						"No store associated with package"));
@@ -77,7 +77,7 @@ public class Package {
 	/** Prepends {@code c} into its store; unchanged when the store is absent. */
 	public Package withStored(Stored c) {
 		return stores.get(c.getStoreClass())
-				.map(cs -> cs.prepend(c))
+				.map(cs -> ((Store) cs).prepend(c))
 				.map(cs -> Package.of(substitutions, stores.put(c.getStoreClass(), cs)))
 				.getOrElse(this);
 	}
@@ -85,16 +85,16 @@ public class Package {
 	/** Removes {@code c} from its store; unchanged when the store is absent. */
 	public Package withoutStored(Stored c) {
 		return stores.get(c.getStoreClass())
-				.map(cs -> cs.remove(c))
+				.map(cs -> ((Store) cs).remove(c))
 				.map(cs -> Package.of(substitutions, stores.put(c.getStoreClass(), cs)))
 				.getOrElse(this);
 	}
 
-	/** Applies {@code f} to the store registered under {@code cls}; unchanged when absent. */
+	/** Applies {@code f} to the payload registered under {@code cls}; unchanged when absent. */
 	@SuppressWarnings("unchecked")
-	public <T extends Store> Package updateStore(Class<T> cls, UnaryOperator<T> f) {
+	public <T extends Packaged> Package updateStore(Class<T> cls, UnaryOperator<T> f) {
 		return stores.get(cls)
-				.map(s -> (Store) f.apply((T) s))
+				.map(s -> (Packaged) f.apply((T) s))
 				.map(s -> Package.of(substitutions, stores.put(cls, s)))
 				.getOrElse(this);
 	}

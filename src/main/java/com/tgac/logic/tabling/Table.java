@@ -1,11 +1,10 @@
 package com.tgac.logic.tabling;
 
 // ABOUTME: Maps tabled goal calls to their table entries for the duration of one solve.
-// ABOUTME: Rides the package's constraint-store map so every derived state shares it.
+// ABOUTME: Rides the package's store map so every derived state shares it.
 
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Packaged;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,10 +16,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * single solve: {@link Goal#solve} seeds a fresh one into the root package's
  * store map, and all packages derived during the search share it.
  *
- * It is a plain {@link Store} — not a constraint store — so constraint
+ * It is a {@link Packaged} payload — not a constraint store — so constraint
  * processing ignores it; the store map is only its transport.
  */
-public class Table implements Store {
+public class Table implements Packaged {
 
 	/** Map from calls to their table entries */
 	private final ConcurrentHashMap<Call, TableEntry> entries = new ConcurrentHashMap<>();
@@ -78,21 +77,6 @@ public class Table implements Store {
 	 */
 	public boolean contains(Call call) {
 		return entries.containsKey(call);
-	}
-
-	@Override
-	public Store remove(Stored c) {
-		return this;
-	}
-
-	@Override
-	public Store prepend(Stored c) {
-		return this;
-	}
-
-	@Override
-	public boolean contains(Stored c) {
-		return false;
 	}
 
 	@Override
