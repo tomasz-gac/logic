@@ -19,9 +19,52 @@ the failed cut is at the layer where everything is live closures; the
 right cut is where everything is already data. This doc is that
 conclusion, engineered: three layers, none of which ships a closure.
 
-## 1. Layer one — the Program front door (goals as data)
+## 0a. Layer zero — the relation registry (the actual gateway)
 
-A new package, purely additive; the `Goal` interface never changes.
+The morning correction (July 2026): distribution does NOT need the
+Program layer. The only missing piece was stable relation identity, and
+NAMES close that gap without an AST: register goals under names
+(`define("path", body)`), key `Call` by (name, reified pattern), deploy
+the same artifact to every node and register at boot — the RPC answer,
+as old as RPC. Bodies never travel in any design; here they never even
+serialize. The wire carries names, patterns and reified answers — all
+already values. A body-hash check at registration verifies the
+same-artifact-everywhere invariant instead of trusting it. Only
+STATICALLY REGISTERED relations distribute — runtime-minted define
+lambdas stay local, consistent with "the boundary is declared, never
+inferred".
+
+What changes in the machinery, and what does not:
+
+- **`MonotoneCell` is already the transport seam**: grow =
+  publish-with-dedup (the home shard's JoinSet join eats redeliveries —
+  at-least-once safe by law), park = subscribe-from-offset with the race
+  resolved toward reading, replay-from-index = consumer offsets. A
+  Kafka-shaped log, discovered not designed. The change is an interface
+  with two implementations: monitor-backed (today) and shard-backed
+  (parked subscribers are remote registrations).
+- **Regions distribute to quiesce**: ledger events (started/finished/
+  sleeping/awake) become messages to the region's home shard, the coat
+  as metadata (region identity = the (name, pattern) key). The singleton
+  rule evaluates at home — D–S un-miniaturized. The group seal ports by
+  construction: stale monotone reads undercount and undercounting
+  refuses; the only ordering requirement is completing all phase-one
+  RPCs before any phase-two RPC, so every read pair brackets one global
+  interval. Per-member CAS at each home arbitrates racing walks.
+- **The one non-ACI structure pays at the network layer, as the license
+  table predicts**: counter ticks are not idempotent — billing messages
+  need acks and per-sender sequence dedup (a lost finish = never-seals =
+  sound but stuck). Everything else redelivers harmlessly.
+- **Partial failure remains the honest hard part**: home shards dying
+  mid-production need leases/master re-election with fencing.
+
+## 1. Layer one — the Program front door (goals as data, DEMOTED to optional)
+
+A new package, purely additive; the `Goal` interface never changes. No
+longer the distribution prerequisite (layer zero is): its standing
+customers are LOCAL — Eq-kit sample programs and pldb's rule layer — plus
+one future: shipping programs to nodes that do NOT already have the code
+(dynamic topologies).
 
 - **The unit is a `Program`**: a map of NAMED relations (params + body as
   an AST — `Fresh(names, body)`, `Unify`, `Conj`, `Disj`, `Call(name,
