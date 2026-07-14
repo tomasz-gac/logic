@@ -88,6 +88,29 @@ exactly ⊕ with ⊗ trivial (weight `one()` per solution). Refactor them to go 
 This does not change behaviour; it proves the abstraction unifies what exists, and it is the
 safe on-ramp. **Do this and stop; get it reviewed before Phase 2.**
 
+## 3a. The source side is checked too (SHIPPED July 2026)
+
+The table in §1 needs both ends lawful: the plugs (§2) and the goal
+operations the plugs interpret. `GoalSemirings` (in `logic`) witnesses the
+goal algebra — ⊕ = disjunction, ⊗ = conjunction, 0 = failure, 1 = success —
+and its laws run through Eq-PARAMETERIZED law kits (goal equality is
+semantic: solve both sides, compare answers). The Eq is the quotient, and
+the quotient decides the capabilities:
+
+- `DERIVATIONS` — answer-MULTISET equality: every derivation contributes
+  its answer once. Plain semiring; the quotient counting and probability
+  ride. Not idempotent — `g ∨ g` doubles every derivation.
+- `ANSWERS` — answer-SET equality: duplicate derivations collapse, ⊕ is
+  idempotent — the dedup license. Boolean queries live here; counts do not
+  survive this quotient.
+
+Same operations, two law suites, distinguished only by the comparator —
+lattice.md's quotient tower as two green tests. The suite's first catch:
+the instance combinators (`Conde.or`, `Conjunction.and`) are ACCRETIVE —
+they mutate an already-composite receiver — so the witnesses build fresh
+nodes; `plus(a, a)` through the mutating path builds a self-referential
+goal that never terminates.
+
 ---
 
 ## 4. Weighted goals — the injection side (Phase 2)
@@ -121,6 +144,22 @@ static <T, S> S solve(Unifiable<T> out, Semiring<S> semiring);
 Seed a `WeightStore` (like `solve(out, tracer)` seeds a `DebugStore`), run the search, and
 ⊕-fold the per-solution weights. `factor(0.5)` + `ProbabilitySemiring` gives the dice/mutex
 examples in §9. This is the whole of Phase 2 for **non-recursive** programs.
+
+Refinements settled (July 2026), pinning where each operation lives:
+
+- **No `Goal<V>`.** The weight travels in the package (the store above),
+  never in the goal's type. Goals stay labels-free (Green–Tannen): the
+  program says only WHERE uncertainty enters (`factor`), the plug says
+  what it means. Tabling's plug requirements (idempotence for cycles,
+  §7a) are demands on the WITNESS at a call site, not annotations on
+  goals.
+- **⊗ is state threading.** No combinator call site ever multiplies:
+  conjunction just runs both goals against the threaded package, and
+  `factor` is the only place `times` is called. Package immutability is
+  what makes branch weights independent for free.
+- **⊕ is boundary merging.** `plus` fires only where alternatives MEET a
+  boundary: `solve`'s terminal fold now, table cells at answer arrival
+  later (§7a). Inside the search there is no ⊕ — branches never combine.
 
 ---
 
