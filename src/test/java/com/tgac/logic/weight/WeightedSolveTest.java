@@ -3,6 +3,8 @@ package com.tgac.logic.weight;
 // ABOUTME: Weighted inference end to end: factor injects per-choice weights,
 // ABOUTME: solve ⊕-folds them, and one pass computes count and probability together.
 
+import static com.tgac.logic.constraints.Constraints.unify;
+import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -63,6 +65,24 @@ public class WeightedSolveTest {
 		assertThat(total.get(Semirings.COUNTING)).isEqualTo(6L);
 		// each roll has probability (1/6)(1/6); disjoint, so they sum exactly
 		assertThat(total.get(PROB)).isCloseTo(6.0 / 36, within(1e-9));
+	}
+
+	@Test
+	public void shortestRouteAndRouteCountInOnePass() {
+		// two routes A→D: via B (1+5=6) and via C (2+2=4); min-plus is idempotent,
+		// so this exercises an idempotent semiring alongside a non-idempotent one
+		Unifiable<String> mid = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, Semirings.MIN_PLUS);
+
+		Goal viaB = unify(mid, lval("B"))
+				.and(Weights.factor(Semirings.MIN_PLUS, 1L)).and(Weights.factor(Semirings.MIN_PLUS, 5L));
+		Goal viaC = unify(mid, lval("C"))
+				.and(Weights.factor(Semirings.MIN_PLUS, 2L)).and(Weights.factor(Semirings.MIN_PLUS, 2L));
+
+		SemiringStore total = Weights.solve(viaB.or(viaC), product, BreadthFirstScheduler::new);
+
+		assertThat(total.get(Semirings.COUNTING)).isEqualTo(2L);   // two routes
+		assertThat(total.get(Semirings.MIN_PLUS)).isEqualTo(4L);   // the cheaper one
 	}
 
 	@Test
