@@ -4,7 +4,19 @@
 the optimizer/lattice/semiring design arc). This is the north star the other
 design docs serve; it prices nothing and schedules nothing by itself — the
 roadmap at the end orders the work, and every item defers to its own doc for
-the details. UNCOMMITTED until reviewed.**
+the details.**
+
+**Project nature (made explicit July 2026): a research/learning library with
+no client base. Viability is a CONSTRAINT, not a goal — designs must be the
+kind that could be real (honest concurrency, real ledgers, no toy shortcuts
+that wall off reality), because that keeps the research honest; but nothing
+is scheduled by demand, since none arrives. The scheduler is
+WHAT-TEACHES-FIRST, on four axes: theory density (effort that tests claims
+vs plumbing), falsifiability (builds that could DISPROVE something written —
+the most valuable kind), compounding (does it unlock the next question), and
+demonstrability (a crisp example is a research artifact). Gates below that
+read "when X becomes the most instructive next build" mean exactly that;
+older client-fiction gates ("a paying use case") are retired.**
 
 Reading order for the theory: `lattice.md` first (the vocabulary), then
 `optimizer.md`, `fixpoint-machine.md` §10, `semiring-inference.md`,
@@ -23,6 +35,19 @@ the engine may REARRANGE — reorder, fold early, restructure, without
 changing answers. Everything this engine does or will do is some exploitation
 of those two freedoms, coordinated by one scheduler whose single number is
 `order` = the answer states a goal emits.
+
+The exploitation has TWO AXES (the second discovered July 2026, designing
+distribution): laws → legal OPTIMIZATIONS (rearrangement, pruning, reuse —
+the original axis), and laws → INFRASTRUCTURE COSTS. The capability types
+(`IdempotentSemiring`/`ClosedSemiring`/`SuperiorSemiring`) turned out to be
+a deployment cost model: idempotent plugs tolerate at-least-once delivery
+(cheap, retry-happy transports suffice), non-idempotent plugs demand
+exactly-once (transactional infrastructure), closed plugs need per-SCC
+centralization points, TCLP residues need compacted-log transport. Read a
+plug's interfaces, know its infrastructure bill — statically. The severest
+test of the thesis so far: an entire distributed-system design
+(goals-as-data.md) needed ZERO new theory — every guarantee traced to an
+already-shipped, law-checked structure.
 
 ## 2. What a user could ask of one program text
 
@@ -235,12 +260,13 @@ module; capability types `IdempotentSemiring`/`ClosedSemiring`/
 `SuperiorSemiring` replacing the predicate defaults; `aggregate` on Monoid
 witnesses; the optimizer on `Semirings.SATURATING`; the `answers(Package)`
 widening with store-sighted post pricing and completed-entry pricing.
-LANDED BEYOND PLAN, same period: Tier-1 TABLE COMPLETION DETECTION —
-`table-completion.md`: the EnclosingCall coat, detach-k, Region/WorkLedger/
-MonotoneCell/JoinSet primitives, the two-edge graph and its seal criterion —
-making the optimizer fully table-aware and opening the gates this roadmap
-had QUEUED: subsumptive reuse, Tier-2 group seal, sound aggregate/negation
-over tabled goals.)**
+LANDED BEYOND PLAN, same period: the full TABLE COMPLETION arc —
+`table-completion.md` and `group-seal.md`: the EnclosingCall coat, detach-k,
+the Region/WorkLedger/MonotoneCell/JoinSet primitives, the two-edge graph
+and its seal criterion, SUBSUMPTIVE REUSE (sealed entries serve instance
+calls; completed entries genuinely mobile), and the TIER-2 GROUP SEAL
+(detection total for finite solves — full SLG completion as ~60 lines on a
+generic primitive). Plus the distribution design corpus, goals-as-data.md.)**
 4. **The algebra package** (decided July 2026: the abstractions have paid
    for engine-level presence): `Lattice<L>` (F-bounded), `Semiring<S>`,
    `CommutativeMonoid<M>` + LAW KITS (property-test harnesses:
@@ -266,12 +292,14 @@ over tabled goals.)**
 5. `answers(Package)` widening — three customers (force-early, live
    labelling, completed-entry re-pricing); ends its speculative status.
 
-**Phase 2 — memo and reuse (QUEUED)**
-6. `SubsumptionMap<K, V>` (leq-parameterized; exact-hit fast path,
-   nearest-more-general fallback). Customers in order: adornment plan memo
-   (ambient milestone 3), Herbrand call subsumption in tabling (unlocks
-   completed-entry reordering — barrier dissolves at completion), TCLP
-   stage-2 region keys later.
+**Phase 2 — memo and reuse (HALF-SHIPPED July 2026)**
+6. Herbrand call subsumption SHIPPED without the map: Call.subsumes (the
+   one-way matcher — which IS the leq the map will take) + a per-relation
+   scan serve sealed-entry reuse and completed-entry reordering today.
+   `SubsumptionMap<K, V>` (leq-parameterized; exact-hit fast path,
+   nearest-more-general fallback) demotes to the adornment plan memo's
+   trigger (ambient milestone 3); the scan swaps for it behind the same
+   call sites when it arrives. TCLP stage-2 region keys later.
 7. The runtime-bindings fork, decided by the pldb + FD benchmarks:
    adornment-memoized dynamic ordering XOR deferred lookups
    (substitutes — build at most one).
@@ -279,19 +307,42 @@ over tabled goals.)**
 **Phase 3 — weighted inference (GATED on Phase 1)**
 8. Weighted goals + value-riding-the-package store (`semiring-inference.md`
    §4); counting and (min,+) end-to-end.
-9. Semiring tabling: `Map<AnswerTerm, V>` cells, ⊕ at arrival, ⊗ at
-   consumption, the call-boundary cut enforced (§7a). Acyclic first;
-   closed-semiring star for cycles after.
+9. Semiring tabling: `Map<AnswerTerm, V>` cells behind the MonotoneCell
+   seam, ⊕ at arrival (the cell demands `IdempotentSemiring<V>` for
+   streaming), ⊗ at consumption, the call-boundary cut enforced (§7a).
+   Acyclic first; closed-semiring star for cycles after (the group seal's
+   closure walk doubles as the SCC finder star needs). DUAL-PURPOSE since
+   the distribution design: locally it is weighted inference; it is also
+   the gateway to the workload class where distributed tabling genuinely
+   pays (weighted graph analytics — routing is planet-scale prior art),
+   and idempotent-first sequencing is now ALSO the distribution-viable
+   half of the taxonomy.
 10. Failure provenance (§7b): reason-collector store (tracer pattern),
     deepest-failure plug; cached "no"s. Doubles as the adoption
     feature (§5).
 
-**Phase 4 — TCLP (GATED on 6 + a paying use case)**
+**Phase 4 — TCLP (GATED on 6; scheduled by instructiveness, per the
+project-nature note)**
 11. Stages per `tabled-constraints.md` §6: FD-only exact keys → constrained
     answers with `restate` → pointwise-⊑ subsumption → widenings (Neq
     collapse, real ε) only with a motivating user. `Lattice<L>` F-bounded
     adoption rides in here (Domain implements; `entails` hook already
     deleted by design).
+
+**Phase 5 — distribution (HORIZON; design complete, build gated on
+instructiveness)**
+13. The goals-as-data.md layers: relation registry (layer 0), distributed
+    regions/cells, the fold-planner. The design needed zero new theory —
+    which is now a stack of FALSIFIABLE PAPER CLAIMS (the two-phase seal
+    survives networks; a parked consumer is a pending long-poll; counter
+    ticks are the one exactly-once cargo). The research-honest first build
+    is the CROSS-PROCESS EXPERIMENT: two processes, localhost REST with
+    long polling, seal a cross-consuming ring across the process boundary —
+    it tests every claim at near-zero ops cost, and it is the only pending
+    item that can DISPROVE rather than extend. The standing obligation this
+    phase creates today: Phases 1–4 built distribution-ready primitives
+    without knowing it (Region, MonotoneCell, JoinSet, the coat); future
+    designs should preserve that property deliberately.
 
 **Adoption track (parallel, independent of the above)**
 12. `functional` release-prep + de-SNAPSHOT both repos; the parked
