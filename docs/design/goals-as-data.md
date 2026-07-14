@@ -19,6 +19,29 @@ the failed cut is at the layer where everything is live closures; the
 right cut is where everything is already data. This doc is that
 conclusion, engineered: three layers, none of which ships a closure.
 
+## 0. Two distribution targets, distinguished
+
+DISTRIBUTED TABLING (layer zero, below) moves work at the CALL boundary;
+the search between calls stays on one node's fibers. DISTRIBUTED
+SCHEDULING — shipping search itself, frames traveling — was the original
+free-monad conversation, and it genuinely needs the program tree:
+computation-in-progress ships only via DEFUNCTIONALIZATION (continuations
+as AST position + environment), which is what the free monad actually
+buys. Serializable Java lambdas are the trap alternative: they need
+identical synthetic classes on both JVMs (same-artifact deployment
+anyway, gaining nothing), capture rules are a minefield, and captured
+Packages drag LVar identity into serialization.
+
+Economics rank the targets: distributed work-stealing pays only when
+task cost dwarfs shipping cost — fibers steal at nanoseconds, networks
+deliver at milliseconds, six orders of magnitude — so FRAME-level
+distributed scheduling is essentially never worth it. The defensible
+middle is SUBTREE SHIPPING (EPS-style embarrassingly parallel search):
+ship a whole disjunct (goal-as-data + package snapshot) at declared fork
+points, solve remotely, stream reified answers back, merge by ACI.
+Coarse grains, declared boundaries — and a third customer for the
+Program layer (§1), between layer zero and full distributed scheduling.
+
 ## 0a. Layer zero — the relation registry (the actual gateway)
 
 The morning correction (July 2026): distribution does NOT need the
@@ -57,14 +80,32 @@ What changes in the machinery, and what does not:
   sound but stuck). Everything else redelivers harmlessly.
 - **Partial failure remains the honest hard part**: home shards dying
   mid-production need leases/master re-election with fencing.
+- **Deployment and the coordinator**: the deployable artifact is engine +
+  registered relations; a SHARD COORDINATOR owns the assignment of
+  (name, pattern-space) → nodes. Rebalancing has a pleasant asymmetry
+  the seal provides: sealed entries move trivially (immutable values —
+  copy and forget); only LIVE entries need the handoff protocol. The
+  coordinator's hard case shrinks as the solve seals.
+- **Transport-agnostic, by the algebra**: the requirements are only four
+  — append-with-dedup at the home entry, replay-from-index for
+  subscribers, at-least-once delivery, acks for the counter ticks (the
+  one non-ACI cargo). NO ordering guarantee is needed anywhere: answers
+  merge by ACI in any arrival order with any duplication. REST with long
+  polling satisfies all four — POST calls/answers (retries safe: dedup
+  makes them idempotent), GET answers?from=n with long-poll — and the
+  mapping is almost native: A PARKED CONSUMER IS A PENDING LONG-POLL
+  (the held request is the registration), a wake is the response, a
+  timeout is a benign re-park through the same park/grow race the cell
+  already resolves. A broker (Kafka-shaped log) is an optimization, not
+  a requirement — the algebra already absorbed what it would provide.
 
 ## 1. Layer one — the Program front door (goals as data, DEMOTED to optional)
 
 A new package, purely additive; the `Goal` interface never changes. No
 longer the distribution prerequisite (layer zero is): its standing
-customers are LOCAL — Eq-kit sample programs and pldb's rule layer — plus
-one future: shipping programs to nodes that do NOT already have the code
-(dynamic topologies).
+customers are Eq-kit sample programs, pldb's rule layer, SUBTREE SHIPPING
+(§0 — the realistic form of distributed search), and one future: shipping
+programs to nodes that do NOT already have the code (dynamic topologies).
 
 - **The unit is a `Program`**: a map of NAMED relations (params + body as
   an AST — `Fresh(names, body)`, `Unify`, `Conj`, `Disj`, `Call(name,
