@@ -3,7 +3,10 @@ package com.tgac.logic.unification;
 // ABOUTME: The substitution factor as a first-class read-only view — what code scoped
 // ABOUTME: to shared knowledge (suspension conditions) may see: bindings, nothing else.
 
+import com.tgac.functional.algebra.JoinSemilattice;
+import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
+import io.vavr.control.Option;
 import java.util.ArrayDeque;
 
 /**
@@ -12,8 +15,14 @@ import java.util.ArrayDeque;
  * scoped to shared knowledge: it cannot depend on domains, records or any other
  * private factor (the constraint-kernel.md {@code Substitutions}
  * sketch, finally realized where it has a job).
+ *
+ * <p>Ordered by information (more bindings = more specific), substitutions form
+ * a bounded {@link JoinSemilattice join-semilattice}: ⊥ is empty, and the JOIN
+ * is UNIFICATION — the least substitution more specific than both. There is no
+ * ⊤ value; a clash is failure-as-absence elsewhere (see {@code Bottomed}), so
+ * {@link #join} is defined on compatible substitutions and throws otherwise.
  */
-public final class Substitutions {
+public final class Substitutions implements JoinSemilattice<Substitutions> {
 
 	private final HashMap<LVar<?>, Term<?>> bindings;
 
@@ -33,6 +42,28 @@ public final class Substitutions {
 	/** This plus one binding — the unifier's extension step. */
 	public Substitutions extend(LVar<?> v, Term<?> t) {
 		return new Substitutions(bindings.put(v, t));
+	}
+
+	/**
+	 * Unification as the lattice join: the least substitution more specific than
+	 * both. Throws when they clash — a clash has no ⊤ value here (it is
+	 * failure-as-absence in the CPS engine), so join is a total function only on
+	 * compatible substitutions.
+	 */
+	@Override
+	public Substitutions join(Substitutions other) {
+		Substitutions acc = this;
+		for (Tuple2<LVar<?>, Term<?>> binding : other.bindings) {
+			acc = unifyInto(acc, binding._1, binding._2);
+		}
+		return acc;
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static Substitutions unifyInto(Substitutions acc, LVar<?> v, Term<?> t) {
+		Option<Substitutions> unified = MiniKanren.unify(acc, (Term) v, (Term) t).get();
+		return unified.getOrElseThrow(() -> new IllegalStateException(
+				"join of incompatible substitutions"));
 	}
 
 	/** The number of bindings. Reified variable numbering derives from it. */
