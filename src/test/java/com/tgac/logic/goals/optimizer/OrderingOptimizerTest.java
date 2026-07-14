@@ -3,9 +3,6 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: Pins the ambient ordering layer: ascending sort within barrier-delimited
 // ABOUTME: segments, derived orders through combinators, and ambient-solve equivalence.
 
-import com.tgac.logic.goals.Conjunction;
-import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Package;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -14,11 +11,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.goals.Conjunction;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.tabling.Tabling;
-import io.vavr.Tuple;
-import io.vavr.Tuple1;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
+import io.vavr.Tuple1;
 import java.util.stream.Collectors;
 import lombok.Value;
 import org.junit.Test;

@@ -6,10 +6,10 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
-import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.unification.Unifiable;
 import org.junit.Test;
 

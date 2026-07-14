@@ -3,8 +3,8 @@ package com.tgac.logic.tabling;
 // ABOUTME: The innermost enclosing tabled call — the EVENT whose ledger pays for
 // ABOUTME: this work. Goals are text; calls are events; fibers spawn from events.
 
-import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Packaged;
 import io.vavr.control.Option;
 
 /**

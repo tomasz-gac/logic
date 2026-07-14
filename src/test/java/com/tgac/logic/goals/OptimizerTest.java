@@ -3,15 +3,14 @@ package com.tgac.logic.goals;
 // ABOUTME: Pins the Optimizer seam: cascading normalization flattens nested and/or
 // ABOUTME: in one pass, is transparent to NamedGoal, and treats Guard/opaque goals as leaves.
 
-import com.tgac.logic.goals.optimizer.Barrier;
-import com.tgac.logic.goals.optimizer.CascadingOptimizer;
-import com.tgac.logic.goals.optimizer.Optimizer;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.goals.optimizer.Barrier;
+import com.tgac.logic.goals.optimizer.CascadingOptimizer;
 import com.tgac.logic.unification.Unifiable;
 import java.util.function.Function;
 import java.util.stream.Collectors;

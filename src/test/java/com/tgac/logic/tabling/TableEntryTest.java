@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
-
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.ReifiedVar;

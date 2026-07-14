@@ -4,13 +4,9 @@ import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unifiable;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import java.util.List;
-import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;

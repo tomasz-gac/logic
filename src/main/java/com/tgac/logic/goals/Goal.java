@@ -48,7 +48,7 @@ import java.util.stream.StreamSupport;
  *
  * @author TGa
  */
-public interface 	Goal extends Function<Package, Cont<Package, Nothing>> {
+public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 
 	/**
 	 * A static factory method that simply returns the provided goal.
