@@ -26,8 +26,10 @@ import org.junit.Test;
 
 public class WeightedSolveTest {
 
-	/** Probability (+, ×) over [0,1]; kept test-local — main must not invite
-	 *  correlated-proof misuse (see semiring-inference.md §6). */
+	/**
+	 * Probability (+, ×) over [0,1]; kept test-local — main must not invite
+	 * correlated-proof misuse (see semiring-inference.md §6).
+	 */
 	private static final Semiring<Double> PROB = new Semiring<Double>() {
 		@Override
 		public Double zero() {

@@ -5,6 +5,7 @@ package com.tgac.logic.weight;
 
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.logic.goals.Packaged;
+import io.vavr.collection.Array;
 import io.vavr.collection.LinkedHashMap;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
@@ -49,12 +50,12 @@ public final class SemiringStore implements Packaged {
 	 * (a product of semirings is a semiring).
 	 */
 	public static Semiring<SemiringStore> product(Semiring<?>... rings) {
-		return new Product(io.vavr.collection.Array.of(rings));
+		return new Product(Array.of(rings));
 	}
 
 	@RequiredArgsConstructor
 	private static final class Product implements Semiring<SemiringStore> {
-		private final io.vavr.collection.Array<Semiring<?>> rings;
+		private final Array<Semiring<?>> rings;
 
 		@Override
 		public SemiringStore zero() {

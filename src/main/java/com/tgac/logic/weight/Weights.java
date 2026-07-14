@@ -86,20 +86,16 @@ public final class Weights {
 		return Package.empty().withStore(Table.empty()).withStore(product.one());
 	}
 
+	@SuppressWarnings("StatementWithEmptyBody")
 	private static void runToCompletion(Fiber<Nothing> recur,
 			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
-		Scheduler<Nothing> scheduler = factory.apply(recur);
-		try {
+		try (Scheduler<Nothing> scheduler = factory.apply(recur)) {
 			while (!scheduler.run(64, v -> {
 			})) {
 				// drain the search to completion
 			}
-		} finally {
-			try {
-				scheduler.close();
-			} catch (Exception e) {
-				throw new RuntimeException("Failed to close engine", e);
-			}
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to close engine", e);
 		}
 	}
 }
