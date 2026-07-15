@@ -84,13 +84,14 @@ public final class Weights {
 	}
 
 	/**
-	 * Weighted TABLED solve: each answer paired with its folded semiring value,
-	 * computed by iterating the tabled fixpoint. The product must be idempotent
+	 * The idempotent overload: tabled calls thread their weights. Overload
+	 * resolution selects this whenever the product is declared idempotent, so a
+	 * tabling-aware weighted solve is the default for the case where it is sound
 	 * — the answer cell folds by ⊕ and only converges when re-derivation is
 	 * absorbed (min-plus, Viterbi, boolean; not counting or probability, which
-	 * need star). Cyclic recursion terminates on that idempotence.
+	 * need star). With no tabled goal the weighted table simply sits unused.
 	 */
-	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveTabled(Goal goal, Unifiable<T> out,
+	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveEach(Goal goal, Unifiable<T> out,
 			IdempotentSemiring<SemiringStore> product, Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
 		Package root = Package.empty().withStore(weightedTable(product)).withStore(product.one());
 		Queue<Tuple2<Reified<T>, SemiringStore>> perAnswer = new ConcurrentLinkedQueue<>();
