@@ -44,10 +44,9 @@ public class WeightedTablingTest {
 		Unifiable<String> dest = lvar();
 		IdempotentSemiring<SemiringStore> product = SemiringStore.idempotentProduct(Semirings.MIN_PLUS);
 
-		// product is declared IdempotentSemiring, so overload resolution selects
-		// the tabling-aware solveEach — weights thread through the tabled calls
+		// solveIdempotent names the streaming-tabling strategy at the call site
 		List<Tuple2<Reified<String>, SemiringStore>> answers =
-				Weights.solveEach(path.apply(Tuple.of(lval("a"), dest)), dest, product,
+				Weights.solveIdempotent(path.apply(Tuple.of(lval("a"), dest)), dest, product,
 								BreadthFirstScheduler::new)
 						.collect(Collectors.toList());
 
