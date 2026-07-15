@@ -63,6 +63,26 @@ public class TableCompletionTest {
 				.allMatch(TableEntry::isComplete);
 	}
 
+	@Test(timeout = 5000)
+	public void pureSelfLoopSealsEmptyInsteadOfHanging() {
+		// p(X) :- p(X). — self-recursion with the SAME argument, no base case.
+		// The body's only derivation consumes p's own not-yet-produced answers,
+		// catches up at index 0, and parks HOME (its coat is this very entry).
+		// The master fiber then finishes (its body was that parked consume), the
+		// ledger drains, and Tier 1 seals the entry — parked-home is safe. So it
+		// resolves to ZERO answers instead of looping forever.
+		Tabled<Tuple1<Unifiable<Integer>>> p =
+				Tabling.defineRecursive(self -> t -> t.apply(x ->
+						Goal.defer(() -> self.apply(Tuple.of(x)))));
+		Unifiable<Integer> out = lvar();
+		Package pkg = Package.empty().withStore(Table.empty());
+
+		assertThat(p.apply(Tuple.of(out)).solveFrom(pkg, out, BreadthFirstScheduler::new).count())
+				.isEqualTo(0);
+		assertThat(pkg.getStore(Table.class).entries())
+				.allMatch(TableEntry::isComplete);
+	}
+
 	@Test
 	public void nestedMutualRecursionCompletesBottomUp() {
 		// p :- 42 | q. q :- p. — q's master runs INSIDE p's production, so this
