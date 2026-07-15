@@ -120,27 +120,21 @@ public class Tabling {
 			return MiniKanren.reify(callerPkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
 				Call key = Call.of(relation, reifiedArgs);
 				Table table = callerPkg.getStore(Table.class);
-				TableEntry<Object> entry = table.getEntry(key);
-				if (entry == null) {
-					// subsumptive reuse: a sealed general entry is a read-only
-					// relation containing every answer this instance call could
-					// produce (subset property) — read it through consume's
-					// unification filter instead of minting a master
-					TableEntry<Object> sealedGeneral = table.findSealedSubsumer(key);
-					if (sealedGeneral != null) {
-						return consume(sealedGeneral, k, callerPkg, argsTerm, 0, table);
-					}
-					entry = table.getOrCreateEntry(key);
+				// subsumptive reuse: a sealed general entry is a read-only relation
+				// containing every answer this instance call could produce (subset
+				// property) — read it through consume's unification filter
+				TableEntry<Object> subsumer = table.reusableSubsumer(key);
+				if (subsumer != null) {
+					return consume(subsumer, k, callerPkg, argsTerm, 0, table);
 				}
+				TableEntry<Object> entry = table.getOrCreateEntry(key);
 				if (entry.tryBecomeMaster()) {
 					EnclosingCall callerCall = EnclosingCall.current(callerPkg);
 					// the caller's running value at this call site, restored and
-					// ⊗-combined with each answer's cell value on the way out; the
-					// body itself runs from ONE so the cell stays caller-agnostic
-					Object callerWeight = table.getWeightReader().apply(callerPkg);
-					Package bodyPkg = table.getWeightWriter()
-							.apply(callerPkg, table.getSemiring().one())
-							.putStore(new EnclosingCall(entry));
+					// ⊗-combined with each answer on the way out; the body runs from
+					// ONE so the cell stays caller-agnostic
+					Object callerWeight = table.weightOf(callerPkg);
+					Package bodyPkg = table.resetWeight(callerPkg).putStore(new EnclosingCall(entry));
 					return Region.track(entry.getRegion(),
 							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall, callerWeight, table));
 				}
@@ -216,7 +210,7 @@ public class Tabling {
 			assertNoConstraints(answerPkg, "on a tabled answer");
 			// the value this derivation carries from the call's inputs to the
 			// answer — caller-agnostic, since the body ran from ONE
-			Object value = table.getWeightReader().apply(answerPkg);
+			Object value = table.weightOf(answerPkg);
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
 					entry.addAnswer(answerTerm, value)
 							.map(parked -> respawn(entry, parked, table)
@@ -231,9 +225,9 @@ public class Tabling {
 									// complete under it — table-completion.md §4). The
 									// caller's running value is restored and ⊗ the answer.
 									.flatMap(__ -> {
-										Package callerAnswerPkg = table.getWeightWriter().apply(
+										Package callerAnswerPkg = table.withWeight(
 												answerPkg.putStore(callerCall),
-												table.getSemiring().times(callerWeight, value));
+												table.times(callerWeight, value));
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(
@@ -285,8 +279,7 @@ public class Tabling {
 					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
 							.map(callerPkg::withSubstitutions)
 							// ⊗ the answer's cell value into this consumer's running value
-							.map(unifiedPkg -> table.getWeightWriter().apply(unifiedPkg,
-									table.getSemiring().times(table.getWeightReader().apply(unifiedPkg), cellValue)))
+							.map(unifiedPkg -> table.scaleWeight(unifiedPkg, cellValue))
 							.map(weightedPkg -> k.apply(weightedPkg)
 									.flatMap(__ -> Fiber.defer(() ->
 											consume(entry, k, callerPkg, argsTerm, index + 1, table))))
@@ -295,6 +288,23 @@ public class Tabling {
 							.flatMap(fib -> fib));
 		}
 
+		return parkWhenCaughtUp(entry, k, callerPkg, argsTerm, index, table);
+	}
+
+	/**
+	 * Caught up with the cache: a sealed entry makes this reader a finished
+	 * branch; otherwise it registers as a sleeper of {@code entry} — billed to
+	 * its own coat's region — and parks, and a park that races a fresh answer
+	 * keeps consuming instead of sleeping past data. This is the sleeper-edge
+	 * bookkeeping completion detection reads (docs/design/table-completion.md).
+	 */
+	private static Fiber<Nothing> parkWhenCaughtUp(
+			TableEntry<Object> entry,
+			Fiber.Fn<Package, Nothing> k,
+			Package callerPkg,
+			Unifiable<?> argsTerm,
+			int index,
+			Table table) {
 		if (entry.isComplete()) {
 			// sealed: no new answers can ever arrive — the caught-up reader is
 			// a finished branch, not a sleeper (racy read is safe: a stale
@@ -321,7 +331,6 @@ public class Tabling {
 		if (enclosingCall != null) {
 			enclosingCall.getRegion().awake(registration);
 		}
-
 		// An answer arrived while registering — keep consuming
 		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
 	}

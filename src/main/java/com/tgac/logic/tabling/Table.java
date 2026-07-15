@@ -12,7 +12,6 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import lombok.Getter;
 
 /**
  * The table that maps tabled goal calls to their table entries.
@@ -43,15 +42,12 @@ public class Table implements Packaged {
 	private final ConcurrentHashMap<Call, TableEntry<Object>> entries = new ConcurrentHashMap<>();
 
 	/** The cell's ⊕ (answer fold), ⊗ (consumption), and 1 (fresh derivation). */
-	@Getter
 	private final IdempotentSemiring<Object> semiring;
 
 	/** The running value of a derivation, read off its package. */
-	@Getter
 	private final Function<Package, Object> weightReader;
 
 	/** The package with its running value set to the given value. */
-	@Getter
 	private final BiFunction<Package, Object, Package> weightWriter;
 
 	private Table(IdempotentSemiring<Object> semiring,
@@ -77,12 +73,55 @@ public class Table implements Packaged {
 		return new Table(semiring, weightReader, weightWriter);
 	}
 
+	// ---- the cell's weight algebra (identity when unweighted) ----
+
+	/** A fresh derivation's weight — the ⊗ identity. */
+	public Object one() {
+		return semiring.one();
+	}
+
+	/** The running value carried by {@code pkg}'s derivation. */
+	public Object weightOf(Package pkg) {
+		return weightReader.apply(pkg);
+	}
+
+	/** {@code pkg} with its running value set to {@code weight}. */
+	public Package withWeight(Package pkg, Object weight) {
+		return weightWriter.apply(pkg, weight);
+	}
+
+	/** ⊗ of two weights. */
+	public Object times(Object a, Object b) {
+		return semiring.times(a, b);
+	}
+
+	/** Reset to ONE — a master's body runs from a caller-agnostic weight. */
+	public Package resetWeight(Package pkg) {
+		return withWeight(pkg, one());
+	}
+
+	/** ⊗ {@code value} into the running weight — a consumer folding in a cached answer. */
+	public Package scaleWeight(Package pkg, Object value) {
+		return withWeight(pkg, times(weightOf(pkg), value));
+	}
+
+	// ---- entries ----
+
 	/**
 	 * Get or create a table entry for the given call.
 	 * If this is the first time we've seen this call, a new TableEntry is created.
 	 */
 	public TableEntry<Object> getOrCreateEntry(Call call) {
 		return entries.computeIfAbsent(call, c -> new TableEntry<>(c, semiring));
+	}
+
+	/**
+	 * A SEALED general entry to reuse for {@code key} instead of minting a fresh
+	 * master — present only on an exact miss, since an exact entry is the call's
+	 * own master. The general's answers are a superset filtered by consumption.
+	 */
+	public TableEntry<Object> reusableSubsumer(Call key) {
+		return getEntry(key) == null ? findSealedSubsumer(key) : null;
 	}
 
 	/**
