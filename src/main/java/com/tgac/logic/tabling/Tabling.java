@@ -120,6 +120,9 @@ public class Tabling {
 			return MiniKanren.reify(callerPkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
 				Call key = Call.of(relation, reifiedArgs);
 				Table table = callerPkg.getStore(Table.class);
+				// a weighted solve whose semiring cannot table (non-idempotent,
+				// non-closed) would silently drop weights here — refuse loudly
+				table.assertTablingAllowed();
 				// subsumptive reuse: a sealed general entry is a read-only relation
 				// containing every answer this instance call could produce (subset
 				// property) — read it through consume's unification filter
@@ -156,7 +159,7 @@ public class Tabling {
 				.map(table -> {
 					Call key = Call.of(relation,
 							MiniKanren.reify(p.substitution(), argsTerm).get());
-					TableEntry entry = table.getEntry(key);
+					TableEntry<?> entry = table.getEntry(key);
 					// a sealed subsumer's count bounds the instance's emissions
 					// (subset property) — the same lookup reuse consumes through
 					return entry != null ? entry : table.findSealedSubsumer(key);
@@ -244,7 +247,7 @@ public class Tabling {
 	private static Fiber<Nothing> respawn(TableEntry<Object> entry, List<Registration> parked, Table table) {
 		Fiber<Nothing> result = done(nothing());
 		for (Registration r : parked) {
-			TableEntry enclosingCall = r.getEnclosingCall();
+			TableEntry<?> enclosingCall = r.getEnclosingCall();
 			if (enclosingCall != null) {
 				enclosingCall.getRegion().awake(r);
 			}
@@ -315,7 +318,7 @@ public class Tabling {
 		// the parked state is callerPkg: its coat names the call this reader
 		// belongs to — the registration's enclosingCall, as opposed to
 		// {@code entry}, the call it waits for
-		TableEntry enclosingCall = EnclosingCall.entryOf(callerPkg);
+		TableEntry<Object> enclosingCall = EnclosingCall.entryOf(callerPkg);
 		Registration registration = new Registration(k, callerPkg, argsTerm, index, enclosingCall);
 		if (enclosingCall != null) {
 			// ledger first, then park: a respawn can only drain a parked

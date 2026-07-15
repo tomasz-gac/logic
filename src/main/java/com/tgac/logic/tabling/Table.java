@@ -50,17 +50,22 @@ public class Table implements Packaged {
 	/** The package with its running value set to the given value. */
 	private final BiFunction<Package, Object, Package> weightWriter;
 
+	/** Why tabling is refused under this table, or null when it is allowed. */
+	private final String tablingForbidden;
+
 	private Table(IdempotentSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
-			BiFunction<Package, Object, Package> weightWriter) {
+			BiFunction<Package, Object, Package> weightWriter,
+			String tablingForbidden) {
 		this.semiring = semiring;
 		this.weightReader = weightReader;
 		this.weightWriter = weightWriter;
+		this.tablingForbidden = tablingForbidden;
 	}
 
 	/** Plain tabling: a presence cell and no running value to thread. */
 	public static Table empty() {
-		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p);
+		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, null);
 	}
 
 	/**
@@ -70,7 +75,24 @@ public class Table implements Packaged {
 	public static Table weighted(IdempotentSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
 			BiFunction<Package, Object, Package> weightWriter) {
-		return new Table(semiring, weightReader, weightWriter);
+		return new Table(semiring, weightReader, weightWriter, null);
+	}
+
+	/**
+	 * A weighted solve that CANNOT thread weights through tabling — the plain
+	 * {@code solve}/{@code solveEach}, whose semiring may be non-idempotent and
+	 * non-closed. It presents as a plain table but refuses an actual tabled
+	 * call, so dropped weights fail loudly instead of silently miscomputing.
+	 */
+	public static Table refusingTabling(String reason) {
+		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, reason);
+	}
+
+	/** Loud failure when a tabled call runs under a table that cannot support it. */
+	public void assertTablingAllowed() {
+		if (tablingForbidden != null) {
+			throw new IllegalStateException(tablingForbidden);
+		}
 	}
 
 	// ---- the cell's weight algebra (identity when unweighted) ----

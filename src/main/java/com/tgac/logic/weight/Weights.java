@@ -117,7 +117,11 @@ public final class Weights {
 	}
 
 	private static Package seed(Semiring<SemiringStore> product) {
-		return Package.empty().withStore(Table.empty()).withStore(product.one());
+		return Package.empty()
+				.withStore(Table.refusingTabling(
+						"weighted tabling needs solveIdempotent (or solveClosed); "
+								+ "solve/solveEach do not thread weights through tabled calls"))
+				.withStore(product.one());
 	}
 
 	@SuppressWarnings("StatementWithEmptyBody")
@@ -128,6 +132,9 @@ public final class Weights {
 			})) {
 				// drain the search to completion
 			}
+		} catch (RuntimeException e) {
+			// a goal threw during the search (e.g. a tabling guard) — propagate as-is
+			throw e;
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to close engine", e);
 		}

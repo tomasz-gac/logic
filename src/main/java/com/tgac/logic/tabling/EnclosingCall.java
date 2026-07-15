@@ -27,18 +27,19 @@ final class EnclosingCall implements Packaged {
 	/** Top level: the query's code is inside no tabled call — unbilled, ungated. */
 	static final EnclosingCall NONE = new EnclosingCall(null);
 
-	private final TableEntry entry;
+	private final TableEntry<Object> entry;
 
-	EnclosingCall(TableEntry entry) {
-		this.entry = entry;
+	@SuppressWarnings("unchecked")
+	EnclosingCall(TableEntry<?> entry) {
+		this.entry = (TableEntry<Object>) entry;
 	}
 
-	TableEntry entry() {
+	TableEntry<Object> entry() {
 		return entry;
 	}
 
 	/** The entry of the call {@code pkg} is executing, or null at top level. */
-	static TableEntry entryOf(Package pkg) {
+	static TableEntry<Object> entryOf(Package pkg) {
 		Option<Packaged> store = pkg.getStores().get(EnclosingCall.class);
 		return store.isDefined() ? ((EnclosingCall) store.get()).entry : null;
 	}

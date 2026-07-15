@@ -7,8 +7,10 @@ import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.functional.algebra.IdempotentSemiring;
+import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.goals.Goal;
@@ -57,5 +59,22 @@ public class WeightedTablingTest {
 				.min(Long::compareTo)
 				.orElseThrow(() -> new AssertionError("no path to d"));
 		assertThat(shortestToD).isEqualTo(4L);
+	}
+
+	@Test
+	public void plainWeightedSolveRefusesTabledGoalsInsteadOfDroppingWeights() {
+		// a tabled relation under solveEach (non-idempotent counting): the plain
+		// table cannot thread weights through the tabling boundary, so instead of
+		// silently returning wrong weights it must fail loudly
+		Tabled<Unifiable<String>> rel = Tabling.define(x ->
+				unify(x, lval("a")).or(unify(x, lval("b"))));
+		Unifiable<String> out = lvar();
+		Semiring<SemiringStore> counting = SemiringStore.product(Semirings.COUNTING);
+
+		assertThatThrownBy(() ->
+				Weights.solveEach(rel.apply(out), out, counting, BreadthFirstScheduler::new)
+						.collect(Collectors.toList()))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("solveIdempotent");
 	}
 }
