@@ -3,8 +3,10 @@ package com.tgac.logic.weight;
 // ABOUTME: The product Semiring<SemiringStore> is lawful — componentwise ⊕/⊗
 // ABOUTME: over its participating rings — so weighing many things in one pass is sound.
 
+import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.Semirings;
+import com.tgac.functional.algebra.laws.IdempotentSemiringLaws;
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemiringLaws;
@@ -39,5 +41,20 @@ public class SemiringStoreLawsTest {
 				store(3L, 0L),
 				store(0L, 12L));
 		SemiringLaws.check(PRODUCT, xs);
+	}
+
+	@Test
+	public void idempotentProductIsAnIdempotentSemiring() {
+		// all-idempotent components (min-plus): the product's ⊕ is idempotent,
+		// which is what tabling's answer cell demands
+		IdempotentSemiring<SemiringStore> product =
+				SemiringStore.idempotentProduct(Semirings.MIN_PLUS);
+		List<SemiringStore> xs = Arrays.asList(
+				product.zero(),
+				product.one(),
+				product.one().with(Semirings.MIN_PLUS, 5L),
+				product.one().with(Semirings.MIN_PLUS, 12L));
+		SemiringLaws.check(product, xs);
+		IdempotentSemiringLaws.check(product, xs);
 	}
 }

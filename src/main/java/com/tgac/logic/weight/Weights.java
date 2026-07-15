@@ -5,6 +5,7 @@ package com.tgac.logic.weight;
 
 import static com.tgac.functional.category.Nothing.nothing;
 
+import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -80,6 +81,36 @@ public final class Weights {
 					return nothing();
 				}), factory);
 		return perAnswer.stream();
+	}
+
+	/**
+	 * Weighted TABLED solve: each answer paired with its folded semiring value,
+	 * computed by iterating the tabled fixpoint. The product must be idempotent
+	 * — the answer cell folds by ⊕ and only converges when re-derivation is
+	 * absorbed (min-plus, Viterbi, boolean; not counting or probability, which
+	 * need star). Cyclic recursion terminates on that idempotence.
+	 */
+	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveTabled(Goal goal, Unifiable<T> out,
+			IdempotentSemiring<SemiringStore> product, Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
+		Package root = Package.empty().withStore(weightedTable(product)).withStore(product.one());
+		Queue<Tuple2<Reified<T>, SemiringStore>> perAnswer = new ConcurrentLinkedQueue<>();
+		runToCompletion(goal.apply(root)
+				.flatMap(s -> Constraints.reify(s, out)
+						.map(answer -> Tuple.of(answer, s.getStore(SemiringStore.class))))
+				.run(pair -> {
+					perAnswer.add(pair);
+					return nothing();
+				}), factory);
+		return perAnswer.stream();
+	}
+
+	/** A table whose cell folds by {@code product} and whose running value is the SemiringStore. */
+	@SuppressWarnings("unchecked")
+	private static Table weightedTable(IdempotentSemiring<SemiringStore> product) {
+		return Table.weighted(
+				(IdempotentSemiring<Object>) (IdempotentSemiring<?>) product,
+				p -> p.getStores().get(SemiringStore.class).getOrElse(product.one()),
+				(p, v) -> p.putStore((SemiringStore) v));
 	}
 
 	private static Package seed(Semiring<SemiringStore> product) {

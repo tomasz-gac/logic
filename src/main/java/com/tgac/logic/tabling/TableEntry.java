@@ -3,9 +3,11 @@ package com.tgac.logic.tabling;
 // ABOUTME: One tabled call's entry: its answer log (what it has found) and its
 // ABOUTME: production ledger (what is still working for it), behind one facade.
 
-import com.tgac.logic.tabling.primitives.JoinSet;
+import com.tgac.functional.algebra.IdempotentSemiring;
+import com.tgac.logic.tabling.primitives.JoinMap;
 import com.tgac.logic.tabling.primitives.Region;
 import com.tgac.logic.unification.Reified;
+import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,12 +22,12 @@ import lombok.Getter;
  * entry — running fibers and sleeping consumers — so
  * {@link #completeIfQuiescent()} can decide that no new answer can ever
  * arrive. The entry IS a {@link Region} with this call's domain plugged in:
- * the region's value is a {@link JoinSet} of reified answer terms
+ * the region's value is a {@link JoinMap} of reified answer terms
  * (alpha-equivalence rides their equality), the caught-up check is the
  * consumer's resume index, "cannot wake" means parked home or at a sealed
  * entry, and the seal is the keys-final flag.
  */
-public class TableEntry {
+public class TableEntry<V> {
 	/** The call being tabled */
 	@Getter
 	private final Call call;
@@ -37,15 +39,16 @@ public class TableEntry {
 	 * call whose body it is a line of — its coat.
 	 */
 	@Getter
-	private final Region<JoinSet<Reified<?>>, Registration> region =
-			new Region<>(JoinSet.empty(),
-					r -> r.getEnclosingCall() == null ? null : r.getEnclosingCall().getRegion());
+	private final Region<JoinMap<Reified<?>, V>, Registration> region;
 
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
-	public TableEntry(Call call) {
+	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
+		this.region = new Region<JoinMap<Reified<?>, V>, Registration>(
+				JoinMap.empty(semiring),
+				r -> r.getEnclosingCall() == null ? null : r.getEnclosingCall().getRegion());
 	}
 
 	public void markComplete() {
@@ -65,8 +68,8 @@ public class TableEntry {
 	}
 
 	/** @return the drained subscribers to respawn, or none if the answer is a duplicate */
-	public Option<List<Registration>> addAnswer(Reified<?> answerTerm) {
-		return region.grow(v -> v.append(answerTerm));
+	public Option<List<Registration>> addAnswer(Reified<?> answerTerm, V value) {
+		return region.grow(v -> v.append(answerTerm, value));
 	}
 
 	/** @return false if answers arrived past the consumer's index — keep reading */
@@ -75,7 +78,7 @@ public class TableEntry {
 				v -> registration.getNextIndex() >= v.size());
 	}
 
-	public Reified<?> getAnswerAt(int index) {
+	public Tuple2<Reified<?>, V> getAnswerAt(int index) {
 		return region.read().get(index);
 	}
 

@@ -3,10 +3,16 @@ package com.tgac.logic.tabling;
 // ABOUTME: Maps tabled goal calls to their table entries for the duration of one solve.
 // ABOUTME: Rides the package's store map so every derived state shares it.
 
+import com.tgac.functional.algebra.IdempotentSemiring;
+import com.tgac.functional.algebra.Semirings;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import lombok.Getter;
 
 /**
  * The table that maps tabled goal calls to their table entries.
@@ -16,33 +22,73 @@ import java.util.concurrent.ConcurrentHashMap;
  * single solve: {@link Goal#solve} seeds a fresh one into the root package's
  * store map, and all packages derived during the search share it.
  *
- * It is a {@link Packaged} payload — not a constraint store — so constraint
+ * <p>The table carries the solve's cell algebra: the {@link IdempotentSemiring}
+ * that folds answer values, and the two accessors that thread the running value
+ * of a derivation through the package. For plain (unweighted) tabling these are
+ * the degenerate case — a presence semiring and no-op accessors — so the cell
+ * is a set and the weight machinery vanishes. Weighted tabling supplies a real
+ * semiring and accessors that read and ⊗ a value store.
+ *
+ * <p>It is a {@link Packaged} payload — not a constraint store — so constraint
  * processing ignores it; the store map is only its transport.
  */
 public class Table implements Packaged {
 
-	/** Map from calls to their table entries */
-	private final ConcurrentHashMap<Call, TableEntry> entries = new ConcurrentHashMap<>();
+	/** Every answer carries the same presence marker — the set-tabling cell. */
+	@SuppressWarnings("unchecked")
+	private static final IdempotentSemiring<Object> PRESENCE =
+			(IdempotentSemiring<Object>) (IdempotentSemiring<?>) Semirings.BOOLEAN;
 
-	private Table() {
+	/** Map from calls to their table entries */
+	private final ConcurrentHashMap<Call, TableEntry<Object>> entries = new ConcurrentHashMap<>();
+
+	/** The cell's ⊕ (answer fold), ⊗ (consumption), and 1 (fresh derivation). */
+	@Getter
+	private final IdempotentSemiring<Object> semiring;
+
+	/** The running value of a derivation, read off its package. */
+	@Getter
+	private final Function<Package, Object> weightReader;
+
+	/** The package with its running value set to the given value. */
+	@Getter
+	private final BiFunction<Package, Object, Package> weightWriter;
+
+	private Table(IdempotentSemiring<Object> semiring,
+			Function<Package, Object> weightReader,
+			BiFunction<Package, Object, Package> weightWriter) {
+		this.semiring = semiring;
+		this.weightReader = weightReader;
+		this.weightWriter = weightWriter;
 	}
 
+	/** Plain tabling: a presence cell and no running value to thread. */
 	public static Table empty() {
-		return new Table();
+		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p);
+	}
+
+	/**
+	 * Weighted tabling: the answer cell folds by {@code semiring}, and the
+	 * accessors read and set the derivation's running value on the package.
+	 */
+	public static Table weighted(IdempotentSemiring<Object> semiring,
+			Function<Package, Object> weightReader,
+			BiFunction<Package, Object, Package> weightWriter) {
+		return new Table(semiring, weightReader, weightWriter);
 	}
 
 	/**
 	 * Get or create a table entry for the given call.
 	 * If this is the first time we've seen this call, a new TableEntry is created.
 	 */
-	public TableEntry getOrCreateEntry(Call call) {
-		return entries.computeIfAbsent(call, TableEntry::new);
+	public TableEntry<Object> getOrCreateEntry(Call call) {
+		return entries.computeIfAbsent(call, c -> new TableEntry<>(c, semiring));
 	}
 
 	/**
 	 * Get an existing table entry, or null if the call hasn't been tabled yet.
 	 */
-	public Collection<TableEntry> entries() {
+	public Collection<TableEntry<Object>> entries() {
 		return entries.values();
 	}
 
@@ -52,8 +98,8 @@ public class Table implements Packaged {
 	 * SubsumptionMap is this lookup's planned generalization when its next
 	 * customer (the adornment memo) arrives.
 	 */
-	public TableEntry findSealedSubsumer(Call key) {
-		for (TableEntry e : entries.values()) {
+	public TableEntry<Object> findSealedSubsumer(Call key) {
+		for (TableEntry<Object> e : entries.values()) {
 			if (e.isComplete() && e.getCall().subsumes(key)) {
 				return e;
 			}
@@ -61,7 +107,7 @@ public class Table implements Packaged {
 		return null;
 	}
 
-	public TableEntry getEntry(Call call) {
+	public TableEntry<Object> getEntry(Call call) {
 		return entries.get(call);
 	}
 

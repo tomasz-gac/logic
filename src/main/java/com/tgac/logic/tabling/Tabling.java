@@ -13,13 +13,14 @@ import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Barrier;
-import com.tgac.logic.tabling.primitives.JoinSet;
+import com.tgac.logic.tabling.primitives.JoinMap;
 import com.tgac.logic.tabling.primitives.Region;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -119,25 +120,31 @@ public class Tabling {
 			return MiniKanren.reify(callerPkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
 				Call key = Call.of(relation, reifiedArgs);
 				Table table = callerPkg.getStore(Table.class);
-				TableEntry entry = table.getEntry(key);
+				TableEntry<Object> entry = table.getEntry(key);
 				if (entry == null) {
 					// subsumptive reuse: a sealed general entry is a read-only
 					// relation containing every answer this instance call could
 					// produce (subset property) — read it through consume's
 					// unification filter instead of minting a master
-					TableEntry sealedGeneral = table.findSealedSubsumer(key);
+					TableEntry<Object> sealedGeneral = table.findSealedSubsumer(key);
 					if (sealedGeneral != null) {
-						return consume(sealedGeneral, k, callerPkg, argsTerm, 0);
+						return consume(sealedGeneral, k, callerPkg, argsTerm, 0, table);
 					}
 					entry = table.getOrCreateEntry(key);
 				}
 				if (entry.tryBecomeMaster()) {
 					EnclosingCall callerCall = EnclosingCall.current(callerPkg);
-					Package bodyPkg = callerPkg.putStore(new EnclosingCall(entry));
+					// the caller's running value at this call site, restored and
+					// ⊗-combined with each answer's cell value on the way out; the
+					// body itself runs from ONE so the cell stays caller-agnostic
+					Object callerWeight = table.getWeightReader().apply(callerPkg);
+					Package bodyPkg = table.getWeightWriter()
+							.apply(callerPkg, table.getSemiring().one())
+							.putStore(new EnclosingCall(entry));
 					return Region.track(entry.getRegion(),
-							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall));
+							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall, callerWeight, table));
 				}
-				return consume(entry, k, callerPkg, argsTerm, 0);
+				return consume(entry, k, callerPkg, argsTerm, 0, table);
 			});
 		});
 	}
@@ -165,7 +172,8 @@ public class Tabling {
 				.getOrElse(Long.MAX_VALUE);
 	}
 
-	private static Region<JoinSet<Reified<?>>, Registration> regionOf(TableEntry entry) {
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static Region<JoinMap<Reified<?>, Object>, Registration> regionOf(TableEntry entry) {
 		return entry == null ? null : entry.getRegion();
 	}
 
@@ -196,17 +204,22 @@ public class Tabling {
 	 * answers fail their branch.
 	 */
 	private static Fiber<Nothing> produce(
-			TableEntry entry,
+			TableEntry<Object> entry,
 			Goal goal,
 			Package bodyPkg,
 			Unifiable<?> argsTerm,
 			Fiber.Fn<Package, Nothing> k,
-			EnclosingCall callerCall) {
+			EnclosingCall callerCall,
+			Object callerWeight,
+			Table table) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
+			// the value this derivation carries from the call's inputs to the
+			// answer — caller-agnostic, since the body ran from ONE
+			Object value = table.getWeightReader().apply(answerPkg);
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
-					entry.addAnswer(answerTerm)
-							.map(parked -> respawn(entry, parked)
+					entry.addAnswer(answerTerm, value)
+							.map(parked -> respawn(entry, parked, table)
 									// detach-k: the answer's downstream is the CALLER's
 									// code, not this body's — detaching it makes this
 									// fiber's completion mean BODY EXHAUSTED, the event
@@ -215,9 +228,12 @@ public class Tabling {
 									// runs: the downstream parks AND is billed as the
 									// caller (a nested master's downstream can still
 									// derive caller answers, so the caller must not
-									// complete under it — table-completion.md §4).
+									// complete under it — table-completion.md §4). The
+									// caller's running value is restored and ⊗ the answer.
 									.flatMap(__ -> {
-										Package callerAnswerPkg = answerPkg.putStore(callerCall);
+										Package callerAnswerPkg = table.getWeightWriter().apply(
+												answerPkg.putStore(callerCall),
+												table.getSemiring().times(callerWeight, value));
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(
@@ -231,7 +247,7 @@ public class Tabling {
 	 * Respawn parked consumers as detached fibers so they pick up the answers
 	 * cached since they parked. Whoever derives an answer drives its consequences.
 	 */
-	private static Fiber<Nothing> respawn(TableEntry entry, List<Registration> parked) {
+	private static Fiber<Nothing> respawn(TableEntry<Object> entry, List<Registration> parked, Table table) {
 		Fiber<Nothing> result = done(nothing());
 		for (Registration r : parked) {
 			TableEntry enclosingCall = r.getEnclosingCall();
@@ -239,7 +255,7 @@ public class Tabling {
 				enclosingCall.getRegion().awake(r);
 			}
 			Fiber<Nothing> consumer = Fiber.defer(() ->
-					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex()));
+					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex(), table));
 			result = result.flatMap(__ -> Fiber.detach(Region.track(regionOf(enclosingCall), consumer)));
 		}
 		return result;
@@ -253,24 +269,29 @@ public class Tabling {
 	 * fixpoint abandons it otherwise.
 	 */
 	private static Fiber<Nothing> consume(
-			TableEntry entry,
+			TableEntry<Object> entry,
 			Fiber.Fn<Package, Nothing> k,
 			Package callerPkg,
 			Unifiable<?> argsTerm,
-			int index) {
+			int index,
+			Table table) {
 
 		if (index < entry.getAnswerCount()) {
-			Reified<?> answerTerm = entry.getAnswerAt(index);
+			Tuple2<Reified<?>, Object> answer = entry.getAnswerAt(index);
+			Object cellValue = answer._2;
 			// Fresh variables per consumption, so separate consumptions of the
 			// same answer don't alias each other's free variables
-			return MiniKanren.instantiate(answerTerm).flatMap(freshTerm ->
+			return MiniKanren.instantiate(answer._1).flatMap(freshTerm ->
 					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
 							.map(callerPkg::withSubstitutions)
-							.map(unifiedPkg -> k.apply(unifiedPkg)
+							// ⊗ the answer's cell value into this consumer's running value
+							.map(unifiedPkg -> table.getWeightWriter().apply(unifiedPkg,
+									table.getSemiring().times(table.getWeightReader().apply(unifiedPkg), cellValue)))
+							.map(weightedPkg -> k.apply(weightedPkg)
 									.flatMap(__ -> Fiber.defer(() ->
-											consume(entry, k, callerPkg, argsTerm, index + 1))))
+											consume(entry, k, callerPkg, argsTerm, index + 1, table))))
 							.getOrElse(() -> Fiber.defer(() ->
-									consume(entry, k, callerPkg, argsTerm, index + 1)))
+									consume(entry, k, callerPkg, argsTerm, index + 1, table)))
 							.flatMap(fib -> fib));
 		}
 
@@ -302,6 +323,6 @@ public class Tabling {
 		}
 
 		// An answer arrived while registering — keep consuming
-		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index));
+		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
 	}
 }

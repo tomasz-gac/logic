@@ -3,6 +3,7 @@ package com.tgac.logic.weight;
 // ABOUTME: One accumulated value per participating semiring, keyed by the ring
 // ABOUTME: itself — the product semiring reified, so one pass computes many things.
 
+import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.logic.goals.Packaged;
 import io.vavr.collection.Array;
@@ -53,8 +54,21 @@ public final class SemiringStore implements Packaged {
 		return new Product(Array.of(rings));
 	}
 
+	/**
+	 * The product as an {@link IdempotentSemiring} — its ⊕ is idempotent
+	 * because every component's is, which is what tabling's answer cell demands
+	 * (a non-idempotent component would never let the fixpoint converge).
+	 */
+	public static IdempotentSemiring<SemiringStore> idempotentProduct(IdempotentSemiring<?>... rings) {
+		Array<Semiring<?>> asSemirings = Array.empty();
+		for (IdempotentSemiring<?> ring : rings) {
+			asSemirings = asSemirings.append(ring);
+		}
+		return new IdempotentProduct(asSemirings);
+	}
+
 	@RequiredArgsConstructor
-	private static final class Product implements Semiring<SemiringStore> {
+	private static class Product implements Semiring<SemiringStore> {
 		private final Array<Semiring<?>> rings;
 
 		@Override
@@ -91,6 +105,12 @@ public final class SemiringStore implements Packaged {
 				m = m.put(ring, one ? ring.one() : ring.zero());
 			}
 			return new SemiringStore(m);
+		}
+	}
+
+	private static final class IdempotentProduct extends Product implements IdempotentSemiring<SemiringStore> {
+		IdempotentProduct(Array<Semiring<?>> rings) {
+			super(rings);
 		}
 	}
 
