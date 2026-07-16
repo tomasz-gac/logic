@@ -320,8 +320,12 @@ Three theorem shapes ride the tower:
   parallel-worlds-joined excursions (§5c). The sharp contrast: parallel
   COUNTING needs exactly-once delivery — real coordination — because it
   sits above the idempotent quotient; parallel EXISTENCE does not.
-  Absorption/superiority (Sobrinho) buys greedy commitment (Dijkstra) and
-  finite convergence over cycles. Compression ⇒ parallelism is not a
+  Absorption/superiority (Sobrinho) buys greedy commitment (Dijkstra); the
+  weaker BOUNDEDNESS it implies (`a⊕1=1`, hence the degenerate `a*=1`) is the
+  exact threshold for finite convergence over cycles — idempotence absorbs
+  identical re-derivations, boundedness absorbs the loop-EXTENDED ones
+  (`x⊕ℓ⊗x = (1⊕ℓ)⊗x = x`), which is why idempotent-but-unbounded provenance
+  diverges. Compression ⇒ parallelism is not a
   coincidence of implementations; it is the same law read as a schedule.
 - **Execution mode = choosing the quotient to compute the fixpoint in.**
   Search computes in the free object (complete, expensive); propagation
@@ -423,17 +427,19 @@ constraint core survives every semiring conversation unscathed.
 
 Column readings: reorder and refute are universal — why ONE optimizer and
 ONE constraint core serve every plug. Dedup switches on at ⊕-idempotence;
-commitment at superiority; NATIVE constraint iteration at ⊗-idempotence —
+cyclic-streaming termination at BOUNDEDNESS (1 = ⊕-top, `a*=1`); commitment at
+superiority; NATIVE constraint iteration at ⊗-idempotence —
 exactly the distributive-lattice rung, and that is a theorem, not an
 observation: c-semirings with idempotent ⊗ collapse to distributive
 lattices (the Bistarelli–Montanari–Rossi line). Constraint-native
 semirings ARE lattices.
 
-Not future work: the witness API already carries the taxonomy —
-`Semiring<S>` declares `isIdempotentPlus`/`isClosed`/`isSuperior`, and the
-law kits VERIFY the declarations. When `solve(out, semiring)` arrives
+Not future work: the witness API already carries the taxonomy — `Semiring<S>`'s
+capability SUBINTERFACES (`IdempotentSemiring`/`BoundedSemiring`/`ClosedSemiring`/
+`SuperiorSemiring`) ARE the declarations, and the law kits VERIFY each
+implementor. When `solve(out, semiring)` arrives
 (semiring-inference.md), the engine derives its feature gates from the
-plug's checked predicates: contains-check vs weighted cell in addAnswer,
+plug's checked capabilities: contains-check vs weighted cell in addAnswer,
 condu legal vs rejected loudly, dedup on or off — every gate justified by
 a law, not a comment. This table is the compatibility matrix
 semiring-inference.md was missing, and the DUAL of the capability ladder
