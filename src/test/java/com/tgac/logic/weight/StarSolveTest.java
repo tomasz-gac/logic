@@ -5,6 +5,7 @@ package com.tgac.logic.weight;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.algebra.Provenance;
 import com.tgac.functional.algebra.Semirings;
 import io.vavr.collection.Array;
 import org.junit.Test;
@@ -55,5 +56,19 @@ public class StarSolveTest {
 		Array<Boolean> b = Array.of(true, false);
 		assertThat(StarSolve.solve(Semirings.BOOLEAN, a, b).toJavaList())
 				.containsExactly(true, true);
+	}
+
+	@Test
+	public void provenanceShowsTheLoopStructure() {
+		// a self-loop, coefficient a and base b: x = a* · b — "loop a zero-or-more
+		// times, then take base b". min-plus collapsed this to a number; provenance
+		// keeps the whole derivation structure visible.
+		Provenance a = Provenance.sym("a");
+		Provenance base = Provenance.sym("b");
+		Array<Array<Provenance>> matrix = Array.of(Array.of(a));
+		Provenance x = StarSolve.solve(Semirings.PROVENANCE, matrix, Array.of(base)).get(0);
+
+		assertThat(x.sameLanguage(Provenance.cat(Provenance.star(a), base), 6)).isTrue();
+		assertThat(x.sameLanguage(base, 6)).isFalse();
 	}
 }
