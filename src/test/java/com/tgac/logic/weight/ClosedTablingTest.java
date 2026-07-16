@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.ClosedSemiring;
+import com.tgac.functional.algebra.Provenance;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.goals.Goal;
@@ -21,6 +22,8 @@ import com.tgac.logic.tabling.Tabling;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Test;
 
 public class ClosedTablingTest {
@@ -64,6 +67,51 @@ public class ClosedTablingTest {
 		assertThat(entry.baseWeights().values()).hasSize(1);
 		SemiringStore base = (SemiringStore) entry.baseWeights().values().iterator().next();
 		assertThat(base.get(Semirings.MIN_PLUS)).isEqualTo(3L);
+	}
+
+	@Test
+	public void provenanceBaseIsCapturedOnTheEntry() {
+		// loop(1) :- factor("base") | factor("step"), loop(1). Provenance shows the
+		// capture legibly: the non-looping branch lands the base symbol "base", the
+		// looping "step" stays on the sleeper.
+		Tabled<Tuple1<Unifiable<Integer>>> loop = Tabling.defineRecursive(self -> t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("base")))
+						.or(unify(x, lval(1))
+								.and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("step")))
+								.and(Goal.defer(() -> self.apply(t))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+		Table table = closedTable(ring);
+		Unifiable<Integer> out = lvar();
+		loop.apply(Tuple.of(out))
+				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
+				.count();
+
+		TableEntry<Object> entry = table.entries().iterator().next();
+		assertThat(entry.baseWeights().values()).hasSize(1);
+		SemiringStore base = (SemiringStore) entry.baseWeights().values().iterator().next();
+		assertThat(base.get(Semirings.PROVENANCE).sameLanguage(Provenance.sym("base"), 3)).isTrue();
+	}
+
+	@Test
+	public void provenanceCapturesABasePerAnswer() {
+		// r(1) :- factor("a").  r(2) :- factor("b").  Two answers, two DISTINCT bases —
+		// the answer->base map a one-answer relation collapses to a single number.
+		Tabled<Tuple1<Unifiable<Integer>>> r = Tabling.define(t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("a")))
+						.or(unify(x, lval(2)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("b"))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+		Table table = closedTable(ring);
+		Unifiable<Integer> out = lvar();
+		r.apply(Tuple.of(out))
+				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
+				.count();
+
+		TableEntry<Object> entry = table.entries().iterator().next();
+		List<String> bases = entry.baseWeights().values().stream()
+				.map(v -> ((SemiringStore) v).get(Semirings.PROVENANCE).toString())
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(bases).containsExactly("a", "b");
 	}
 
 	@SuppressWarnings("unchecked")

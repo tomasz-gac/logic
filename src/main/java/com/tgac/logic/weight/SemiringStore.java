@@ -4,6 +4,7 @@ package com.tgac.logic.weight;
 // ABOUTME: itself — the product semiring reified, so one pass computes many things.
 
 import com.tgac.functional.algebra.BoundedSemiring;
+import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.logic.goals.Packaged;
@@ -81,6 +82,21 @@ public final class SemiringStore implements Packaged {
 		return new BoundedProduct(asSemirings);
 	}
 
+	/**
+	 * The product as a {@link ClosedSemiring} — its star is componentwise, so it
+	 * closes cycles for a closed-but-unbounded plug (provenance, probability) that
+	 * {@code solveClosed} handles and {@code solveBounded} cannot take.
+	 */
+	public static ClosedSemiring<SemiringStore> closedProduct(ClosedSemiring<?>... rings) {
+		Array<Semiring<?>> asSemirings = Array.empty();
+		Array<ClosedSemiring<?>> closed = Array.empty();
+		for (ClosedSemiring<?> ring : rings) {
+			asSemirings = asSemirings.append(ring);
+			closed = closed.append(ring);
+		}
+		return new ClosedProduct(asSemirings, closed);
+	}
+
 	@RequiredArgsConstructor
 	private static class Product implements Semiring<SemiringStore> {
 		private final Array<Semiring<?>> rings;
@@ -131,6 +147,28 @@ public final class SemiringStore implements Packaged {
 	private static final class BoundedProduct extends Product implements BoundedSemiring<SemiringStore> {
 		BoundedProduct(Array<Semiring<?>> rings) {
 			super(rings);
+		}
+	}
+
+	private static final class ClosedProduct extends Product implements ClosedSemiring<SemiringStore> {
+		private final Array<ClosedSemiring<?>> closedRings;
+
+		ClosedProduct(Array<Semiring<?>> rings, Array<ClosedSemiring<?>> closedRings) {
+			super(rings);
+			this.closedRings = closedRings;
+		}
+
+		@Override
+		public SemiringStore star(SemiringStore a) {
+			LinkedHashMap<Semiring<?>, Object> m = LinkedHashMap.empty();
+			for (ClosedSemiring<?> ring : closedRings) {
+				m = m.put(ring, starEntry(ring, a));
+			}
+			return new SemiringStore(m);
+		}
+
+		private static <S> S starEntry(ClosedSemiring<S> ring, SemiringStore a) {
+			return ring.star(a.get(ring));
 		}
 	}
 
