@@ -1,15 +1,18 @@
 package com.tgac.logic.tabling;
 
 // ABOUTME: Maps tabled goal calls to their table entries for the duration of one solve.
-// ABOUTME: Rides the package's store map so every derived state shares it.
+// ABOUTME: Rides the package's store map and delegates per-step decisions to its mode.
 
 import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semirings;
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Reified;
+import com.tgac.logic.unification.Unifiable;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,12 +27,11 @@ import java.util.function.Function;
  * single solve: {@link Goal#solve} seeds a fresh one into the root package's
  * store map, and all packages derived during the search share it.
  *
- * <p>The table carries the solve's cell algebra: the {@link IdempotentSemiring}
- * that folds answer values, and the two accessors that thread the running value
- * of a derivation through the package. For plain (unweighted) tabling these are
- * the degenerate case — a presence semiring and no-op accessors — so the cell
- * is a set and the weight machinery vanishes. Weighted tabling supplies a real
- * semiring and accessors that read and ⊗ a value store.
+ * <p>The table carries the solve's {@link TablingMode}: {@link Streaming} for
+ * plain and bounded-weighted tabling (fold each answer's value and hand it out
+ * now), {@link Closed} for star tabling (explore for structure, solve at seal).
+ * The shared master / consumer / park / completion skeleton in {@link Tabling}
+ * calls the mode's hooks and never branches on which one it is.
  *
  * <p>It is a {@link Packaged} payload — not a constraint store — so constraint
  * processing ignores it; the store map is only its transport.
@@ -44,58 +46,20 @@ public class Table implements Packaged {
 	/** Map from calls to their table entries */
 	private final ConcurrentHashMap<Call, TableEntry<Object>> entries = new ConcurrentHashMap<>();
 
-	/** The cell's ⊕ (answer fold), ⊗ (consumption), and 1 (fresh derivation). */
-	private final IdempotentSemiring<Object> semiring;
-
-	/** The running value of a derivation, read off its package. */
-	private final Function<Package, Object> weightReader;
-
-	/** The package with its running value set to the given value. */
-	private final BiFunction<Package, Object, Package> weightWriter;
+	/** The algorithm: streaming vs closed/star. */
+	private final TablingMode mode;
 
 	/** Why tabling is refused under this table, or null when it is allowed. */
 	private final String tablingForbidden;
 
-	/** Non-null only for a wait-mode (closed) solve — the star's ring and store accessors. */
-	private final ClosedMode closedMode;
-
-	private Table(IdempotentSemiring<Object> semiring,
-			Function<Package, Object> weightReader,
-			BiFunction<Package, Object, Package> weightWriter,
-			String tablingForbidden,
-			ClosedMode closedMode) {
-		this.semiring = semiring;
-		this.weightReader = weightReader;
-		this.weightWriter = weightWriter;
+	private Table(TablingMode mode, String tablingForbidden) {
+		this.mode = mode;
 		this.tablingForbidden = tablingForbidden;
-		this.closedMode = closedMode;
-	}
-
-	/**
-	 * The ring and SemiringStore accessors a wait-mode solve threads for the star:
-	 * the presence cell drives explore, these drive probe/solve/emit at each seal.
-	 */
-	public static final class ClosedMode {
-		public final ClosedSemiring<Object> semiring;
-		public final Function<Package, Object> storeReader;
-		public final BiFunction<Package, Object, Package> storeWriter;
-		/** The star, solved per sealed entry: answer term → its value A* ⊗ b. */
-		public final Function<TableEntry<?>, Map<Reified<?>, Object>> starSolve;
-
-		ClosedMode(ClosedSemiring<Object> semiring,
-				Function<Package, Object> storeReader,
-				BiFunction<Package, Object, Package> storeWriter,
-				Function<TableEntry<?>, Map<Reified<?>, Object>> starSolve) {
-			this.semiring = semiring;
-			this.storeReader = storeReader;
-			this.storeWriter = storeWriter;
-			this.starSolve = starSolve;
-		}
 	}
 
 	/** Plain tabling: a presence cell and no running value to thread. */
 	public static Table empty() {
-		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, null, null);
+		return new Table(new Streaming(PRESENCE, p -> Boolean.TRUE, (p, v) -> p), null);
 	}
 
 	/**
@@ -105,31 +69,20 @@ public class Table implements Packaged {
 	public static Table weighted(IdempotentSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
 			BiFunction<Package, Object, Package> weightWriter) {
-		return new Table(semiring, weightReader, weightWriter, null, null);
+		return new Table(new Streaming(semiring, weightReader, weightWriter), null);
 	}
 
 	/**
-	 * Closed (wait-mode) tabling: the cell is presence, so explore is plain tabling
-	 * and terminates, while {@code closedSemiring} and the store accessors are held
-	 * for the star to solve at each seal. The real value rides the SemiringStore,
-	 * untouched by the presence cell.
+	 * Closed (star) tabling: the cell is presence, so explore is plain tabling and
+	 * terminates, while {@code closedSemiring}, the store accessors, and the
+	 * per-entry {@code starSolve} drive capture and the seal-time solve. The real
+	 * value rides the SemiringStore, untouched by the presence cell.
 	 */
 	public static Table closed(ClosedSemiring<Object> closedSemiring,
 			Function<Package, Object> storeReader,
 			BiFunction<Package, Object, Package> storeWriter,
 			Function<TableEntry<?>, Map<Reified<?>, Object>> starSolve) {
-		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, null,
-				new ClosedMode(closedSemiring, storeReader, storeWriter, starSolve));
-	}
-
-	/** Whether this solve defers values to a star at seal (closed) rather than streaming. */
-	public boolean isWaitMode() {
-		return closedMode != null;
-	}
-
-	/** The star's ring and store accessors, or null when not a wait-mode table. */
-	public ClosedMode getClosedMode() {
-		return closedMode;
+		return new Table(new Closed(closedSemiring, storeReader, storeWriter, starSolve), null);
 	}
 
 	/**
@@ -139,7 +92,7 @@ public class Table implements Packaged {
 	 * call, so dropped weights fail loudly instead of silently miscomputing.
 	 */
 	public static Table refusingTabling(String reason) {
-		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, reason, null);
+		return new Table(new Streaming(PRESENCE, p -> Boolean.TRUE, (p, v) -> p), reason);
 	}
 
 	/** Loud failure when a tabled call runs under a table that cannot support it. */
@@ -149,41 +102,35 @@ public class Table implements Packaged {
 		}
 	}
 
-	// ---- the cell's weight algebra (identity when unweighted) ----
+	// ---- the mode's per-step hooks (see TablingMode) ----
 
-	/** A fresh derivation's weight — the ⊗ identity. */
-	public Object one() {
-		return semiring.one();
+	Package enterBody(Package callerPkg) {
+		return mode.enterBody(callerPkg);
 	}
 
-	/** The running value carried by {@code pkg}'s derivation. */
-	public Object weightOf(Package pkg) {
-		return weightReader.apply(pkg);
+	Object callerValue(Package callerPkg) {
+		return mode.callerValue(callerPkg);
 	}
 
-	/** {@code pkg} with its running value set to {@code weight}. */
-	public Package withWeight(Package pkg, Object weight) {
-		return weightWriter.apply(pkg, weight);
+	Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer, Object cellValue) {
+		return mode.onConsume(unifiedPkg, entry, consumedAnswer, cellValue);
 	}
 
-	/** ⊗ of two weights. */
-	public Object times(Object a, Object b) {
-		return semiring.times(a, b);
+	Object cacheValue(Package answerPkg) {
+		return mode.cacheValue(answerPkg);
 	}
 
-	/** Reset to ONE — a master's body runs from a caller-agnostic weight. */
-	public Package resetWeight(Package pkg) {
-		return withWeight(pkg, one());
+	Reified<?> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
+		return mode.onProduce(entry, answerPkg, answerTerm);
 	}
 
-	/** ⊗ {@code value} into the running weight — a consumer folding in a cached answer. */
-	public Package scaleWeight(Package pkg, Object value) {
-		return withWeight(pkg, times(weightOf(pkg), value));
+	Package onExit(Package answerPkg, EnclosingCall callerCall, Object callerWeight, Object value) {
+		return mode.onExit(answerPkg, callerCall, callerWeight, value);
 	}
 
-	/** Reset the closed running value to one() at a master boundary; no-op when not wait-mode. */
-	public Package resetStore(Package pkg) {
-		return closedMode == null ? pkg : closedMode.storeWriter.apply(pkg, closedMode.semiring.one());
+	void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
+			Package callerPkg, Unifiable<?> argsTerm, EnclosingCall callerCall) {
+		mode.onMasterClaim(entry, k, callerPkg, argsTerm, callerCall);
 	}
 
 	// ---- entries ----
@@ -193,7 +140,7 @@ public class Table implements Packaged {
 	 * If this is the first time we've seen this call, a new TableEntry is created.
 	 */
 	public TableEntry<Object> getOrCreateEntry(Call call) {
-		return entries.computeIfAbsent(call, c -> new TableEntry<>(c, semiring));
+		return entries.computeIfAbsent(call, c -> new TableEntry<>(c, mode.cellSemiring()));
 	}
 
 	/**

@@ -22,7 +22,6 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -137,15 +136,9 @@ public class Tabling {
 					// the caller's running value at this call site, restored and
 					// ⊗-combined with each answer on the way out; the body runs from
 					// ONE so the cell stays caller-agnostic
-					Object callerWeight = table.weightOf(callerPkg);
-					Package bodyPkg = clearRecurrentIfWait(table, table.resetStore(table.resetWeight(callerPkg)))
-						.putStore(new EnclosingCall(entry));
-					if (table.isWaitMode()) {
-						// at seal, replay THIS caller's continuation with the star's
-						// folded value — the explore dropped every fragment
-						entry.getRegion().onSealed(() ->
-								emit(entry, k, callerPkg, argsTerm, callerCall, table));
-					}
+					Object callerWeight = table.callerValue(callerPkg);
+					Package bodyPkg = table.enterBody(callerPkg).putStore(new EnclosingCall(entry));
+					table.onMasterClaim(entry, k, callerPkg, argsTerm, callerCall);
 					return Region.track(entry.getRegion(),
 							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall, callerWeight, table));
 				}
@@ -221,9 +214,9 @@ public class Tabling {
 			assertNoConstraints(answerPkg, "on a tabled answer");
 			// the value this derivation carries from the call's inputs to the
 			// answer — caller-agnostic, since the body ran from ONE
-			Object value = table.weightOf(answerPkg);
+			Object value = table.cacheValue(answerPkg);
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
-					entry.addAnswer(captureIfWait(table, entry, answerPkg, answerTerm), value)
+					entry.addAnswer(table.onProduce(entry, answerPkg, answerTerm), value)
 							.map(parked -> respawn(entry, parked, table)
 									// detach-k: the answer's downstream is the CALLER's
 									// code, not this body's — detaching it makes this
@@ -234,15 +227,10 @@ public class Tabling {
 									// caller (a nested master's downstream can still
 									// derive caller answers, so the caller must not
 									// complete under it — table-completion.md §4). The
-									// caller's running value is restored and ⊗ the answer.
+									// mode combines the caller's running value with the answer.
 									.flatMap(__ -> {
-										Package base = table.withWeight(
-												answerPkg.putStore(callerCall),
-												table.times(callerWeight, value));
-										// wait-mode escape: a pre-star fragment dropped at the closed collector (§4.1)
-										Package callerAnswerPkg = table.isWaitMode()
-												? base.putStore(Exploration.MARKER)
-												: base;
+										Package callerAnswerPkg =
+												table.onExit(answerPkg, callerCall, callerWeight, value);
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(
@@ -250,63 +238,6 @@ public class Tabling {
 									}))
 							.getOrElse(() -> done(nothing())));
 		});
-	}
-
-	/**
-	 * Wait-mode emit (closed tabling): at seal, publish each answer to the master's
-	 * caller with the star-folded value. Explore ran as presence tabling and the
-	 * closed collector dropped every fragment; this replays the master's
-	 * continuation {@code k} once per answer with {@code x = A* ⊗ b}, ⊗ the
-	 * caller's running value (docs/design/star-tabling.md §4.5).
-	 */
-	private static Fiber<Nothing> emit(
-			TableEntry<Object> entry,
-			Fiber.Fn<Package, Nothing> k,
-			Package callerPkg,
-			Unifiable<?> argsTerm,
-			EnclosingCall callerCall,
-			Table table) {
-		// the real value rides the SemiringStore, not the presence cell weight —
-		// read the caller's value and write results through the closed accessors
-		Table.ClosedMode mode = table.getClosedMode();
-		Map<Reified<?>, Object> solved = mode.starSolve.apply(entry);
-		Object callerValue = mode.storeReader.apply(callerPkg);
-		Fiber<Nothing> result = done(nothing());
-		for (int i = 0; i < entry.getAnswerCount(); i++) {
-			Tuple2<Reified<?>, Object> answer = entry.getAnswerAt(i);
-			Object x = solved.get(answer._1);
-			if (x == null) {
-				continue;
-			}
-			Reified<?> answerTerm = answer._1;
-			Object value = mode.semiring.times(callerValue, x);
-			result = result.flatMap(__ ->
-					emitAnswer(k, callerPkg, argsTerm, callerCall, mode, answerTerm, value));
-		}
-		return result;
-	}
-
-	/**
-	 * Publish one sealed answer to the caller: instantiate it, unify it against the
-	 * call pattern to bind the caller's variables, re-coat to the caller and set the
-	 * ⊗-combined star value on the SemiringStore, then hand it to {@code k}.
-	 */
-	private static Fiber<Nothing> emitAnswer(
-			Fiber.Fn<Package, Nothing> k,
-			Package callerPkg,
-			Unifiable<?> argsTerm,
-			EnclosingCall callerCall,
-			Table.ClosedMode mode,
-			Reified<?> answerTerm,
-			Object value) {
-		return MiniKanren.instantiate(answerTerm).flatMap(freshTerm ->
-				MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
-						.map(callerPkg::withSubstitutions)
-						.map(pkg -> pkg.putStore(callerCall))
-						.map(pkg -> mode.storeWriter.apply(pkg, value))
-						.map(k::apply)
-						.getOrElse(() -> done(nothing()))
-						.flatMap(fib -> fib));
 	}
 
 	/**
@@ -350,9 +281,8 @@ public class Tabling {
 			return MiniKanren.instantiate(answer._1).flatMap(freshTerm ->
 					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
 							.map(callerPkg::withSubstitutions)
-							.map(unifiedPkg -> markRecurrentIfWait(table, entry, unifiedPkg, answer._1))
-							// ⊗ the answer's cell value into this consumer's running value
-							.map(unifiedPkg -> table.scaleWeight(unifiedPkg, cellValue))
+							// streaming ⊗s the cell value in; closed records the loop
+							.map(unifiedPkg -> table.onConsume(unifiedPkg, entry, answer._1, cellValue))
 							.map(weightedPkg -> k.apply(weightedPkg)
 									.flatMap(__ -> Fiber.defer(() ->
 											consume(entry, k, callerPkg, argsTerm, index + 1, table))))
@@ -407,45 +337,6 @@ public class Tabling {
 		}
 		// An answer arrived while registering — keep consuming
 		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
-	}
-	/** Wait mode: a derivation that consumed a still-open call has looped — mark it. */
-	private static Package markRecurrentIfWait(Table table, TableEntry<Object> entry, Package pkg, Reified<?> consumed) {
-		if (!table.isWaitMode() || entry.isComplete()) {
-			return pkg;
-		}
-		Recurrent prev = pkg.getStores().get(Recurrent.class)
-				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
-		return pkg.putStore(prev.and(consumed));
-	}
-
-	/** Wait mode: clear the looping record at a master boundary — a fresh derivation. */
-	private static Package clearRecurrentIfWait(Table table, Package pkg) {
-		return table.isWaitMode() ? pkg.putStore(Recurrent.NONE) : pkg;
-	}
-
-	/**
-	 * Wait mode: a NON-looping derivation (no Recurrent tag) is a base seed — grab its
-	 * value off the SemiringStore and fold it onto the entry, before the dedup. Returns
-	 * {@code answerTerm} so it slots into addAnswer as an identity with a side effect.
-	 */
-	private static Reified<?> captureIfWait(
-			Table table, TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
-		if (!table.isWaitMode()) {
-			return answerTerm;
-		}
-		Recurrent rec = answerPkg.getStores().get(Recurrent.class)
-				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
-		Table.ClosedMode mode = table.getClosedMode();
-		Object value = mode.storeReader.apply(answerPkg);
-		if (rec.consumed.isEmpty()) {
-			entry.addBase(answerTerm, value, mode.semiring);
-		} else if (rec.consumed.size() == 1) {
-			entry.addEdge(answerTerm, rec.consumed.head(), value, mode.semiring);
-		} else {
-			throw new IllegalStateException("nonlinear recursion: a derivation consumed "
-					+ rec.consumed.size() + " looping calls; star handles only linear systems");
-		}
-		return answerTerm;
 	}
 
 }
