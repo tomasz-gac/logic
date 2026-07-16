@@ -5,6 +5,7 @@ package com.tgac.logic.weight;
 
 import static com.tgac.functional.category.Nothing.nothing;
 
+import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.category.Nothing;
@@ -86,15 +87,15 @@ public final class Weights {
 	/**
 	 * Weighted solve with STREAMING tabling: tabled calls thread their weights,
 	 * the answer cell folds by ⊕, and recursion (cyclic included) terminates
-	 * because idempotence makes re-derivation stationary — min-plus, Viterbi,
-	 * boolean. The sibling {@code solveClosed} (star) is the escape for the
-	 * closed-but-not-idempotent semirings (probability); {@link #solveEach}
-	 * without a capability is the plain non-tabling per-answer solve. Naming the
-	 * capability at the call site keeps the choice of strategy explicit. With no
-	 * tabled goal the weighted table simply sits unused.
+	 * because boundedness (a* = 1) makes re-derivation stationary — min-plus,
+	 * Viterbi, boolean. The sibling {@code solveClosed} (star) is the escape for
+	 * the unbounded-or-non-idempotent semirings (probability, provenance);
+	 * {@link #solveEach} without a capability is the plain non-tabling per-answer
+	 * solve. Naming the capability at the call site keeps the choice of strategy
+	 * explicit. With no tabled goal the weighted table simply sits unused.
 	 */
-	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveIdempotent(Goal goal, Unifiable<T> out,
-			IdempotentSemiring<SemiringStore> product, Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
+	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveBounded(Goal goal, Unifiable<T> out,
+			BoundedSemiring<SemiringStore> product, Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
 		Package root = Package.empty().withStore(weightedTable(product)).withStore(product.one());
 		Queue<Tuple2<Reified<T>, SemiringStore>> perAnswer = new ConcurrentLinkedQueue<>();
 		runToCompletion(goal.apply(root)
@@ -119,7 +120,7 @@ public final class Weights {
 	private static Package seed(Semiring<SemiringStore> product) {
 		return Package.empty()
 				.withStore(Table.refusingTabling(
-						"weighted tabling needs solveIdempotent (or solveClosed); "
+						"weighted tabling needs solveBounded (or solveClosed); "
 								+ "solve/solveEach do not thread weights through tabled calls"))
 				.withStore(product.one());
 	}

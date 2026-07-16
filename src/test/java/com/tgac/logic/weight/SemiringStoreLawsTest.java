@@ -3,13 +3,16 @@ package com.tgac.logic.weight;
 // ABOUTME: The product Semiring<SemiringStore> is lawful — componentwise ⊕/⊗
 // ABOUTME: over its participating rings — so weighing many things in one pass is sound.
 
+import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.Semirings;
+import com.tgac.functional.algebra.laws.BoundedSemiringLaws;
 import com.tgac.functional.algebra.laws.IdempotentSemiringLaws;
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemiringLaws;
+import com.tgac.functional.algebra.laws.StarLaws;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.AfterClass;
@@ -56,5 +59,22 @@ public class SemiringStoreLawsTest {
 				product.one().with(Semirings.MIN_PLUS, 12L));
 		SemiringLaws.check(product, xs);
 		IdempotentSemiringLaws.check(product, xs);
+	}
+
+	@Test
+	public void boundedProductIsABoundedSemiring() {
+		// min-plus is bounded (a* = 1), so the product is too — the type
+		// solveBounded demands, and the guarantee its streaming tabling terminates
+		BoundedSemiring<SemiringStore> product =
+				SemiringStore.boundedProduct(Semirings.MIN_PLUS);
+		List<SemiringStore> xs = Arrays.asList(
+				product.zero(),
+				product.one(),
+				product.one().with(Semirings.MIN_PLUS, 5L),
+				product.one().with(Semirings.MIN_PLUS, 12L));
+		SemiringLaws.check(product, xs);
+		IdempotentSemiringLaws.check(product, xs);
+		StarLaws.check(product, xs);
+		BoundedSemiringLaws.check(product, xs);
 	}
 }

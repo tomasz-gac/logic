@@ -9,7 +9,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.tgac.functional.algebra.IdempotentSemiring;
+import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
@@ -44,11 +44,11 @@ public class WeightedTablingTest {
 						}))));
 
 		Unifiable<String> dest = lvar();
-		IdempotentSemiring<SemiringStore> product = SemiringStore.idempotentProduct(Semirings.MIN_PLUS);
+		BoundedSemiring<SemiringStore> product = SemiringStore.boundedProduct(Semirings.MIN_PLUS);
 
-		// solveIdempotent names the streaming-tabling strategy at the call site
+		// solveBounded names the streaming-tabling strategy at the call site
 		List<Tuple2<Reified<String>, SemiringStore>> answers =
-				Weights.solveIdempotent(path.apply(Tuple.of(lval("a"), dest)), dest, product,
+				Weights.solveBounded(path.apply(Tuple.of(lval("a"), dest)), dest, product,
 								BreadthFirstScheduler::new)
 						.collect(Collectors.toList());
 
@@ -75,6 +75,6 @@ public class WeightedTablingTest {
 				Weights.solveEach(rel.apply(out), out, counting, BreadthFirstScheduler::new)
 						.collect(Collectors.toList()))
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("solveIdempotent");
+				.hasMessageContaining("solveBounded");
 	}
 }

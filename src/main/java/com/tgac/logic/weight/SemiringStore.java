@@ -3,6 +3,7 @@ package com.tgac.logic.weight;
 // ABOUTME: One accumulated value per participating semiring, keyed by the ring
 // ABOUTME: itself — the product semiring reified, so one pass computes many things.
 
+import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.logic.goals.Packaged;
@@ -67,6 +68,19 @@ public final class SemiringStore implements Packaged {
 		return new IdempotentProduct(asSemirings);
 	}
 
+	/**
+	 * The product as a {@link BoundedSemiring} — bounded because every component
+	 * is (1 is the top componentwise), so its star is the degenerate {@code a* =
+	 * 1} and streaming tabling terminates. The type {@code solveBounded} demands.
+	 */
+	public static BoundedSemiring<SemiringStore> boundedProduct(BoundedSemiring<?>... rings) {
+		Array<Semiring<?>> asSemirings = Array.empty();
+		for (BoundedSemiring<?> ring : rings) {
+			asSemirings = asSemirings.append(ring);
+		}
+		return new BoundedProduct(asSemirings);
+	}
+
 	@RequiredArgsConstructor
 	private static class Product implements Semiring<SemiringStore> {
 		private final Array<Semiring<?>> rings;
@@ -110,6 +124,12 @@ public final class SemiringStore implements Packaged {
 
 	private static final class IdempotentProduct extends Product implements IdempotentSemiring<SemiringStore> {
 		IdempotentProduct(Array<Semiring<?>> rings) {
+			super(rings);
+		}
+	}
+
+	private static final class BoundedProduct extends Product implements BoundedSemiring<SemiringStore> {
+		BoundedProduct(Array<Semiring<?>> rings) {
 			super(rings);
 		}
 	}
