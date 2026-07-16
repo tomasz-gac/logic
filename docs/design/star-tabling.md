@@ -145,8 +145,9 @@ Its COAT names the call whose body is suspended (`i`); the ENTRY it parked in
 names the call it waits for (`j`). So the sleeper IS the edge `i→j`, with no
 reconstruction — read the two indices straight off it. Feeding it a `j`-answer
 whose value is `one()` and reading the weight at its next produce yields `A_ij`
-— the ONE-STEP weight, `j`'s own value stripped out (§4.3 makes the probe
-precise).
+— the ONE-STEP weight, `j`'s own value stripped out. (§4.3: the presence cell
+already strips `j`'s value, so in practice `A_ij` is just the recursive produce's
+own weight, recorded there during explore — no separate probe.)
 
 The trap is chaining. A sleeper's continuation, resumed, will happily run on to
 the next consume and the next — all the way around the loop and back. Do NOT let
@@ -211,8 +212,8 @@ x_i = b_i ⊕ (A_i1 ⊗ x_1) ⊕ (A_i2 ⊗ x_2) ⊕ … ⊕ (A_in ⊗ x_n)
 - `b_i` — the BASE: the ⊕-sum of `i`'s derivations that consume no SCC member.
 - `A_ij` — the COEFFICIENT: the ONE-STEP ⊗-weight of `i`'s dependence on `j` —
   the factor `i`'s body applies between consuming a `j`-answer and producing its
-  own, ⊕-summed over the ways it does so. Independent of `x_j`'s value (which is
-  why it can be probed with a `one()`-valued answer — §4).
+  own, ⊕-summed over the ways it does so. Independent of `x_j`'s value — which is
+  why the presence cell can strip it, leaving `A_ij` on the recursive produce (§4.3).
 
 The index runs over ANSWERS in the SCC, not calls (shortest-path over a graph is
 a node×node system — Floyd–Warshall).
@@ -351,16 +352,15 @@ polynomial; recursive provenance is a rational expression (polynomial + star).
 `solveClosed` reuses the completion machinery whole and adds four pieces around
 it. It runs the three phases of §2; the SOLVE phase fires at EACH SCC seal,
 bottom-up, riding the group-seal cascade (inner SCCs finalize first and become
-constant bases for the outer ones). It fires as a FIBER pipeline injected at the
-seal hook — probe, then star, then emit — spawned onto the SAME scheduler, so it
-interleaves with the ongoing search and finishes inside the single
-`runToCompletion` drain, not as a post-drain pass. Bottom-up ordering is not
-imposed; it falls out of seal order, since an outer SCC cannot seal until the
-inner ones it consumes already have. Probe and emit are themselves fiber
-resumptions (they resume sleepers), which is exactly why this rides the scheduler
-rather than running inline after the drain — doing it post-drain would force the
-solver to re-drive the scheduler in separate passes and forfeit overlap under a
-parallel scheduler.
+constant bases for the outer ones). At each seal it reads the captured `A`/`b` off the entries (§4.1–4.2), runs the
+star as pure arithmetic (§4.4), and EMITS. Only emit touches fibers — it resumes
+the parked continuations (§4.5) — so the seal hook returns that emit fiber onto
+the SAME scheduler, interleaving with the ongoing search and finishing inside the
+single `runToCompletion` drain. Bottom-up ordering is not imposed; it falls out
+of seal order, since an outer SCC cannot seal until the inner ones it consumes
+already have. (An earlier design PROBED the coefficients here with a fiber pass;
+§4.3 explains why that is unnecessary — they are recorded at produce, so gather
+and star are pure and only emit is fiber work.)
 
 ### 4.1 Explore (reused, presence cell, normal run)
 
@@ -376,59 +376,62 @@ bounded/streaming solve tags the same escapes and simply never filters them; the
 closed collector filters them, while an untagged non-tabled answer (from a branch
 that touched no tabled call) is always kept.
 
-Explore does capture one value, though: the BASE. A derivation that reaches a
-produce having consumed NO looping call is a non-recursive answer, and its value
-is the base `b_i` — the seed the star's loop feeds on (`x = A*⊗b`; with no base,
-`A*⊗0 = 0` and there are no answers). It parks no sleeper (it waited on nothing),
-so it cannot be recovered at seal — it is grabbed at its produce, off the
-SemiringStore, and ⊕-folded into a base map on the `TableEntry`, BEFORE the
-presence dedup can drop it as a duplicate key. A per-package RECURRENT flag — set
-by `consume` when it consumes a looping call — tells base from edge at the hook:
-unset → base (stash it); set → the derivation looped, so its value is a
-coefficient the sleeper already carries (skip). The flag rides the IMMUTABLE
-package, so it is per-derivation and order-proof — no "first answer" race. And it
-is caller-agnostic: the body runs from `one()`, so the base is the goal's OWN
-weight; `callerWeight` is applied on the way out (§2), never folded in — which is
-what lets the base sit on the shared entry, correct for every caller. For a
-one-answer relation the base is a single number; a many-answer one (`path(a,Y)` —
-`Y = b, c, …`) keys it by answer, and `⊕` folds an answer's multiple non-looping
-derivations.
+Explore captures the VALUES the star needs, right at the produce hook — there is
+no separate probe pass. Each derivation carries, on its IMMUTABLE package, a
+RECURRENT record of which looping (still-open SCC) answers it has consumed,
+appended by `consume`. At the hook the produce routes on that count:
+
+- **0 consumed → a base.** A non-recursive answer; its value is the base `b_i` —
+  the seed the star's loop feeds on (`x = A*⊗b`; with no base, `A*⊗0 = 0` and
+  there are no answers). ⊕-folded into the entry's base map.
+- **1 consumed → an edge.** The one-step coefficient `A[i←j]`, `j` being the
+  consumed answer. The presence cell stripped `j`'s value, so the SemiringStore
+  holds exactly `i`'s body contribution. ⊕-folded into the entry's edge map.
+- **≥2 consumed → nonlinear** (`A ⊗ x_j ⊗ x_k`), outside star's reach — throw
+  (§4.3).
+
+All of it is grabbed BEFORE the presence dedup drops the produce as a duplicate
+key, so multiplicity survives: two paths to the same answer ⊕-fold (base or edge).
+The record rides the immutable package, so it is per-derivation and order-proof —
+no "first answer" race. And it is caller-agnostic: the master resets the running
+value to `one()`, so base and coefficient are the goal's OWN weight; `callerWeight`
+is applied on the way out (§2), never folded in — which is what lets them sit on
+the SHARED entry, correct for every caller. For a one-answer relation the base is
+a single number; a many-answer one (`path(a,Y)` — `Y = b, c, …`) keys base and
+edges by answer.
 
 ### 4.2 At each seal — gather
 
 Take the merged region (the SCC — group-seal's virtual merge already computes
 its membership; the cycle is a property of the recursion paths, which cross
-table boundaries freely, so membership is by the reconstructed region, not by
-which table a sleeper parks on). Read the system off it:
+table boundaries freely). The system is ALREADY on the entries — gather is a
+read, not a probe:
 
-- **Cells give the index set; the entry's base map gives the bases.** Each
-  member's `JoinMap` holds the answer keys (the index set); the base values `b_i`
-  were already captured onto the entry DURING explore (§4.1), because the presence
-  cell itself holds no values — bases are the non-looping produces, which leave no
-  sleeper to read at seal.
-- **Sleepers give the edges.** Each parked consumer belongs to some `i` (its
-  coat) and waits on some `j` (the entry it parked in), so it IS the edge
-  `i→j`. **Gather via the closure walk / the ledger's `sleepingAt`, NOT the flat
-  `drainParked` return** — the flat list loses which `j` each sleeper waits on;
-  the tagged `i→j` structure lives in the walk the seal already performs.
+- **The base map gives `b`** — captured at produce (§4.1); the presence cell
+  holds no values.
+- **The edge map gives `A`** — also captured at produce (§4.1), keyed by
+  `(i, j)`, with multiple one-step ways to the same edge already ⊕-folded.
 
-### 4.3 Compute the coefficients — probe with `one()`
+No resuming sleepers, no re-running the body: explore already took every
+recursive step once and recorded its coefficient. The sleepers matter for
+detecting the SEAL (they are the completion graph's edges — `table-completion.md`),
+not for the values.
 
-`A_ij` is not a field you read; it is the ⊗-weight `i`'s body applies on the
-edge to `j`, with `j`'s own value stripped out. Extract it by resuming the
-parked consumer (which is `i`'s body suspended, waiting for a `j`-answer)
-against a `j`-answer whose VALUE is `one()`, and reading the weight at its next
-produce. Feeding `one()` cancels the consumed value and leaves exactly the
-body's contribution — the coefficient. The consumer's own package already
-carries the pre-consume factors, so no reset is needed; only the consumed value
-is forced to `one()`. Take ONE step and stop — do not let the resumed
-continuation chain on around the loop (§3.1); star does the chaining. The weight
-so read is recorded into the solve-time matrix `A[i][j]` (§4.4) — never into the
-presence cell, which holds no values; keys and coefficients live in separate
-layers.
+### 4.3 Coefficients are recorded at produce, not probed
 
-**Nonlinearity guard.** A probe's run to produce must consume exactly ONE SCC
-member. If it hits a SECOND, the derivation is `A ⊗ x_j ⊗ x_k` — nonlinear,
+An earlier design gathered coefficients at seal by PROBING — resume each parked
+sleeper against a `one()`-valued answer and read the produce. It is unnecessary:
+the coefficient is already at the recursive branch's produce during explore. When
+`i`'s body consumes a `j`-answer and produces `i`, the presence cell has stripped
+`j`'s value, so the SemiringStore carries exactly `i`'s one-step contribution —
+the coefficient `A[i←j]`. The `consume` that crossed into `j` recorded `j` on the
+RECURRENT list, and the produce reads it and ⊕-folds the value into `A[i][j]`
+(§4.1). So the coefficient is captured the same way and at the same moment as the
+base, differing only by the RECURRENT count — no seal-time fibers, and all of the
+base/coefficient work stays inside the ordinary explore.
+
+**Nonlinearity guard.** A single derivation must consume at most ONE SCC member.
+If its RECURRENT list holds TWO, the derivation is `A ⊗ x_j ⊗ x_k` — nonlinear,
 outside star's reach — so throw loudly ("nonlinear recursion in this SCC; star
 handles only linear systems"), in the spirit of `assertNoConstraints`. This is
 where the linear-only limit of §1 is enforced.
@@ -472,9 +475,9 @@ itself sealed, so consuming it is a lookup that flows the composition on to
 
 Reused, unchanged: the structural key search, completion detection (both tiers),
 the group seal and its virtual merge, the cascade order. NEW, and small: a
-discarding collector (explore), coefficient probing plus the nonlinearity guard
-(gather), the ~20-line Kleene solver (solve), and the produce-disabled replay
-(emit) — most of it in the weight package with one hook into `sealCascade`,
+discarding collector (explore), base + coefficient recording plus the
+nonlinearity guard (explore), the ~20-line Kleene solver (solve), and the
+producer-off replay (emit) — most of it in the weight package with one hook into `sealCascade`,
 not in the tabling core. The part that is usually hardest — knowing WHEN an SCC
 is complete and WHICH calls it contains — is exactly what the completion
 machinery already provides.
