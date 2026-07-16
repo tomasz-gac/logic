@@ -174,6 +174,11 @@ public class Table implements Packaged {
 		return withWeight(pkg, times(weightOf(pkg), value));
 	}
 
+	/** Reset the closed running value to one() at a master boundary; no-op when not wait-mode. */
+	public Package resetStore(Package pkg) {
+		return closedMode == null ? pkg : closedMode.storeWriter.apply(pkg, closedMode.semiring.one());
+	}
+
 	// ---- entries ----
 
 	/**

@@ -137,7 +137,7 @@ public class Tabling {
 					// ⊗-combined with each answer on the way out; the body runs from
 					// ONE so the cell stays caller-agnostic
 					Object callerWeight = table.weightOf(callerPkg);
-					Package bodyPkg = table.resetWeight(callerPkg).putStore(new EnclosingCall(entry));
+					Package bodyPkg = table.resetStore(table.resetWeight(callerPkg)).putStore(new EnclosingCall(entry));
 					return Region.track(entry.getRegion(),
 							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall, callerWeight, table));
 				}
@@ -215,7 +215,7 @@ public class Tabling {
 			// answer — caller-agnostic, since the body ran from ONE
 			Object value = table.weightOf(answerPkg);
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
-					entry.addAnswer(answerTerm, value)
+					entry.addAnswer(captureBaseIfWait(table, entry, answerPkg, answerTerm), value)
 							.map(parked -> respawn(entry, parked, table)
 									// detach-k: the answer's downstream is the CALLER's
 									// code, not this body's — detaching it makes this
@@ -285,6 +285,7 @@ public class Tabling {
 			return MiniKanren.instantiate(answer._1).flatMap(freshTerm ->
 					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
 							.map(callerPkg::withSubstitutions)
+							.map(unifiedPkg -> markRecurrentIfWait(table, entry, unifiedPkg))
 							// ⊗ the answer's cell value into this consumer's running value
 							.map(unifiedPkg -> table.scaleWeight(unifiedPkg, cellValue))
 							.map(weightedPkg -> k.apply(weightedPkg)
@@ -341,4 +342,23 @@ public class Tabling {
 		// An answer arrived while registering — keep consuming
 		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
 	}
+	/** Wait mode: a derivation that consumed a still-open call has looped — mark it. */
+	private static Package markRecurrentIfWait(Table table, TableEntry<Object> entry, Package pkg) {
+		return table.isWaitMode() && !entry.isComplete() ? pkg.putStore(Recurrent.MARKER) : pkg;
+	}
+
+	/**
+	 * Wait mode: a NON-looping derivation (no Recurrent tag) is a base seed — grab its
+	 * value off the SemiringStore and fold it onto the entry, before the dedup. Returns
+	 * {@code answerTerm} so it slots into addAnswer as an identity with a side effect.
+	 */
+	private static Reified<?> captureBaseIfWait(
+			Table table, TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
+		if (table.isWaitMode() && !answerPkg.getStores().get(Recurrent.class).isDefined()) {
+			Table.ClosedMode mode = table.getClosedMode();
+			entry.addBase(answerTerm, mode.storeReader.apply(answerPkg), mode.semiring);
+		}
+		return answerTerm;
+	}
+
 }

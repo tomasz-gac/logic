@@ -4,12 +4,15 @@ package com.tgac.logic.tabling;
 // ABOUTME: production ledger (what is still working for it), behind one facade.
 
 import com.tgac.functional.algebra.IdempotentSemiring;
+import com.tgac.functional.algebra.Semiring;
 import com.tgac.logic.tabling.primitives.JoinMap;
 import com.tgac.logic.tabling.primitives.Region;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 
@@ -44,6 +47,13 @@ public class TableEntry<V> {
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
+	/**
+	 * Base weights captured during CLOSED exploration: per answer, the ⊕-sum of its
+	 * NON-looping derivations — the star's seed vector (star-tabling.md §4.1). Empty
+	 * for plain and streaming tabling.
+	 */
+	private final Map<Reified<?>, Object> baseWeights = new ConcurrentHashMap<>();
+
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		this.region = new Region<JoinMap<Reified<?>, V>, Registration>(
@@ -70,6 +80,15 @@ public class TableEntry<V> {
 	/** @return the drained subscribers to respawn, or none if the answer is a duplicate */
 	public Option<List<Registration>> addAnswer(Reified<?> answerTerm, V value) {
 		return region.grow(v -> v.append(answerTerm, value));
+	}
+
+	/** ⊕-fold {@code value} into {@code answer}'s base weight (closed tabling). */
+	public void addBase(Reified<?> answer, Object value, Semiring<Object> ring) {
+		baseWeights.merge(answer, value, ring::plus);
+	}
+
+	public Map<Reified<?>, Object> baseWeights() {
+		return baseWeights;
 	}
 
 	/** @return false if answers arrived past the consumer's index — keep reading */
