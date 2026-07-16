@@ -118,6 +118,27 @@ public class WeightedSolveTest {
 	}
 
 	@Test
+	public void weightedSolveIsLazyOverAnInfiniteGenerator() {
+		// appendo with all-fresh args generates infinitely many answers; limit must
+		// drive the engine only far enough, not hang draining the whole search (the
+		// eager fold would never return). Proves solveEach streams like a plain solve.
+		Unifiable<LList<Integer>> lst = lvar();
+		Unifiable<LList<Integer>> x = lvar();
+		Unifiable<LList<Integer>> res = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING);
+
+		List<Tuple2<Reified<LList<Integer>>, SemiringStore>> first =
+				Weights.solveEach(
+								Logic.appendo(lst, x, res).and(Weights.factor(Semirings.COUNTING, 1L)),
+								res, product, BreadthFirstScheduler::new)
+						.limit(5)
+						.collect(Collectors.toList());
+
+		assertThat(first).hasSize(5);
+		assertThat(first).allMatch(p -> p._2.get(Semirings.COUNTING) == 1L);
+	}
+
+	@Test
 	public void noSolutionsFoldsToZero() {
 		Unifiable<Integer> a = lvar();
 		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, PROB);

@@ -23,10 +23,15 @@ import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import java.util.Deque;
 import java.util.Queue;
+import java.util.Spliterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -75,15 +80,13 @@ public final class Weights {
 	 */
 	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveEach(Goal goal, Unifiable<T> out,
 			Semiring<SemiringStore> product, Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
-		Queue<Tuple2<Reified<T>, SemiringStore>> perAnswer = new ConcurrentLinkedQueue<>();
-		runToCompletion(goal.apply(seed(product))
+		return lazily(sink -> goal.apply(seed(product))
 				.flatMap(s -> Constraints.reify(s, out)
 						.map(answer -> Tuple.of(answer, s.getStore(SemiringStore.class))))
 				.run(pair -> {
-					perAnswer.add(pair);
+					sink.accept(pair);
 					return nothing();
 				}), factory);
-		return perAnswer.stream();
 	}
 
 	/**
@@ -99,15 +102,13 @@ public final class Weights {
 	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveBounded(Goal goal, Unifiable<T> out,
 			BoundedSemiring<SemiringStore> product, Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
 		Package root = Package.empty().withStore(weightedTable(product)).withStore(product.one());
-		Queue<Tuple2<Reified<T>, SemiringStore>> perAnswer = new ConcurrentLinkedQueue<>();
-		runToCompletion(goal.apply(root)
+		return lazily(sink -> goal.apply(root)
 				.flatMap(s -> Constraints.reify(s, out)
 						.map(answer -> Tuple.of(answer, s.getStore(SemiringStore.class))))
 				.run(pair -> {
-					perAnswer.add(pair);
+					sink.accept(pair);
 					return nothing();
 				}), factory);
-		return perAnswer.stream();
 	}
 
 	/** A table whose cell folds by {@code product} and whose running value is the SemiringStore. */
@@ -132,8 +133,7 @@ public final class Weights {
 		Package root = Package.empty()
 				.withStore(closedTable(ring))
 				.withStore(ring.one());
-		Queue<Tuple2<Reified<T>, SemiringStore>> perAnswer = new ConcurrentLinkedQueue<>();
-		runToCompletion(goal.apply(root)
+		return lazily(sink -> goal.apply(root)
 				.flatMap(s -> Constraints.reify(s, out)
 						.map(answer -> Tuple.of(answer,
 								s.getStore(SemiringStore.class),
@@ -141,11 +141,10 @@ public final class Weights {
 				.run(triple -> {
 					// keep only finalized (untagged) answers; exploration fragments drop
 					if (!triple._3) {
-						perAnswer.add(Tuple.of(triple._1, triple._2));
+						sink.accept(Tuple.of(triple._1, triple._2));
 					}
 					return nothing();
 				}), factory);
-		return perAnswer.stream();
 	}
 
 	/** A closed table: presence cell for explore, the ring and SemiringStore accessors for the star. */
@@ -163,6 +162,61 @@ public final class Weights {
 						"weighted tabling needs solveBounded (or solveClosed); "
 								+ "solve/solveEach do not thread weights through tabled calls"))
 				.withStore(product.one());
+	}
+
+	/**
+	 * A lazy answer stream over the search: the scheduler is driven in batches only
+	 * as the consumer pulls, so {@code limit(n)} runs the engine just far enough.
+	 * The pipeline wires a result sink into the goal's continuation; each pulled
+	 * element steps the engine until one arrives (mirrors {@link Goal#solveFrom}).
+	 */
+	private static <R> Stream<R> lazily(
+			Function<Consumer<R>, Fiber<Nothing>> pipeline,
+			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
+		Deque<R> results = new LinkedBlockingDeque<>();
+		Scheduler<Nothing> scheduler = factory.apply(pipeline.apply(results::add));
+		Spliterator<R> spliterator = new Spliterator<R>() {
+			@Override
+			public boolean tryAdvance(Consumer<? super R> action) {
+				while (results.isEmpty()) {
+					if (scheduler.run(64, v -> {
+					})) {
+						while (!results.isEmpty()) {
+							action.accept(results.poll());
+						}
+						return false;
+					}
+					if (!results.isEmpty()) {
+						break;
+					}
+				}
+				action.accept(results.poll());
+				return true;
+			}
+
+			@Override
+			public Spliterator<R> trySplit() {
+				return null;
+			}
+
+			@Override
+			public long estimateSize() {
+				return Long.MAX_VALUE;
+			}
+
+			@Override
+			public int characteristics() {
+				return Spliterator.ORDERED | Spliterator.NONNULL;
+			}
+		};
+		return StreamSupport.stream(spliterator, false)
+				.onClose(() -> {
+					try {
+						scheduler.close();
+					} catch (Exception e) {
+						throw new RuntimeException("Failed to close engine", e);
+					}
+				});
 	}
 
 	@SuppressWarnings("StatementWithEmptyBody")
