@@ -20,10 +20,12 @@ import com.tgac.logic.tabling.Table;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
+import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.Test;
 
@@ -173,6 +175,29 @@ public class ClosedTablingTest {
 						.collect(Collectors.toList()))
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("nonlinear");
+	}
+
+	@Test
+	public void starSolvesTheSelfLoopToItsRegex() {
+		// loop(1) :- factor("base") | factor("step"), loop(1). After explore captures
+		// base + coefficient, the star solves x = step* · base — every derivation.
+		Tabled<Tuple1<Unifiable<Integer>>> loop = Tabling.defineRecursive(self -> t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("base")))
+						.or(unify(x, lval(1))
+								.and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("step")))
+								.and(Goal.defer(() -> self.apply(t))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+		Table table = closedTable(ring);
+		loop.apply(Tuple.of(lval(1)))
+				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), lvar(), BreadthFirstScheduler::new)
+				.count();
+
+		TableEntry<Object> entry = table.entries().iterator().next();
+		Map<Reified<?>, SemiringStore> solved = StarTabling.solve(entry, ring);
+		assertThat(solved).hasSize(1);
+		Provenance x = solved.values().iterator().next().get(Semirings.PROVENANCE);
+		Provenance expected = Provenance.cat(Provenance.star(Provenance.sym("step")), Provenance.sym("base"));
+		assertThat(x.sameLanguage(expected, 6)).isTrue();
 	}
 
 	@SuppressWarnings("unchecked")
