@@ -3,6 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: Maps tabled goal calls to their table entries for the duration of one solve.
 // ABOUTME: Rides the package's store map so every derived state shares it.
 
+import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.logic.goals.Goal;
@@ -53,19 +54,42 @@ public class Table implements Packaged {
 	/** Why tabling is refused under this table, or null when it is allowed. */
 	private final String tablingForbidden;
 
+	/** Non-null only for a wait-mode (closed) solve — the star's ring and store accessors. */
+	private final ClosedMode closedMode;
+
 	private Table(IdempotentSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
 			BiFunction<Package, Object, Package> weightWriter,
-			String tablingForbidden) {
+			String tablingForbidden,
+			ClosedMode closedMode) {
 		this.semiring = semiring;
 		this.weightReader = weightReader;
 		this.weightWriter = weightWriter;
 		this.tablingForbidden = tablingForbidden;
+		this.closedMode = closedMode;
+	}
+
+	/**
+	 * The ring and SemiringStore accessors a wait-mode solve threads for the star:
+	 * the presence cell drives explore, these drive probe/solve/emit at each seal.
+	 */
+	public static final class ClosedMode {
+		public final ClosedSemiring<Object> semiring;
+		public final Function<Package, Object> storeReader;
+		public final BiFunction<Package, Object, Package> storeWriter;
+
+		ClosedMode(ClosedSemiring<Object> semiring,
+				Function<Package, Object> storeReader,
+				BiFunction<Package, Object, Package> storeWriter) {
+			this.semiring = semiring;
+			this.storeReader = storeReader;
+			this.storeWriter = storeWriter;
+		}
 	}
 
 	/** Plain tabling: a presence cell and no running value to thread. */
 	public static Table empty() {
-		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, null);
+		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, null, null);
 	}
 
 	/**
@@ -75,7 +99,30 @@ public class Table implements Packaged {
 	public static Table weighted(IdempotentSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
 			BiFunction<Package, Object, Package> weightWriter) {
-		return new Table(semiring, weightReader, weightWriter, null);
+		return new Table(semiring, weightReader, weightWriter, null, null);
+	}
+
+	/**
+	 * Closed (wait-mode) tabling: the cell is presence, so explore is plain tabling
+	 * and terminates, while {@code closedSemiring} and the store accessors are held
+	 * for the star to solve at each seal. The real value rides the SemiringStore,
+	 * untouched by the presence cell.
+	 */
+	public static Table closed(ClosedSemiring<Object> closedSemiring,
+			Function<Package, Object> storeReader,
+			BiFunction<Package, Object, Package> storeWriter) {
+		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, null,
+				new ClosedMode(closedSemiring, storeReader, storeWriter));
+	}
+
+	/** Whether this solve defers values to a star at seal (closed) rather than streaming. */
+	public boolean isWaitMode() {
+		return closedMode != null;
+	}
+
+	/** The star's ring and store accessors, or null when not a wait-mode table. */
+	public ClosedMode getClosedMode() {
+		return closedMode;
 	}
 
 	/**
@@ -85,7 +132,7 @@ public class Table implements Packaged {
 	 * call, so dropped weights fail loudly instead of silently miscomputing.
 	 */
 	public static Table refusingTabling(String reason) {
-		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, reason);
+		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, reason, null);
 	}
 
 	/** Loud failure when a tabled call runs under a table that cannot support it. */

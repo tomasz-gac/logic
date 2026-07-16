@@ -228,9 +228,13 @@ public class Tabling {
 									// complete under it — table-completion.md §4). The
 									// caller's running value is restored and ⊗ the answer.
 									.flatMap(__ -> {
-										Package callerAnswerPkg = table.withWeight(
+										Package base = table.withWeight(
 												answerPkg.putStore(callerCall),
 												table.times(callerWeight, value));
+										// wait-mode escape: a pre-star fragment dropped at the closed collector (§4.1)
+										Package callerAnswerPkg = table.isWaitMode()
+												? base.putStore(Exploration.MARKER)
+												: base;
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(

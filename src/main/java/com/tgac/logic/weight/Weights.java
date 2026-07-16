@@ -6,6 +6,7 @@ package com.tgac.logic.weight;
 import static com.tgac.functional.category.Nothing.nothing;
 
 import com.tgac.functional.algebra.BoundedSemiring;
+import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.category.Nothing;
@@ -16,6 +17,7 @@ import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
+import com.tgac.logic.tabling.Exploration;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
@@ -114,6 +116,44 @@ public final class Weights {
 		return Table.weighted(
 				(IdempotentSemiring<Object>) (IdempotentSemiring<?>) product,
 				p -> p.getStores().get(SemiringStore.class).getOrElse(product.one()),
+				(p, v) -> p.putStore((SemiringStore) v));
+	}
+
+	/**
+	 * Weighted solve with CLOSED (star) tabling: a closed but non-idempotent (or
+	 * unbounded) semiring whose values cannot stream. Explore runs as plain
+	 * presence tabling; the real value is deferred and dropped as an exploration
+	 * fragment, then summed by the star at each SCC seal and emitted. (Emit lands
+	 * in a later phase; today it explores and drops.) A bounded semiring is a
+	 * legal argument too -- you pay O(n^3) for the degenerate a* = 1.
+	 */
+	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveClosed(Goal goal, Unifiable<T> out,
+			ClosedSemiring<SemiringStore> ring, Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
+		Package root = Package.empty()
+				.withStore(closedTable(ring))
+				.withStore(ring.one());
+		Queue<Tuple2<Reified<T>, SemiringStore>> perAnswer = new ConcurrentLinkedQueue<>();
+		runToCompletion(goal.apply(root)
+				.flatMap(s -> Constraints.reify(s, out)
+						.map(answer -> Tuple.of(answer,
+								s.getStore(SemiringStore.class),
+								s.getStores().get(Exploration.class).isDefined())))
+				.run(triple -> {
+					// keep only finalized (untagged) answers; exploration fragments drop
+					if (!triple._3) {
+						perAnswer.add(Tuple.of(triple._1, triple._2));
+					}
+					return nothing();
+				}), factory);
+		return perAnswer.stream();
+	}
+
+	/** A closed table: presence cell for explore, the ring and SemiringStore accessors for the star. */
+	@SuppressWarnings("unchecked")
+	private static Table closedTable(ClosedSemiring<SemiringStore> ring) {
+		return Table.closed(
+				(ClosedSemiring<Object>) (ClosedSemiring<?>) ring,
+				p -> p.getStores().get(SemiringStore.class).getOrElse(ring.one()),
 				(p, v) -> p.putStore((SemiringStore) v));
 	}
 
