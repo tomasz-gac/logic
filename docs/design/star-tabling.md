@@ -376,6 +376,24 @@ bounded/streaming solve tags the same escapes and simply never filters them; the
 closed collector filters them, while an untagged non-tabled answer (from a branch
 that touched no tabled call) is always kept.
 
+Explore does capture one value, though: the BASE. A derivation that reaches a
+produce having consumed NO looping call is a non-recursive answer, and its value
+is the base `b_i` — the seed the star's loop feeds on (`x = A*⊗b`; with no base,
+`A*⊗0 = 0` and there are no answers). It parks no sleeper (it waited on nothing),
+so it cannot be recovered at seal — it is grabbed at its produce, off the
+SemiringStore, and ⊕-folded into a base map on the `TableEntry`, BEFORE the
+presence dedup can drop it as a duplicate key. A per-package RECURRENT flag — set
+by `consume` when it consumes a looping call — tells base from edge at the hook:
+unset → base (stash it); set → the derivation looped, so its value is a
+coefficient the sleeper already carries (skip). The flag rides the IMMUTABLE
+package, so it is per-derivation and order-proof — no "first answer" race. And it
+is caller-agnostic: the body runs from `one()`, so the base is the goal's OWN
+weight; `callerWeight` is applied on the way out (§2), never folded in — which is
+what lets the base sit on the shared entry, correct for every caller. For a
+one-answer relation the base is a single number; a many-answer one (`path(a,Y)` —
+`Y = b, c, …`) keys it by answer, and `⊕` folds an answer's multiple non-looping
+derivations.
+
 ### 4.2 At each seal — gather
 
 Take the merged region (the SCC — group-seal's virtual merge already computes
@@ -383,9 +401,11 @@ its membership; the cycle is a property of the recursion paths, which cross
 table boundaries freely, so membership is by the reconstructed region, not by
 which table a sleeper parks on). Read the system off it:
 
-- **Cells give the index set and the bases.** Each member's `JoinMap` holds the
-  answer keys; its non-recursive produces (those that consumed no SCC member)
-  are the base `b_i`.
+- **Cells give the index set; the entry's base map gives the bases.** Each
+  member's `JoinMap` holds the answer keys (the index set); the base values `b_i`
+  were already captured onto the entry DURING explore (§4.1), because the presence
+  cell itself holds no values — bases are the non-looping produces, which leave no
+  sleeper to read at seal.
 - **Sleepers give the edges.** Each parked consumer belongs to some `i` (its
   coat) and waits on some `j` (the entry it parked in), so it IS the edge
   `i→j`. **Gather via the closure walk / the ledger's `sleepingAt`, NOT the flat
