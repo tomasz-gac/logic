@@ -24,6 +24,7 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import java.util.Deque;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Spliterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -153,7 +154,8 @@ public final class Weights {
 		return Table.closed(
 				(ClosedSemiring<Object>) (ClosedSemiring<?>) ring,
 				p -> p.getStores().get(SemiringStore.class).getOrElse(ring.one()),
-				(p, v) -> p.putStore((SemiringStore) v));
+				(p, v) -> p.putStore((SemiringStore) v),
+				entry -> (Map<Reified<?>, Object>) (Map<Reified<?>, ?>) StarTabling.solve(entry, ring));
 	}
 
 	private static Package seed(Semiring<SemiringStore> product) {

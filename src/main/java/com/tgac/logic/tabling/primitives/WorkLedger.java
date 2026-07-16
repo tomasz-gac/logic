@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Termination detection for one region of work whose pieces are either
@@ -83,13 +84,17 @@ public final class WorkLedger<S, P> {
 		return true;
 	}
 
-	/** Count {@code work} as one unit of this ledger's running work. */
-	public Fiber<Nothing> counted(Fiber<Nothing> work, Runnable onFinished) {
+	/**
+	 * Count {@code work} as one unit of this ledger's running work. When the
+	 * work's fiber ends, {@code onFinished} runs (the seal attempt) and the fiber
+	 * it returns becomes this fiber's tail — so any work a seal spawns (the star
+	 * emit) is stepped by the same scheduler drive.
+	 */
+	public Fiber<Nothing> counted(Fiber<Nothing> work, Supplier<Fiber<Nothing>> onFinished) {
 		taskStarted();
 		return work.flatMap(__ -> {
 			taskFinished();
-			onFinished.run();
-			return done(nothing());
+			return onFinished.get();
 		});
 	}
 }

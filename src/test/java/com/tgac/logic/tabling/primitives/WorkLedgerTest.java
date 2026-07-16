@@ -62,7 +62,10 @@ public class WorkLedgerTest {
 		// deferred, as production work always is — a done fiber would chain
 		// its continuation eagerly at composition time
 		Fiber<Nothing> counted = ledger.counted(
-				Fiber.defer(() -> Fiber.done(Nothing.nothing())), () -> hookRan.set(true));
+				Fiber.defer(() -> Fiber.done(Nothing.nothing())), () -> {
+					hookRan.set(true);
+					return Fiber.done(Nothing.nothing());
+				});
 
 		// started ticked synchronously at wrap time: no gap for a racing
 		// quiescence check to fall into

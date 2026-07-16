@@ -22,6 +22,7 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -139,6 +140,12 @@ public class Tabling {
 					Object callerWeight = table.weightOf(callerPkg);
 					Package bodyPkg = clearRecurrentIfWait(table, table.resetStore(table.resetWeight(callerPkg)))
 						.putStore(new EnclosingCall(entry));
+					if (table.isWaitMode()) {
+						// at seal, replay THIS caller's continuation with the star's
+						// folded value — the explore dropped every fragment
+						entry.getRegion().onSealed(() ->
+								emit(entry, k, callerPkg, argsTerm, callerCall, table));
+					}
 					return Region.track(entry.getRegion(),
 							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall, callerWeight, table));
 				}
@@ -246,6 +253,63 @@ public class Tabling {
 	}
 
 	/**
+	 * Wait-mode emit (closed tabling): at seal, publish each answer to the master's
+	 * caller with the star-folded value. Explore ran as presence tabling and the
+	 * closed collector dropped every fragment; this replays the master's
+	 * continuation {@code k} once per answer with {@code x = A* ⊗ b}, ⊗ the
+	 * caller's running value (docs/design/star-tabling.md §4.5).
+	 */
+	private static Fiber<Nothing> emit(
+			TableEntry<Object> entry,
+			Fiber.Fn<Package, Nothing> k,
+			Package callerPkg,
+			Unifiable<?> argsTerm,
+			EnclosingCall callerCall,
+			Table table) {
+		// the real value rides the SemiringStore, not the presence cell weight —
+		// read the caller's value and write results through the closed accessors
+		Table.ClosedMode mode = table.getClosedMode();
+		Map<Reified<?>, Object> solved = mode.starSolve.apply(entry);
+		Object callerValue = mode.storeReader.apply(callerPkg);
+		Fiber<Nothing> result = done(nothing());
+		for (int i = 0; i < entry.getAnswerCount(); i++) {
+			Tuple2<Reified<?>, Object> answer = entry.getAnswerAt(i);
+			Object x = solved.get(answer._1);
+			if (x == null) {
+				continue;
+			}
+			Reified<?> answerTerm = answer._1;
+			Object value = mode.semiring.times(callerValue, x);
+			result = result.flatMap(__ ->
+					emitAnswer(k, callerPkg, argsTerm, callerCall, mode, answerTerm, value));
+		}
+		return result;
+	}
+
+	/**
+	 * Publish one sealed answer to the caller: instantiate it, unify it against the
+	 * call pattern to bind the caller's variables, re-coat to the caller and set the
+	 * ⊗-combined star value on the SemiringStore, then hand it to {@code k}.
+	 */
+	private static Fiber<Nothing> emitAnswer(
+			Fiber.Fn<Package, Nothing> k,
+			Package callerPkg,
+			Unifiable<?> argsTerm,
+			EnclosingCall callerCall,
+			Table.ClosedMode mode,
+			Reified<?> answerTerm,
+			Object value) {
+		return MiniKanren.instantiate(answerTerm).flatMap(freshTerm ->
+				MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
+						.map(callerPkg::withSubstitutions)
+						.map(pkg -> pkg.putStore(callerCall))
+						.map(pkg -> mode.storeWriter.apply(pkg, value))
+						.map(k::apply)
+						.getOrElse(() -> done(nothing()))
+						.flatMap(fib -> fib));
+	}
+
+	/**
 	 * Respawn parked consumers as detached fibers so they pick up the answers
 	 * cached since they parked. Whoever derives an answer drives its consequences.
 	 */
@@ -332,10 +396,11 @@ public class Tabling {
 			enclosingCall.getRegion().sleeping(registration, entry.getRegion());
 		}
 		if (entry.park(registration)) {
-			if (enclosingCall != null) {
-				enclosingCall.getRegion().sealCascade();
-			}
-			return done(nothing());
+			// a park that completes the region seals it; the seal's emit fiber
+			// (closed tabling) rides on as this branch's tail
+			return enclosingCall != null
+					? enclosingCall.getRegion().sealCascade()
+					: done(nothing());
 		}
 		if (enclosingCall != null) {
 			enclosingCall.getRegion().awake(registration);

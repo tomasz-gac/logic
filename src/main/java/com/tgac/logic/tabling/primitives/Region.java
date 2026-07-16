@@ -3,16 +3,21 @@ package com.tgac.logic.tabling.primitives;
 // ABOUTME: A sealable region of work: a growing value, the work producing it,
 // ABOUTME: the seal, and the cascade — termination detection as one value.
 
+import static com.tgac.functional.category.Nothing.nothing;
+import static com.tgac.functional.fibers.Fiber.done;
+
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * The termination-detection unit: a {@link MonotoneCell} (the region's
@@ -47,9 +52,17 @@ public final class Region<V, S> {
 	private final AtomicBoolean sealed = new AtomicBoolean(false);
 	private final Function<S, Region<V, S>> ownerOf;
 
+	/** Work to spawn the moment this region seals — the star emit. Inert by default. */
+	private Supplier<Fiber<Nothing>> onSealed = () -> done(nothing());
+
 	public Region(V initial, Function<S, Region<V, S>> ownerOf) {
 		this.cell = new MonotoneCell<>(initial);
 		this.ownerOf = ownerOf;
+	}
+
+	/** Register the fiber to spawn when this region seals (closed tabling's emit). */
+	public void onSealed(Supplier<Fiber<Nothing>> work) {
+		this.onSealed = work;
 	}
 
 	// ---- the value half ----
@@ -105,19 +118,25 @@ public final class Region<V, S> {
 		sealed.set(true);
 	}
 
-	/** Seal this region if quiescent and propagate along sleeper edges. */
-	public void sealCascade() {
+	/**
+	 * Seal this region if quiescent and propagate along sleeper edges.
+	 *
+	 * @return the fiber composing every newly sealed region's {@link #onSealed}
+	 * 		work (the star emit) — inert for plain tabling
+	 */
+	public Fiber<Nothing> sealCascade() {
+		ArrayList<Fiber<Nothing>> emits = new ArrayList<>();
 		ArrayDeque<Region<V, S>> queue = new ArrayDeque<>();
 		queue.add(this);
 		while (!queue.isEmpty()) {
 			Region<V, S> region = queue.poll();
-			List<S> dead = region.sealIfQuiescent();
+			List<S> dead = region.sealIfQuiescent(emits);
 			if (dead == null) {
 				// the singleton rule refused; if the region is drained and
 				// unsealed, the obstruction is a foreign-unsealed sleeper —
 				// try sealing its sleeper-closure as a group
 				if (!region.isSealed() && region.ledger.drained()) {
-					dead = groupSeal(region);
+					dead = groupSeal(region, emits);
 				}
 				if (dead == null) {
 					continue;
@@ -131,15 +150,22 @@ public final class Region<V, S> {
 				}
 			}
 		}
+		Fiber<Nothing> result = done(nothing());
+		for (Fiber<Nothing> emit : emits) {
+			Fiber<Nothing> tail = emit;
+			result = result.flatMap(__ -> tail);
+		}
+		return result;
 	}
 
-	private List<S> sealIfQuiescent() {
+	private List<S> sealIfQuiescent(ArrayList<Fiber<Nothing>> emits) {
 		if (!ledger.quiescent(at -> at == this || at.isSealed())) {
 			return null;
 		}
 		if (!sealed.compareAndSet(false, true)) {
 			return null;
 		}
+		emits.add(onSealed.get());
 		return cell.drainParked();
 	}
 
@@ -172,7 +198,7 @@ public final class Region<V, S> {
 	 * @return the dead sleepers drained from every sealed member, or null
 	 * 		when the group cannot seal yet
 	 */
-	private List<S> groupSeal(Region<V, S> start) {
+	private List<S> groupSeal(Region<V, S> start, ArrayList<Fiber<Nothing>> emits) {
 		LinkedHashMap<Region<V, S>, Long> members = new LinkedHashMap<>();
 		ArrayDeque<Region<V, S>> frontier = new ArrayDeque<>();
 		frontier.add(start);
@@ -199,6 +225,7 @@ public final class Region<V, S> {
 		List<S> dead = List.empty();
 		for (Region<V, S> member : members.keySet()) {
 			if (member.sealed.compareAndSet(false, true)) {
+				emits.add(member.onSealed.get());
 				dead = dead.appendAll(member.cell.drainParked());
 			}
 		}

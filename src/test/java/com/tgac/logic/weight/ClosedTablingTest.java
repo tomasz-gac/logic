@@ -24,6 +24,7 @@ import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
+import io.vavr.Tuple2;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -32,10 +33,10 @@ import org.junit.Test;
 public class ClosedTablingTest {
 
 	@Test
-	public void waitModeExploreDropsEveryEscape() {
-		// a two-fact tabled relation. solveBounded streams its answers; solveClosed
-		// explores and seals identically but DROPS every escape as an exploration
-		// fragment (emit is a later phase), so it yields nothing yet.
+	public void closedEmitsBaseAnswersLikeBounded() {
+		// a two-fact tabled relation, no recursion. solveBounded streams its answers;
+		// solveClosed explores and seals the same way, and with no loop the star emits
+		// each answer with its base weight — here the ⊗-identity 0, no factor.
 		Tabled<Unifiable<String>> rel = Tabling.define(x ->
 				unify(x, lval("a")).or(unify(x, lval("b"))));
 		BoundedSemiring<SemiringStore> ring = SemiringStore.boundedProduct(Semirings.MIN_PLUS);
@@ -45,8 +46,11 @@ public class ClosedTablingTest {
 				.count()).isEqualTo(2);
 
 		Unifiable<String> closed = lvar();
-		assertThat(Weights.solveClosed(rel.apply(closed), closed, ring, BreadthFirstScheduler::new)
-				.count()).isEqualTo(0);
+		List<Tuple2<Reified<String>, SemiringStore>> answers =
+				Weights.solveClosed(rel.apply(closed), closed, ring, BreadthFirstScheduler::new)
+						.collect(Collectors.toList());
+		assertThat(answers).hasSize(2);
+		assertThat(answers).allMatch(a -> a._2.get(Semirings.MIN_PLUS) == 0L);
 	}
 
 	@Test
@@ -200,11 +204,35 @@ public class ClosedTablingTest {
 		assertThat(x.sameLanguage(expected, 6)).isTrue();
 	}
 
+	@Test
+	public void solveClosedEmitsTheSelfLoopStar() {
+		// loop(1) :- factor("base") | factor("step"), loop(1). End to end: explore
+		// seals, the star folds the loop, and emit delivers the single answer with
+		// value step* · base to the collector.
+		Tabled<Tuple1<Unifiable<Integer>>> loop = Tabling.defineRecursive(self -> t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("base")))
+						.or(unify(x, lval(1))
+								.and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("step")))
+								.and(Goal.defer(() -> self.apply(t))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+
+		Unifiable<Integer> out = lvar();
+		List<Tuple2<Reified<Integer>, SemiringStore>> answers =
+				Weights.solveClosed(loop.apply(Tuple.of(lval(1))), out, ring, BreadthFirstScheduler::new)
+						.collect(Collectors.toList());
+
+		assertThat(answers).hasSize(1);
+		Provenance x = answers.get(0)._2.get(Semirings.PROVENANCE);
+		Provenance expected = Provenance.cat(Provenance.star(Provenance.sym("step")), Provenance.sym("base"));
+		assertThat(x.sameLanguage(expected, 6)).isTrue();
+	}
+
 	@SuppressWarnings("unchecked")
 	private static Table closedTable(ClosedSemiring<SemiringStore> ring) {
 		return Table.closed(
 				(ClosedSemiring<Object>) (ClosedSemiring<?>) ring,
 				p -> p.getStores().get(SemiringStore.class).getOrElse(ring.one()),
-				(p, v) -> p.putStore((SemiringStore) v));
+				(p, v) -> p.putStore((SemiringStore) v),
+				entry -> (Map<Reified<?>, Object>) (Map<Reified<?>, ?>) StarTabling.solve(entry, ring));
 	}
 }

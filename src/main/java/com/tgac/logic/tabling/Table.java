@@ -9,7 +9,9 @@ import com.tgac.functional.algebra.Semirings;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
+import com.tgac.logic.unification.Reified;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -77,13 +79,17 @@ public class Table implements Packaged {
 		public final ClosedSemiring<Object> semiring;
 		public final Function<Package, Object> storeReader;
 		public final BiFunction<Package, Object, Package> storeWriter;
+		/** The star, solved per sealed entry: answer term → its value A* ⊗ b. */
+		public final Function<TableEntry<?>, Map<Reified<?>, Object>> starSolve;
 
 		ClosedMode(ClosedSemiring<Object> semiring,
 				Function<Package, Object> storeReader,
-				BiFunction<Package, Object, Package> storeWriter) {
+				BiFunction<Package, Object, Package> storeWriter,
+				Function<TableEntry<?>, Map<Reified<?>, Object>> starSolve) {
 			this.semiring = semiring;
 			this.storeReader = storeReader;
 			this.storeWriter = storeWriter;
+			this.starSolve = starSolve;
 		}
 	}
 
@@ -110,9 +116,10 @@ public class Table implements Packaged {
 	 */
 	public static Table closed(ClosedSemiring<Object> closedSemiring,
 			Function<Package, Object> storeReader,
-			BiFunction<Package, Object, Package> storeWriter) {
+			BiFunction<Package, Object, Package> storeWriter,
+			Function<TableEntry<?>, Map<Reified<?>, Object>> starSolve) {
 		return new Table(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, null,
-				new ClosedMode(closedSemiring, storeReader, storeWriter));
+				new ClosedMode(closedSemiring, storeReader, storeWriter, starSolve));
 	}
 
 	/** Whether this solve defers values to a star at seal (closed) rather than streaming. */
