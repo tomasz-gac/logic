@@ -8,6 +8,7 @@ import com.tgac.functional.algebra.Semiring;
 import com.tgac.logic.tabling.primitives.JoinMap;
 import com.tgac.logic.tabling.primitives.Region;
 import com.tgac.logic.unification.Reified;
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -89,6 +90,22 @@ public class TableEntry<V> {
 
 	public Map<Reified<?>, Object> baseWeights() {
 		return baseWeights;
+	}
+
+	/**
+	 * Edge coefficients captured during CLOSED exploration: keyed by (to, from) —
+	 * the answer produced and the SCC-answer consumed — the star's matrix A_ij,
+	 * folded by ⊕ over multiple one-step ways.
+	 */
+	private final Map<Tuple2<Reified<?>, Reified<?>>, Object> edges = new ConcurrentHashMap<>();
+
+	/** ⊕-fold {@code value} into the edge {@code to ← from}'s coefficient. */
+	public void addEdge(Reified<?> to, Reified<?> from, Object value, Semiring<Object> ring) {
+		edges.merge(Tuple.of(to, from), value, ring::plus);
+	}
+
+	public Map<Tuple2<Reified<?>, Reified<?>>, Object> edges() {
+		return edges;
 	}
 
 	/** @return false if answers arrived past the consumer's index — keep reading */

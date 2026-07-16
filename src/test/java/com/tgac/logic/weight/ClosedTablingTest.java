@@ -7,6 +7,7 @@ import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.ClosedSemiring;
@@ -61,7 +62,7 @@ public class ClosedTablingTest {
 		Unifiable<Integer> out = lvar();
 		Package root = Package.empty().withStore(table).withStore(ring.one());
 
-		loop.apply(Tuple.of(out)).solveFrom(root, out, BreadthFirstScheduler::new).count();
+		loop.apply(Tuple.of(lval(1))).solveFrom(root, out, BreadthFirstScheduler::new).count();
 
 		TableEntry<Object> entry = table.entries().iterator().next();
 		assertThat(entry.baseWeights().values()).hasSize(1);
@@ -82,7 +83,7 @@ public class ClosedTablingTest {
 		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
 		Table table = closedTable(ring);
 		Unifiable<Integer> out = lvar();
-		loop.apply(Tuple.of(out))
+		loop.apply(Tuple.of(lval(1)))
 				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
 				.count();
 
@@ -134,6 +135,44 @@ public class ClosedTablingTest {
 		SemiringStore base = (SemiringStore) entry.baseWeights().values().iterator().next();
 		Provenance ab = Provenance.alt(Provenance.sym("a"), Provenance.sym("b"));
 		assertThat(base.get(Semirings.PROVENANCE).sameLanguage(ab, 3)).isTrue();
+	}
+
+	@Test
+	public void provenanceCoefficientIsCapturedOnTheEntry() {
+		// loop(1) :- factor("base") | factor("step"), loop(1). The looping branch's
+		// one-step weight "step" lands as the edge coefficient A[loop <- loop].
+		Tabled<Tuple1<Unifiable<Integer>>> loop = Tabling.defineRecursive(self -> t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("base")))
+						.or(unify(x, lval(1))
+								.and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("step")))
+								.and(Goal.defer(() -> self.apply(t))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+		Table table = closedTable(ring);
+		Unifiable<Integer> out = lvar();
+		loop.apply(Tuple.of(lval(1)))
+				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
+				.count();
+
+		TableEntry<Object> entry = table.entries().iterator().next();
+		assertThat(entry.edges()).hasSize(1);
+		SemiringStore coeff = (SemiringStore) entry.edges().values().iterator().next();
+		assertThat(coeff.get(Semirings.PROVENANCE).sameLanguage(Provenance.sym("step"), 3)).isTrue();
+	}
+
+	@Test
+	public void nonlinearRecursionThrows() {
+		// nl(1) :- factor("b") | nl(1), nl(1).  the recursive branch consumes two loop
+		// members in one derivation — outside star's reach, so it fails loudly.
+		Tabled<Tuple1<Unifiable<Integer>>> nl = Tabling.defineRecursive(self -> t -> t.apply(x ->
+				Weights.factor(Semirings.PROVENANCE, Provenance.sym("b"))
+						.or(Goal.defer(() -> self.apply(t).and(self.apply(t))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+		Unifiable<Integer> out = lvar();
+		assertThatThrownBy(() ->
+				Weights.solveClosed(nl.apply(Tuple.of(lval(1))), out, ring, BreadthFirstScheduler::new)
+						.collect(Collectors.toList()))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("nonlinear");
 	}
 
 	@SuppressWarnings("unchecked")

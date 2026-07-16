@@ -137,7 +137,8 @@ public class Tabling {
 					// ⊗-combined with each answer on the way out; the body runs from
 					// ONE so the cell stays caller-agnostic
 					Object callerWeight = table.weightOf(callerPkg);
-					Package bodyPkg = table.resetStore(table.resetWeight(callerPkg)).putStore(new EnclosingCall(entry));
+					Package bodyPkg = clearRecurrentIfWait(table, table.resetStore(table.resetWeight(callerPkg)))
+						.putStore(new EnclosingCall(entry));
 					return Region.track(entry.getRegion(),
 							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall, callerWeight, table));
 				}
@@ -215,7 +216,7 @@ public class Tabling {
 			// answer — caller-agnostic, since the body ran from ONE
 			Object value = table.weightOf(answerPkg);
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
-					entry.addAnswer(captureBaseIfWait(table, entry, answerPkg, answerTerm), value)
+					entry.addAnswer(captureIfWait(table, entry, answerPkg, answerTerm), value)
 							.map(parked -> respawn(entry, parked, table)
 									// detach-k: the answer's downstream is the CALLER's
 									// code, not this body's — detaching it makes this
@@ -285,7 +286,7 @@ public class Tabling {
 			return MiniKanren.instantiate(answer._1).flatMap(freshTerm ->
 					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
 							.map(callerPkg::withSubstitutions)
-							.map(unifiedPkg -> markRecurrentIfWait(table, entry, unifiedPkg))
+							.map(unifiedPkg -> markRecurrentIfWait(table, entry, unifiedPkg, answer._1))
 							// ⊗ the answer's cell value into this consumer's running value
 							.map(unifiedPkg -> table.scaleWeight(unifiedPkg, cellValue))
 							.map(weightedPkg -> k.apply(weightedPkg)
@@ -343,8 +344,18 @@ public class Tabling {
 		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
 	}
 	/** Wait mode: a derivation that consumed a still-open call has looped — mark it. */
-	private static Package markRecurrentIfWait(Table table, TableEntry<Object> entry, Package pkg) {
-		return table.isWaitMode() && !entry.isComplete() ? pkg.putStore(Recurrent.MARKER) : pkg;
+	private static Package markRecurrentIfWait(Table table, TableEntry<Object> entry, Package pkg, Reified<?> consumed) {
+		if (!table.isWaitMode() || entry.isComplete()) {
+			return pkg;
+		}
+		Recurrent prev = pkg.getStores().get(Recurrent.class)
+				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
+		return pkg.putStore(prev.and(consumed));
+	}
+
+	/** Wait mode: clear the looping record at a master boundary — a fresh derivation. */
+	private static Package clearRecurrentIfWait(Table table, Package pkg) {
+		return table.isWaitMode() ? pkg.putStore(Recurrent.NONE) : pkg;
 	}
 
 	/**
@@ -352,11 +363,22 @@ public class Tabling {
 	 * value off the SemiringStore and fold it onto the entry, before the dedup. Returns
 	 * {@code answerTerm} so it slots into addAnswer as an identity with a side effect.
 	 */
-	private static Reified<?> captureBaseIfWait(
+	private static Reified<?> captureIfWait(
 			Table table, TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
-		if (table.isWaitMode() && !answerPkg.getStores().get(Recurrent.class).isDefined()) {
-			Table.ClosedMode mode = table.getClosedMode();
-			entry.addBase(answerTerm, mode.storeReader.apply(answerPkg), mode.semiring);
+		if (!table.isWaitMode()) {
+			return answerTerm;
+		}
+		Recurrent rec = answerPkg.getStores().get(Recurrent.class)
+				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
+		Table.ClosedMode mode = table.getClosedMode();
+		Object value = mode.storeReader.apply(answerPkg);
+		if (rec.consumed.isEmpty()) {
+			entry.addBase(answerTerm, value, mode.semiring);
+		} else if (rec.consumed.size() == 1) {
+			entry.addEdge(answerTerm, rec.consumed.head(), value, mode.semiring);
+		} else {
+			throw new IllegalStateException("nonlinear recursion: a derivation consumed "
+					+ rec.consumed.size() + " looping calls; star handles only linear systems");
 		}
 		return answerTerm;
 	}
