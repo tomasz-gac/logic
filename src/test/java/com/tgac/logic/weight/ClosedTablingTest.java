@@ -114,6 +114,28 @@ public class ClosedTablingTest {
 		assertThat(bases).containsExactly("a", "b");
 	}
 
+	@Test
+	public void provenanceCombinesTwoBasesForTheSameAnswer() {
+		// r(1) :- factor("a") | factor("b").  ONE answer (x=1) reached two non-looping
+		// ways — the base folds them by ⊕: base = a + b. The presence cell dedups the
+		// KEY; the base map keeps both derivations' weights (capture is before dedup).
+		Tabled<Tuple1<Unifiable<Integer>>> r = Tabling.define(t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("a")))
+						.or(unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("b"))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+		Table table = closedTable(ring);
+		Unifiable<Integer> out = lvar();
+		r.apply(Tuple.of(out))
+				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
+				.count();
+
+		TableEntry<Object> entry = table.entries().iterator().next();
+		assertThat(entry.baseWeights().values()).hasSize(1);
+		SemiringStore base = (SemiringStore) entry.baseWeights().values().iterator().next();
+		Provenance ab = Provenance.alt(Provenance.sym("a"), Provenance.sym("b"));
+		assertThat(base.get(Semirings.PROVENANCE).sameLanguage(ab, 3)).isTrue();
+	}
+
 	@SuppressWarnings("unchecked")
 	private static Table closedTable(ClosedSemiring<SemiringStore> ring) {
 		return Table.closed(
