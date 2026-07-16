@@ -227,6 +227,38 @@ public class ClosedTablingTest {
 		assertThat(x.sameLanguage(expected, 6)).isTrue();
 	}
 
+	@Test
+	public void solveClosedEmitsLeftRecursionAnswers() {
+		// path(1,Y) over the chain 1->2->3->4, each edge weight 1 (min-plus). The
+		// base branch gives path(1,2); the recursive consumer manufactures the
+		// farther answers 3 and 4, and the star chains the edges into lengths 1,2,3.
+		class PathGoal {
+			Goal edge(Unifiable<Integer> x, Unifiable<Integer> y) {
+				return unify(x, lval(1)).and(unify(y, lval(2))).and(Weights.factor(Semirings.MIN_PLUS, 1L))
+						.or(unify(x, lval(2)).and(unify(y, lval(3))).and(Weights.factor(Semirings.MIN_PLUS, 1L)))
+						.or(unify(x, lval(3)).and(unify(y, lval(4))).and(Weights.factor(Semirings.MIN_PLUS, 1L)));
+			}
+
+			final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> path =
+					Tabling.defineRecursive(self -> args -> args.apply((x, y) ->
+							edge(x, y)
+									.or(Goal.defer(() -> {
+										Unifiable<Integer> z = lvar();
+										return self.apply(Tuple.of(x, z)).and(edge(z, y));
+									}))));
+		}
+		PathGoal pg = new PathGoal();
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.MIN_PLUS);
+		Unifiable<Integer> y = lvar();
+
+		List<Long> lengths = Weights.solveClosed(pg.path.apply(Tuple.of(lval(1), y)), y, ring, BreadthFirstScheduler::new)
+				.map(t -> t._2.get(Semirings.MIN_PLUS))
+				.sorted()
+				.collect(Collectors.toList());
+
+		assertThat(lengths).containsExactly(1L, 2L, 3L);
+	}
+
 	@SuppressWarnings("unchecked")
 	private static Table closedTable(ClosedSemiring<SemiringStore> ring) {
 		return Table.closed(
