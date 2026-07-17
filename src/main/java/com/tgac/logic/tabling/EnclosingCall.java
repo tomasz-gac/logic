@@ -12,15 +12,17 @@ import io.vavr.control.Option;
  * this code is part of, and so whose ledger pays for its work. A goal is
  * text, a call is an event (one goal object executed under two bindings is
  * two calls, two ledgers, two quiescences); every state is inside many
- * goals but inside exactly one innermost tabled call, or none. State
- * follows the data; the coat follows the CODE — it changes exactly where
- * control crosses a call boundary: stamped on entry ({@code produce} runs
- * the body under its entry's coat), restored on exit (an answer's
- * downstream is the caller's code, so it leaves wearing the caller's coat),
- * and carried untouched everywhere in between — forks inherit it, parked
- * registrations freeze it, wakes resume it. Completion billing reads it:
- * work is billed to the call it executes, never to the entry that happened
- * to wake it (docs/design/table-completion.md §4).
+ * goals but inside exactly one innermost tabled call, or none. It is a
+ * BIRTH CERTIFICATE, written once: stamped on the body package when the
+ * anonymous master spawns, and carried untouched ever after — an answer
+ * ends at the cell wearing it, each reader runs under its own caller's
+ * coat, forks inherit it, parked registrations freeze it, wakes resume it.
+ * It answers the question nothing else can at a park or respawn deep in a
+ * derivation — "which entry's body am I a line of?" — because the package
+ * is the only thing that travels through opaque goals. Completion billing
+ * reads it: a respawned reader produces ITS OWNER's answers, so it is
+ * billed to the call it executes, never to the entry that happened to wake
+ * it (docs/design/table-completion.md §4).
  */
 final class EnclosingCall implements Packaged {
 
