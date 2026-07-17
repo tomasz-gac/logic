@@ -66,13 +66,12 @@ final class Streaming implements TablingMode {
 
 	@Override
 	public Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value) {
-		return weightWriter.apply(answerPkg.putStore(EnclosingCall.current(callerPkg)),
-				semiring.times(weightReader.apply(callerPkg), value));
+		return weightWriter.apply(answerPkg, semiring.times(weightReader.apply(callerPkg), value));
 	}
 
 	@Override
 	public void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, EnclosingCall callerCall) {
+			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
 		// nothing to do at seal — answers streamed as they were found
 	}
 }

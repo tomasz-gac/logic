@@ -385,13 +385,7 @@ public class ClosedTablingTest {
 		assertThat(values).containsExactly(3L);
 	}
 
-	@SuppressWarnings("unchecked")
 	private static Table closedTable(ClosedSemiring<SemiringStore> ring) {
-		return Table.closed(
-				(ClosedSemiring<Object>) (ClosedSemiring<?>) ring,
-				p -> p.getStores().get(SemiringStore.class).getOrElse(ring.one()),
-				(p, v) -> p.putStore((SemiringStore) v),
-				entries -> (Map<TableEntry<?>, Map<Reified<?>, Object>>) (Map<TableEntry<?>, ?>)
-						StarTabling.solveGroup(entries, ring));
+		return Table.of(new Closed(ring));
 	}
 }

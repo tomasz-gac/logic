@@ -19,13 +19,11 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.tabling.Exploration;
 import com.tgac.logic.tabling.Table;
-import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import java.util.Deque;
-import java.util.Map;
 import java.util.Queue;
 import java.util.Spliterator;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -149,15 +147,9 @@ public final class Weights {
 				}), factory);
 	}
 
-	/** A closed table: presence cell for explore, the ring and SemiringStore accessors for the star. */
-	@SuppressWarnings("unchecked")
+	/** A closed table: presence cell for explore, the star solved and emitted per SCC seal. */
 	private static Table closedTable(ClosedSemiring<SemiringStore> ring) {
-		return Table.closed(
-				(ClosedSemiring<Object>) (ClosedSemiring<?>) ring,
-				p -> p.getStores().get(SemiringStore.class).getOrElse(ring.one()),
-				(p, v) -> p.putStore((SemiringStore) v),
-				entries -> (Map<TableEntry<?>, Map<Reified<?>, Object>>) (Map<TableEntry<?>, ?>)
-						StarTabling.solveGroup(entries, ring));
+		return Table.of(new Closed(ring));
 	}
 
 	private static Package seed(Semiring<SemiringStore> product) {

@@ -137,7 +137,7 @@ public class Tabling {
 					// ⊗-combined with each answer on the way out; the body runs from
 					// ONE so the cell stays caller-agnostic
 					Package bodyPkg = table.enterBody(callerPkg).putStore(new EnclosingCall(entry));
-					table.onMasterClaim(entry, k, callerPkg, argsTerm, callerCall);
+					table.onMasterClaim(entry, k, callerPkg, argsTerm, callerCall.entry());
 					return Region.track(entry.getRegion(),
 							produce(entry, body.get(), bodyPkg, argsTerm, k, callerPkg, table));
 				}
@@ -228,8 +228,11 @@ public class Tabling {
 									// complete under it — table-completion.md §4). The
 									// mode combines the caller's running value with the answer.
 									.flatMap(__ -> {
-										Package callerAnswerPkg =
-												table.onExit(answerPkg, entry, answerTerm, callerPkg, value);
+										// the coat is the skeleton's job: re-coat to the
+										// caller here, the mode handles values only
+										Package callerAnswerPkg = table.onExit(
+												answerPkg.putStore(callerCall),
+												entry, answerTerm, callerPkg, value);
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(

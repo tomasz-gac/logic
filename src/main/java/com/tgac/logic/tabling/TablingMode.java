@@ -12,14 +12,15 @@ import com.tgac.logic.unification.Unifiable;
 
 /**
  * The algorithm plugged into the shared tabling skeleton — master / consumer /
- * park / completion, which both modes walk identically. Two implementations:
- * {@link Streaming} folds each answer's value into the cell and hands it out as
- * it is found (plain and bounded-weighted tabling); {@link Closed} explores for
- * structure (presence cell + base/edge capture), solves the star at each seal,
- * and emits then. {@link Tabling} calls these hooks and never branches on the
- * mode itself, so each algorithm reads in one place.
+ * park / completion, which every mode walks identically. {@code Streaming} folds
+ * each answer's value into the cell and hands it out as it is found (plain and
+ * bounded-weighted tabling); the weight package's closed mode explores for
+ * structure, solves the star at each seal, and emits then. {@link Tabling} calls
+ * these hooks and never branches on the mode, so each algorithm reads in one
+ * place. Coat (EnclosingCall) handling is the skeleton's job, not a mode's:
+ * packages arrive at these hooks already wearing the right call.
  */
-interface TablingMode {
+public interface TablingMode {
 
 	/** The answer cell's ⊕ (fold on dedup): presence for set/closed, the real fold for weighted. */
 	IdempotentSemiring<Object> cellSemiring();
@@ -44,15 +45,20 @@ interface TablingMode {
 	Reified<?> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm);
 
 	/**
-	 * The answer leaving {@code entry}'s body back to its caller. Streaming ⊗s the
-	 * caller's running value with {@code value} onto it. Closed restores the caller's
-	 * context (its store and loop-record from {@code callerPkg}) and records that the
-	 * caller consumed {@code (entry, answerTerm)} — the produce→caller half of edge
+	 * The answer leaving {@code entry}'s body back to its caller — already
+	 * re-coated to the caller by the skeleton. Streaming ⊗s the caller's running
+	 * value with {@code value} onto it. Closed restores the caller's context (its
+	 * store and loop-record from {@code callerPkg}) and records that the caller
+	 * consumed {@code (entry, answerTerm)} — the produce→caller half of edge
 	 * capture, mirroring {@link #onConsume} — then tags it a pre-star escape to drop.
 	 */
 	Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value);
 
-	/** Wire this master's seal behaviour: closed emits the star, streaming does nothing. */
+	/**
+	 * Wire this master's seal behaviour: closed solves-and-emits, streaming does
+	 * nothing. {@code callerEntry} is the tabled call the master was called from,
+	 * or null at the top level.
+	 */
 	void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, EnclosingCall callerCall);
+			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry);
 }

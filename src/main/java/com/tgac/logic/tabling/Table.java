@@ -3,7 +3,6 @@ package com.tgac.logic.tabling;
 // ABOUTME: Maps tabled goal calls to their table entries for the duration of one solve.
 // ABOUTME: Rides the package's store map and delegates per-step decisions to its mode.
 
-import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
@@ -14,8 +13,6 @@ import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -30,9 +27,10 @@ import java.util.function.Function;
  *
  * <p>The table carries the solve's {@link TablingMode}: {@link Streaming} for
  * plain and bounded-weighted tabling (fold each answer's value and hand it out
- * now), {@link Closed} for star tabling (explore for structure, solve at seal).
- * The shared master / consumer / park / completion skeleton in {@link Tabling}
- * calls the mode's hooks and never branches on which one it is.
+ * now), the weight package's closed mode for star tabling (explore for
+ * structure, solve at seal). The shared master / consumer / park / completion
+ * skeleton in {@link Tabling} calls the mode's hooks and never branches on
+ * which one it is.
  *
  * <p>It is a {@link Packaged} payload — not a constraint store — so constraint
  * processing ignores it; the store map is only its transport.
@@ -73,17 +71,9 @@ public class Table implements Packaged {
 		return new Table(new Streaming(semiring, weightReader, weightWriter), null);
 	}
 
-	/**
-	 * Closed (star) tabling: the cell is presence, so explore is plain tabling and
-	 * terminates, while {@code closedSemiring}, the store accessors, and the
-	 * per-entry {@code starSolve} drive capture and the seal-time solve. The real
-	 * value rides the SemiringStore, untouched by the presence cell.
-	 */
-	public static Table closed(ClosedSemiring<Object> closedSemiring,
-			Function<Package, Object> storeReader,
-			BiFunction<Package, Object, Package> storeWriter,
-			Function<List<TableEntry<?>>, Map<TableEntry<?>, Map<Reified<?>, Object>>> starSolve) {
-		return new Table(new Closed(closedSemiring, storeReader, storeWriter, starSolve), null);
+	/** A table running the given mode — the door for modes defined outside this package. */
+	public static Table of(TablingMode mode) {
+		return new Table(mode, null);
 	}
 
 	/**
@@ -130,8 +120,8 @@ public class Table implements Packaged {
 	}
 
 	void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, EnclosingCall callerCall) {
-		mode.onMasterClaim(entry, k, callerPkg, argsTerm, callerCall);
+			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
+		mode.onMasterClaim(entry, k, callerPkg, argsTerm, callerEntry);
 	}
 
 	// ---- entries ----

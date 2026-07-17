@@ -1,17 +1,22 @@
-package com.tgac.logic.tabling;
+package com.tgac.logic.weight;
 
-// ABOUTME: Closed (star) tabling: explore for structure (presence cell + base/edge
-// ABOUTME: capture), solve each edge-graph SCC jointly once all its entries seal, emit.
+// ABOUTME: Closed (star) tabling mode: explore for structure (presence cell + base/
+// ABOUTME: edge capture), solve each edge-graph SCC jointly once all its entries seal, emit.
 
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
+import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.tabling.Exploration;
+import com.tgac.logic.tabling.Recurrent;
+import com.tgac.logic.tabling.TableEntry;
+import com.tgac.logic.tabling.TablingMode;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
@@ -21,30 +26,29 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
-import java.util.function.Function;
+import lombok.Value;
 
 /**
- * The closed (star) algorithm. Explore runs as plain set tabling — the cell is
- * presence, so it terminates — while the real value rides the SemiringStore
- * (read/write through {@link #storeReader}/{@link #storeWriter}) and every
- * derivation's contribution is captured on the entry: a NON-looping derivation is
- * a base seed, a one-loop derivation is an edge coefficient carrying the consumed
- * (entry, answer) (star-tabling.md §4).
+ * The closed (star) algorithm, plugged into the tabling skeleton as a
+ * {@link TablingMode}. Explore runs as plain set tabling — the cell is presence,
+ * so it terminates — while the real value rides the {@link SemiringStore} and
+ * every derivation's contribution is captured on the entry: a NON-looping
+ * derivation is a base seed, a one-loop derivation is an edge coefficient
+ * carrying the consumed (entry, answer) (star-tabling.md §4).
  *
  * <p>SEALED IS NOT SOLVED. The completion machinery seals entries in whatever
  * order quiescence allows — a mutually recursive pair can seal one at a time —
  * but an entry can only be SOLVED with its whole dependency closure over the
  * captured edge graph, which is exactly the equation system's coupling. So each
  * seal marks its entry pending, and {@link #onEntrySealed} solves a closure once
- * every member has sealed, then emits: a solved entry's master continuation is
- * replayed with {@code x = A* ⊗ b} only when its caller is the top level —
- * a caller inside another tabled entry already receives the value through the
- * edge its own capture recorded, so replaying there would double-count.
+ * every member has sealed ({@link StarTabling#solveGroup}), then emits: a solved
+ * entry's master continuation is replayed with {@code x = A* ⊗ b} only when its
+ * caller is the top level — a caller inside another tabled entry already
+ * receives the value through the edge its own capture recorded, so replaying
+ * there would double-count.
  */
 final class Closed implements TablingMode {
 
@@ -53,11 +57,9 @@ final class Closed implements TablingMode {
 	private static final IdempotentSemiring<Object> PRESENCE =
 			(IdempotentSemiring<Object>) (IdempotentSemiring<?>) Semirings.BOOLEAN;
 
-	private final ClosedSemiring<Object> semiring;
-	private final Function<Package, Object> storeReader;
-	private final BiFunction<Package, Object, Package> storeWriter;
-	/** The joint star: a whole dependency closure of entries → each entry's answer → its value. */
-	private final Function<List<TableEntry<?>>, Map<TableEntry<?>, Map<Reified<?>, Object>>> starSolve;
+	private final ClosedSemiring<SemiringStore> ring;
+	/** The ring erased to the entry maps' element type. */
+	private final Semiring<Object> objectRing;
 
 	/** Each master's emit context, recorded at claim time. */
 	private final Map<TableEntry<Object>, EmitContext> contexts = new ConcurrentHashMap<>();
@@ -66,32 +68,26 @@ final class Closed implements TablingMode {
 	/** Entries already solved (and emitted where due). Guarded by this. */
 	private final Set<TableEntry<Object>> solved = new HashSet<>();
 
-	Closed(ClosedSemiring<Object> semiring,
-			Function<Package, Object> storeReader,
-			BiFunction<Package, Object, Package> storeWriter,
-			Function<List<TableEntry<?>>, Map<TableEntry<?>, Map<Reified<?>, Object>>> starSolve) {
-		this.semiring = semiring;
-		this.storeReader = storeReader;
-		this.storeWriter = storeWriter;
-		this.starSolve = starSolve;
+	@SuppressWarnings("unchecked")
+	Closed(ClosedSemiring<SemiringStore> ring) {
+		this.ring = ring;
+		this.objectRing = (Semiring<Object>) (Semiring<?>) ring;
 	}
 
 	/** What emit needs to replay one master's continuation with the star values. */
-	private static final class EmitContext {
-		final TableEntry<Object> entry;
-		final Fiber.Fn<Package, Nothing> k;
-		final Package callerPkg;
-		final Unifiable<?> argsTerm;
-		final EnclosingCall callerCall;
+	@Value
+	private static class EmitContext {
+		TableEntry<Object> entry;
+		Fiber.Fn<Package, Nothing> k;
+		Package callerPkg;
+		Unifiable<?> argsTerm;
+		boolean topLevel;
+	}
 
-		EmitContext(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-				Package callerPkg, Unifiable<?> argsTerm, EnclosingCall callerCall) {
-			this.entry = entry;
-			this.k = k;
-			this.callerPkg = callerPkg;
-			this.argsTerm = argsTerm;
-			this.callerCall = callerCall;
-		}
+	private SemiringStore storeOf(Package pkg) {
+		return pkg.getStores().get(SemiringStore.class)
+				.map(SemiringStore.class::cast)
+				.getOrElse(ring::one);
 	}
 
 	@Override
@@ -102,12 +98,12 @@ final class Closed implements TablingMode {
 	@Override
 	public Package enterBody(Package callerPkg) {
 		// fresh derivation: real value reset to ONE, no loop record
-		return storeWriter.apply(callerPkg, semiring.one()).putStore(Recurrent.NONE);
+		return callerPkg.putStore(ring.one()).putStore(Recurrent.NONE);
 	}
 
 	@Override
 	public Object callerValue(Package callerPkg) {
-		return storeReader.apply(callerPkg);
+		return storeOf(callerPkg);
 	}
 
 	@Override
@@ -133,12 +129,12 @@ final class Closed implements TablingMode {
 		// the star). Captured before the dedup so multiplicity survives.
 		Recurrent rec = answerPkg.getStores().get(Recurrent.class)
 				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
-		Object value = storeReader.apply(answerPkg);
+		SemiringStore value = storeOf(answerPkg);
 		if (rec.consumed.isEmpty()) {
-			entry.addBase(answerTerm, value, semiring);
+			entry.addBase(answerTerm, value, objectRing);
 		} else if (rec.consumed.size() == 1) {
 			Tuple2<TableEntry<Object>, Reified<?>> from = rec.consumed.head();
-			entry.addEdge(answerTerm, from._1, from._2, value, semiring);
+			entry.addEdge(answerTerm, from._1, from._2, value, objectRing);
 		} else {
 			throw new IllegalStateException("nonlinear recursion: a derivation consumed "
 					+ rec.consumed.size() + " looping calls; star handles only linear systems");
@@ -154,16 +150,15 @@ final class Closed implements TablingMode {
 		// tag the fragment so the closed collector drops it during explore
 		Recurrent callerRec = callerPkg.getStores().get(Recurrent.class)
 				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
-		return storeWriter.apply(answerPkg, storeReader.apply(callerPkg))
-				.putStore(EnclosingCall.current(callerPkg))
+		return answerPkg.putStore(storeOf(callerPkg))
 				.putStore(callerRec.and(entry, answerTerm))
 				.putStore(Exploration.MARKER);
 	}
 
 	@Override
 	public void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, EnclosingCall callerCall) {
-		contexts.put(entry, new EmitContext(entry, k, callerPkg, argsTerm, callerCall));
+			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
+		contexts.put(entry, new EmitContext(entry, k, callerPkg, argsTerm, callerEntry == null));
 		entry.getRegion().onSealed(() -> onEntrySealed(entry));
 	}
 
@@ -223,47 +218,46 @@ final class Closed implements TablingMode {
 	 * body suffix a second time and double-count the coefficient.
 	 */
 	private Fiber<Nothing> solveAndEmit(Set<TableEntry<Object>> closure) {
-		Map<TableEntry<?>, Map<Reified<?>, Object>> values =
-				starSolve.apply(new ArrayList<TableEntry<?>>(closure));
+		Map<TableEntry<?>, Map<Reified<?>, SemiringStore>> values =
+				StarTabling.solveGroup(new ArrayList<TableEntry<?>>(closure), ring);
 		Fiber<Nothing> result = done(nothing());
 		for (TableEntry<Object> member : closure) {
 			boolean newlySolved = solved.add(member);
 			sealedPending.remove(member);
 			EmitContext ctx = contexts.get(member);
-			if (!newlySolved || ctx == null || ctx.callerCall.entry() != null) {
+			if (!newlySolved || ctx == null || !ctx.topLevel) {
 				continue;
 			}
-			Map<Reified<?>, Object> entryValues = values.get(member);
+			Map<Reified<?>, SemiringStore> entryValues = values.get(member);
 			if (entryValues == null) {
 				continue;
 			}
-			Object callerValue = storeReader.apply(ctx.callerPkg);
+			SemiringStore callerValue = storeOf(ctx.callerPkg);
 			for (int i = 0; i < member.getAnswerCount(); i++) {
 				Reified<?> answerTerm = member.getAnswerAt(i)._1;
-				Object x = entryValues.get(answerTerm);
+				SemiringStore x = entryValues.get(answerTerm);
 				if (x == null) {
 					continue;
 				}
-				Object value = semiring.times(callerValue, x);
+				SemiringStore value = ring.times(callerValue, x);
 				result = result.flatMap(__ ->
-						emitAnswer(ctx.k, ctx.callerPkg, ctx.argsTerm, ctx.callerCall, answerTerm, value));
+						emitAnswer(ctx.k, ctx.callerPkg, ctx.argsTerm, answerTerm, value));
 			}
 		}
 		return result;
 	}
 
 	/**
-	 * Publish one sealed answer: instantiate it, unify it against the call pattern to
-	 * bind the caller's variables, re-coat to the caller and set the folded value on
-	 * the SemiringStore, then hand it to {@code k}.
+	 * Publish one sealed answer: instantiate it, unify it against the call pattern
+	 * to bind the caller's variables, set the folded value on the SemiringStore,
+	 * then hand it to {@code k}. The caller package already wears the right coat.
 	 */
 	private Fiber<Nothing> emitAnswer(Fiber.Fn<Package, Nothing> k, Package callerPkg,
-			Unifiable<?> argsTerm, EnclosingCall callerCall, Reified<?> answerTerm, Object value) {
+			Unifiable<?> argsTerm, Reified<?> answerTerm, SemiringStore value) {
 		return MiniKanren.instantiate(answerTerm).flatMap(freshTerm ->
 				MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
 						.map(callerPkg::withSubstitutions)
-						.map(pkg -> pkg.putStore(callerCall))
-						.map(pkg -> storeWriter.apply(pkg, value))
+						.map(pkg -> pkg.putStore(value))
 						.map(k::apply)
 						.getOrElse(() -> done(nothing()))
 						.flatMap(fib -> fib));
