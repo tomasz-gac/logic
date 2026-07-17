@@ -6,8 +6,8 @@ package com.tgac.logic.weight;
 import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.unification.Reified;
-import io.vavr.collection.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,14 +40,11 @@ final class StarTabling {
 		}
 		int n = nodes.size();
 
-		Array<SemiringStore> b = Array.empty();
-		for (Node node : nodes) {
-			b = b.append(graph.base(node));
-		}
-
+		SemiringStore[] b = new SemiringStore[n];
 		SemiringStore[][] a = new SemiringStore[n][n];
-		for (SemiringStore[] row : a) {
-			java.util.Arrays.fill(row, ring.zero());
+		for (int i = 0; i < n; i++) {
+			b[i] = graph.base(nodes.get(i));
+			Arrays.fill(a[i], ring.zero());
 		}
 		for (Edge edge : graph.edges()) {
 			Integer from = index.get(edge.getFrom());
@@ -57,20 +54,11 @@ final class StarTabling {
 			}
 		}
 
-		Array<Array<SemiringStore>> matrix = Array.empty();
-		for (int i = 0; i < n; i++) {
-			Array<SemiringStore> row = Array.empty();
-			for (int j = 0; j < n; j++) {
-				row = row.append(a[i][j]);
-			}
-			matrix = matrix.append(row);
-		}
-
-		Array<SemiringStore> x = StarSolve.solve(ring, matrix, b);
+		SemiringStore[] x = StarSolve.solve(ring, a, b);
 		Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solved = new LinkedHashMap<>();
 		for (int idx = 0; idx < n; idx++) {
 			Node node = nodes.get(idx);
-			solved.computeIfAbsent(node.getEntry(), e -> new LinkedHashMap<>()).put(node.getAnswer(), x.get(idx));
+			solved.computeIfAbsent(node.getEntry(), e -> new LinkedHashMap<>()).put(node.getAnswer(), x[idx]);
 		}
 		return solved;
 	}

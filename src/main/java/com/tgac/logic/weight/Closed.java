@@ -13,7 +13,6 @@ import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.tabling.Exploration;
 import com.tgac.logic.tabling.Registration;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.TablingMode;

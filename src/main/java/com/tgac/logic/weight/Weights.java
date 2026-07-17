@@ -16,7 +16,6 @@ import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
-import com.tgac.logic.tabling.Exploration;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
@@ -123,8 +122,8 @@ public final class Weights {
 	 * Weighted solve with CLOSED (star) tabling: a closed but non-idempotent (or
 	 * unbounded) semiring whose values cannot stream. Explore runs as plain
 	 * presence tabling; the real value is deferred and dropped as an exploration
-	 * fragment, then summed by the star at each SCC seal and emitted. (Emit lands
-	 * in a later phase; today it explores and drops.) A bounded semiring is a
+	 * fragment, then summed by the star at each sealed closure and replayed
+	 * untagged to the collector (star-tabling.md §4). A bounded semiring is a
 	 * legal argument too -- you pay O(n^3) for the degenerate a* = 1.
 	 */
 	public static <T> Stream<Tuple2<Reified<T>, SemiringStore>> solveClosed(Goal goal, Unifiable<T> out,
