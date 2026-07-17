@@ -261,7 +261,8 @@ module; capability types `IdempotentSemiring`/`ClosedSemiring`/
 witnesses; the optimizer on `Semirings.SATURATING`; the `answers(Package)`
 widening with store-sighted post pricing and completed-entry pricing.
 LANDED BEYOND PLAN, same period: the full TABLE COMPLETION arc —
-`table-completion.md` and `group-seal.md`: the EnclosingCall coat, detach-k,
+`table-completion.md` and `group-seal.md`: the EnclosingCall coat, detach-k
+(since superseded by the anonymous master),
 the Region/WorkLedger/MonotoneCell/JoinSet primitives, the two-edge graph
 and its seal criterion, SUBSUMPTIVE REUSE (sealed entries serve instance
 calls; completed entries genuinely mobile), and the TIER-2 GROUP SEAL

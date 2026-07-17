@@ -164,8 +164,13 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   and members); Step D (representation swaps) remains, benchmark-gated. Read
   before touching MiniKanren internals.
 - `docs/design/table-completion.md` — AS BUILT: per-call completion detection
-  (the EnclosingCall coat, detach-k, the Region/ledger primitives, the
-  two-edge graph and its seal criterion). Read before touching tabling.
+  (the EnclosingCall coat, the anonymous master, the Region/ledger primitives,
+  the two-edge graph and its seal criterion). Read before touching tabling.
+- `docs/design/star-tabling.md` — AS BUILT: closed-semiring (star) tabling —
+  wait-mode explore with base/edge capture at produce, dependency-ordered
+  sealing (SEALED ⟹ SOLVABLE; one joint solve per edge-graph closure),
+  reader-chain replay emit; the linear-only limit and the
+  bounded-vs-needs-star partition.
 - `docs/design/group-seal.md` — AS BUILT: Tier 2 — sealing sleeper rings via
   the closure walk and the two-phase monotone-counter snapshot; why full SLG
   completion came out to ~60 lines.

@@ -72,8 +72,8 @@ The soundness argument transfers with the merge: a wake inside S needs a
 new item in S, which needs running work in S — the merged drained ledger
 rules it out; nothing OUTSIDE injects items, because publishing is billed
 to the publisher's own feed (in tabling: the coat rule — an answer lands
-in the cell of the call whose body derived it; a nested master's body is
-its own region; detached downstreams bill their callers). Tier 1 is
+in the cell of the call whose body derived it; a master's body is its own
+region; each reader's work bills its own caller). Tier 1 is
 |S| = 1; the two-feed ring is |S| = 2; SLG calls the general case
 completing an SCC.
 
@@ -171,7 +171,8 @@ like any other seal.
 The reference implementation's completion detection is famously the
 hardest part of the SLG-WAM. Here it is a static method on a generic
 primitive, and the reason is lineage, not luck: park-as-data removed stack
-freezing before this design began; detach-k made fiber-completion mean
+freezing before this design began; detach-k — since superseded by the
+anonymous master — made fiber-completion mean
 body-exhausted; the coat (EnclosingCall) made billing state-carried and
 thread-agnostic; the Region fusion made "drained", "sleeper edges" and
 "seal" first-class on one value; and the two-edge graph made the criterion

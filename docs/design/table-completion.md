@@ -1,8 +1,10 @@
 # Table completion detection
 
-STATUS: APPROVED (July 2026), not yet implemented — Tier 1 scoped, Tier 2
-deferred. Read with `tabling/` open and the landmine warning in mind: this
-is surgery on produce/consume/respawn.
+STATUS: AS BUILT (July 2026) — both tiers shipped, then revised by the
+ANONYMOUS-MASTER restructuring: a tabled body runs as detached work billed
+to its own entry, and every caller — the first included — reads the cell
+through a consumer. Read with `tabling/` open and the landmine warning in
+mind: this is the produce/consume/respawn substrate.
 
 ## 1. Why
 
@@ -58,10 +60,14 @@ monopolize the search. This is also the second application of one move.
 The engine's original quiescence problem (master/slave deadlock) was
 solved by PARK-AS-DATA: a consumer that catches up ends its fiber instead
 of waiting, which makes "fiber alive" mean "real work exists" — and then
-the global drain became a sound fixpoint signal for free. Detach-k is the
-same lifetime-restructuring one level down: it makes "master fiber alive"
-mean "PRODUCTION work exists", so fiber-end carries the semantic the
-counters need. The pattern's third shipped instance: Fiber.fork's
+the global drain became a sound fixpoint signal for free. The ANONYMOUS
+MASTER is the same lifetime-restructuring one level down: the body runs as
+its own detached fiber, nobody's continuation, so "master fiber alive"
+means "PRODUCTION work exists" and fiber-end carries the semantic the
+counters need. (Its predecessor, detach-k, got the same event while the
+first caller still ran the body inline, by detaching each answer's
+downstream; making the master anonymous removed the downstream instead.)
+The pattern's third shipped instance: Fiber.fork's
 countdown latch is a spawned/finished pair for TREE-shaped regions
 (children cannot leak); tabling needs tokens because its regions are
 graph-shaped — parked continuations escape through the shared table.
@@ -82,11 +88,11 @@ complete. End-of-search only.
   ledger pays for this work (goals are text, calls are events; one goal
   object under two bindings is two calls, two ledgers, two seals). THE ONE
   RULE: state follows the data, the coat follows the CODE — it changes
-  exactly where control crosses a call boundary (stamped on entry, restored
-  to the remembered caller's coat on answer exit) and is carried untouched
-  everywhere else: forks inherit it, parked Registrations freeze it, wakes
-  resume it. Branch-local by construction — no trail, no unwind, no
-  thread-locals.
+  exactly where control crosses a call boundary (stamped on the body at
+  call entry; an answer ends at the cell wearing it, and each reader runs
+  under its own caller's coat) and is carried untouched everywhere else:
+  forks inherit it, parked Registrations freeze it, wakes resume it.
+  Branch-local by construction — no trail, no unwind, no thread-locals.
 - **The primitives** (tabling/primitives, logic-free, generic): a
   `MonotoneCell<V,S>` holds each entry's answers — a persistent
   `JoinSet<A>` value (join-semilattice; join-idempotence IS the dedup
@@ -96,10 +102,16 @@ complete. End-of-search only.
   SLEEPING half as who-sleeps-where. `counted()` is the ONE pairing
   discipline every unit of work passes through (start ticks at wrap time —
   no gap for a racing seal — finish at fiber end).
-- **detach-k**: produce caches each answer, then detaches its downstream —
-  the CALLER's code, re-coated and billed to the caller (a nested master's
-  downstream can still derive caller answers). The master's fiber
-  completion then means BODY EXHAUSTED, the event the counters need.
+- **the anonymous master**: the body runs as DETACHED work billed to its
+  own entry — a pure producer: cache each answer, respawn the parked
+  readers, end. Its fiber completion means BODY EXHAUSTED, the event the
+  counters need. Every caller — the first included — reads the cell
+  through a consumer billed to its own coat, and that consumer's parked
+  registration is the DEPENDENCY EDGE: a caller cannot seal ahead of a
+  call it depends on. (The predecessor, detach-k, kept the first caller
+  inline in the body and detached each answer's downstream instead; it
+  produced the same fiber-end event but recorded no dependency edge for
+  the first caller — the asymmetry the anonymous master removed.)
 - **The seal rule, no Tarjan** (fused into `Region.sealCascade`): ledger
   quiescent (counters drained, every sleeper parked home or at a sealed
   region — the predicate is the theorem, not domain input) → flag CAS →
@@ -132,34 +144,39 @@ counter-drain argument survive non-idempotent plugs unchanged. The flag
 therefore means KEYS-FINAL: no new answer bindings. That is all any current
 customer needs — pricing (a tabled call emits once per key; multiplicity is
 weight, not emission), negation/ifte (no new bindings), reclamation,
-prefetch. VALUES-FINAL is a separate future flag belonging to semiring
-tabling's star machinery: cyclic derivations diverge under counting unless
-closed-semiring star computes them algebraically; on acyclic SCCs it
-coincides with keys-final for free. Do not conflate the two flags.
+prefetch. VALUES-FINAL is a separate event belonging to the star machinery
+(star-tabling.md, shipped) — but dependency-ordered sealing makes SEALED ⟹
+SOLVABLE: at any entry's seal its dependency closure over the captured edge
+graph has sealed too, so the closed mode solves and records values at the
+closure's last announcement. SOLVED is mode state, not a second Region
+flag. On acyclic SCCs it coincides with keys-final for free. Do not
+conflate the two.
 
 ## 5a. Coverage and limits: the two-edge graph
 
 The runtime structure is a graph whose NODES are call events (table
 entries — born when a call reifies to an unseen pattern; `path(1,_)` and
-`path(2,_)` are two nodes) and whose EDGES are what a tabled call
-occurrence inside a body turns into — exactly one of two kinds:
+`path(2,_)` are two nodes) and whose EDGES come from what a tabled call
+occurrence inside a body does — every occurrence READS, and the first one
+additionally SPAWNS:
 
-- **Master edge** (the pattern is FRESH): this occurrence masters the new
-  event; the new body splices into the current fiber. Discharged by
-  ordinary control flow — never in any ledger, can never block a seal.
-  Every event is mastered exactly once, so master edges form a TREE: the
-  call tree of events, rooted at the query.
-- **Sleeper edge** (the pattern ALREADY HAS a master): this occurrence
-  reads the existing event; if it catches up before that event seals, it
-  parks — recorded in ITS OWN call's ledger ("a piece of me sleeps at E").
-  The only edge kind a seal waits on. Discharged by E growing (wake) or E
-  sealing (dead sleeper, owner rechecked).
+- **Master edge** (the pattern is FRESH): this occurrence spawns the new
+  event's body as detached work billed to the new event. Never in any
+  ledger, can never block a seal. Every event is mastered exactly once, so
+  master edges form a TREE: the spawn tree of events, rooted at the query.
+- **Sleeper edge** (EVERY occurrence, fresh or not): the occurrence reads
+  the event through a consumer; when it catches up before the event seals,
+  it parks — recorded in ITS OWN call's ledger ("a piece of me sleeps at
+  E"). The only edge kind a seal waits on. Discharged by E growing (wake)
+  or E sealing (dead sleeper, owner rechecked). Because reading is the
+  only way answers reach a caller, the sleeper edges COVER the dependency
+  graph: who waits on whom is who depends on whose answers.
 
-The picture is always A TREE OF MASTER EDGES DECORATED WITH SLEEPER
-CROSS-LINKS, and it is not an analysis — it is literally the data: nodes =
-the Table's entries, master edges = who tracked whose produce, sleeper
-edges = the (registration → parked-at) pairs in each ledger's sleeping
-map; the cascade is the backwards edge-walk as a queue.
+The picture is A SPAWN TREE OF MASTER EDGES WITH A SLEEPER EDGE PER CALL
+OCCURRENCE LAID OVER IT, and it is not an analysis — it is literally the
+data: nodes = the Table's entries, master edges = who spawned whose
+produce, sleeper edges = the (registration → parked-at) pairs in each
+ledger's sleeping map; the cascade is the backwards edge-walk as a queue.
 
 **THE SEAL CRITERION (with Tier 2): every event seals once its dependency
 closure is finished.** The singleton rule seals a node whose fiber work
@@ -168,30 +185,37 @@ need a new answer here, circularly impossible) or at sealed nodes; the
 GROUP seal handles the rest — a cycle of sleeper edges through drained
 nodes seals atomically as its own closure. What never seals, correctly:
 anything with genuinely live work in its closure (infinite relations and
-their downstreams). NOTE what the criterion never was: "no cycle in the
-variant call graph" — nested mutual recursion IS a variant-graph cycle
-and seals through the ordinary cascade, because its p→q direction is a
-master edge.
+their downstreams). NOTE the criterion is NOT "no cycle in the variant
+call graph" — cycles seal fine, as groups. With every occurrence a
+reader, a mutually recursive pair is a sleeper ring regardless of which
+direction happened to spawn the master, so the seal group and the
+dependency group coincide by construction.
 
 How recursion maps: at each recursive call occurrence one question decides
 the shape — DOES THE CALL REIFY TO A FRESH PATTERN OR THE SAME ONE?
 Arguments that change (descending/right recursion) mint fresh events:
-recursion-as-TREE, no sleepers, seals trivially. Arguments that revisit
-the same question park: recursion-as-BACK-EDGE — a self-loop (fine) or,
-cross-linked with another, a cycle (Tier 2). The five pinned cases
+recursion-as-TREE, each level reading the next, seals bottom-up. Arguments
+that revisit the same question park: recursion-as-BACK-EDGE — a self-loop
+(fine) or, cross-linked with another, a cycle (Tier 2). The five pinned cases
 (`═` master, `┈` sleeper; tests in TableCompletionTest):
 
     left recursion               variant chain
     query ═ path(1,_) ⟲┈         query ═ p(1) ═ p(2) ═ p(3)
-    seals: home rule             seals: no sleepers at all
-    (leftRecursivePathCompletes) (variantChainOfNestedMastersSealsBottomUp)
+    seals: home rule             seals: bottom-up cascade — each
+    (leftRecursivePathCompletes)  caller's reader dies at its
+                                  callee's seal
+                                 (variantChainOfNestedMastersSealsBottomUp)
 
     nested mutual                cross-root ring
     query ═ p ═ q                query ═ p     query ═ q
             ↑┈┈┈┘                        └┈┈> q       └┈┈> p
-    seals: one edge, no cycle    seals: GROUP SEAL over the cycle
-    (nestedMutualRecursion-      (crossConsumingRingSealsByGroupSeal)
+    seals: group seal — p's      seals: GROUP SEAL over the cycle
+    reader at q closes the ring  (crossConsumingRingSealsByGroupSeal)
+    (nestedMutualRecursion-
      CompletesBottomUp)
+
+    (every ═ is shadowed by a ┈ in the same direction — the spawning
+    occurrence reads what it spawned)
 
     single-root double-read ring:  p :- 42 | q | q.  q :- p.
     the SECOND q-occurrence is a reader (masters are once-per-event):
@@ -203,10 +227,10 @@ anywhere, which is TRUE — but the residual waiting is a ring of parked
 registrations: data in the table, not frames in the queue. "Can anything
 ever run again" is reachability over sleeper edges, not counting — which
 is exactly what the shipped group seal computes: the closure walk over
-sleeper edges, verified by the two-phase monotone-counter read. Billing note for nested masters: the new
-event's BODY is billed to the new event's own ledger; the caller pays only
-for CONSUMING the answers (each answer-exit downstream re-coated and
-billed to the caller). "Does the existing entry contain what I need" is
+sleeper edges, verified by the two-phase monotone-counter read. Billing
+note: an event's BODY is billed to its own ledger; a caller pays for its
+READER (each respawned consumer is billed to the reader's coat). "Does
+the existing entry contain what I need" is
 answered today by PATTERN EQUALITY only — upgrading that check to
 entailment against a SEALED general entry is subsumptive reuse (§8a).
 
@@ -340,8 +364,9 @@ profit-certainty first, mid-fill is a later relaxation.
 - Left-recursive path over a finite acyclic graph: entry completes
   MID-SOLVE (not at scheduler-dry), flag observable, registrations
   discarded.
-- Mutually-recursive pair: does NOT complete under Tier 1; solve results
-  unchanged; prices stay ∞.
+- Mutually-recursive pair: does NOT complete under Tier 1 alone; the
+  Tier 2 group seal completes it — and with every occurrence a reader,
+  the pair is a sleeper ring by construction.
 - Duplicate-heavy relation: counters drain despite duplicate derivations
   (the strict-ascent guard at work).
 - Parallel scheduler run: same completions, no synchronization on the flag
