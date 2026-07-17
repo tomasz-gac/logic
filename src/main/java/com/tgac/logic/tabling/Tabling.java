@@ -314,9 +314,17 @@ public class Tabling {
 			int index,
 			Table table) {
 		if (entry.isComplete()) {
-			// sealed: no new answers can ever arrive — the chain ends here, and
-			// the mode decides what that means (a finished branch; or closed's
-			// value replay). Racy read is safe: a stale false parks a dead
+			// sealed ⇒ the answer count is FINAL. The caught-up check that led
+			// here and this seal read are not atomic — an answer AND the seal can
+			// both land between them — so re-check against the now-final count
+			// and read any answers that slipped in; dying here one short would
+			// silently lose them (the reader's owner then seals without them)
+			if (index < entry.getAnswerCount()) {
+				return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
+			}
+			// truly caught up at a sealed entry: the chain ends here, and the
+			// mode decides what that means (a finished branch; or closed's value
+			// replay). Racy read is safe: a stale false parks a dead
 			// registration, which ledgers accept as sealed-parked
 			return table.onCaughtUp(entry,
 					new Registration(k, callerPkg, argsTerm, index, EnclosingCall.entryOf(callerPkg)));

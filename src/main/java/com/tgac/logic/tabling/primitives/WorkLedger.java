@@ -35,11 +35,13 @@ import java.util.function.Supplier;
  */
 public final class WorkLedger<S, P> {
 
+
 	private long started;
 	private long finished;
 
 	/** Sleeping pieces of this region, mapped to the place each parks at. */
 	private final Map<S, P> sleeping = new HashMap<>();
+
 
 	public synchronized void taskStarted() {
 		started++;
@@ -70,6 +72,36 @@ public final class WorkLedger<S, P> {
 	/** The places this region's sleepers park at — a snapshot. */
 	public synchronized List<P> sleepingAt() {
 		return new ArrayList<>(sleeping.values());
+	}
+
+	/**
+	 * The group walk's admission read: drained-ness, the started counter, and the
+	 * sleeper places, in ONE monitor hold. Atomicity is load-bearing: read
+	 * separately, a respawn can interleave — drained sees the old quiet state,
+	 * the snapshot records the counter AFTER the spawn (so the two-phase
+	 * re-verify compares the new value against itself and misses it), and the
+	 * sleeper read sees the post-awake empty set, hiding the edge that would
+	 * have aborted the walk. One hold makes the spawn land wholly before
+	 * (not drained) or wholly after (counter mismatch at re-verify).
+	 *
+	 * @return the snapshot, or null when the counters are not drained
+	 */
+	public synchronized Snapshot<P> drainedSnapshot() {
+		if (started == 0 || finished != started) {
+			return null;
+		}
+		return new Snapshot<>(started, new ArrayList<>(sleeping.values()));
+	}
+
+	/** One member's atomically-read admission state for the group walk. */
+	public static final class Snapshot<P> {
+		public final long started;
+		public final List<P> sleepingAt;
+
+		Snapshot(long started, List<P> sleepingAt) {
+			this.started = started;
+			this.sleepingAt = sleepingAt;
+		}
 	}
 
 	public synchronized boolean quiescent(Predicate<P> cannotWake) {

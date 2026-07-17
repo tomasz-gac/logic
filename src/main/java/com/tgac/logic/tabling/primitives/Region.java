@@ -63,6 +63,7 @@ public final class Region<V, S> {
 		this.ownerOf = ownerOf;
 	}
 
+
 	/** Register the fiber to spawn when this region seals (closed tabling's solve-and-emit). */
 	public void onSealed(Function<List<S>, Fiber<Nothing>> work) {
 		this.onSealed = work;
@@ -211,11 +212,15 @@ public final class Region<V, S> {
 			if (members.containsKey(region) || region.isSealed()) {
 				continue;
 			}
-			if (!region.ledger.drained()) {
+			// ONE atomic read per member: drained + counter + sleepers together —
+			// a racing respawn otherwise slips between the reads (see
+			// WorkLedger.drainedSnapshot) and the re-verify below cannot see it
+			WorkLedger.Snapshot<Region<V, S>> snapshot = region.ledger.drainedSnapshot();
+			if (snapshot == null) {
 				return null;
 			}
-			members.put(region, region.ledger.startedCount());
-			for (Region<V, S> at : region.ledger.sleepingAt()) {
+			members.put(region, snapshot.started);
+			for (Region<V, S> at : snapshot.sleepingAt) {
 				if (at != region && !at.isSealed()) {
 					frontier.add(at);
 				}
