@@ -525,6 +525,34 @@ architecture, not the current depth — today's abstract preview is counts
 with ∞, the rehearsal previews are one tiny probe; the triad says where
 each future instrument belongs, not that it is built.
 
+**SHELVED side-note — `tabled` is the goal semiring's star; weighting is
+metaprogramming (July 2026, recorded not developed).** §5a establishes
+goals as free-semiring expressions (⊕ = or, ⊗ = and, 0 = fail,
+1 = success) — an algebra conspicuously missing one operator. `tabled`
+is it. A recursive tabled relation is literally the star equation:
+`p = base | (step, p)` IS `p = base ⊕ step⊗p`, and tabling computes
+`p = step*⊗base` — so `Goal` extended with `tabled` is a CLOSED
+semiring of programs, a Kleene algebra. The two tabling modes are then
+the two ways to take a star, indexed by where in the quotient tower you
+evaluate: STREAMING is star in a bounded model (`a* = 1` — saturation
+is already the closure, which is why it needs no seal-time work), and
+CLOSED is the genuine star (explore runs the program once to REFLECT
+its own loop structure into data — the entry's base/edge maps ARE the
+program's equation system — and `StarSolve` interprets that data at
+seal). Which makes the weight machinery METAPROGRAMMING, precisely:
+`factor` quotes a coefficient into the run, explore is the reflection
+stage (program → its own (A, b) as a value), star-at-seal is the
+interpreter, emit is the splice of the interpreted value back into the
+search. The tower (§5a) already says every execution artifact is a
+homomorphic image of the free object; this note names the mechanism
+that produces the image: tabling is the engine's reflection operator,
+and a closed solve is staged evaluation of the reflected program.
+UNSHELVE WHEN a second interpreter of the reflected (A, b) appears —
+gradients/derivatives for learning, MAP with witnesses
+(semiring-inference.md), or the goals-as-data distribution planner —
+i.e. the moment anyone wants the reflected program for something other
+than its immediate star.
+
 ## 5b. Beyond the fold: infinite knowledge, residuation, AI-widening
 
 The fold story covers only the FINITE fragment. `dom(x, 1..5)` is a
