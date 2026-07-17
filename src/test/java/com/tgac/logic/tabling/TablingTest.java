@@ -4,8 +4,11 @@ import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -417,5 +420,22 @@ public class TablingTest {
 				.map(Object::toString)
 				.collect(Collectors.toList());
 		assertThat(pairs).hasSize(4);
+	}
+
+	@Test
+	public void bodyThatMintsAFreshPackageFailsLoudly() {
+		// a goal inside a tabled body that returns a NEW package instead of
+		// deriving from its input sheds every store — the coat, the Table, the
+		// weight machinery. The damage is silent (over-general answers cached
+		// under fresh substitutions; nested readers unbilled, so the entry can
+		// seal under them and lose answers), so the produce chokepoint checks
+		// the coat and refuses loudly instead
+		Tabled<Unifiable<Integer>> rel = Tabling.define(x ->
+				x.unifies(1).and(Goal.goal(s -> Cont.just(Package.empty()))));
+		Unifiable<Integer> out = lvar();
+
+		assertThatThrownBy(() -> rel.apply(out).solve(out).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("dropped its stores");
 	}
 }

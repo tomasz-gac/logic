@@ -215,6 +215,17 @@ public class Tabling {
 			Table table) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
+			// the coat is the canary: a goal that returned a fresh package instead
+			// of deriving from its input shed every store — the damage downstream
+			// is SILENT (answers reified over fresh substitutions cache
+			// over-general; readers spawned uncoated go unbilled, so this entry
+			// could seal under them and lose answers) — so refuse loudly here
+			if (EnclosingCall.entryOf(answerPkg) != entry) {
+				throw new IllegalStateException(
+						"a goal inside a tabled body dropped its stores: packages must be "
+								+ "derived from the incoming one, never minted fresh "
+								+ "(the body's EnclosingCall coat is missing or foreign)");
+			}
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm -> {
 				// what the cell caches: the term and the value this derivation
 				// carries — caller-agnostic, since the body ran from ONE
