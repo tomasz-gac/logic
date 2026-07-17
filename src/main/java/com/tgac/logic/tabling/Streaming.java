@@ -12,9 +12,9 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
-import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import io.vavr.collection.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -49,14 +49,20 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
-	public Package onExplore(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
+	public Package onExplore(Package callerPkg) {
 		return weightWriter.apply(callerPkg, semiring.one());
 	}
 
 	@Override
-	public Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer, Object cellValue) {
+	public Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
+			Object cellValue, TableEntry<Object> readerEntry) {
 		return weightWriter.apply(unifiedPkg, semiring.times(weightReader.apply(unifiedPkg), cellValue));
+	}
+
+	@Override
+	public Fiber<Nothing> onCaughtUp(TableEntry<Object> entry, Registration reader) {
+		// the answers already flowed inline — a finished branch
+		return done(nothing());
 	}
 
 	@Override
@@ -65,13 +71,8 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
-	public Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value) {
-		return weightWriter.apply(answerPkg, semiring.times(weightReader.apply(callerPkg), value));
-	}
-
-	@Override
-	public Fiber<Nothing> onSeal(TableEntry<Object> entry) {
-		// answers streamed as they were found — nothing left to emit
+	public Fiber<Nothing> onSeal(TableEntry<Object> entry, List<Registration> drained) {
+		// answers streamed as they were found — the drained consumers are dead branches
 		return done(nothing());
 	}
 }

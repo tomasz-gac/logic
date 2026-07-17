@@ -11,8 +11,8 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Reified;
-import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple2;
+import io.vavr.collection.List;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -98,25 +98,25 @@ public class Table implements Packaged {
 
 	// ---- the mode's per-step hooks (see TablingMode) ----
 
-	Package onExplore(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
-		return mode.onExplore(entry, k, callerPkg, argsTerm, callerEntry);
+	Package onExplore(Package callerPkg) {
+		return mode.onExplore(callerPkg);
 	}
 
-	Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer, Object cellValue) {
-		return mode.onConsume(unifiedPkg, entry, consumedAnswer, cellValue);
+	Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
+			Object cellValue, TableEntry<Object> readerEntry) {
+		return mode.onConsume(unifiedPkg, entry, consumedAnswer, cellValue, readerEntry);
+	}
+
+	Fiber<Nothing> onCaughtUp(TableEntry<Object> entry, Registration reader) {
+		return mode.onCaughtUp(entry, reader);
 	}
 
 	Tuple2<Reified<?>, Object> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
 		return mode.onProduce(entry, answerPkg, answerTerm);
 	}
 
-	Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value) {
-		return mode.onExit(answerPkg, entry, answerTerm, callerPkg, value);
-	}
-
-	Fiber<Nothing> onSeal(TableEntry<Object> entry) {
-		return mode.onSeal(entry);
+	Fiber<Nothing> onSeal(TableEntry<Object> entry, List<Registration> drained) {
+		return mode.onSeal(entry, drained);
 	}
 
 	// ---- entries ----

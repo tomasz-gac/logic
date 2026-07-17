@@ -1,7 +1,8 @@
 package com.tgac.logic.weight;
 
 // ABOUTME: Closed (star) tabling mode: explore for structure (presence cell + base/
-// ABOUTME: edge capture), solve each edge-graph SCC jointly once all its entries seal, emit.
+// ABOUTME: edge capture), solve each edge-graph SCC jointly once all its entries seal,
+// ABOUTME: emit by replaying each top-level reader chain with the solved values.
 
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
@@ -15,6 +16,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.tabling.Exploration;
 import com.tgac.logic.tabling.Recurrent;
+import com.tgac.logic.tabling.Registration;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.TablingMode;
 import com.tgac.logic.unification.MiniKanren;
@@ -23,14 +25,15 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
+import io.vavr.collection.List;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import lombok.Value;
 
 /**
  * The closed (star) algorithm, plugged into the tabling skeleton as a
@@ -40,16 +43,22 @@ import lombok.Value;
  * derivation is a base seed, a one-loop derivation is an edge coefficient
  * carrying the consumed (entry, answer) (star-tabling.md §4).
  *
- * <p>SEALED IS NOT SOLVED. The completion machinery seals entries in whatever
- * order quiescence allows — a mutually recursive pair can seal one at a time —
- * but an entry can only be SOLVED with its whole dependency closure over the
- * captured edge graph, which is exactly the equation system's coupling. So each
- * seal marks its entry pending, and {@link #onSeal} solves a closure once
- * every member has sealed ({@link StarTabling#solveGroup}), then emits: a solved
- * entry's master continuation is replayed with {@code x = A* ⊗ b} only when its
- * caller is the top level — a caller inside another tabled entry already
- * receives the value through the edge its own capture recorded, so replaying
- * there would double-count.
+ * <p>SEALED IS NOT SOLVED. The completion machinery seals entries in dependency
+ * order (every caller reads through a consumer, whose parked sleeper blocks the
+ * caller's seal until the callee's), but an entry is SOLVED only with its whole
+ * dependency closure over the captured edge graph — the equation system's
+ * coupling. Each seal marks its entry pending; {@link #onSeal} solves a closure
+ * once every member has sealed ({@link StarTabling#solveGroup}).
+ *
+ * <p>EMIT replays reader chains. During explore every consumer delivery is a
+ * fragment (dropped at the collector); a chain ends at a sealed entry — drained
+ * by the seal (handed to {@link #onSeal}) or caught up after it
+ * ({@link #onCaughtUp}) — and a TOP-LEVEL chain is then replayed once from
+ * index 0 with {@code x = A* ⊗ b}. A COATED reader is never replayed: its
+ * contribution rides the edges it captured, and when it consumes an
+ * already-SOLVED entry the value is ⊗'d inline ({@link #onConsume}) so its
+ * produce captures the constant — the two paths agree, because an edge to a
+ * solved entry folds to exactly the inline value.
  */
 final class Closed implements TablingMode {
 
@@ -62,27 +71,20 @@ final class Closed implements TablingMode {
 	/** The ring erased to the entry maps' element type. */
 	private final Semiring<Object> objectRing;
 
-	/** Each master's emit context, recorded at claim time. */
-	private final Map<TableEntry<Object>, EmitContext> contexts = new ConcurrentHashMap<>();
 	/** Sealed entries whose dependency closure has not fully sealed yet. Guarded by this. */
 	private final Set<TableEntry<Object>> sealedPending = new HashSet<>();
-	/** Entries already solved (and emitted where due). Guarded by this. */
+	/** Entries already solved. Guarded by this. */
 	private final Set<TableEntry<Object>> solved = new HashSet<>();
+	/** Each solved entry's answer values — read lock-free by {@link #onConsume}. */
+	private final Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solvedValues =
+			new ConcurrentHashMap<>();
+	/** Ended top-level reader chains awaiting their entry's solve. Guarded by this. */
+	private final Map<TableEntry<Object>, ArrayList<Registration>> replayStash = new HashMap<>();
 
 	@SuppressWarnings("unchecked")
 	Closed(ClosedSemiring<SemiringStore> ring) {
 		this.ring = ring;
 		this.objectRing = (Semiring<Object>) (Semiring<?>) ring;
-	}
-
-	/** What emit needs to replay one master's continuation with the star values. */
-	@Value
-	private static class EmitContext {
-		TableEntry<Object> entry;
-		Fiber.Fn<Package, Nothing> k;
-		Package callerPkg;
-		Unifiable<?> argsTerm;
-		boolean topLevel;
 	}
 
 	private SemiringStore storeOf(Package pkg) {
@@ -97,23 +99,29 @@ final class Closed implements TablingMode {
 	}
 
 	@Override
-	public Package onExplore(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
-		// record what emit will need at seal, then start the body from a fresh
-		// derivation: real value reset to ONE, no loop record
-		contexts.put(entry, new EmitContext(entry, k, callerPkg, argsTerm, callerEntry == null));
+	public Package onExplore(Package callerPkg) {
+		// fresh derivation: real value reset to ONE, no loop record
 		return callerPkg.putStore(ring.one()).putStore(Recurrent.NONE);
 	}
 
 	@Override
-	public Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer, Object cellValue) {
-		// consuming a still-open call is a loop — record which entry's answer it was
-		if (entry.isComplete()) {
-			return unifiedPkg;
+	public Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
+			Object cellValue, TableEntry<Object> readerEntry) {
+		Map<Reified<?>, SemiringStore> entryValues = solvedValues.get(entry);
+		if (entryValues != null) {
+			SemiringStore x = entryValues.get(consumedAnswer);
+			if (readerEntry != null && x != null) {
+				// a coated reader consumes a SOLVED entry: the value is a constant
+				// its produce captures (a base — or an edge that folds to the same)
+				return unifiedPkg.putStore(ring.times(storeOf(unifiedPkg), x));
+			}
+			// top-level: still a fragment — the replay at the chain's end delivers
+			return unifiedPkg.putStore(Exploration.MARKER);
 		}
+		// open (or sealed mid-solve): record the loop, tag the fragment
 		Recurrent prev = unifiedPkg.getStores().get(Recurrent.class)
 				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
-		return unifiedPkg.putStore(prev.and(entry, consumedAnswer));
+		return unifiedPkg.putStore(prev.and(entry, consumedAnswer)).putStore(Exploration.MARKER);
 	}
 
 	@Override
@@ -136,26 +144,43 @@ final class Closed implements TablingMode {
 		return Tuple.of(answerTerm, Boolean.TRUE);
 	}
 
+	/**
+	 * A chain whose call-site package is itself an exploration fragment — a call
+	 * reached during some entry's explore. Never replayed: the upstream replay
+	 * re-runs the continuation with values, spawning this chain's valued twin.
+	 */
+	private static boolean isFragment(Package pkg) {
+		return pkg.getStores().get(Exploration.class).isDefined();
+	}
+
 	@Override
-	public Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value) {
-		// crossing back into the caller: restore ITS store and loop-record (the
-		// callee's value is captured on entry, folded by the star), record that the
-		// caller consumed (entry, answerTerm) so its produce captures the edge, and
-		// tag the fragment so the closed collector drops it during explore
-		Recurrent callerRec = callerPkg.getStores().get(Recurrent.class)
-				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
-		return answerPkg.putStore(storeOf(callerPkg))
-				.putStore(callerRec.and(entry, answerTerm))
-				.putStore(Exploration.MARKER);
+	public synchronized Fiber<Nothing> onCaughtUp(TableEntry<Object> entry, Registration reader) {
+		if (reader.getEnclosingCall() != null || isFragment(reader.getPkg())) {
+			// a coated reader's contribution rides its captured edges; a fragment
+			// chain's answers come from its valued twin
+			return done(nothing());
+		}
+		if (solvedValues.containsKey(entry)) {
+			return replay(entry, reader);
+		}
+		// sealed but its closure not solved yet — the solve will replay it
+		replayStash.computeIfAbsent(entry, e -> new ArrayList<>()).add(reader);
+		return done(nothing());
 	}
 
 	/**
-	 * One entry sealed. Solve every pending dependency closure that is now fully
-	 * sealed — possibly several, since one seal can complete closures deferred by
-	 * earlier seals — and return their emits as one fiber.
+	 * One entry sealed; {@code drained} are its parked readers — the top-level
+	 * ones become replay targets. Solve every pending dependency closure that is
+	 * now fully sealed — possibly several, since one seal can complete closures
+	 * deferred by earlier seals — and return their replays as one fiber.
 	 */
 	@Override
-	public synchronized Fiber<Nothing> onSeal(TableEntry<Object> entry) {
+	public synchronized Fiber<Nothing> onSeal(TableEntry<Object> entry, List<Registration> drained) {
+		for (Registration reader : drained) {
+			if (reader.getEnclosingCall() == null && !isFragment(reader.getPkg())) {
+				replayStash.computeIfAbsent(entry, e -> new ArrayList<>()).add(reader);
+			}
+		}
 		sealedPending.add(entry);
 		Fiber<Nothing> result = done(nothing());
 		boolean progress = true;
@@ -200,10 +225,8 @@ final class Closed implements TablingMode {
 
 	/**
 	 * Solve {@code closure} jointly (already-solved members recompute to the same
-	 * values — the maps froze at their seal) and emit each NEWLY solved entry whose
-	 * caller is the top level. A caller inside a tabled entry gets the value
-	 * through its captured edge instead — replaying into its body would run the
-	 * body suffix a second time and double-count the coefficient.
+	 * values — the maps froze at their seal), record the values, and replay each
+	 * newly solved member's stashed top-level readers.
 	 */
 	private Fiber<Nothing> solveAndEmit(Set<TableEntry<Object>> closure) {
 		Map<TableEntry<?>, Map<Reified<?>, SemiringStore>> values =
@@ -212,33 +235,45 @@ final class Closed implements TablingMode {
 		for (TableEntry<Object> member : closure) {
 			boolean newlySolved = solved.add(member);
 			sealedPending.remove(member);
-			EmitContext ctx = contexts.get(member);
-			if (!newlySolved || ctx == null || !ctx.topLevel) {
-				continue;
-			}
 			Map<Reified<?>, SemiringStore> entryValues = values.get(member);
-			if (entryValues == null) {
+			if (!newlySolved || entryValues == null) {
 				continue;
 			}
-			SemiringStore callerValue = storeOf(ctx.callerPkg);
-			for (int i = 0; i < member.getAnswerCount(); i++) {
-				Reified<?> answerTerm = member.getAnswerAt(i)._1;
-				SemiringStore x = entryValues.get(answerTerm);
-				if (x == null) {
-					continue;
-				}
-				SemiringStore value = ring.times(callerValue, x);
-				result = result.flatMap(__ ->
-						emitAnswer(ctx.k, ctx.callerPkg, ctx.argsTerm, answerTerm, value));
+			solvedValues.put(member, entryValues);
+			ArrayList<Registration> stashed = replayStash.remove(member);
+			if (stashed == null) {
+				continue;
 			}
+			for (Registration reader : stashed) {
+				Fiber<Nothing> replay = replay(member, reader);
+				result = result.flatMap(__ -> replay);
+			}
+		}
+		return result;
+	}
+
+	/** Replay one ended top-level chain from index 0 with the solved values. */
+	private Fiber<Nothing> replay(TableEntry<Object> entry, Registration reader) {
+		Map<Reified<?>, SemiringStore> entryValues = solvedValues.get(entry);
+		SemiringStore readerValue = storeOf(reader.getPkg());
+		Fiber<Nothing> result = done(nothing());
+		for (int i = 0; i < entry.getAnswerCount(); i++) {
+			Reified<?> answerTerm = entry.getAnswerAt(i)._1;
+			SemiringStore x = entryValues.get(answerTerm);
+			if (x == null) {
+				continue;
+			}
+			SemiringStore value = ring.times(readerValue, x);
+			result = result.flatMap(__ -> emitAnswer(reader.getContinuation(), reader.getPkg(),
+					reader.getArgsTerm(), answerTerm, value));
 		}
 		return result;
 	}
 
 	/**
 	 * Publish one sealed answer: instantiate it, unify it against the call pattern
-	 * to bind the caller's variables, set the folded value on the SemiringStore,
-	 * then hand it to {@code k}. The caller package already wears the right coat.
+	 * to bind the reader's variables, set the folded value on the SemiringStore,
+	 * then hand it to {@code k}. The reader package already wears its own coat.
 	 */
 	private Fiber<Nothing> emitAnswer(Fiber.Fn<Package, Nothing> k, Package callerPkg,
 			Unifiable<?> argsTerm, Reified<?> answerTerm, SemiringStore value) {

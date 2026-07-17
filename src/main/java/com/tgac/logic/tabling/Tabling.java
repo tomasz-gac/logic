@@ -83,8 +83,8 @@ public class Tabling {
 	 * <pre>
 	 * 1. Reify the argument tuple in the current state to create the lookup key
 	 * 2. Look up the call in the solve-scoped table
-	 * 3. A new call becomes master and executes the body, caching answer terms
-	 * 4. An existing call consumes cached answer terms, parking when it catches up
+	 * 3. A new call detaches an ANONYMOUS MASTER that executes the body, caching answer terms
+	 * 4. Every caller consumes cached answer terms, parking when it catches up
 	 * </pre>
 	 */
 	/*
@@ -97,9 +97,9 @@ public class Tabling {
 	 *               whatever call the site is executing inside (top: none).
 	 *   bodyPkg     callerPkg re-coated with THIS entry on call ENTRY — the
 	 *               coat is mail for the calls written inside the body.
-	 *   answerPkg   a body success, still wearing this call's coat; on call
-	 *               EXIT (the answer's downstream is the CALLER's code) it
-	 *               is re-coated back to the caller.
+	 *   answerPkg   a body success, wearing this call's coat; it ENDS at the
+	 *               answer cell. Answers reach callers only through their
+	 *               consumers, each running under its own caller's coat.
 	 *
 	 * Forks inherit the coat, parked registrations freeze it, wakes resume
 	 * it. A registration's coat is how billing works: the entry it parks IN
@@ -132,16 +132,20 @@ public class Tabling {
 				}
 				TableEntry<Object> entry = table.getOrCreateEntry(key);
 				if (entry.tryBecomeMaster()) {
-					EnclosingCall callerCall = EnclosingCall.current(callerPkg);
-					// the caller's running value at this call site, restored and
-					// ⊗-combined with each answer on the way out; the body runs from
-					// ONE so the cell stays caller-agnostic
-					Package bodyPkg = table.onExplore(entry, k, callerPkg, argsTerm, callerCall.entry())
-							.putStore(new EnclosingCall(entry));
-					// the seal fires EMIT: whatever the mode returns rides the sealing branch
-					entry.getRegion().onSealed(() -> table.onSeal(entry));
-					return Region.track(entry.getRegion(),
-							produce(entry, body.get(), bodyPkg, argsTerm, k, callerPkg, table));
+					// the ANONYMOUS MASTER: the body runs as detached work billed
+					// to this entry — it belongs to no caller. Every caller, the
+					// first included, reads the cell as a consumer; the sleeper it
+					// parks is the dependency edge completion detection needs, so
+					// a caller can never seal ahead of a call it depends on. The
+					// body still runs from the first caller's state — the variant
+					// call pattern lives in its substitutions — reset to a fresh,
+					// caller-agnostic running value by the mode
+					Package bodyPkg = table.onExplore(callerPkg).putStore(new EnclosingCall(entry));
+					// the seal fires EMIT: the drained subscribers are its targets
+					entry.getRegion().onSealed(drained -> table.onSeal(entry, drained));
+					return Fiber.detach(Region.track(entry.getRegion(),
+									produce(entry, body.get(), bodyPkg, argsTerm, table)))
+							.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
 				}
 				return consume(entry, k, callerPkg, argsTerm, 0, table);
 			});
@@ -197,51 +201,27 @@ public class Tabling {
 	}
 
 	/**
-	 * Master: execute the body with a caching hook in its continuation.
-	 * Each new answer is cached, the consumers parked on the entry are
-	 * respawned, and the answer flows on through the query. Duplicate
-	 * answers fail their branch.
+	 * The anonymous master: execute the body as a pure producer. Each new
+	 * answer is cached and the consumers parked on the entry are respawned —
+	 * the answer reaches callers only through their consumers, so this
+	 * fiber's completion means BODY EXHAUSTED, the event the counters need.
+	 * Duplicate answers fail their branch.
 	 */
 	private static Fiber<Nothing> produce(
 			TableEntry<Object> entry,
 			Goal goal,
 			Package bodyPkg,
 			Unifiable<?> argsTerm,
-			Fiber.Fn<Package, Nothing> k,
-			Package callerPkg,
 			Table table) {
-		EnclosingCall callerCall = EnclosingCall.current(callerPkg);
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm -> {
 				// what the cell caches: the term and the value this derivation
 				// carries — caller-agnostic, since the body ran from ONE
 				Tuple2<Reified<?>, Object> cached = table.onProduce(entry, answerPkg, answerTerm);
-				Object value = cached._2;
-				return entry.addAnswer(cached._1, value)
-							.map(parked -> respawn(entry, parked, table)
-									// detach-k: the answer's downstream is the CALLER's
-									// code, not this body's — detaching it makes this
-									// fiber's completion mean BODY EXHAUSTED, the event
-									// the counters need. Control exits the body here,
-									// so the answer is re-coated to the caller before k
-									// runs: the downstream parks AND is billed as the
-									// caller (a nested master's downstream can still
-									// derive caller answers, so the caller must not
-									// complete under it — table-completion.md §4). The
-									// mode combines the caller's running value with the answer.
-									.flatMap(__ -> {
-										// the coat is the skeleton's job: re-coat to the
-										// caller here, the mode handles values only
-										Package callerAnswerPkg = table.onExit(
-												answerPkg.putStore(callerCall),
-												entry, answerTerm, callerPkg, value);
-										Fiber<Nothing> downstream = Fiber.defer(() ->
-												k.apply(callerAnswerPkg));
-										return Fiber.detach(
-												Region.track(regionOf(callerCall.entry()), downstream));
-									}))
-							.getOrElse(() -> done(nothing()));
+				return entry.addAnswer(cached._1, cached._2)
+						.map(parked -> respawn(entry, parked, table))
+						.getOrElse(() -> done(nothing()));
 			});
 		});
 	}
@@ -288,7 +268,8 @@ public class Tabling {
 					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
 							.map(callerPkg::withSubstitutions)
 							// streaming ⊗s the cell value in; closed records the loop
-							.map(unifiedPkg -> table.onConsume(unifiedPkg, entry, answer._1, cellValue))
+							.map(unifiedPkg -> table.onConsume(unifiedPkg, entry, answer._1,
+									cellValue, EnclosingCall.entryOf(callerPkg)))
 							.map(weightedPkg -> k.apply(weightedPkg)
 									.flatMap(__ -> Fiber.defer(() ->
 											consume(entry, k, callerPkg, argsTerm, index + 1, table))))
@@ -315,11 +296,12 @@ public class Tabling {
 			int index,
 			Table table) {
 		if (entry.isComplete()) {
-			// sealed: no new answers can ever arrive — the caught-up reader is
-			// a finished branch, not a sleeper (racy read is safe: a stale
-			// false parks a dead registration, which ledgers accept as
-			// sealed-parked)
-			return done(nothing());
+			// sealed: no new answers can ever arrive — the chain ends here, and
+			// the mode decides what that means (a finished branch; or closed's
+			// value replay). Racy read is safe: a stale false parks a dead
+			// registration, which ledgers accept as sealed-parked
+			return table.onCaughtUp(entry,
+					new Registration(k, callerPkg, argsTerm, index, EnclosingCall.entryOf(callerPkg)));
 		}
 		// the parked state is callerPkg: its coat names the call this reader
 		// belongs to — the registration's enclosingCall, as opposed to

@@ -8,29 +8,27 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
-import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple2;
+import io.vavr.collection.List;
 
 /**
- * The algorithm plugged into the shared tabling skeleton — master / consumer /
- * park / completion, which every mode walks identically. The hooks are the
- * phases of a tabled call's life:
+ * The algorithm plugged into the shared tabling skeleton — anonymous master /
+ * consumers / park / completion, which every mode walks identically. The hooks
+ * are the phases of a tabled call's life:
  *
  * <pre>
- * EXPLORE   onExplore              the master claims the call, the body begins
- *           onConsume / onProduce  a derivation reads or derives an answer
- *           onExit                 an answer crosses back into the caller
+ * EXPLORE   onExplore              the anonymous master's body begins
+ *           onConsume / onProduce  a caller reads an answer / the body derives one
  * SEAL      onSeal                 the entry's answers are final
- * EMIT      the fiber onSeal returns
+ * EMIT      the fiber onSeal returns, delivered to the drained consumers
  * </pre>
  *
  * {@code Streaming} does all its work during explore (fold each answer's value
- * into the cell, hand it out as found) and its seal is inert; the weight
- * package's closed mode explores for structure only, then solves the star and
- * emits from {@code onSeal}. {@link Tabling} calls these hooks and never
- * branches on the mode, so each algorithm reads in one place. Coat
- * (EnclosingCall) handling is the skeleton's job, not a mode's: packages arrive
- * at these hooks already wearing the right call.
+ * into the cell, hand it out through the consumers as found) and its seal is
+ * inert; the weight package's closed mode explores for structure only, then
+ * solves the star and replays the drained consumers from {@code onSeal}.
+ * {@link Tabling} calls these hooks and never branches on the mode, so each
+ * algorithm reads in one place.
  */
 public interface TablingMode {
 
@@ -38,21 +36,34 @@ public interface TablingMode {
 	IdempotentSemiring<Object> cellSemiring();
 
 	/**
-	 * EXPLORE begins: the master has claimed {@code entry} and its body is about
-	 * to run. Returns the fresh, caller-agnostic body state (running value reset
-	 * to ONE). A mode that acts at seal records here what emit will need —
-	 * {@code k} is the master's continuation, {@code callerEntry} the tabled call
-	 * it was claimed from (null at the top level).
+	 * EXPLORE begins: an anonymous master is about to run the body. Returns the
+	 * fresh, caller-agnostic body state (running value reset to ONE) — derived
+	 * from the first caller's package, whose substitutions carry the call
+	 * pattern.
 	 */
-	Package onExplore(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry);
+	Package onExplore(Package callerPkg);
 
 	/**
-	 * A consumer has unified a cached answer against the call pattern. Streaming
-	 * ⊗s the cached cell value into the running value; closed records that this
-	 * derivation consumed a (still-open) SCC answer — a loop.
+	 * A consumer has unified a cached answer against the call pattern;
+	 * {@code readerEntry} is the tabled call the consumer runs inside (null at
+	 * the top level). Streaming ⊗s the cached cell value into the running
+	 * value. Closed: reading an OPEN entry records the loop and tags the
+	 * delivery a pre-star fragment; reading a SOLVED entry ⊗s the solved value
+	 * inline for a coated reader (its produce captures it) and stays a fragment
+	 * for a top-level one (the replay at its chain's end delivers).
 	 */
-	Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer, Object cellValue);
+	Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
+			Object cellValue, TableEntry<Object> readerEntry);
+
+	/**
+	 * A consumer caught up with a SEALED entry — the end of its chain (the
+	 * other ending is being drained at the seal itself, handed to
+	 * {@link #onSeal}). For streaming the answers already flowed inline — the
+	 * reader is a finished branch. Closed replays a top-level reader from index
+	 * 0 with the solved values, now or when the entry's closure solves; a
+	 * coated reader's contribution rides its captured edges instead.
+	 */
+	Fiber<Nothing> onCaughtUp(TableEntry<Object> entry, Registration reader);
 
 	/**
 	 * The body derived an answer. Returns what the cell caches — the term and its
@@ -62,21 +73,12 @@ public interface TablingMode {
 	Tuple2<Reified<?>, Object> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm);
 
 	/**
-	 * The answer leaves {@code entry}'s body back to its caller — already
-	 * re-coated to the caller by the skeleton. Streaming ⊗s the caller's running
-	 * value with {@code value} onto it. Closed restores the caller's context (its
-	 * store and loop-record from {@code callerPkg}) and records that the caller
-	 * consumed {@code (entry, answerTerm)} — the produce→caller half of edge
-	 * capture, mirroring {@link #onConsume} — then tags it a pre-star escape to drop.
+	 * SEAL: {@code entry}'s answers are final; no derivation can add one, and
+	 * {@code drained} are the consumers parked on it — dead branches for
+	 * streaming, EMIT targets for closed. The returned fiber is EMIT — it rides
+	 * the sealing branch and is stepped by the same scheduler drive. Inert for
+	 * streaming; closed solves each fully sealed dependency closure here and
+	 * replays the drained consumers with {@code x = A* ⊗ b}.
 	 */
-	Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value);
-
-	/**
-	 * SEAL: {@code entry}'s answers are final; no derivation can add one. The
-	 * returned fiber is EMIT — it rides the sealing branch and is stepped by the
-	 * same scheduler drive. Inert for streaming; closed solves each fully sealed
-	 * dependency closure here and replays the recorded continuations with
-	 * {@code x = A* ⊗ b}.
-	 */
-	Fiber<Nothing> onSeal(TableEntry<Object> entry);
+	Fiber<Nothing> onSeal(TableEntry<Object> entry, List<Registration> drained);
 }

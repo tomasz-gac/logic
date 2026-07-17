@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 /**
  * The termination-detection unit: a {@link MonotoneCell} (the region's
@@ -52,8 +51,12 @@ public final class Region<V, S> {
 	private final AtomicBoolean sealed = new AtomicBoolean(false);
 	private final Function<S, Region<V, S>> ownerOf;
 
-	/** Work to spawn the moment this region seals — the star bookkeeping. Inert by default. */
-	private Supplier<Fiber<Nothing>> onSealed = () -> done(nothing());
+	/**
+	 * Work to spawn the moment this region seals, given the subscribers drained
+	 * from the cell — dead branches for plain tabling, EMIT targets for closed
+	 * tabling. Inert by default.
+	 */
+	private Function<List<S>, Fiber<Nothing>> onSealed = drained -> done(nothing());
 
 	public Region(V initial, Function<S, Region<V, S>> ownerOf) {
 		this.cell = new MonotoneCell<>(initial);
@@ -61,7 +64,7 @@ public final class Region<V, S> {
 	}
 
 	/** Register the fiber to spawn when this region seals (closed tabling's solve-and-emit). */
-	public void onSealed(Supplier<Fiber<Nothing>> work) {
+	public void onSealed(Function<List<S>, Fiber<Nothing>> work) {
 		this.onSealed = work;
 	}
 
@@ -165,8 +168,9 @@ public final class Region<V, S> {
 		if (!sealed.compareAndSet(false, true)) {
 			return null;
 		}
-		emits.add(onSealed.get());
-		return cell.drainParked();
+		List<S> drained = cell.drainParked();
+		emits.add(onSealed.apply(drained));
+		return drained;
 	}
 
 	/**
@@ -225,8 +229,9 @@ public final class Region<V, S> {
 		List<S> dead = List.empty();
 		for (Region<V, S> member : members.keySet()) {
 			if (member.sealed.compareAndSet(false, true)) {
-				emits.add(member.onSealed.get());
-				dead = dead.appendAll(member.cell.drainParked());
+				List<S> drained = member.cell.drainParked();
+				emits.add(member.onSealed.apply(drained));
+				dead = dead.appendAll(drained);
 			}
 		}
 		return dead;

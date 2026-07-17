@@ -385,6 +385,30 @@ public class ClosedTablingTest {
 		assertThat(values).containsExactly(3L);
 	}
 
+	@Test
+	public void composedQueryMultipliesTwoSolvedCalls() {
+		// loop(1) called TWICE in one query: the second call consumes the entry the
+		// first call solved. Each call contributes x = step*·base; the query's value
+		// is x ⊗ x — the composed-query path through a solved entry.
+		Tabled<Tuple1<Unifiable<Integer>>> loop = Tabling.defineRecursive(self -> t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("base")))
+						.or(unify(x, lval(1))
+								.and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("step")))
+								.and(Goal.defer(() -> self.apply(t))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+		Unifiable<Integer> out = lvar();
+
+		List<Tuple2<Reified<Integer>, SemiringStore>> answers = Weights.solveClosed(
+						loop.apply(Tuple.of(lval(1))).and(loop.apply(Tuple.of(lval(1)))),
+						out, ring, BreadthFirstScheduler::new)
+				.collect(Collectors.toList());
+
+		assertThat(answers).hasSize(1);
+		Provenance x = answers.get(0)._2.get(Semirings.PROVENANCE);
+		Provenance once = Provenance.cat(Provenance.star(Provenance.sym("step")), Provenance.sym("base"));
+		assertThat(x.sameLanguage(Provenance.cat(once, once), 6)).isTrue();
+	}
+
 	private static Table closedTable(ClosedSemiring<SemiringStore> ring) {
 		return Table.of(new Closed(ring));
 	}
