@@ -245,12 +245,19 @@ public class Tabling {
 		Fiber<Nothing> result = done(nothing());
 		for (Registration r : parked) {
 			TableEntry<?> enclosingCall = r.getEnclosingCall();
+			Fiber<Nothing> consumer = Fiber.defer(() ->
+					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex(), table));
+			// count the respawned consumer as RUNNING before removing its SLEEPING
+			// record — the transition must never leave a window where the sleeper is
+			// gone but the running count has not risen, or a racing seal (parallel
+			// schedulers) reads the owner as quiescent and seals it out from under
+			// this consumer, losing the answers it would derive. Over-counting for
+			// the instant between only delays a seal, which is always sound.
+			Fiber<Nothing> tracked = Region.track(regionOf(enclosingCall), consumer);
 			if (enclosingCall != null) {
 				enclosingCall.getRegion().awake(r);
 			}
-			Fiber<Nothing> consumer = Fiber.defer(() ->
-					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex(), table));
-			result = result.flatMap(__ -> Fiber.detach(Region.track(regionOf(enclosingCall), consumer)));
+			result = result.flatMap(__ -> Fiber.detach(tracked));
 		}
 		return result;
 	}
