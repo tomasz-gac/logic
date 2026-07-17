@@ -3,7 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: Maps tabled goal calls to their table entries for the duration of one solve.
 // ABOUTME: Rides the package's store map and delegates per-step decisions to its mode.
 
-import com.tgac.functional.algebra.IdempotentSemiring;
+import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -40,8 +40,8 @@ public class Table implements Packaged {
 
 	/** Every answer carries the same presence marker — the set-tabling cell. */
 	@SuppressWarnings("unchecked")
-	private static final IdempotentSemiring<Object> PRESENCE =
-			(IdempotentSemiring<Object>) (IdempotentSemiring<?>) Semirings.BOOLEAN;
+	private static final BoundedSemiring<Object> PRESENCE =
+			(BoundedSemiring<Object>) (BoundedSemiring<?>) Semirings.BOOLEAN;
 
 	/** Map from calls to their table entries */
 	private final ConcurrentHashMap<Call, TableEntry<Object>> entries = new ConcurrentHashMap<>();
@@ -65,8 +65,10 @@ public class Table implements Packaged {
 	/**
 	 * Weighted tabling: the answer cell folds by {@code semiring}, and the
 	 * accessors read and set the derivation's running value on the package.
+	 * Bounded is streaming's termination guarantee ({@code a* = 1}); an
+	 * unbounded ring belongs to the closed mode.
 	 */
-	public static Table weighted(IdempotentSemiring<Object> semiring,
+	public static Table weighted(BoundedSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
 			BiFunction<Package, Object, Package> weightWriter) {
 		return new Table(new Streaming(semiring, weightReader, weightWriter), null);

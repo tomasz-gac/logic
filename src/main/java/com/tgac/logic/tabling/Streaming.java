@@ -6,6 +6,7 @@ package com.tgac.logic.tabling;
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 
+import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -19,20 +20,22 @@ import java.util.function.Function;
 
 /**
  * The streaming algorithm: an answer's running value is read off its package,
- * folded into the cell by the (idempotent) semiring, and handed straight on —
- * all its work happens during EXPLORE, and its seal is inert. A bounded
- * semiring makes cyclic re-derivation stationary ({@code a* = 1}), so the
- * search terminates without a seal-time solve. The presence instance (a Boolean
- * cell, no-op accessors) is plain set tabling; a real semiring with real
- * accessors is bounded-weighted tabling.
+ * folded into the cell, and handed straight on — all its work happens during
+ * EXPLORE, and its seal is inert. Holding a {@link BoundedSemiring} is the
+ * termination guarantee, not a convenience: {@code a* = 1} makes cyclic
+ * re-derivation stationary, so streaming through a loop converges. A merely
+ * idempotent semiring (provenance) would amplify around the loop forever —
+ * that is the closed mode's job. The presence instance (a Boolean cell, no-op
+ * accessors) is plain set tabling; a real semiring with real accessors is
+ * bounded-weighted tabling.
  */
 final class Streaming implements TablingMode {
 
-	private final IdempotentSemiring<Object> semiring;
+	private final BoundedSemiring<Object> semiring;
 	private final Function<Package, Object> weightReader;
 	private final BiFunction<Package, Object, Package> weightWriter;
 
-	Streaming(IdempotentSemiring<Object> semiring,
+	Streaming(BoundedSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
 			BiFunction<Package, Object, Package> weightWriter) {
 		this.semiring = semiring;

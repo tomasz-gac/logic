@@ -7,7 +7,6 @@ import static com.tgac.functional.category.Nothing.nothing;
 
 import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.ClosedSemiring;
-import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -113,9 +112,9 @@ public final class Weights {
 
 	/** A table whose cell folds by {@code product} and whose running value is the SemiringStore. */
 	@SuppressWarnings("unchecked")
-	private static Table weightedTable(IdempotentSemiring<SemiringStore> product) {
+	private static Table weightedTable(BoundedSemiring<SemiringStore> product) {
 		return Table.weighted(
-				(IdempotentSemiring<Object>) (IdempotentSemiring<?>) product,
+				(BoundedSemiring<Object>) (BoundedSemiring<?>) product,
 				p -> p.getStores().get(SemiringStore.class).getOrElse(product.one()),
 				(p, v) -> p.putStore((SemiringStore) v));
 	}
