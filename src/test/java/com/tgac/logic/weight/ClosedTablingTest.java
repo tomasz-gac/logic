@@ -316,12 +316,82 @@ public class ClosedTablingTest {
 		assertThat((Double) answers.get(0)._2.get(PROB)).isCloseTo(1.0, within(1e-9));
 	}
 
+	@Test
+	public void provenanceShowsTheMutualLoopStructure() {
+		// The same mutual pair under provenance makes the joint system legible:
+		//   a(1) :- factor("a") | factor("p"), b(2)
+		//   b(2) :- factor("b") | factor("q"), a(1)
+		// x_a = a ⊕ p·x_b and x_b = b ⊕ q·x_a solve to x_a = (p·q)*·(a + p·b) —
+		// the cross-entry cycle p·q shows up as one star.
+		class Mutual {
+			Tabled<Tuple1<Unifiable<Integer>>> a;
+			Tabled<Tuple1<Unifiable<Integer>>> b;
+		}
+		Mutual m = new Mutual();
+		m.a = Tabling.define(t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("a")))
+						.or(unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("p")))
+								.and(Goal.defer(() -> m.b.apply(Tuple.of(lval(2))))))));
+		m.b = Tabling.define(t -> t.apply(x ->
+				unify(x, lval(2)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("b")))
+						.or(unify(x, lval(2)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("q")))
+								.and(Goal.defer(() -> m.a.apply(Tuple.of(lval(1))))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
+		Unifiable<Integer> out = lvar();
+
+		List<Tuple2<Reified<Integer>, SemiringStore>> answers =
+				Weights.solveClosed(m.a.apply(Tuple.of(lval(1))), out, ring, BreadthFirstScheduler::new)
+						.collect(Collectors.toList());
+
+		assertThat(answers).hasSize(1);
+		Provenance x = answers.get(0)._2.get(Semirings.PROVENANCE);
+		Provenance expected = Provenance.cat(
+				Provenance.star(Provenance.cat(Provenance.sym("p"), Provenance.sym("q"))),
+				Provenance.alt(Provenance.sym("a"),
+						Provenance.cat(Provenance.sym("p"), Provenance.sym("b"))));
+		assertThat(x.sameLanguage(expected, 7)).isTrue();
+	}
+
+	@Test
+	public void solveClosedSolvesMutualRecursion() {
+		// Two mutually recursive tabled relations — one SCC across TWO entries.
+		// Distinct args so their answer terms don't collide:
+		//   a(1) :- factor(5) | factor(1), b(2)
+		//   b(2) :- factor(2) | factor(1), a(1)
+		// min-plus: x_a = min(5, 1 + x_b), x_b = min(2, 1 + x_a) => x_a = 3, x_b = 2.
+		// The a->b->exit path (1+2) beats a's own base (5), so the answer needs the
+		// cross-entry coupling the group seal completes.
+		class Mutual {
+			Tabled<Tuple1<Unifiable<Integer>>> a;
+			Tabled<Tuple1<Unifiable<Integer>>> b;
+		}
+		Mutual m = new Mutual();
+		m.a = Tabling.define(t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(Semirings.MIN_PLUS, 5L))
+						.or(unify(x, lval(1)).and(Weights.factor(Semirings.MIN_PLUS, 1L))
+								.and(Goal.defer(() -> m.b.apply(Tuple.of(lval(2))))))));
+		m.b = Tabling.define(t -> t.apply(x ->
+				unify(x, lval(2)).and(Weights.factor(Semirings.MIN_PLUS, 2L))
+						.or(unify(x, lval(2)).and(Weights.factor(Semirings.MIN_PLUS, 1L))
+								.and(Goal.defer(() -> m.a.apply(Tuple.of(lval(1))))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.MIN_PLUS);
+		Unifiable<Integer> out = lvar();
+
+		List<Long> values =
+				Weights.solveClosed(m.a.apply(Tuple.of(lval(1))), out, ring, BreadthFirstScheduler::new)
+						.map(t -> t._2.get(Semirings.MIN_PLUS))
+						.collect(Collectors.toList());
+
+		assertThat(values).containsExactly(3L);
+	}
+
 	@SuppressWarnings("unchecked")
 	private static Table closedTable(ClosedSemiring<SemiringStore> ring) {
 		return Table.closed(
 				(ClosedSemiring<Object>) (ClosedSemiring<?>) ring,
 				p -> p.getStores().get(SemiringStore.class).getOrElse(ring.one()),
 				(p, v) -> p.putStore((SemiringStore) v),
-				entry -> (Map<Reified<?>, Object>) (Map<Reified<?>, ?>) StarTabling.solve(entry, ring));
+				entries -> (Map<TableEntry<?>, Map<Reified<?>, Object>>) (Map<TableEntry<?>, ?>)
+						StarTabling.solveGroup(entries, ring));
 	}
 }

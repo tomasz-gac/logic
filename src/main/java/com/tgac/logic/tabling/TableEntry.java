@@ -10,6 +10,7 @@ import com.tgac.logic.tabling.primitives.Region;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import io.vavr.Tuple3;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.Map;
@@ -93,18 +94,20 @@ public class TableEntry<V> {
 	}
 
 	/**
-	 * Edge coefficients captured during CLOSED exploration: keyed by (to, from) —
-	 * the answer produced and the SCC-answer consumed — the star's matrix A_ij,
-	 * folded by ⊕ over multiple one-step ways.
+	 * Edge coefficients captured during CLOSED exploration: keyed by
+	 * {@code (toTerm, fromEntry, fromTerm)} — the answer produced here and the
+	 * SCC-answer consumed (with the entry it came from, so cross-entry edges in a
+	 * mutually recursive group place correctly). The star's matrix A_ij, folded by
+	 * ⊕ over multiple one-step ways.
 	 */
-	private final Map<Tuple2<Reified<?>, Reified<?>>, Object> edges = new ConcurrentHashMap<>();
+	private final Map<Tuple3<Reified<?>, TableEntry<Object>, Reified<?>>, Object> edges = new ConcurrentHashMap<>();
 
-	/** ⊕-fold {@code value} into the edge {@code to ← from}'s coefficient. */
-	public void addEdge(Reified<?> to, Reified<?> from, Object value, Semiring<Object> ring) {
-		edges.merge(Tuple.of(to, from), value, ring::plus);
+	/** ⊕-fold {@code value} into the edge {@code toTerm ← (fromEntry, fromTerm)}'s coefficient. */
+	public void addEdge(Reified<?> to, TableEntry<Object> fromEntry, Reified<?> fromTerm, Object value, Semiring<Object> ring) {
+		edges.merge(Tuple.of(to, fromEntry, fromTerm), value, ring::plus);
 	}
 
-	public Map<Tuple2<Reified<?>, Reified<?>>, Object> edges() {
+	public Map<Tuple3<Reified<?>, TableEntry<Object>, Reified<?>>, Object> edges() {
 		return edges;
 	}
 

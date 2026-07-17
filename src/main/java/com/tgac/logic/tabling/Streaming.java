@@ -65,8 +65,9 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
-	public Package onExit(Package answerPkg, EnclosingCall callerCall, Object callerWeight, Object value) {
-		return weightWriter.apply(answerPkg.putStore(callerCall), semiring.times(callerWeight, value));
+	public Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value) {
+		return weightWriter.apply(answerPkg.putStore(EnclosingCall.current(callerPkg)),
+				semiring.times(weightReader.apply(callerPkg), value));
 	}
 
 	@Override

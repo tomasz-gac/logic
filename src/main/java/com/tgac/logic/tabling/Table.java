@@ -14,6 +14,7 @@ import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -81,7 +82,7 @@ public class Table implements Packaged {
 	public static Table closed(ClosedSemiring<Object> closedSemiring,
 			Function<Package, Object> storeReader,
 			BiFunction<Package, Object, Package> storeWriter,
-			Function<TableEntry<?>, Map<Reified<?>, Object>> starSolve) {
+			Function<List<TableEntry<?>>, Map<TableEntry<?>, Map<Reified<?>, Object>>> starSolve) {
 		return new Table(new Closed(closedSemiring, storeReader, storeWriter, starSolve), null);
 	}
 
@@ -124,8 +125,8 @@ public class Table implements Packaged {
 		return mode.onProduce(entry, answerPkg, answerTerm);
 	}
 
-	Package onExit(Package answerPkg, EnclosingCall callerCall, Object callerWeight, Object value) {
-		return mode.onExit(answerPkg, callerCall, callerWeight, value);
+	Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value) {
+		return mode.onExit(answerPkg, entry, answerTerm, callerPkg, value);
 	}
 
 	void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,

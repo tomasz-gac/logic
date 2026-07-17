@@ -44,10 +44,13 @@ interface TablingMode {
 	Reified<?> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm);
 
 	/**
-	 * The caller-facing answer leaving the body: streaming ⊗s {@code callerWeight ⊗
-	 * value} onto it, closed re-coats and tags it as a pre-star escape to drop.
+	 * The answer leaving {@code entry}'s body back to its caller. Streaming ⊗s the
+	 * caller's running value with {@code value} onto it. Closed restores the caller's
+	 * context (its store and loop-record from {@code callerPkg}) and records that the
+	 * caller consumed {@code (entry, answerTerm)} — the produce→caller half of edge
+	 * capture, mirroring {@link #onConsume} — then tags it a pre-star escape to drop.
 	 */
-	Package onExit(Package answerPkg, EnclosingCall callerCall, Object callerWeight, Object value);
+	Package onExit(Package answerPkg, TableEntry<Object> entry, Reified<?> answerTerm, Package callerPkg, Object value);
 
 	/** Wire this master's seal behaviour: closed emits the star, streaming does nothing. */
 	void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,

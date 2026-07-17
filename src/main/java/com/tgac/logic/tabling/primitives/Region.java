@@ -52,7 +52,7 @@ public final class Region<V, S> {
 	private final AtomicBoolean sealed = new AtomicBoolean(false);
 	private final Function<S, Region<V, S>> ownerOf;
 
-	/** Work to spawn the moment this region seals — the star emit. Inert by default. */
+	/** Work to spawn the moment this region seals — the star bookkeeping. Inert by default. */
 	private Supplier<Fiber<Nothing>> onSealed = () -> done(nothing());
 
 	public Region(V initial, Function<S, Region<V, S>> ownerOf) {
@@ -60,7 +60,7 @@ public final class Region<V, S> {
 		this.ownerOf = ownerOf;
 	}
 
-	/** Register the fiber to spawn when this region seals (closed tabling's emit). */
+	/** Register the fiber to spawn when this region seals (closed tabling's solve-and-emit). */
 	public void onSealed(Supplier<Fiber<Nothing>> work) {
 		this.onSealed = work;
 	}

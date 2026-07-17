@@ -136,11 +136,10 @@ public class Tabling {
 					// the caller's running value at this call site, restored and
 					// ⊗-combined with each answer on the way out; the body runs from
 					// ONE so the cell stays caller-agnostic
-					Object callerWeight = table.callerValue(callerPkg);
 					Package bodyPkg = table.enterBody(callerPkg).putStore(new EnclosingCall(entry));
 					table.onMasterClaim(entry, k, callerPkg, argsTerm, callerCall);
 					return Region.track(entry.getRegion(),
-							produce(entry, body.get(), bodyPkg, argsTerm, k, callerCall, callerWeight, table));
+							produce(entry, body.get(), bodyPkg, argsTerm, k, callerPkg, table));
 				}
 				return consume(entry, k, callerPkg, argsTerm, 0, table);
 			});
@@ -207,9 +206,9 @@ public class Tabling {
 			Package bodyPkg,
 			Unifiable<?> argsTerm,
 			Fiber.Fn<Package, Nothing> k,
-			EnclosingCall callerCall,
-			Object callerWeight,
+			Package callerPkg,
 			Table table) {
+		EnclosingCall callerCall = EnclosingCall.current(callerPkg);
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
 			// the value this derivation carries from the call's inputs to the
@@ -230,7 +229,7 @@ public class Tabling {
 									// mode combines the caller's running value with the answer.
 									.flatMap(__ -> {
 										Package callerAnswerPkg =
-												table.onExit(answerPkg, callerCall, callerWeight, value);
+												table.onExit(answerPkg, entry, answerTerm, callerPkg, value);
 										Fiber<Nothing> downstream = Fiber.defer(() ->
 												k.apply(callerAnswerPkg));
 										return Fiber.detach(

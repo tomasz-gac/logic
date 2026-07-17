@@ -19,6 +19,7 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.tabling.Exploration;
 import com.tgac.logic.tabling.Table;
+import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -155,7 +156,8 @@ public final class Weights {
 				(ClosedSemiring<Object>) (ClosedSemiring<?>) ring,
 				p -> p.getStores().get(SemiringStore.class).getOrElse(ring.one()),
 				(p, v) -> p.putStore((SemiringStore) v),
-				entry -> (Map<Reified<?>, Object>) (Map<Reified<?>, ?>) StarTabling.solve(entry, ring));
+				entries -> (Map<TableEntry<?>, Map<Reified<?>, Object>>) (Map<TableEntry<?>, ?>)
+						StarTabling.solveGroup(entries, ring));
 	}
 
 	private static Package seed(Semiring<SemiringStore> product) {

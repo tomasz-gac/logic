@@ -47,6 +47,11 @@ public final class SemiringStore implements Packaged {
 		return new SemiringStore(values.put(ring, value));
 	}
 
+	@Override
+	public String toString() {
+		return values.values().toString();
+	}
+
 	/**
 	 * The product semiring over {@code rings}: elements are stores holding one
 	 * value per ring, combined componentwise. Lawful whenever each ring is
