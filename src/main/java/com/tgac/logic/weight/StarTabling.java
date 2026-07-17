@@ -1,97 +1,77 @@
 package com.tgac.logic.weight;
 
-// ABOUTME: Solves a sealed closed-tabling group jointly: gather every member entry's
-// ABOUTME: base/edges into one matrix over all their answers, run the Kleene star.
+// ABOUTME: Solves a sealed dependency closure: index its nodes, read base/edge off
+// ABOUTME: the graph into one matrix over all its answers, run the Kleene star.
 
 import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.unification.Reified;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
-import io.vavr.Tuple3;
 import io.vavr.collection.Array;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Turns a sealed group's captured base and edge maps (§4.1) into the answer
- * values {@code x = A* ⊗ b} (docs/design/star-tabling.md §4.4). A group is a whole
- * SCC — one entry (self-loop, left recursion) or several (mutual recursion) that
- * seal together. Every member's answers share one global index, so a cross-entry
- * edge {@code a's answer ← b's answer} places into the joint matrix and the
- * coupling is solved once. Pure — no fibers, no scheduler.
+ * Turns a sealed closure's slice of the {@link DependencyGraph} into the answer
+ * values {@code x = A* ⊗ b} (docs/design/star-tabling.md §4.4). A closure is a
+ * whole SCC — one entry (self-loop, left recursion) or several (mutual recursion)
+ * plus any already-solved entries it references as constants — that seal together.
+ * Every member's answers share one global index, so a cross-entry edge places
+ * into the joint matrix and the coupling is solved once. Pure — no fibers.
  */
-public final class StarTabling {
+final class StarTabling {
 
 	private StarTabling() {
 	}
 
-	/** Convenience for a one-entry group (self-loop / left recursion). */
-	public static <S> Map<Reified<?>, S> solve(TableEntry<?> entry, ClosedSemiring<S> ring) {
-		return solveGroup(Collections.singletonList(entry), ring).get(entry);
-	}
-
-	public static <S> Map<TableEntry<?>, Map<Reified<?>, S>> solveGroup(
-			List<TableEntry<?>> entries, ClosedSemiring<S> ring) {
-		// one global index over every (entry, answer) in the group
-		Map<Tuple2<TableEntry<?>, Reified<?>>, Integer> index = new LinkedHashMap<>();
-		List<Tuple2<TableEntry<?>, Reified<?>>> keys = new ArrayList<>();
-		for (TableEntry<?> entry : entries) {
+	static Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solveGroup(
+			Collection<TableEntry<Object>> entries, DependencyGraph graph, ClosedSemiring<SemiringStore> ring) {
+		// one global index over every (entry, answer) node in the closure
+		Map<Node, Integer> index = new LinkedHashMap<>();
+		List<Node> nodes = new ArrayList<>();
+		for (TableEntry<Object> entry : entries) {
 			for (int i = 0; i < entry.getAnswerCount(); i++) {
-				Tuple2<TableEntry<?>, Reified<?>> key = Tuple.of(entry, entry.getAnswerAt(i)._1);
-				index.put(key, keys.size());
-				keys.add(key);
+				Node node = new Node(entry, entry.getAnswerAt(i)._1);
+				index.put(node, nodes.size());
+				nodes.add(node);
 			}
 		}
-		int n = keys.size();
+		int n = nodes.size();
 
-		Array<S> b = Array.empty();
-		for (Tuple2<TableEntry<?>, Reified<?>> key : keys) {
-			b = b.append(value(key._1.baseWeights().get(key._2), ring));
+		Array<SemiringStore> b = Array.empty();
+		for (Node node : nodes) {
+			b = b.append(graph.base(node));
 		}
 
-		Object[][] a = new Object[n][n];
-		for (Object[] row : a) {
+		SemiringStore[][] a = new SemiringStore[n][n];
+		for (SemiringStore[] row : a) {
 			java.util.Arrays.fill(row, ring.zero());
 		}
-		for (TableEntry<?> entry : entries) {
-			for (Map.Entry<Tuple3<Reified<?>, TableEntry<Object>, Reified<?>>, Object> edge : entry.edges().entrySet()) {
-				Integer i = index.get(Tuple.of(entry, edge.getKey()._1));
-				Integer j = index.get(Tuple.of((TableEntry<?>) edge.getKey()._2, edge.getKey()._3));
-				if (i != null && j != null) {
-					a[i][j] = ring.plus(cast(a[i][j]), cast(edge.getValue()));
-				}
+		for (Edge edge : graph.edges()) {
+			Integer from = index.get(edge.getFrom());
+			Integer to = index.get(edge.getTo());
+			if (from != null && to != null) {
+				a[from][to] = ring.plus(a[from][to], graph.coefficient(edge));
 			}
 		}
 
-		Array<Array<S>> matrix = Array.empty();
+		Array<Array<SemiringStore>> matrix = Array.empty();
 		for (int i = 0; i < n; i++) {
-			Array<S> row = Array.empty();
+			Array<SemiringStore> row = Array.empty();
 			for (int j = 0; j < n; j++) {
-				row = row.append(cast(a[i][j]));
+				row = row.append(a[i][j]);
 			}
 			matrix = matrix.append(row);
 		}
 
-		Array<S> x = StarSolve.solve(ring, matrix, b);
-		Map<TableEntry<?>, Map<Reified<?>, S>> solved = new LinkedHashMap<>();
+		Array<SemiringStore> x = StarSolve.solve(ring, matrix, b);
+		Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solved = new LinkedHashMap<>();
 		for (int idx = 0; idx < n; idx++) {
-			Tuple2<TableEntry<?>, Reified<?>> key = keys.get(idx);
-			solved.computeIfAbsent(key._1, e -> new LinkedHashMap<>()).put(key._2, x.get(idx));
+			Node node = nodes.get(idx);
+			solved.computeIfAbsent(node.getEntry(), e -> new LinkedHashMap<>()).put(node.getAnswer(), x.get(idx));
 		}
 		return solved;
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <S> S value(Object captured, ClosedSemiring<S> ring) {
-		return captured == null ? ring.zero() : (S) captured;
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <S> S cast(Object o) {
-		return (S) o;
 	}
 }

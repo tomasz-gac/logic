@@ -1,7 +1,7 @@
 package com.tgac.logic.weight;
 
 // ABOUTME: Closed (star) tabling mode: explore for structure (presence cell + base/
-// ABOUTME: edge capture), solve each edge-graph SCC jointly once all its entries seal,
+// ABOUTME: edge capture into the DependencyGraph), solve each sealed closure jointly,
 // ABOUTME: emit by replaying each top-level reader chain with the solved values.
 
 import static com.tgac.functional.category.Nothing.nothing;
@@ -9,13 +9,11 @@ import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
-import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.tabling.Exploration;
-import com.tgac.logic.tabling.Recurrent;
 import com.tgac.logic.tabling.Registration;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.TablingMode;
@@ -24,13 +22,10 @@ import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.Tuple3;
 import io.vavr.collection.List;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,17 +34,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * The closed (star) algorithm, plugged into the tabling skeleton as a
  * {@link TablingMode}. Explore runs as plain set tabling — the cell is presence,
  * so it terminates — while the real value rides the {@link SemiringStore} and
- * every derivation's contribution is captured on the entry: a NON-looping
- * derivation is a base seed, a one-loop derivation is an edge coefficient
- * carrying the consumed (entry, answer) (star-tabling.md §4).
+ * every derivation's contribution is captured in the {@link DependencyGraph}: a
+ * NON-looping derivation is a base seed, a one-loop derivation an edge
+ * coefficient carrying the consumed {@link Node} (star-tabling.md §4).
  *
  * <p>SEALED ⟹ SOLVABLE. The completion machinery seals entries in dependency
  * order: every caller reads through a consumer whose parked sleeper blocks the
  * caller's seal until the callee's, so at any entry's seal its whole dependency
- * closure over the captured edge graph — the equation system's coupling — has
- * sealed too, earlier or atomically with it (a sleeper ring group-seals).
- * {@link #onSeal} therefore solves immediately at the closure's last
- * announcement ({@link StarTabling#solveGroup}); nothing waits across cascades.
+ * closure over the graph — the equation system's coupling — has sealed too,
+ * earlier or atomically with it (a sleeper ring group-seals). {@link #onSeal}
+ * therefore solves immediately at the closure's last announcement
+ * ({@link StarTabling#solveGroup}); nothing waits across cascades.
  *
  * <p>EMIT replays reader chains. During explore every consumer delivery is a
  * fragment (dropped at the collector); a chain ends at a sealed entry — drained
@@ -69,8 +64,8 @@ final class Closed implements TablingMode {
 			(IdempotentSemiring<Object>) (IdempotentSemiring<?>) Semirings.BOOLEAN;
 
 	private final ClosedSemiring<SemiringStore> ring;
-	/** The ring erased to the entry maps' element type. */
-	private final Semiring<Object> objectRing;
+	/** The equation system built during explore, read at each seal. */
+	private final DependencyGraph graph;
 
 	/** Each solved entry's answer values — read lock-free by {@link #onConsume}. */
 	private final Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solvedValues =
@@ -78,10 +73,14 @@ final class Closed implements TablingMode {
 	/** Ended top-level reader chains awaiting their entry's solve. Guarded by this. */
 	private final Map<TableEntry<Object>, ArrayList<Registration>> replayStash = new HashMap<>();
 
-	@SuppressWarnings("unchecked")
 	Closed(ClosedSemiring<SemiringStore> ring) {
 		this.ring = ring;
-		this.objectRing = (Semiring<Object>) (Semiring<?>) ring;
+		this.graph = new DependencyGraph(ring);
+	}
+
+	/** The equation graph — for inspection in tests. */
+	DependencyGraph graph() {
+		return graph;
 	}
 
 	private SemiringStore storeOf(Package pkg) {
@@ -118,22 +117,22 @@ final class Closed implements TablingMode {
 		// open (or sealed mid-solve): record the loop, tag the fragment
 		Recurrent prev = unifiedPkg.getStores().get(Recurrent.class)
 				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
-		return unifiedPkg.putStore(prev.and(entry, consumedAnswer)).putStore(Exploration.MARKER);
+		return unifiedPkg.putStore(prev.and(new Node(entry, consumedAnswer))).putStore(Exploration.MARKER);
 	}
 
 	@Override
 	public Tuple2<Reified<?>, Object> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
 		// 0 loops consumed → base seed, 1 → edge coefficient, ≥2 → nonlinear (outside
 		// the star). Captured before the dedup so multiplicity survives. The cell
-		// itself caches bare presence — the value lives on the entry's base/edge maps.
+		// itself caches bare presence — the value lives in the DependencyGraph.
 		Recurrent rec = answerPkg.getStores().get(Recurrent.class)
 				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
+		Node produced = new Node(entry, answerTerm);
 		SemiringStore value = storeOf(answerPkg);
 		if (rec.consumed.isEmpty()) {
-			entry.addBase(answerTerm, value, objectRing);
+			graph.addBase(produced, value);
 		} else if (rec.consumed.size() == 1) {
-			Tuple2<TableEntry<Object>, Reified<?>> from = rec.consumed.head();
-			entry.addEdge(answerTerm, from._1, from._2, value, objectRing);
+			graph.addEdge(new Edge(produced, rec.consumed.head()), value);
 		} else {
 			throw new IllegalStateException("nonlinear recursion: a derivation consumed "
 					+ rec.consumed.size() + " looping calls; star handles only linear systems");
@@ -186,7 +185,7 @@ final class Closed implements TablingMode {
 			// sealed in this cascade, solved by a racing one — replay the late stash
 			return replayStashed(entry);
 		}
-		Set<TableEntry<Object>> closure = dependencyClosure(entry);
+		Set<TableEntry<Object>> closure = graph.dependencyClosure(entry);
 		for (TableEntry<Object> member : closure) {
 			if (!member.isComplete()) {
 				return done(nothing());
@@ -195,31 +194,14 @@ final class Closed implements TablingMode {
 		return solveAndEmit(closure);
 	}
 
-	/** All entries {@code start}'s value transitively depends on, itself included. */
-	private Set<TableEntry<Object>> dependencyClosure(TableEntry<Object> start) {
-		Set<TableEntry<Object>> closure = new LinkedHashSet<>();
-		ArrayDeque<TableEntry<Object>> frontier = new ArrayDeque<>();
-		frontier.add(start);
-		while (!frontier.isEmpty()) {
-			TableEntry<Object> entry = frontier.poll();
-			if (!closure.add(entry)) {
-				continue;
-			}
-			for (Tuple3<Reified<?>, TableEntry<Object>, Reified<?>> edge : entry.edges().keySet()) {
-				frontier.add(edge._2);
-			}
-		}
-		return closure;
-	}
-
 	/**
 	 * Solve {@code closure} jointly (already-solved members recompute to the same
 	 * values — the maps froze at their seal), record the values, and replay every
 	 * member's stashed top-level readers.
 	 */
 	private Fiber<Nothing> solveAndEmit(Set<TableEntry<Object>> closure) {
-		Map<TableEntry<?>, Map<Reified<?>, SemiringStore>> values =
-				StarTabling.solveGroup(new ArrayList<TableEntry<?>>(closure), ring);
+		Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> values =
+				StarTabling.solveGroup(closure, graph, ring);
 		Fiber<Nothing> result = done(nothing());
 		for (TableEntry<Object> member : closure) {
 			solvedValues.putIfAbsent(member,

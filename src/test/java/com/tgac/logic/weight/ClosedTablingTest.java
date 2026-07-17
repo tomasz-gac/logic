@@ -26,6 +26,7 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
 import io.vavr.Tuple2;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -98,15 +99,15 @@ public class ClosedTablingTest {
 								.and(Weights.factor(Semirings.MIN_PLUS, 2L))
 								.and(Goal.defer(() -> self.apply(t))))));
 		BoundedSemiring<SemiringStore> ring = SemiringStore.boundedProduct(Semirings.MIN_PLUS);
-		Table table = closedTable(ring);
+		Closed closed = new Closed(ring);
+		Table table = Table.of(closed);
 		Unifiable<Integer> out = lvar();
 		Package root = Package.empty().withStore(table).withStore(ring.one());
 
 		loop.apply(Tuple.of(lval(1))).solveFrom(root, out, BreadthFirstScheduler::new).count();
 
-		TableEntry<Object> entry = table.entries().iterator().next();
-		assertThat(entry.baseWeights().values()).hasSize(1);
-		SemiringStore base = (SemiringStore) entry.baseWeights().values().iterator().next();
+		assertThat(closed.graph().bases().values()).hasSize(1);
+		SemiringStore base = closed.graph().bases().values().iterator().next();
 		assertThat(base.get(Semirings.MIN_PLUS)).isEqualTo(3L);
 	}
 
@@ -121,15 +122,15 @@ public class ClosedTablingTest {
 								.and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("step")))
 								.and(Goal.defer(() -> self.apply(t))))));
 		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
-		Table table = closedTable(ring);
+		Closed closed = new Closed(ring);
+		Table table = Table.of(closed);
 		Unifiable<Integer> out = lvar();
 		loop.apply(Tuple.of(lval(1)))
 				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
 				.count();
 
-		TableEntry<Object> entry = table.entries().iterator().next();
-		assertThat(entry.baseWeights().values()).hasSize(1);
-		SemiringStore base = (SemiringStore) entry.baseWeights().values().iterator().next();
+		assertThat(closed.graph().bases().values()).hasSize(1);
+		SemiringStore base = closed.graph().bases().values().iterator().next();
 		assertThat(base.get(Semirings.PROVENANCE).sameLanguage(Provenance.sym("base"), 3)).isTrue();
 	}
 
@@ -141,15 +142,15 @@ public class ClosedTablingTest {
 				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("a")))
 						.or(unify(x, lval(2)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("b"))))));
 		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
-		Table table = closedTable(ring);
+		Closed closed = new Closed(ring);
+		Table table = Table.of(closed);
 		Unifiable<Integer> out = lvar();
 		r.apply(Tuple.of(out))
 				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
 				.count();
 
-		TableEntry<Object> entry = table.entries().iterator().next();
-		List<String> bases = entry.baseWeights().values().stream()
-				.map(v -> ((SemiringStore) v).get(Semirings.PROVENANCE).toString())
+		List<String> bases = closed.graph().bases().values().stream()
+				.map(v -> v.get(Semirings.PROVENANCE).toString())
 				.sorted()
 				.collect(Collectors.toList());
 		assertThat(bases).containsExactly("a", "b");
@@ -164,15 +165,15 @@ public class ClosedTablingTest {
 				unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("a")))
 						.or(unify(x, lval(1)).and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("b"))))));
 		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
-		Table table = closedTable(ring);
+		Closed closed = new Closed(ring);
+		Table table = Table.of(closed);
 		Unifiable<Integer> out = lvar();
 		r.apply(Tuple.of(out))
 				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
 				.count();
 
-		TableEntry<Object> entry = table.entries().iterator().next();
-		assertThat(entry.baseWeights().values()).hasSize(1);
-		SemiringStore base = (SemiringStore) entry.baseWeights().values().iterator().next();
+		assertThat(closed.graph().bases().values()).hasSize(1);
+		SemiringStore base = closed.graph().bases().values().iterator().next();
 		Provenance ab = Provenance.alt(Provenance.sym("a"), Provenance.sym("b"));
 		assertThat(base.get(Semirings.PROVENANCE).sameLanguage(ab, 3)).isTrue();
 	}
@@ -187,15 +188,15 @@ public class ClosedTablingTest {
 								.and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("step")))
 								.and(Goal.defer(() -> self.apply(t))))));
 		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
-		Table table = closedTable(ring);
+		Closed closed = new Closed(ring);
+		Table table = Table.of(closed);
 		Unifiable<Integer> out = lvar();
 		loop.apply(Tuple.of(lval(1)))
 				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), out, BreadthFirstScheduler::new)
 				.count();
 
-		TableEntry<Object> entry = table.entries().iterator().next();
-		assertThat(entry.edges()).hasSize(1);
-		SemiringStore coeff = (SemiringStore) entry.edges().values().iterator().next();
+		assertThat(closed.graph().coefficients()).hasSize(1);
+		SemiringStore coeff = closed.graph().coefficients().values().iterator().next();
 		assertThat(coeff.get(Semirings.PROVENANCE).sameLanguage(Provenance.sym("step"), 3)).isTrue();
 	}
 
@@ -225,13 +226,15 @@ public class ClosedTablingTest {
 								.and(Weights.factor(Semirings.PROVENANCE, Provenance.sym("step")))
 								.and(Goal.defer(() -> self.apply(t))))));
 		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(Semirings.PROVENANCE);
-		Table table = closedTable(ring);
+		Closed closed = new Closed(ring);
+		Table table = Table.of(closed);
 		loop.apply(Tuple.of(lval(1)))
 				.solveFrom(Package.empty().withStore(table).withStore(ring.one()), lvar(), BreadthFirstScheduler::new)
 				.count();
 
 		TableEntry<Object> entry = table.entries().iterator().next();
-		Map<Reified<?>, SemiringStore> solved = StarTabling.solve(entry, ring);
+		Map<Reified<?>, SemiringStore> solved =
+				StarTabling.solveGroup(Collections.singleton(entry), closed.graph(), ring).get(entry);
 		assertThat(solved).hasSize(1);
 		Provenance x = solved.values().iterator().next().get(Semirings.PROVENANCE);
 		Provenance expected = Provenance.cat(Provenance.star(Provenance.sym("step")), Provenance.sym("base"));

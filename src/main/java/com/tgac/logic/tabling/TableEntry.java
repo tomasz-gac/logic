@@ -49,13 +49,6 @@ public class TableEntry<V> {
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
-	/**
-	 * Base weights captured during CLOSED exploration: per answer, the ⊕-sum of its
-	 * NON-looping derivations — the star's seed vector (star-tabling.md §4.1). Empty
-	 * for plain and streaming tabling.
-	 */
-	private final Map<Reified<?>, Object> baseWeights = new ConcurrentHashMap<>();
-
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		this.region = new Region<JoinMap<Reified<?>, V>, Registration>(
@@ -82,33 +75,6 @@ public class TableEntry<V> {
 	/** @return the drained subscribers to respawn, or none if the answer is a duplicate */
 	public Option<List<Registration>> addAnswer(Reified<?> answerTerm, V value) {
 		return region.grow(v -> v.append(answerTerm, value));
-	}
-
-	/** ⊕-fold {@code value} into {@code answer}'s base weight (closed tabling). */
-	public void addBase(Reified<?> answer, Object value, Semiring<Object> ring) {
-		baseWeights.merge(answer, value, ring::plus);
-	}
-
-	public Map<Reified<?>, Object> baseWeights() {
-		return baseWeights;
-	}
-
-	/**
-	 * Edge coefficients captured during CLOSED exploration: keyed by
-	 * {@code (toTerm, fromEntry, fromTerm)} — the answer produced here and the
-	 * SCC-answer consumed (with the entry it came from, so cross-entry edges in a
-	 * mutually recursive group place correctly). The star's matrix A_ij, folded by
-	 * ⊕ over multiple one-step ways.
-	 */
-	private final Map<Tuple3<Reified<?>, TableEntry<Object>, Reified<?>>, Object> edges = new ConcurrentHashMap<>();
-
-	/** ⊕-fold {@code value} into the edge {@code toTerm ← (fromEntry, fromTerm)}'s coefficient. */
-	public void addEdge(Reified<?> to, TableEntry<Object> fromEntry, Reified<?> fromTerm, Object value, Semiring<Object> ring) {
-		edges.merge(Tuple.of(to, fromEntry, fromTerm), value, ring::plus);
-	}
-
-	public Map<Tuple3<Reified<?>, TableEntry<Object>, Reified<?>>, Object> edges() {
-		return edges;
 	}
 
 	/** @return false if answers arrived past the consumer's index — keep reading */
