@@ -136,8 +136,10 @@ public class Tabling {
 					// the caller's running value at this call site, restored and
 					// ⊗-combined with each answer on the way out; the body runs from
 					// ONE so the cell stays caller-agnostic
-					Package bodyPkg = table.enterBody(callerPkg).putStore(new EnclosingCall(entry));
-					table.onMasterClaim(entry, k, callerPkg, argsTerm, callerCall.entry());
+					Package bodyPkg = table.onExplore(entry, k, callerPkg, argsTerm, callerCall.entry())
+							.putStore(new EnclosingCall(entry));
+					// the seal fires EMIT: whatever the mode returns rides the sealing branch
+					entry.getRegion().onSealed(() -> table.onSeal(entry));
 					return Region.track(entry.getRegion(),
 							produce(entry, body.get(), bodyPkg, argsTerm, k, callerPkg, table));
 				}
@@ -211,11 +213,12 @@ public class Tabling {
 		EnclosingCall callerCall = EnclosingCall.current(callerPkg);
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			assertNoConstraints(answerPkg, "on a tabled answer");
-			// the value this derivation carries from the call's inputs to the
-			// answer — caller-agnostic, since the body ran from ONE
-			Object value = table.cacheValue(answerPkg);
-			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm ->
-					entry.addAnswer(table.onProduce(entry, answerPkg, answerTerm), value)
+			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm -> {
+				// what the cell caches: the term and the value this derivation
+				// carries — caller-agnostic, since the body ran from ONE
+				Tuple2<Reified<?>, Object> cached = table.onProduce(entry, answerPkg, answerTerm);
+				Object value = cached._2;
+				return entry.addAnswer(cached._1, value)
 							.map(parked -> respawn(entry, parked, table)
 									// detach-k: the answer's downstream is the CALLER's
 									// code, not this body's — detaching it makes this
@@ -238,7 +241,8 @@ public class Tabling {
 										return Fiber.detach(
 												Region.track(regionOf(callerCall.entry()), downstream));
 									}))
-							.getOrElse(() -> done(nothing())));
+							.getOrElse(() -> done(nothing()));
+			});
 		});
 	}
 

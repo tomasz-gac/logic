@@ -12,6 +12,7 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple2;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -95,23 +96,16 @@ public class Table implements Packaged {
 
 	// ---- the mode's per-step hooks (see TablingMode) ----
 
-	Package enterBody(Package callerPkg) {
-		return mode.enterBody(callerPkg);
-	}
-
-	Object callerValue(Package callerPkg) {
-		return mode.callerValue(callerPkg);
+	Package onExplore(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
+			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
+		return mode.onExplore(entry, k, callerPkg, argsTerm, callerEntry);
 	}
 
 	Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer, Object cellValue) {
 		return mode.onConsume(unifiedPkg, entry, consumedAnswer, cellValue);
 	}
 
-	Object cacheValue(Package answerPkg) {
-		return mode.cacheValue(answerPkg);
-	}
-
-	Reified<?> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
+	Tuple2<Reified<?>, Object> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
 		return mode.onProduce(entry, answerPkg, answerTerm);
 	}
 
@@ -119,9 +113,8 @@ public class Table implements Packaged {
 		return mode.onExit(answerPkg, entry, answerTerm, callerPkg, value);
 	}
 
-	void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
-		mode.onMasterClaim(entry, k, callerPkg, argsTerm, callerEntry);
+	Fiber<Nothing> onSeal(TableEntry<Object> entry) {
+		return mode.onSeal(entry);
 	}
 
 	// ---- entries ----

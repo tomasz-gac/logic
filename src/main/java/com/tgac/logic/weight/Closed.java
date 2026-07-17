@@ -20,6 +20,7 @@ import com.tgac.logic.tabling.TablingMode;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
 import java.util.ArrayDeque;
@@ -43,7 +44,7 @@ import lombok.Value;
  * order quiescence allows — a mutually recursive pair can seal one at a time —
  * but an entry can only be SOLVED with its whole dependency closure over the
  * captured edge graph, which is exactly the equation system's coupling. So each
- * seal marks its entry pending, and {@link #onEntrySealed} solves a closure once
+ * seal marks its entry pending, and {@link #onSeal} solves a closure once
  * every member has sealed ({@link StarTabling#solveGroup}), then emits: a solved
  * entry's master continuation is replayed with {@code x = A* ⊗ b} only when its
  * caller is the top level — a caller inside another tabled entry already
@@ -96,14 +97,12 @@ final class Closed implements TablingMode {
 	}
 
 	@Override
-	public Package enterBody(Package callerPkg) {
-		// fresh derivation: real value reset to ONE, no loop record
+	public Package onExplore(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
+			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
+		// record what emit will need at seal, then start the body from a fresh
+		// derivation: real value reset to ONE, no loop record
+		contexts.put(entry, new EmitContext(entry, k, callerPkg, argsTerm, callerEntry == null));
 		return callerPkg.putStore(ring.one()).putStore(Recurrent.NONE);
-	}
-
-	@Override
-	public Object callerValue(Package callerPkg) {
-		return storeOf(callerPkg);
 	}
 
 	@Override
@@ -118,15 +117,10 @@ final class Closed implements TablingMode {
 	}
 
 	@Override
-	public Object cacheValue(Package answerPkg) {
-		// the presence cell carries no value; the real one is captured in onProduce
-		return Boolean.TRUE;
-	}
-
-	@Override
-	public Reified<?> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
+	public Tuple2<Reified<?>, Object> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
 		// 0 loops consumed → base seed, 1 → edge coefficient, ≥2 → nonlinear (outside
-		// the star). Captured before the dedup so multiplicity survives.
+		// the star). Captured before the dedup so multiplicity survives. The cell
+		// itself caches bare presence — the value lives on the entry's base/edge maps.
 		Recurrent rec = answerPkg.getStores().get(Recurrent.class)
 				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
 		SemiringStore value = storeOf(answerPkg);
@@ -139,7 +133,7 @@ final class Closed implements TablingMode {
 			throw new IllegalStateException("nonlinear recursion: a derivation consumed "
 					+ rec.consumed.size() + " looping calls; star handles only linear systems");
 		}
-		return answerTerm;
+		return Tuple.of(answerTerm, Boolean.TRUE);
 	}
 
 	@Override
@@ -155,19 +149,13 @@ final class Closed implements TablingMode {
 				.putStore(Exploration.MARKER);
 	}
 
-	@Override
-	public void onMasterClaim(TableEntry<Object> entry, Fiber.Fn<Package, Nothing> k,
-			Package callerPkg, Unifiable<?> argsTerm, TableEntry<Object> callerEntry) {
-		contexts.put(entry, new EmitContext(entry, k, callerPkg, argsTerm, callerEntry == null));
-		entry.getRegion().onSealed(() -> onEntrySealed(entry));
-	}
-
 	/**
 	 * One entry sealed. Solve every pending dependency closure that is now fully
 	 * sealed — possibly several, since one seal can complete closures deferred by
 	 * earlier seals — and return their emits as one fiber.
 	 */
-	private synchronized Fiber<Nothing> onEntrySealed(TableEntry<Object> entry) {
+	@Override
+	public synchronized Fiber<Nothing> onSeal(TableEntry<Object> entry) {
 		sealedPending.add(entry);
 		Fiber<Nothing> result = done(nothing());
 		boolean progress = true;
