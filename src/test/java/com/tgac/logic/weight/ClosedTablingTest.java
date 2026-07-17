@@ -8,6 +8,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.ClosedSemiring;
@@ -31,6 +32,39 @@ import java.util.stream.Collectors;
 import org.junit.Test;
 
 public class ClosedTablingTest {
+
+	/**
+	 * Probability (+, ×) over [0,1] with Kleene closure {@code a* = 1/(1-a)} — the
+	 * geometric series, valid for a &lt; 1. Kept test-local (see semiring-inference.md
+	 * §6): the star is a real probability only when the derivations summed are
+	 * mutually exclusive, as in the "first success at step k" encoding below.
+	 */
+	private static final ClosedSemiring<Double> PROB = new ClosedSemiring<Double>() {
+		@Override
+		public Double zero() {
+			return 0.0;
+		}
+
+		@Override
+		public Double one() {
+			return 1.0;
+		}
+
+		@Override
+		public Double plus(Double a, Double b) {
+			return a + b;
+		}
+
+		@Override
+		public Double times(Double a, Double b) {
+			return a * b;
+		}
+
+		@Override
+		public Double star(Double a) {
+			return 1.0 / (1.0 - a);
+		}
+	};
 
 	@Test
 	public void closedEmitsBaseAnswersLikeBounded() {
@@ -257,6 +291,29 @@ public class ClosedTablingTest {
 				.collect(Collectors.toList());
 
 		assertThat(lengths).containsExactly(1L, 2L, 3L);
+	}
+
+	@Test
+	public void solveClosedSumsAProbabilisticGeometricSeries() {
+		// Roll one die repeatedly; P(ever roll a 6). The disjoint "first 6 at step k"
+		// events give ever6 :- factor(1/6) | factor(5/6), ever6 — a self-loop with a
+		// constant coefficient. The star sums the geometric series: 6 * (1/6) = 1.
+		// (The growing "1, then 2, then 3, ..." version is outside the star: its loop
+		// coefficient depends on the round, so there is no finite constant matrix.)
+		Tabled<Tuple1<Unifiable<Integer>>> ever = Tabling.defineRecursive(self -> t -> t.apply(x ->
+				unify(x, lval(1)).and(Weights.factor(PROB, 1.0 / 6))
+						.or(unify(x, lval(1))
+								.and(Weights.factor(PROB, 5.0 / 6))
+								.and(Goal.defer(() -> self.apply(t))))));
+		ClosedSemiring<SemiringStore> ring = SemiringStore.closedProduct(PROB);
+		Unifiable<Integer> out = lvar();
+
+		List<Tuple2<Reified<Integer>, SemiringStore>> answers =
+				Weights.solveClosed(ever.apply(Tuple.of(lval(1))), out, ring, BreadthFirstScheduler::new)
+						.collect(Collectors.toList());
+
+		assertThat(answers).hasSize(1);
+		assertThat((Double) answers.get(0)._2.get(PROB)).isCloseTo(1.0, within(1e-9));
 	}
 
 	@SuppressWarnings("unchecked")
