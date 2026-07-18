@@ -177,6 +177,10 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/goals-as-data.md` — DESIGN SKETCH: the distribution story in
   three layers (Program front door, call-boundary runtime, fold-planner),
   none touching the engine.
+- `docs/design/assembler.md` — DESIGN, SHELVED: the closed GOAL semiring
+  (weights that are programs) — the (actuals, template) call-value, the
+  stationary-star theorem, emit-as-calls, the route-planner target example.
+  Waits for the human's go; do not propose building it.
 - `docs/design/method.md` — how this design process works: the loop, the
   moves, the placement razors, shelving with triggers.
 - This file — architecture, landmines, workflow.
