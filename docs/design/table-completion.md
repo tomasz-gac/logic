@@ -273,6 +273,63 @@ is not finished.
   one completes early (unsound — wrong prices, wrong negation). No algebra
   places the wrapping points; tests do.
 
+## 6a. The concurrency contract (as built, July 2026)
+
+The design is fine-grained monitors plus atomics, not "lock-free" in the
+literature sense: per-entry CELL monitor (MonotoneCell), per-entry LEDGER
+monitor (WorkLedger), a per-solve mode monitor (the weight package's
+Closed), and the seal as an AtomicBoolean. What makes it safe is a LOCK
+GRAPH and three INVARIANTS, each purchased by a parallel race found on a
+depth-8 stress chain (DeepParallelStressTest, `-Dtabling.iters` to crank;
+before the fixes it failed every run, after: 0 in 48k solves).
+
+**The lock graph — deadlock-freedom by shape.** Cell and ledger monitors
+are LEAVES: no method of either acquires anything while held (quiescent's
+predicate reads the seal ATOMIC, not a monitor; counted's on-finish
+cascade runs after taskFinished releases; grow/park take pure functions).
+The cascade and the group walk take one monitor AT A TIME — deliberately
+never two ledgers at once. The only nesting anywhere is one-directional:
+the closed mode's seal hook (mode monitor held) reads cell counts. One
+direction + leaf monitors = no cycle = no deadlock; and no monitor is
+ever held across user goal code or a scheduler step (fibers never block —
+park-as-data), so there is no hold-while-blocked hazard either. CAVEAT:
+this is a discipline, not a type — a future call-out under a ledger
+monitor could break it. Check this section before adding one.
+
+**The three invariants (each was a shipped race):**
+
+1. **Order: count the wake before removing the sleeper.** A woken
+   consumer's RUNNING tick (track) must precede its SLEEPING removal
+   (awake) — respawn's transition may over-count for an instant (delays a
+   seal, sound) but must never leave a window where the sleeper is gone
+   and the counter has not risen (a racing seal reads the owner quiescent
+   and seals under the consumer).
+2. **Atomic admission: one monitor hold per group-walk member.**
+   drained-ness, the started counter, and the sleeper places are read in
+   ONE ledger hold (drainedSnapshot). Read separately, a respawn
+   interleaves: drained sees the old quiet state, the snapshot records the
+   counter AFTER the spawn — so the phase-2 re-verify compares the new
+   value against itself — and the sleeper read sees the post-awake empty
+   set, hiding the edge that would have aborted the walk. Atomically, the
+   spawn lands wholly before (not drained) or wholly after (re-verify
+   mismatch).
+3. **Permanence closes read pairs no lock covers.** The caught-up check
+   and the seal read are separate; an answer AND the seal can land between
+   them. But sealed ⇒ the count is FINAL, so re-checking the count after
+   observing the seal is race-free by the flag's upward-closedness — the
+   same one-way-street logic that makes lock-free flag reads sound (§6).
+
+**Shelved WITH A TRIGGER: read-write-lock serialization.** The
+reasoning-simple alternative: hot paths (tick, park, grow, awake) under a
+shared READ lock, the seal decision under the WRITE lock — every race
+above becomes impossible by construction, at the cost of a shared lock
+acquisition on the hot path and the parallel throughput it taxes
+(unbenchmarked). Declined for now because each fix above strengthened a
+named invariant rather than adding a case, and the stress test guards
+them. THE TRIGGER: one more completion race. Three invariants is a
+protocol; four patches is whack-a-mole — at the next one, stop patching
+and write-lock the seal path.
+
 ## 7. Considered and declined: a failure continuation
 
 Double-barreled CPS (success + failure continuations, the classic

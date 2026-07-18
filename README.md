@@ -1,9 +1,9 @@
 # logic
 
 A relational (logic) programming engine for Java 8 — miniKanren with constraints,
-tabling, self-planning queries, and pluggable, fair search. Embeddable: your data
-stays Java objects, your queries are Java expressions, and answers come back as a
-`java.util.stream.Stream`.
+tabling, semiring-weighted inference, self-planning queries, and pluggable, fair
+search. Embeddable: your data stays Java objects, your queries are Java
+expressions, and answers come back as a `java.util.stream.Stream`.
 
 ```java
 Unifiable<LList<Integer>> xs = lvar(), ys = lvar(), zs = lvar();
@@ -37,6 +37,18 @@ The combination is the point — these rarely live in one system:
   no further answer can arrive (full SLG-style completion, including
   mutual-recursion rings), and completed calls become reusable data: a finished
   general call answers its instances without recomputation.
+- **Weighted inference** — attach a weight to any branch (`factor`) and the
+  same program answers quantitative questions: how many solutions (counting),
+  how likely (probability), cheapest path (min-plus), best derivation
+  (Viterbi), and *which facts, combined how* (provenance — the answer's
+  lineage as a regular expression). Rings compose in one product store, so one
+  pass computes several at once. Two tabled strategies, chosen by the ring's
+  TYPE: bounded semirings stream through the fixpoint (`solveBounded`); closed
+  semirings defer to the seal, where **recursion is solved, not run** —
+  a cyclic relation is read off as a linear equation system and its
+  infinitely many derivations are summed in closed form by Kleene star
+  (`solveClosed`). "Probability a retry loop ever succeeds" is one query,
+  answered exactly — the geometric series, not a truncated simulation.
 - **A self-planning optimizer** — every priceable goal declares the maximum
   number of answers it can emit; conjunctions sort cheapest-first around
   barriers, dead branches price to zero before they spawn, and a tabled call's
@@ -64,8 +76,15 @@ The engine's core claims are algebraic, and the code enforces them mechanically:
   bugs in mature code (an `X∩∅=X` in interval intersection among them).
 - Optional semiring capabilities are **types**, not flags: `IdempotentSemiring`
   (the dedup license), `ClosedSemiring` (Kleene star — "no closure" is
-  unrepresentable), `SuperiorSemiring` (best-first commitment). Call sites that
-  need a capability demand it in their signature.
+  unrepresentable), `BoundedSemiring` (`a⊕1=1`, hence `a*=1` — the exact
+  threshold at which streaming through a cycle terminates, and the type the
+  streaming path demands), `SuperiorSemiring` (best-first commitment). Call
+  sites that need a capability demand it in their signature — which is how
+  the engine picks stream-vs-star per solve, visibly, at the call site.
+- The weighted witnesses are law-checked like everything else — including
+  `Provenance`, the free closed semiring (regular expressions), whose star
+  laws hold up to *language* equivalence; the law kit takes the equivalence
+  as a parameter rather than pretending structural equality.
 - Tabling's completion detection is Dijkstra–Scholten termination detection
   built from the same discipline: monotone counters, an upward-closed seal flag
   readable without locks, and a generic `Region` primitive whose group-seal
@@ -160,6 +179,48 @@ call prices exactly, reorders freely, and serves more-specific calls from its
 cache — `ancestor("alice", Y)` completed means `ancestor("alice", "david")`
 is a lookup, not a search.
 
+### Weighted answers
+
+```java
+// two routes A→D; ask for count and cost IN ONE PASS
+Goal viaB = mid.unifies("B").and(factor(MIN_PLUS, 1L)).and(factor(MIN_PLUS, 5L));
+Goal viaC = mid.unifies("C").and(factor(MIN_PLUS, 2L)).and(factor(MIN_PLUS, 2L));
+
+SemiringStore total = Weights.solve(viaB.or(viaC),
+        SemiringStore.product(COUNTING, MIN_PLUS), BreadthFirstScheduler::new);
+total.get(COUNTING);   // 2 routes
+total.get(MIN_PLUS);   // 4 — the cheaper one
+```
+
+`factor` multiplies a weight along a derivation; `⊕` combines rival
+derivations; the ring decides what those mean. Through a *tabled* recursion the
+ring's type picks the strategy: a `BoundedSemiring` streams
+(`solveBounded` — min-plus shortest paths over cyclic graphs), a
+`ClosedSemiring` waits for completion and solves the recursion as equations
+(`solveClosed`):
+
+```java
+// retry loop: succeed now (1/6) or pay a step (5/6) and loop.
+// P(ever succeeds)? The star sums the geometric series: exactly 1.0.
+// PROB is user-defined — probability (+,×) with star a* = 1/(1−a); it is
+// kept out of Semirings deliberately (⊕-as-probability is only sound over
+// DISJOINT derivations, and that is the user's claim to make)
+Tabled<Tuple1<Unifiable<Integer>>> ever = Tabling.defineRecursive(self -> t ->
+        t.apply(x -> x.unifies(1).and(factor(PROB, 1.0 / 6))
+                .or(x.unifies(1).and(factor(PROB, 5.0 / 6))
+                        .and(defer(() -> self.apply(t))))));
+
+Weights.solveClosed(ever.apply(Tuple.of(lval(1))), out,
+        SemiringStore.closedProduct(PROB), BreadthFirstScheduler::new);
+// one answer, weight 1.0 — infinitely many derivations, summed in closed form
+```
+
+Under `PROVENANCE` the same query returns the *shape* of all those derivations
+as a finite regular expression (`step*·base`) — an executable audit trail for a
+recursive answer. Mutual recursion works (the coupled calls are solved as one
+matrix); nonlinear recursion (two recursive calls in one clause) is refused
+loudly — star closes linear systems only.
+
 ### The optimizer
 
 ```java
@@ -202,7 +263,10 @@ Embedded logic inside JVM systems: test-data generation (write the invariant as 
 relation, run it backwards, enumerate fairly), configurators and rule engines
 (valid-combination problems with recursive rules), deductive/Datalog-style queries
 over in-memory data, type checkers and program analyses for DSLs, puzzle-class
-constraint search and procedural generation.
+constraint search and procedural generation. The weighted layer adds the
+algebraic-path-problem family over the same programs — shortest/most-reliable/
+bottleneck routes, route counting, Markov absorption probabilities, lineage
+audits of recursive answers — one relation text, many rings.
 
 Scale honestly: bounds-consistency FD over tens-to-hundreds of variables, search
 spaces that fit propagation-then-label — decision support, not an industrial CP
@@ -225,17 +289,29 @@ solver (no global constraints yet; the extension point below is where they'd go)
   implement one interface; the propagator toolkit is `finitedomain`'s private
   machinery.
 - **Tabling** is built on three generic, logic-free primitives
-  (`tabling/primitives`): a `JoinSet` (answers as a join-semilattice value),
+  (`tabling/primitives`): a `JoinMap` (answers as a join-semilattice value),
   a `MonotoneCell` (grow-and-wake with parked subscribers), and a `WorkLedger`
   (who still works for a call, running or asleep) — composed into a `Region`
-  whose seal rule is the completion theorem.
+  whose seal rule is the completion theorem. A tabled body runs as an
+  **anonymous master** (detached work billed to its own call) and every
+  caller reads through a consumer, so entries seal in dependency order.
+  The concurrency contract — the lock graph and the three invariants that
+  keep completion sound under the fork/join scheduler — is written down in
+  `table-completion.md` §6a and guarded by a dedicated parallel stress test.
+- **Weighted tabling** is a strategy seam (`TablingMode`) on that skeleton:
+  `Streaming` folds values through the fixpoint; the weight package's
+  `Closed` mode explores structure only, records each derivation as a base
+  or an edge of a first-class equation graph, and at each seal runs
+  Floyd–Warshall/Kleene over the sealed closure and replays the reader
+  chains with the solved values.
 
 The design record lives in `docs/design/` — start with `lattice.md` (the
 engine's one algebra and its quotient tower), `constraint-kernel.md` (the
 constraint engine as shipped), `table-completion.md` (tabling's completion
-machinery), `method.md` (how the design process itself works), and `vision.md`
-(the north star and roadmap). `CLAUDE.md` carries the working-on-this map:
-landmines, seams, backlog.
+machinery), `star-tabling.md` (closed-semiring tabling: why streaming
+diverges, how star closes it), `method.md` (how the design process itself
+works), and `vision.md` (the north star and roadmap). `CLAUDE.md` carries
+the working-on-this map: landmines, seams, backlog.
 
 ## Status
 
@@ -243,6 +319,7 @@ A research/learning project, built with viability as a constraint rather than a
 goal: the designs are the kind that could be real (honest concurrency, measured
 claims, no toy shortcuts), but there is no release, no client base, and APIs
 move freely. Java 8, no runtime dependencies beyond vavr and the sibling
-`functional` library. ~400 tests, including law suites for every declared
-algebraic instance. If you're reading this as a source of ideas rather than a
+`functional` library. ~430 tests, including law suites for every declared
+algebraic instance and a parallel stress test on tabling's completion
+machinery. If you're reading this as a source of ideas rather than a
 dependency, `docs/design/` is the interesting part.
