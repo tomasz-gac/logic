@@ -13,7 +13,7 @@ import com.tgac.functional.algebra.Monoids;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.optimizer.Bounded;
+import com.tgac.logic.goals.optimizer.Barrier;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
@@ -36,6 +36,11 @@ import lombok.NoArgsConstructor;
  * empty solution set). The enclosed goal's variables do not leak: collected
  * answers are copied.
  *
+ * Every aggregate is a BARRIER: its answer is a fold over the sub-search AS
+ * RUN FROM THE BINDINGS AT ITS POSITION, so moving it changes the question,
+ * not the plan — the optimizer's more-bound-implies-subset theorem does not
+ * cover it (the same stratification rule as Datalog's for aggregation).
+ *
  * Sound when the enclosed goal terminates on its own. Over a tabled recursive
  * goal a consumer's fiber completes by parking before the relation is
  * exhausted, so the fold would see a partial answer set — the same completion
@@ -50,7 +55,7 @@ public class Aggregate {
 	 * into {@code result}, in the order the scheduler produces them.
 	 */
 	public static <T> Goal findall(Unifiable<T> template, Goal goal, Unifiable<LList<T>> result) {
-		return Bounded.of(1, (Goal) pkg -> k -> {
+		return Barrier.of((Goal) pkg -> k -> {
 			Collection<Reified<T>> collected = new ConcurrentLinkedQueue<>();
 			return goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, template).apply(reified -> {
@@ -66,7 +71,7 @@ public class Aggregate {
 	 * Count the solutions of {@code goal}.
 	 */
 	public static Goal count(Goal goal, Unifiable<Integer> result) {
-		return Bounded.of(1, (Goal) pkg -> k -> {
+		return Barrier.of((Goal) pkg -> k -> {
 			AtomicInteger n = new AtomicInteger(0);
 			return goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, lvar()).apply(reified -> {
@@ -110,7 +115,7 @@ public class Aggregate {
 			Unifiable<Integer> result,
 			Monoid<Integer> monoid,
 			boolean failWhenEmpty) {
-		return Bounded.of(1, (Goal) pkg -> k -> {
+		return Barrier.of((Goal) pkg -> k -> {
 			AtomicReference<Integer> acc = new AtomicReference<>(monoid.empty());
 			AtomicBoolean seen = new AtomicBoolean(false);
 			return goal.apply(pkg).apply(answerPkg ->

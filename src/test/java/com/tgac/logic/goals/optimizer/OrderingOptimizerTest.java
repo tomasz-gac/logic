@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.aggregate.Aggregate;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -90,6 +91,35 @@ public class OrderingOptimizerTest {
 		Goal sorted = conde.and(b4).accept(new OrderingOptimizer()).get();
 		assertThat(((Conjunction) sorted).getClauses())
 				.containsExactly(b4, conde);
+	}
+
+	@Test
+	public void aggregatesHoldPositionStructurally() {
+		// an aggregate must never sort ahead of the goals that bind its inputs —
+		// it is a barrier, not a cheap one-answer goal
+		Goal agg = Aggregate.count(Goal.success(), lvar());
+		Goal b2 = new FixedOrder(2);
+		Goal sorted = b2.and(agg).accept(new OrderingOptimizer()).get();
+		assertThat(((Conjunction) sorted).getClauses())
+				.containsExactly(b2, agg);
+	}
+
+	@Test
+	public void aggregatesAnswerDependsOnItsPosition() {
+		// x ∈ {1,2}, THEN count the solutions of "x = 5": with x bound, zero.
+		// Hoisting the count runs it under-bound — count 1 — which is a
+		// DIFFERENT question, not a cheaper plan for the same one. The
+		// optimizer's soundness theorem (more-bound ⇒ subset) does not cover
+		// aggregates; holding position is what keeps this query meaning itself.
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> n = lvar();
+		java.util.List<Integer> counts = x.unifies(1).or(x.unifies(2))
+				.and(Aggregate.count(unify(x, lval(5)), n))
+				.solve(n, new OrderingOptimizer())
+				.map(com.tgac.logic.unification.Term::get)
+				.collect(Collectors.toList());
+
+		assertThat(counts).containsExactly(0, 0);
 	}
 
 	@Test
