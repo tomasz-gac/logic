@@ -167,14 +167,14 @@ public class FiniteDomain {
 
 	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
 		return Bounded.of(s -> cmpOrder(s, more, less, c -> c > 0), fdGoal()
-				.and(leqFD(more, less))
+				.and(leqFD(less, more))
 				.and(separate(more, less))
 				.named(pkg -> pkg.format(more) + " > " + pkg.format(less)));
 	}
 
 	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
 		return Bounded.of(s -> cmpOrder(s, more, less, c -> c >= 0), fdGoal()
-				.and(leqFD(more, less))
+				.and(leqFD(less, more))
 				.named(pkg -> pkg.format(more) + " ≥ " + pkg.format(less)));
 	}
 

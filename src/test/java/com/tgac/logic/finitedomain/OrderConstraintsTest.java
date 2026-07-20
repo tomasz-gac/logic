@@ -146,4 +146,49 @@ public class OrderConstraintsTest {
 						lss(a, b).and(defer(() -> allLesso(LList.of(b, d))))));
 	}
 
+	@Test
+	public void geqGroundHoldsWhenMoreExceedsLess() {
+		// geq(more, less) means more >= less; ground both ways
+		Assertions.assertThat(FiniteDomain.geq(lval(480L), lval(400L)).solve(lvar()).count())
+				.isEqualTo(1L);
+		Assertions.assertThat(FiniteDomain.geq(lval(250L), lval(400L)).solve(lvar()).count())
+				.isEqualTo(0L);
+	}
+
+	@Test
+	public void geqBackwardsNarrowsToTheUpperTail() {
+		// geq(x, 400) over [398,403) keeps {400, 401, 402} — the values >= 400
+		Unifiable<Long> x = lvar();
+		List<Long> xs = FiniteDomain.dom(x, EnumeratedDomain.range(398L, 403L))
+				.and(FiniteDomain.geq(x, lval(400L)))
+				.solve(x)
+				.map(Term::get)
+				.sorted()
+				.collect(Collectors.toList());
+
+		Assertions.assertThat(xs).containsExactly(400L, 401L, 402L);
+	}
+
+	@Test
+	public void gtrGroundIsStrict() {
+		Assertions.assertThat(FiniteDomain.gtr(lval(401L), lval(400L)).solve(lvar()).count())
+				.isEqualTo(1L);
+		Assertions.assertThat(FiniteDomain.gtr(lval(400L), lval(400L)).solve(lvar()).count())
+				.isEqualTo(0L);
+	}
+
+	@Test
+	public void gtrBackwardsNarrowsStrictly() {
+		// gtr(x, 400) over [398,403) keeps {401, 402}
+		Unifiable<Long> x = lvar();
+		List<Long> xs = FiniteDomain.dom(x, EnumeratedDomain.range(398L, 403L))
+				.and(FiniteDomain.gtr(x, lval(400L)))
+				.solve(x)
+				.map(Term::get)
+				.sorted()
+				.collect(Collectors.toList());
+
+		Assertions.assertThat(xs).containsExactly(401L, 402L);
+	}
+
 }
