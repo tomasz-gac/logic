@@ -193,9 +193,16 @@ final class Closed implements TablingMode {
 				Set<TableEntry<Object>> closure = graph.dependencyClosure(entry);
 				for (TableEntry<Object> member : closure) {
 					if (!member.isComplete()) {
-						// a racing cascade split the group's marking between
-						// cascades (per-member CAS arbitration) — its leader solves
-						return done(nothing());
+						// the mark is the only finality evidence that crosses the
+						// Region boundary, and a group seal marks every member
+						// before announcing any (RegionTest pins it) — an unmarked
+						// closure member here means that invariant broke. Solving
+						// would read a possibly-unfinal system, staying silent
+						// would strand the stash — refuse loudly instead
+						throw new IllegalStateException(
+								"sealed " + entry.getCall() + " announced while closure member "
+										+ member.getCall() + " is unsealed: group marking must "
+										+ "complete before any announcement");
 					}
 				}
 				return solveClosure(closure);
