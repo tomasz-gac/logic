@@ -21,7 +21,7 @@ import java.util.function.Function;
 /**
  * The streaming algorithm: an answer's running value is read off its package,
  * folded into the cell, and handed straight on — all its work happens during
- * EXPLORE, and its entry life is inert. Holding a {@link BoundedSemiring} is
+ * EXPLORE, and its EMIT events are inert. Holding a {@link BoundedSemiring} is
  * the termination guarantee, not a convenience: {@code a* = 1} makes cyclic
  * re-derivation stationary, so streaming through a loop converges. A merely
  * idempotent semiring (provenance) would amplify around the loop forever —
@@ -30,19 +30,6 @@ import java.util.function.Function;
  * bounded-weighted tabling.
  */
 final class Streaming implements TablingMode {
-
-	/** The answers already flowed inline — sealed and caught-up readers are finished branches. */
-	private static final EntryLife INERT = new EntryLife() {
-		@Override
-		public Fiber<Nothing> sealed(List<Registration> drained) {
-			return done(nothing());
-		}
-
-		@Override
-		public Fiber<Nothing> caughtUp(Registration reader) {
-			return done(nothing());
-		}
-	};
 
 	private final BoundedSemiring<Object> semiring;
 	private final Function<Package, Object> weightReader;
@@ -78,7 +65,14 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
-	public EntryLife entryLife(TableEntry<Object> entry) {
-		return INERT;
+	public Fiber<Nothing> sealed(TableEntry<Object> entry, List<Registration> drained) {
+		// answers streamed as they were found — the drained consumers are dead branches
+		return done(nothing());
+	}
+
+	@Override
+	public Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader) {
+		// the answers already flowed inline — a finished branch
+		return done(nothing());
 	}
 }

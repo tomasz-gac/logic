@@ -13,7 +13,6 @@ import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.tabling.EntryLife;
 import com.tgac.logic.tabling.Registration;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.TablingMode;
@@ -27,6 +26,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The closed (star) algorithm, plugged into the tabling skeleton as a
@@ -65,6 +65,8 @@ final class Closed implements TablingMode {
 	private final ClosedSemiring<SemiringStore> ring;
 	/** The equation system built during explore, read at each seal. */
 	private final DependencyGraph graph;
+	/** Each entry's {@link Life}, minted on first touch — identity plumbing; the state lives on the Life. */
+	private final ConcurrentHashMap<TableEntry<Object>, Life> lives = new ConcurrentHashMap<>();
 
 	Closed(ClosedSemiring<SemiringStore> ring) {
 		this.ring = ring;
@@ -135,12 +137,17 @@ final class Closed implements TablingMode {
 	}
 
 	@Override
-	public EntryLife entryLife(TableEntry<Object> entry) {
-		return new Life(entry);
+	public Fiber<Nothing> sealed(TableEntry<Object> entry, List<Registration> drained) {
+		return lifeOf(entry).sealed(drained);
+	}
+
+	@Override
+	public Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader) {
+		return lifeOf(entry).caughtUp(reader);
 	}
 
 	private Life lifeOf(TableEntry<Object> entry) {
-		return (Life) entry.getLife();
+		return lives.computeIfAbsent(entry, Life::new);
 	}
 
 	/**
@@ -160,7 +167,7 @@ final class Closed implements TablingMode {
 	 * spans members); {@link #values} is volatile so {@link #absorb} reads the
 	 * phase lock-free.
 	 */
-	private final class Life implements EntryLife {
+	private final class Life {
 
 		private final TableEntry<Object> entry;
 		/** This entry's solved answer values — null until SOLVED, the lifecycle phase. */
@@ -172,8 +179,7 @@ final class Closed implements TablingMode {
 			this.entry = entry;
 		}
 
-		@Override
-		public Fiber<Nothing> sealed(List<Registration> drained) {
+		Fiber<Nothing> sealed(List<Registration> drained) {
 			synchronized (Closed.this) {
 				for (Registration reader : drained) {
 					if (reader.getEnclosingCall() == null && !isFragment(reader.getPkg())) {
@@ -196,8 +202,7 @@ final class Closed implements TablingMode {
 			}
 		}
 
-		@Override
-		public Fiber<Nothing> caughtUp(Registration reader) {
+		Fiber<Nothing> caughtUp(Registration reader) {
 			if (reader.getEnclosingCall() != null || isFragment(reader.getPkg())) {
 				// a coated reader's contribution rides its captured edges; a fragment
 				// chain's answers come from its valued twin

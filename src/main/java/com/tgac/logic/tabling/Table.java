@@ -5,11 +5,14 @@ package com.tgac.logic.tabling;
 
 import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.Semirings;
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple2;
+import io.vavr.collection.List;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -108,19 +111,22 @@ public class Table implements Packaged {
 		return mode.capture(entry, answerPkg, answerTerm);
 	}
 
+	Fiber<Nothing> sealed(TableEntry<Object> entry, List<Registration> drained) {
+		return mode.sealed(entry, drained);
+	}
+
+	Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader) {
+		return mode.caughtUp(entry, reader);
+	}
+
 	// ---- entries ----
 
 	/**
 	 * Get or create a table entry for the given call.
-	 * If this is the first time we've seen this call, a new TableEntry is
-	 * created, wearing the mode's per-entry EMIT lifecycle.
+	 * If this is the first time we've seen this call, a new TableEntry is created.
 	 */
 	public TableEntry<Object> getOrCreateEntry(Call call) {
-		return entries.computeIfAbsent(call, c -> {
-			TableEntry<Object> entry = new TableEntry<>(c, mode.cellSemiring());
-			entry.setLife(mode.entryLife(entry));
-			return entry;
-		});
+		return entries.computeIfAbsent(call, c -> new TableEntry<>(c, mode.cellSemiring()));
 	}
 
 	/**
