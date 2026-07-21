@@ -181,6 +181,10 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   (weights that are programs) — the (actuals, template) call-value, the
   stationary-star theorem, emit-as-calls, the route-planner target example.
   Waits for the human's go; do not propose building it.
+- `docs/design/answers-as-diffs.md` — DESIGN SKETCH: answers as ∃-projected
+  package deltas (one operation behind reification, TCLP purification and
+  footprint deduction); the four walls that kill auto-deduced call args; the
+  `memo(goal)` subset and diff-as-verifier that survive.
 - `docs/design/method.md` — how this design process works: the loop, the
   moves, the placement razors, shelving with triggers.
 - This file — architecture, landmines, workflow.
