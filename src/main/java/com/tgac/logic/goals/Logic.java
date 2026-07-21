@@ -4,6 +4,7 @@ import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.goals.Matche.llist;
 import static com.tgac.logic.goals.Matche.matche;
+import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
@@ -39,11 +40,12 @@ public class Logic {
 			Unifiable<LList<T>> first,
 			Unifiable<LList<T>> second,
 			Unifiable<LList<T>> both) {
-		return matche(first, Matche.llist(() -> unify(second, both)))
-				.or(matche(first,
-						Matche.llist((a, d) -> Logic.<LList<T>> exist(res ->
-								unify(both, LList.of(a, res))
-										.and(defer(() -> appendo(d, second, res)))))))
+		Unifiable<LList<T>> res = lvar();
+		return matche(first,
+				Matche.llist(() -> unify(second, both)),
+				Matche.llist((a, d) ->
+						unify(both, LList.of(a, res))
+								.and(defer(() -> appendo(d, second, res)))))
 				.named(s -> formatLList(s, first) + " ++ " + formatLList(s, second) + " ≣ " + formatLList(s, both));
 	}
 
@@ -138,14 +140,14 @@ public class Logic {
 	}
 
 	public static <T1> Goal exist(Function1<Unifiable<T1>, Goal> f) {
-		return f.apply(LVar.lvar());
+		return f.apply(lvar());
 	}
 
 	public static <T1, T2> Goal exist(Function2<
 			Unifiable<T1>,
 			Unifiable<T2>,
 			Goal> f) {
-		return f.apply(LVar.lvar(), LVar.lvar());
+		return f.apply(lvar(), lvar());
 	}
 
 	public static <T1, T2, T3> Goal exist(Function3<
@@ -153,7 +155,7 @@ public class Logic {
 			Unifiable<T2>,
 			Unifiable<T3>,
 			Goal> f) {
-		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar());
+		return f.apply(lvar(), lvar(), lvar());
 	}
 
 	public static <T1, T2, T3, T4> Goal exist(Function4<
@@ -162,7 +164,7 @@ public class Logic {
 			Unifiable<T3>,
 			Unifiable<T4>,
 			Goal> f) {
-		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
+		return f.apply(lvar(), lvar(), lvar(), lvar());
 	}
 
 	public static <T1, T2, T3, T4, T5> Goal exist(Function5<
@@ -172,7 +174,7 @@ public class Logic {
 			Unifiable<T4>,
 			Unifiable<T5>,
 			Goal> f) {
-		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
+		return f.apply(lvar(), lvar(), lvar(), lvar(), lvar());
 	}
 
 	public static <T1, T2, T3, T4, T5, T6> Goal exist(Function6<
@@ -183,7 +185,7 @@ public class Logic {
 			Unifiable<T5>,
 			Unifiable<T6>,
 			Goal> f) {
-		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
+		return f.apply(lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, T7> Goal exist(Function7<
@@ -195,7 +197,7 @@ public class Logic {
 			Unifiable<T6>,
 			Unifiable<T7>,
 			Goal> f) {
-		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
+		return f.apply(lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, T7, T8> Goal exist(Function8<
@@ -208,7 +210,7 @@ public class Logic {
 			Unifiable<T7>,
 			Unifiable<T8>,
 			Goal> f) {
-		return f.apply(LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar(), LVar.lvar());
+		return f.apply(lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar(), lvar());
 	}
 
 	public static Goal ground(Unifiable<?> v) {
