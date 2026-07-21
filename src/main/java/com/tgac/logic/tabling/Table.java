@@ -46,6 +46,9 @@ public class Table implements Packaged {
 	/** Map from calls to their table entries */
 	private final ConcurrentHashMap<Call, TableEntry<Object>> entries = new ConcurrentHashMap<>();
 
+	/** Every entry's call pattern, retrievable by subsumption (general covers specific). */
+	private final SubsumptionMap<TableEntry<Object>> subsumption = new SubsumptionMap<>();
+
 	/** The algorithm: streaming vs closed/star. */
 	private final TablingMode mode;
 
@@ -126,7 +129,11 @@ public class Table implements Packaged {
 	 * If this is the first time we've seen this call, a new TableEntry is created.
 	 */
 	public TableEntry<Object> getOrCreateEntry(Call call) {
-		return entries.computeIfAbsent(call, c -> new TableEntry<>(c, mode.cellSemiring()));
+		return entries.computeIfAbsent(call, c -> {
+			TableEntry<Object> entry = new TableEntry<>(c, mode.cellSemiring());
+			subsumption.put(c, entry);
+			return entry;
+		});
 	}
 
 	/**
@@ -146,14 +153,12 @@ public class Table implements Packaged {
 	}
 
 	/**
-	 * A SEALED entry whose call subsumes {@code key}, or null. Linear scan:
-	 * entries per solve are few, and the scan runs only on exact misses —
-	 * SubsumptionMap is this lookup's planned generalization when its next
-	 * customer (the adornment memo) arrives.
+	 * A SEALED entry whose call subsumes {@code key}, or null. Retrieval by the
+	 * subsumption trie ({@link SubsumptionMap}); runs only on exact misses.
 	 */
 	public TableEntry<Object> findSealedSubsumer(Call key) {
-		for (TableEntry<Object> e : entries.values()) {
-			if (e.isComplete() && e.getCall().subsumes(key)) {
+		for (TableEntry<Object> e : subsumption.subsumers(key)) {
+			if (e.isComplete()) {
 				return e;
 			}
 		}
