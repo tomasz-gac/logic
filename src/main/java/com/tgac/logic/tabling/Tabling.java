@@ -140,9 +140,9 @@ public class Tabling {
 					// body still runs from the first caller's state — the variant
 					// call pattern lives in its substitutions — reset to a fresh,
 					// caller-agnostic running value by the mode
-					Package bodyPkg = table.onExplore(callerPkg).putStore(new EnclosingCall(entry));
+					Package bodyPkg = table.bodyState(callerPkg).putStore(new EnclosingCall(entry));
 					// the seal fires EMIT: the drained subscribers are its targets
-					entry.getRegion().onSealed(drained -> table.onSeal(entry, drained));
+					entry.getRegion().onSealed(drained -> table.emit(entry, drained));
 					return Fiber.detach(Region.track(entry.getRegion(),
 									produce(entry, body.get(), bodyPkg, argsTerm, table)))
 							.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
@@ -229,7 +229,7 @@ public class Tabling {
 			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm -> {
 				// what the cell caches: the term and the value this derivation
 				// carries — caller-agnostic, since the body ran from ONE
-				Tuple2<Reified<?>, Object> cached = table.onProduce(entry, answerPkg, answerTerm);
+				Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, answerTerm);
 				return entry.addAnswer(cached._1, cached._2)
 						.map(parked -> respawn(entry, parked, table))
 						.getOrElse(() -> done(nothing()));
@@ -286,7 +286,7 @@ public class Tabling {
 					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
 							.map(callerPkg::withSubstitutions)
 							// streaming ⊗s the cell value in; closed records the loop
-							.map(unifiedPkg -> table.onConsume(unifiedPkg, entry, answer._1,
+							.map(unifiedPkg -> table.absorb(unifiedPkg, entry, answer._1,
 									cellValue, EnclosingCall.entryOf(callerPkg)))
 							.map(weightedPkg -> k.apply(weightedPkg)
 									.flatMap(__ -> Fiber.defer(() ->
@@ -326,7 +326,7 @@ public class Tabling {
 			// mode decides what that means (a finished branch; or closed's value
 			// replay). Racy read is safe: a stale false parks a dead
 			// registration, which ledgers accept as sealed-parked
-			return table.onCaughtUp(entry,
+			return table.emitCaughtUp(entry,
 					new Registration(k, callerPkg, argsTerm, index, EnclosingCall.entryOf(callerPkg)));
 		}
 		// the parked state is callerPkg: its coat names the call this reader

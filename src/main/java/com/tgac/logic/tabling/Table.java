@@ -98,25 +98,25 @@ public class Table implements Packaged {
 
 	// ---- the mode's per-step hooks (see TablingMode) ----
 
-	Package onExplore(Package callerPkg) {
-		return mode.onExplore(callerPkg);
+	Package bodyState(Package callerPkg) {
+		return mode.bodyState(callerPkg);
 	}
 
-	Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, TableEntry<Object> readerEntry) {
-		return mode.onConsume(unifiedPkg, entry, consumedAnswer, cellValue, readerEntry);
+	Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
+			Object cellValue, TableEntry<Object> enclosingCall) {
+		return mode.absorb(unifiedPkg, entry, consumedAnswer, cellValue, enclosingCall);
 	}
 
-	Fiber<Nothing> onCaughtUp(TableEntry<Object> entry, Registration reader) {
-		return mode.onCaughtUp(entry, reader);
+	Fiber<Nothing> emitCaughtUp(TableEntry<Object> entry, Registration reader) {
+		return mode.emitCaughtUp(entry, reader);
 	}
 
-	Tuple2<Reified<?>, Object> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
-		return mode.onProduce(entry, answerPkg, answerTerm);
+	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
+		return mode.capture(entry, answerPkg, answerTerm);
 	}
 
-	Fiber<Nothing> onSeal(TableEntry<Object> entry, List<Registration> drained) {
-		return mode.onSeal(entry, drained);
+	Fiber<Nothing> emit(TableEntry<Object> entry, List<Registration> drained) {
+		return mode.emit(entry, drained);
 	}
 
 	// ---- entries ----

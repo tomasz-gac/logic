@@ -135,7 +135,7 @@ public final class Weights {
 				.flatMap(s -> Constraints.reify(s, out)
 						.map(answer -> Tuple.of(answer,
 								s.getStore(SemiringStore.class),
-								s.getStores().get(Exploration.class).isDefined())))
+								s.getStores().get(Fragment.class).isDefined())))
 				.run(triple -> {
 					// keep only finalized (untagged) answers; exploration fragments drop
 					if (!triple._3) {

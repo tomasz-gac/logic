@@ -21,7 +21,7 @@ import java.util.function.Function;
 /**
  * The streaming algorithm: an answer's running value is read off its package,
  * folded into the cell, and handed straight on — all its work happens during
- * EXPLORE, and its seal is inert. Holding a {@link BoundedSemiring} is the
+ * EXPLORE, and its emission is inert. Holding a {@link BoundedSemiring} is the
  * termination guarantee, not a convenience: {@code a* = 1} makes cyclic
  * re-derivation stationary, so streaming through a loop converges. A merely
  * idempotent semiring (provenance) would amplify around the loop forever —
@@ -49,29 +49,29 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
-	public Package onExplore(Package callerPkg) {
+	public Package bodyState(Package callerPkg) {
 		return weightWriter.apply(callerPkg, semiring.one());
 	}
 
 	@Override
-	public Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, TableEntry<Object> readerEntry) {
+	public Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
+			Object cellValue, TableEntry<Object> enclosingCall) {
 		return weightWriter.apply(unifiedPkg, semiring.times(weightReader.apply(unifiedPkg), cellValue));
 	}
 
 	@Override
-	public Fiber<Nothing> onCaughtUp(TableEntry<Object> entry, Registration reader) {
+	public Fiber<Nothing> emitCaughtUp(TableEntry<Object> entry, Registration reader) {
 		// the answers already flowed inline — a finished branch
 		return done(nothing());
 	}
 
 	@Override
-	public Tuple2<Reified<?>, Object> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
+	public Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
 		return Tuple.of(answerTerm, weightReader.apply(answerPkg));
 	}
 
 	@Override
-	public Fiber<Nothing> onSeal(TableEntry<Object> entry, List<Registration> drained) {
+	public Fiber<Nothing> emit(TableEntry<Object> entry, List<Registration> drained) {
 		// answers streamed as they were found — the drained consumers are dead branches
 		return done(nothing());
 	}

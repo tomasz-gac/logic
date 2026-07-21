@@ -12,9 +12,9 @@ import com.tgac.logic.goals.Packaged;
  * reader-chain replay pushes the finalized answer through UNtagged, which the
  * collector keeps (docs/design/star-tabling.md §4.5).
  */
-public final class Exploration implements Packaged {
-	public static final Exploration MARKER = new Exploration();
+public final class Fragment implements Packaged {
+	public static final Fragment MARKER = new Fragment();
 
-	private Exploration() {
+	private Fragment() {
 	}
 }

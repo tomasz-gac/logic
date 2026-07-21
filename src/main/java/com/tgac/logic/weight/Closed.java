@@ -41,18 +41,18 @@ import java.util.concurrent.ConcurrentHashMap;
  * order: every caller reads through a consumer whose parked sleeper blocks the
  * caller's seal until the callee's, so at any entry's seal its whole dependency
  * closure over the graph — the equation system's coupling — has sealed too,
- * earlier or atomically with it (a sleeper ring group-seals). {@link #onSeal}
+ * earlier or atomically with it (a sleeper ring group-seals). {@link #emit}
  * therefore solves immediately at the closure's last announcement
  * ({@link StarTabling#solveGroup}); nothing waits across cascades.
  *
  * <p>EMIT replays reader chains. During explore every consumer delivery is a
  * fragment (dropped at the collector); a chain ends at a sealed entry — drained
- * by the seal (handed to {@link #onSeal}) or caught up after it
- * ({@link #onCaughtUp}) — and a TOP-LEVEL chain is then replayed once from
+ * by the seal (handed to {@link #emit}) or caught up after it
+ * ({@link #emitCaughtUp}) — and a TOP-LEVEL chain is then replayed once from
  * index 0 with {@code x = A* ⊗ b}. A COATED reader is never replayed: its
  * contribution rides the edges it captured, and when it consumes an
- * already-SOLVED entry the value is ⊗'d inline ({@link #onConsume}) so its
- * produce captures the constant — the two paths agree, because an edge to a
+ * already-SOLVED entry the value is ⊗'d inline ({@link #absorb}) so its
+ * capture folds in the constant — the two paths agree, because an edge to a
  * solved entry folds to exactly the inline value.
  */
 final class Closed implements TablingMode {
@@ -66,7 +66,7 @@ final class Closed implements TablingMode {
 	/** The equation system built during explore, read at each seal. */
 	private final DependencyGraph graph;
 
-	/** Each solved entry's answer values — read lock-free by {@link #onConsume}. */
+	/** Each solved entry's answer values — read lock-free by {@link #absorb}. */
 	private final Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solvedValues =
 			new ConcurrentHashMap<>();
 	/** Ended top-level reader chains awaiting their entry's solve. Guarded by this. */
@@ -94,33 +94,34 @@ final class Closed implements TablingMode {
 	}
 
 	@Override
-	public Package onExplore(Package callerPkg) {
+	public Package bodyState(Package callerPkg) {
 		// fresh derivation: real value reset to ONE, no loop record
 		return callerPkg.putStore(ring.one()).putStore(Recurrent.NONE);
 	}
 
 	@Override
-	public Package onConsume(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, TableEntry<Object> readerEntry) {
-		Map<Reified<?>, SemiringStore> entryValues = solvedValues.get(entry);
-		if (entryValues != null) {
-			SemiringStore x = entryValues.get(consumedAnswer);
-			if (readerEntry != null && x != null) {
-				// a coated reader consumes a SOLVED entry: the value is a constant
-				// its produce captures (a base — or an edge that folds to the same)
-				return unifiedPkg.putStore(ring.times(storeOf(unifiedPkg), x));
-			}
-			// top-level: still a fragment — the replay at the chain's end delivers
-			return unifiedPkg.putStore(Exploration.MARKER);
+	public Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
+			Object cellValue, TableEntry<Object> enclosingCall) {
+		Map<Reified<?>, SemiringStore> solved = solvedValues.get(entry);
+		boolean coated = enclosingCall != null;
+		if (solved == null) {
+			// open (or sealed mid-solve): record the loop, tag the fragment
+			Recurrent prev = unifiedPkg.getStores().get(Recurrent.class)
+					.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
+			return unifiedPkg.putStore(prev.and(new Node(entry, consumedAnswer))).putStore(Fragment.MARKER);
 		}
-		// open (or sealed mid-solve): record the loop, tag the fragment
-		Recurrent prev = unifiedPkg.getStores().get(Recurrent.class)
-				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
-		return unifiedPkg.putStore(prev.and(new Node(entry, consumedAnswer))).putStore(Exploration.MARKER);
+		SemiringStore x = solved.get(consumedAnswer);
+		if (coated && x != null) {
+			// a coated reader consumes a SOLVED entry: the value is a constant
+			// its capture folds in (a base — or an edge that folds to the same)
+			return unifiedPkg.putStore(ring.times(storeOf(unifiedPkg), x));
+		}
+		// top-level: still a fragment — the replay at the chain's end delivers
+		return unifiedPkg.putStore(Fragment.MARKER);
 	}
 
 	@Override
-	public Tuple2<Reified<?>, Object> onProduce(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
+	public Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
 		// 0 loops consumed → base seed, 1 → edge coefficient, ≥2 → nonlinear (outside
 		// the star). Captured before the dedup so multiplicity survives. The cell
 		// itself caches bare presence — the value lives in the DependencyGraph.
@@ -145,11 +146,11 @@ final class Closed implements TablingMode {
 	 * re-runs the continuation with values, spawning this chain's valued twin.
 	 */
 	private static boolean isFragment(Package pkg) {
-		return pkg.getStores().get(Exploration.class).isDefined();
+		return pkg.getStores().get(Fragment.class).isDefined();
 	}
 
 	@Override
-	public synchronized Fiber<Nothing> onCaughtUp(TableEntry<Object> entry, Registration reader) {
+	public synchronized Fiber<Nothing> emitCaughtUp(TableEntry<Object> entry, Registration reader) {
 		if (reader.getEnclosingCall() != null || isFragment(reader.getPkg())) {
 			// a coated reader's contribution rides its captured edges; a fragment
 			// chain's answers come from its valued twin
@@ -174,7 +175,7 @@ final class Closed implements TablingMode {
 	 * replaying the stashes the earlier members left.
 	 */
 	@Override
-	public synchronized Fiber<Nothing> onSeal(TableEntry<Object> entry, List<Registration> drained) {
+	public synchronized Fiber<Nothing> emit(TableEntry<Object> entry, List<Registration> drained) {
 		for (Registration reader : drained) {
 			if (reader.getEnclosingCall() == null && !isFragment(reader.getPkg())) {
 				replayStash.computeIfAbsent(entry, e -> new ArrayList<>()).add(reader);
