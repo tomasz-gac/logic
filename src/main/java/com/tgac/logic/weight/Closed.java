@@ -41,9 +41,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * order: every caller reads through a consumer whose parked sleeper blocks the
  * caller's seal until the callee's, so at any entry's seal its whole dependency
  * closure over the graph — the equation system's coupling — has sealed too,
- * earlier or atomically with it (a sleeper ring group-seals). {@link #emit}
- * therefore solves immediately at the closure's last announcement
- * ({@link StarTabling#solveGroup}); nothing waits across cascades.
+ * earlier or atomically with it (a sleeper ring group-seals, and the group is
+ * fully MARKED before any member is announced). {@link #emit} therefore solves
+ * at the closure's FIRST announcement ({@link StarTabling#solveGroup}); later
+ * members' hooks find the values and replay their own drained readers. The
+ * incomplete-closure check guards only racing cascades that split a group's
+ * marking between them (per-member CAS arbitration) — the racing side's
+ * completing hook solves and replays what this side stashed.
  *
  * <p>EMIT replays reader chains. During explore every consumer delivery is a
  * fragment (dropped at the collector); a chain ends at a sealed entry — drained
@@ -169,10 +173,13 @@ final class Closed implements TablingMode {
 	 * ones become replay targets. SEALED ⟹ SOLVABLE: an edge exists only
 	 * because a reader consumed the target while open, and that reader parks
 	 * there, blocking this entry's seal until the target's — so every entry this
-	 * one's equations reference sealed earlier or seals in this same cascade (a
-	 * sleeper ring group-seals). Nothing is ever waited on across cascades: if a
-	 * ring member has not announced yet, ITS hook — the ring's last — solves,
-	 * replaying the stashes the earlier members left.
+	 * one's equations reference sealed earlier or seals in this same cascade,
+	 * and a group seal marks its whole ring before announcing any member. The
+	 * first-announced hook therefore solves the closure; the rest replay their
+	 * own drained readers from the recorded values. An incomplete member is
+	 * visible here only when a RACING cascade split the group's marking
+	 * (per-member CAS arbitration) — then this hook stashes and the racing
+	 * side's completing hook solves and replays.
 	 */
 	@Override
 	public synchronized Fiber<Nothing> emit(TableEntry<Object> entry, List<Registration> drained) {

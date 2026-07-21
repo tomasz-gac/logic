@@ -231,13 +231,19 @@ public final class Region<V, S> {
 				return null;
 			}
 		}
-		List<S> dead = List.empty();
+		// mark and drain EVERY member before announcing any: at each onSealed
+		// hook the whole group must already read as sealed (SEALED ⟹ SOLVABLE),
+		// so the first-announced hook can act on the full closure
+		LinkedHashMap<Region<V, S>, List<S>> won = new LinkedHashMap<>();
 		for (Region<V, S> member : members.keySet()) {
 			if (member.sealed.compareAndSet(false, true)) {
-				List<S> drained = member.cell.drainParked();
-				emits.add(member.onSealed.apply(drained));
-				dead = dead.appendAll(drained);
+				won.put(member, member.cell.drainParked());
 			}
+		}
+		List<S> dead = List.empty();
+		for (Map.Entry<Region<V, S>, List<S>> m : won.entrySet()) {
+			emits.add(m.getKey().onSealed.apply(m.getValue()));
+			dead = dead.appendAll(m.getValue());
 		}
 		return dead;
 	}
