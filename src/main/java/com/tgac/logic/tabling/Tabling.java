@@ -142,7 +142,7 @@ public class Tabling {
 					// caller-agnostic running value by the mode
 					Package bodyPkg = table.bodyState(callerPkg).putStore(new EnclosingCall(entry));
 					// the seal fires EMIT: the drained subscribers are its targets
-					entry.getRegion().onSealed(drained -> table.emit(entry, drained));
+					entry.getRegion().onSealed(entry.getLife()::sealed);
 					return Fiber.detach(Region.track(entry.getRegion(),
 									produce(entry, body.get(), bodyPkg, argsTerm, table)))
 							.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
@@ -323,10 +323,10 @@ public class Tabling {
 				return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
 			}
 			// truly caught up at a sealed entry: the chain ends here, and the
-			// mode decides what that means (a finished branch; or closed's value
-			// replay). Racy read is safe: a stale false parks a dead
-			// registration, which ledgers accept as sealed-parked
-			return table.emitCaughtUp(entry,
+			// entry's life decides what that means (a finished branch; or
+			// closed's value replay). Racy read is safe: a stale false parks a
+			// dead registration, which ledgers accept as sealed-parked
+			return entry.getLife().caughtUp(
 					new Registration(k, callerPkg, argsTerm, index, EnclosingCall.entryOf(callerPkg)));
 		}
 		// the parked state is callerPkg: its coat names the call this reader

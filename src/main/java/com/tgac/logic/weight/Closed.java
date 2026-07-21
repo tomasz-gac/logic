@@ -2,7 +2,7 @@ package com.tgac.logic.weight;
 
 // ABOUTME: Closed (star) tabling mode: explore for structure (presence cell + base/
 // ABOUTME: edge capture into the DependencyGraph), solve each sealed closure jointly,
-// ABOUTME: emit by replaying each top-level reader chain with the solved values.
+// ABOUTME: emit by replaying each entry's reader chains from its Life.
 
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
@@ -13,6 +13,7 @@ import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.tabling.EntryLife;
 import com.tgac.logic.tabling.Registration;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.TablingMode;
@@ -23,11 +24,9 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The closed (star) algorithm, plugged into the tabling skeleton as a
@@ -42,19 +41,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * caller's seal until the callee's, so at any entry's seal its whole dependency
  * closure over the graph — the equation system's coupling — has sealed too,
  * earlier or atomically with it (a sleeper ring group-seals, and the group is
- * fully MARKED before any member is announced). {@link #emit} therefore solves
- * at the closure's FIRST announcement ({@link StarTabling#solveGroup}); later
- * members' hooks find the values and replay their own drained readers. The
- * incomplete-closure check guards only racing cascades that split a group's
- * marking between them (per-member CAS arbitration) — the racing side's
- * completing hook solves and replays what this side stashed.
+ * fully MARKED before any member is announced). The group's FIRST-announced
+ * {@link Life} therefore solves the closure ({@link StarTabling#solveGroup})
+ * and hands each member its values; later members' lives just release their
+ * own readers.
  *
  * <p>EMIT replays reader chains. During explore every consumer delivery is a
  * fragment (dropped at the collector); a chain ends at a sealed entry — drained
- * by the seal (handed to {@link #emit}) or caught up after it
- * ({@link #emitCaughtUp}) — and a TOP-LEVEL chain is then replayed once from
- * index 0 with {@code x = A* ⊗ b}. A COATED reader is never replayed: its
- * contribution rides the edges it captured, and when it consumes an
+ * by the seal or caught up after it — and a TOP-LEVEL chain is then replayed
+ * once from index 0 with {@code x = A* ⊗ b}. A COATED reader is never replayed:
+ * its contribution rides the edges it captured, and when it consumes an
  * already-SOLVED entry the value is ⊗'d inline ({@link #absorb}) so its
  * capture folds in the constant — the two paths agree, because an edge to a
  * solved entry folds to exactly the inline value.
@@ -69,12 +65,6 @@ final class Closed implements TablingMode {
 	private final ClosedSemiring<SemiringStore> ring;
 	/** The equation system built during explore, read at each seal. */
 	private final DependencyGraph graph;
-
-	/** Each solved entry's answer values — read lock-free by {@link #absorb}. */
-	private final Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solvedValues =
-			new ConcurrentHashMap<>();
-	/** Ended top-level reader chains awaiting their entry's solve. Guarded by this. */
-	private final Map<TableEntry<Object>, ArrayList<Registration>> replayStash = new HashMap<>();
 
 	Closed(ClosedSemiring<SemiringStore> ring) {
 		this.ring = ring;
@@ -106,7 +96,7 @@ final class Closed implements TablingMode {
 	@Override
 	public Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
 			Object cellValue, TableEntry<Object> enclosingCall) {
-		Map<Reified<?>, SemiringStore> solved = solvedValues.get(entry);
+		Map<Reified<?>, SemiringStore> solved = lifeOf(entry).values;
 		boolean coated = enclosingCall != null;
 		if (solved == null) {
 			// open (or sealed mid-solve): record the loop, tag the fragment
@@ -144,6 +134,15 @@ final class Closed implements TablingMode {
 		return Tuple.of(answerTerm, Boolean.TRUE);
 	}
 
+	@Override
+	public EntryLife entryLife(TableEntry<Object> entry) {
+		return new Life(entry);
+	}
+
+	private Life lifeOf(TableEntry<Object> entry) {
+		return (Life) entry.getLife();
+	}
+
 	/**
 	 * A chain whose call-site package is itself an exploration fragment — a call
 	 * reached during some entry's explore. Never replayed: the upstream replay
@@ -153,102 +152,119 @@ final class Closed implements TablingMode {
 		return pkg.getStores().get(Fragment.class).isDefined();
 	}
 
-	@Override
-	public synchronized Fiber<Nothing> emitCaughtUp(TableEntry<Object> entry, Registration reader) {
-		if (reader.getEnclosingCall() != null || isFragment(reader.getPkg())) {
-			// a coated reader's contribution rides its captured edges; a fragment
-			// chain's answers come from its valued twin
-			return done(nothing());
-		}
-		if (solvedValues.containsKey(entry)) {
-			return replay(entry, reader);
-		}
-		// sealed but its closure not solved yet — the solve will replay it
-		replayStash.computeIfAbsent(entry, e -> new ArrayList<>()).add(reader);
-		return done(nothing());
-	}
-
 	/**
-	 * One entry sealed; {@code drained} are its parked readers — the top-level
-	 * ones become replay targets. SEALED ⟹ SOLVABLE: an edge exists only
-	 * because a reader consumed the target while open, and that reader parks
-	 * there, blocking this entry's seal until the target's — so every entry this
-	 * one's equations reference sealed earlier or seals in this same cascade,
-	 * and a group seal marks its whole ring before announcing any member. The
-	 * first-announced hook therefore solves the closure; the rest replay their
-	 * own drained readers from the recorded values. An incomplete member is
-	 * visible here only when a RACING cascade split the group's marking
-	 * (per-member CAS arbitration) — then this hook stashes and the racing
-	 * side's completing hook solves and replays.
+	 * One entry's life after explore: SEALED — the first-announced life of a
+	 * fully marked group solves the closure jointly and hands every member its
+	 * values; SOLVED — the values are recorded once and the stashed chains
+	 * released. All transitions run under the one Closed monitor (the solve
+	 * spans members); {@link #values} is volatile so {@link #absorb} reads the
+	 * phase lock-free.
 	 */
-	@Override
-	public synchronized Fiber<Nothing> emit(TableEntry<Object> entry, List<Registration> drained) {
-		for (Registration reader : drained) {
-			if (reader.getEnclosingCall() == null && !isFragment(reader.getPkg())) {
-				replayStash.computeIfAbsent(entry, e -> new ArrayList<>()).add(reader);
+	private final class Life implements EntryLife {
+
+		private final TableEntry<Object> entry;
+		/** This entry's solved answer values — null until SOLVED, the lifecycle phase. */
+		private volatile Map<Reified<?>, SemiringStore> values;
+		/** Ended top-level reader chains parked until the solve. Guarded by the Closed monitor. */
+		private final ArrayList<Registration> stash = new ArrayList<>();
+
+		Life(TableEntry<Object> entry) {
+			this.entry = entry;
+		}
+
+		@Override
+		public Fiber<Nothing> sealed(List<Registration> drained) {
+			synchronized (Closed.this) {
+				for (Registration reader : drained) {
+					if (reader.getEnclosingCall() == null && !isFragment(reader.getPkg())) {
+						stash.add(reader);
+					}
+				}
+				if (values != null) {
+					// a racing cascade's leader already solved this entry
+					return releaseStash();
+				}
+				Set<TableEntry<Object>> closure = graph.dependencyClosure(entry);
+				for (TableEntry<Object> member : closure) {
+					if (!member.isComplete()) {
+						// a racing cascade split the group's marking between
+						// cascades (per-member CAS arbitration) — its leader solves
+						return done(nothing());
+					}
+				}
+				return solveClosure(closure);
 			}
 		}
-		if (solvedValues.containsKey(entry)) {
-			// sealed in this cascade, solved by a racing one — replay the late stash
-			return replayStashed(entry);
-		}
-		Set<TableEntry<Object>> closure = graph.dependencyClosure(entry);
-		for (TableEntry<Object> member : closure) {
-			if (!member.isComplete()) {
+
+		@Override
+		public Fiber<Nothing> caughtUp(Registration reader) {
+			if (reader.getEnclosingCall() != null || isFragment(reader.getPkg())) {
+				// a coated reader's contribution rides its captured edges; a fragment
+				// chain's answers come from its valued twin
 				return done(nothing());
 			}
+			synchronized (Closed.this) {
+				if (values == null) {
+					// sealed but the closure's solve has not landed — it will release
+					stash.add(reader);
+					return done(nothing());
+				}
+				return replay(reader);
+			}
 		}
-		return solveAndEmit(closure);
-	}
 
-	/**
-	 * Solve {@code closure} jointly (already-solved members recompute to the same
-	 * values — the maps froze at their seal), record the values, and replay every
-	 * member's stashed top-level readers.
-	 */
-	private Fiber<Nothing> solveAndEmit(Set<TableEntry<Object>> closure) {
-		Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> values =
-				StarTabling.solveGroup(closure, graph, ring);
-		Fiber<Nothing> result = done(nothing());
-		for (TableEntry<Object> member : closure) {
-			solvedValues.putIfAbsent(member,
-					values.getOrDefault(member, new LinkedHashMap<Reified<?>, SemiringStore>()));
-			Fiber<Nothing> replays = replayStashed(member);
-			result = result.flatMap(__ -> replays);
-		}
-		return result;
-	}
-
-	/** Replay and clear {@code entry}'s stashed reader chains. */
-	private Fiber<Nothing> replayStashed(TableEntry<Object> entry) {
-		ArrayList<Registration> stashed = replayStash.remove(entry);
-		Fiber<Nothing> result = done(nothing());
-		if (stashed == null) {
+		/**
+		 * The group's first-announced life is the leader: one joint solve for the
+		 * closure, then every member records its values and releases its readers
+		 * (already-solved members keep their frozen values — same by determinism).
+		 */
+		private Fiber<Nothing> solveClosure(Set<TableEntry<Object>> closure) {
+			Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solved =
+					StarTabling.solveGroup(closure, graph, ring);
+			Fiber<Nothing> result = done(nothing());
+			for (TableEntry<Object> member : closure) {
+				Fiber<Nothing> emission = lifeOf(member).solved(
+						solved.getOrDefault(member, new LinkedHashMap<Reified<?>, SemiringStore>()));
+				result = result.flatMap(__ -> emission);
+			}
 			return result;
 		}
-		for (Registration reader : stashed) {
-			Fiber<Nothing> replay = replay(entry, reader);
-			result = result.flatMap(__ -> replay);
-		}
-		return result;
-	}
 
-	/** Replay one ended top-level chain from index 0 with the solved values. */
-	private Fiber<Nothing> replay(TableEntry<Object> entry, Registration reader) {
-		Map<Reified<?>, SemiringStore> entryValues = solvedValues.get(entry);
-		SemiringStore readerValue = storeOf(reader.getPkg());
-		Fiber<Nothing> result = done(nothing());
-		for (int i = 0; i < entry.getAnswerCount(); i++) {
-			Reified<?> answerTerm = entry.getAnswerAt(i)._1;
-			SemiringStore x = entryValues.get(answerTerm);
-			if (x == null) {
-				continue;
+		/** SOLVED: record the values once, release the stashed chains. */
+		private Fiber<Nothing> solved(Map<Reified<?>, SemiringStore> answerValues) {
+			if (values == null) {
+				values = answerValues;
 			}
-			SemiringStore value = ring.times(readerValue, x);
-			result = result.flatMap(__ -> emitAnswer(reader.getContinuation(), reader.getPkg(),
-					reader.getArgsTerm(), answerTerm, value));
+			return releaseStash();
 		}
-		return result;
+
+		/** Replay and clear the stashed reader chains. */
+		private Fiber<Nothing> releaseStash() {
+			Fiber<Nothing> result = done(nothing());
+			for (Registration reader : stash) {
+				Fiber<Nothing> replay = replay(reader);
+				result = result.flatMap(__ -> replay);
+			}
+			stash.clear();
+			return result;
+		}
+
+		/** Replay one ended top-level chain from index 0 with the solved values. */
+		private Fiber<Nothing> replay(Registration reader) {
+			SemiringStore readerValue = storeOf(reader.getPkg());
+			Fiber<Nothing> result = done(nothing());
+			for (int i = 0; i < entry.getAnswerCount(); i++) {
+				Reified<?> answerTerm = entry.getAnswerAt(i)._1;
+				SemiringStore x = values.get(answerTerm);
+				if (x == null) {
+					continue;
+				}
+				SemiringStore value = ring.times(readerValue, x);
+				result = result.flatMap(__ -> emitAnswer(reader.getContinuation(), reader.getPkg(),
+						reader.getArgsTerm(), answerTerm, value));
+			}
+			return result;
+		}
 	}
 
 	/**
@@ -256,7 +272,7 @@ final class Closed implements TablingMode {
 	 * to bind the reader's variables, set the folded value on the SemiringStore,
 	 * then hand it to {@code k}. The reader package already wears its own coat.
 	 */
-	private Fiber<Nothing> emitAnswer(Fiber.Fn<Package, Nothing> k, Package callerPkg,
+	private static Fiber<Nothing> emitAnswer(Fiber.Fn<Package, Nothing> k, Package callerPkg,
 			Unifiable<?> argsTerm, Reified<?> answerTerm, SemiringStore value) {
 		return MiniKanren.instantiate(answerTerm).flatMap(freshTerm ->
 				MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())

@@ -49,11 +49,22 @@ public class TableEntry<V> {
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
+	/**
+	 * The mode's per-entry EMIT lifecycle, minted with the entry
+	 * ({@link Table#getOrCreateEntry}) and owning its emission state.
+	 */
+	@Getter
+	private volatile EntryLife life;
+
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		this.region = new Region<JoinMap<Reified<?>, V>, Registration>(
 				JoinMap.empty(semiring),
 				r -> r.getEnclosingCall() == null ? null : r.getEnclosingCall().getRegion());
+	}
+
+	void setLife(EntryLife life) {
+		this.life = life;
 	}
 
 	public void markComplete() {
