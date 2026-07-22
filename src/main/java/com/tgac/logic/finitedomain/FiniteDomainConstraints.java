@@ -6,18 +6,22 @@ import com.tgac.functional.algebra.MonotoneDrain;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.finitedomain.domains.Empty;
+import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.unification.Unifiable;
 import com.tgac.logic.unification.Term;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
+import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
@@ -34,6 +38,7 @@ import lombok.Value;
 @Value
 @RequiredArgsConstructor(staticName = "of")
 class FiniteDomainConstraints implements ConstraintStore,
+		Projectable<DomainResidue>,
 		MeetSemilattice<FiniteDomainConstraints>, Bottomed {
 	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
 
@@ -296,6 +301,27 @@ class FiniteDomainConstraints implements ConstraintStore,
 
 	public FiniteDomainConstraints withDomain(LVar<?> x, Domain<?> xd) {
 		return FiniteDomainConstraints.of(domains.put(x, xd), constraints);
+	}
+
+	@Override
+	public DomainResidue project(List<LVar<?>> vars) {
+		HashMap<Integer, Domain<?>> slots = HashMap.empty();
+		for (int i = 0; i < vars.size(); i++) {
+			Option<Domain<?>> d = domains.get(vars.get(i));
+			if (d.isDefined()) {
+				slots = slots.put(i, d.get());
+			}
+		}
+		return DomainResidue.of(slots);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Goal restate(DomainResidue residue, List<Unifiable<?>> vars) {
+		return residue.getSlots().foldLeft(Goal.success(), (goal, slot) ->
+				Conjunction.of(goal, FiniteDomain.dom(
+						(Unifiable<Object>) vars.get(slot._1),
+						(Domain<Object>) slot._2)));
 	}
 
 }
