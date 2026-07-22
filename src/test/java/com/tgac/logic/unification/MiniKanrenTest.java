@@ -409,7 +409,7 @@ public class MiniKanrenTest {
 								.solve(x)
 								.map(Term::get))
 						.toString())
-				.isEqualTo("[LTree(value={1}, children={({LTree(value=<_.0>, children={()})}, {LTree(value={3}, children={()})})})]");
+				.isEqualTo("[LTree(value={1}, children={({LTree(value=_.0, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
 
 	@Test
@@ -428,7 +428,7 @@ public class MiniKanrenTest {
 										.solve(x)
 										.map(Term::get))
 								.toString())
-				.isEqualTo("[LTree(value={1}, children={({LTree(value=<_.0>, children={()})}, {LTree(value={3}, children={()})})})]");
+				.isEqualTo("[LTree(value={1}, children={({LTree(value=_.0, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
 
 	@Test
@@ -471,7 +471,7 @@ public class MiniKanrenTest {
 								.solve(lval(Tuple.of(x, y, z, children)))
 								.map(Term::get))
 						.toString())
-				.isEqualTo("[({1}, <_.0>, <_.1>, {({LTree(value={2}, children={()})}, {LTree(value={3}, children={()})})})]");
+				.isEqualTo("[({1}, _.0, _.1, {({LTree(value={2}, children={()})}, {LTree(value={3}, children={()})})})]");
 	}
 
 	@Test
@@ -494,7 +494,7 @@ public class MiniKanrenTest {
 								.solve(lval(Tuple.of(x, y, z, children)))
 								.map(Term::get))
 						.toString())
-				.isEqualTo("[({1}, {2}, <_.0>, {({LTree(value={3}, children={()})})})]");
+				.isEqualTo("[({1}, {2}, _.0, {({LTree(value={3}, children={()})})})]");
 	}
 
 	@Test
@@ -531,8 +531,8 @@ public class MiniKanrenTest {
 		List<Term<Integer>> reified =
 				MiniKanren.reify(Substitutions.empty(), lval(List.<Term<Integer>> of(x, y, x))).get().get();
 
-		assertThat(reified.get(0).asReified().get().getName()).isEqualTo("_.0");
-		assertThat(reified.get(1).asReified().get().getName()).isEqualTo("_.1");
+		assertThat(reified.get(0).asReified().get().getNumber()).isEqualTo(0);
+		assertThat(reified.get(1).asReified().get().getNumber()).isEqualTo(1);
 		assertThat(reified.get(2)).isSameAs(reified.get(0));
 	}
 
@@ -546,7 +546,7 @@ public class MiniKanrenTest {
 				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get())))).get();
 
 		assertThat(reified.toString())
-				.isEqualTo("{({(<_.0>)}, <_.1>, {(<_.0> . <_.1>)})}");
+				.isEqualTo("{({(_.0)}, _.1, {(_.0 . _.1)})}");
 	}
 
 	@Test

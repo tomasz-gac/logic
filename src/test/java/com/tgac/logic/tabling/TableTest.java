@@ -57,9 +57,9 @@ public class TableTest {
 
 		// Reified keys carry canonical hole names, so variant calls are the same call
 		TableEntry entry1 = table.getOrCreateEntry(
-				call(ancestor, Tuple.of(lval("alice"), ReifiedVar.of("_.0"))));
+				call(ancestor, Tuple.of(lval("alice"), ReifiedVar.of(0))));
 		TableEntry entry2 = table.getOrCreateEntry(
-				call(ancestor, Tuple.of(lval("alice"), ReifiedVar.of("_.0"))));
+				call(ancestor, Tuple.of(lval("alice"), ReifiedVar.of(0))));
 
 		assertThat(entry1).isSameAs(entry2);
 		assertThat(table.size()).isEqualTo(1);

@@ -425,10 +425,10 @@ public class MiniKanren {
 
 	private static <T> Fiber<Term<T>> instantiateTerm(
 			Term<T> u,
-			ConcurrentMap<String, Term<Object>> fresh) {
+			ConcurrentMap<Integer, Term<Object>> fresh) {
 		return u.asReified()
 				.map(hole -> Fiber.<Term<T>> done((Term<T>) fresh.computeIfAbsent(
-						hole.getName(), name -> LVar.lvar())))
+						hole.getNumber(), number -> LVar.lvar())))
 				.orElse(() -> MiniKanren.<T> mapStructure(u, e -> instantiateTerm(e, fresh)))
 				.getOrElse(done(u));
 	}
@@ -449,7 +449,6 @@ public class MiniKanren {
 	 * order — callers building positional structures over the holes (residue
 	 * slots) get the correspondence by construction, not by a parallel walk.
 	 */
-	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Tuple2<Reified<T>, java.util.List<LVar<?>>>> reifyWithHoles(
 			Substitutions s, Term<T> item) {
 		return walkAll(s, item)
@@ -458,12 +457,11 @@ public class MiniKanren {
 								.map(reified -> Tuple.of((Reified<T>) reified, holesInOrder(rp)))));
 	}
 
-	/** Invert the rename substitution: slot i = the var bound to {@code _.i}. */
+	/** Invert the rename substitution: slot i = the var numbered {@code _.i}. */
 	private static java.util.List<LVar<?>> holesInOrder(Substitutions renames) {
 		LVar<?>[] slots = new LVar<?>[(int) renames.size()];
 		for (Tuple2<LVar<?>, Term<?>> entry : renames.map()) {
-			ReifiedVar<?> name = (ReifiedVar<?>) entry._2;
-			slots[Integer.parseInt(name.getName().substring(2))] = entry._1;
+			slots[((ReifiedVar<?>) entry._2).getNumber()] = entry._1;
 		}
 		return Arrays.asList(slots);
 	}
@@ -476,7 +474,7 @@ public class MiniKanren {
 				.flatMap(v -> v.asVar()
 						// a var that walked to something else is already renamed
 						.map(u -> u == val ?
-								extend(s, (LVar<Object>) u, ReifiedVar.of("_." + s.size())) :
+								extend(s, (LVar<Object>) u, ReifiedVar.of((int) s.size())) :
 								s)
 						.map(Fiber::done)
 						.orElse(() -> members(v)

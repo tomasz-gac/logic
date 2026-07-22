@@ -51,8 +51,8 @@ public class CallTest {
 		Tabled<Object> rel = relation();
 
 		// reified holes are equal by canonical name
-		Call call1 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), ReifiedVar.of("_.0"))));
-		Call call2 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), ReifiedVar.of("_.0"))));
+		Call call1 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), ReifiedVar.of(0))));
+		Call call2 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), ReifiedVar.of(0))));
 
 		assertThat(call1).isEqualTo(call2);
 	}

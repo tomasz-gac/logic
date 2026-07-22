@@ -83,8 +83,8 @@ public class TableEntryTest {
 
 		// Reified answers carry canonical hole names, so terms that
 		// differ only in token objects are the same answer
-		assertThat(entry.addAnswer(answer(Tuple.of(ReifiedVar.of("_.0"), lval("bob"))), true).isDefined()).isTrue();
-		assertThat(entry.addAnswer(answer(Tuple.of(ReifiedVar.of("_.0"), lval("bob"))), true).isDefined()).isFalse();
+		assertThat(entry.addAnswer(answer(Tuple.of(ReifiedVar.of(0), lval("bob"))), true).isDefined()).isTrue();
+		assertThat(entry.addAnswer(answer(Tuple.of(ReifiedVar.of(0), lval("bob"))), true).isDefined()).isFalse();
 
 		assertThat(entry.getAnswerCount()).isEqualTo(1);
 	}

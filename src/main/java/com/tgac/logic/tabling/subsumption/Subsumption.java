@@ -32,7 +32,7 @@ public final class Subsumption {
 	 * overflows on long list arguments — depth goes to the heap instead.
 	 */
 	public static boolean subsumes(Term<?> general, Term<?> specific) {
-		Map<String, Term<?>> binding = new HashMap<>();
+		Map<Integer, Term<?>> binding = new HashMap<>();
 		ArrayDeque<Tuple2<Term<?>, Term<?>>> pending = new ArrayDeque<>();
 		pending.push(Tuple.of(general, specific));
 		while (!pending.isEmpty()) {
@@ -40,7 +40,7 @@ public final class Subsumption {
 			Term<?> g = pair._1;
 			Term<?> s = pair._2;
 			if (g instanceof ReifiedVar) {
-				String hole = ((ReifiedVar<?>) g).getName();
+				int hole = ((ReifiedVar<?>) g).getNumber();
 				Term<?> bound = binding.get(hole);
 				if (bound == null) {
 					binding.put(hole, s);

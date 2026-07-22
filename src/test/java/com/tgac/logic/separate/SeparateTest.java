@@ -128,13 +128,13 @@ public class SeparateTest {
 										.and(separate(dummy, lval(5)))))
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
-		// {({(<_.0>, <_.1>)}, {(<_.1>, <_.0>)} . <_.2>)} : (<_.0> ≠ {3}) || (<_.1> ≠ {2}) || (<_.1> ≠ {8} && <_.0> ≠ {7})
+		// {({(_.0, _.1)}, {(_.1, _.0)} . _.2)} : (_.0 ≠ {3}) || (_.1 ≠ {2}) || (_.1 ≠ {8} && _.0 ≠ {7})
 		assertThat(result)
-				.contains("{({(<_.0>, <_.1>)}, {(<_.1>, <_.0>)} . <_.2>)}")
-				.contains("(<_.0> ≠ {3})")
-				.contains("(<_.1> ≠ {2})")
-				.contains("<_.1> ≠ {8}")
-				.contains("<_.0> ≠ {7}")
+				.contains("{({(_.0, _.1)}, {(_.1, _.0)} . _.2)}")
+				.contains("(_.0 ≠ {3})")
+				.contains("(_.1 ≠ {2})")
+				.contains("_.1 ≠ {8}")
+				.contains("_.0 ≠ {7}")
 				.contains("||")
 				.contains("&&");
 	}
@@ -151,7 +151,7 @@ public class SeparateTest {
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
 		assertThat(result)
-				.isEqualTo("<_.0> : (<_.0> ≠ {3})");
+				.isEqualTo("_.0 : (_.0 ≠ {3})");
 	}
 
 	@Test
@@ -169,7 +169,7 @@ public class SeparateTest {
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
 		assertThat(result)
-				.isEqualTo("{(<_.0>, <_.1>)} : (<_.0> ≠ {3})");
+				.isEqualTo("{(_.0, _.1)} : (_.0 ≠ {3})");
 	}
 
 	static <A> Goal removo(Unifiable<LList<A>> with, Unifiable<LList<A>> without, Unifiable<A> item) {
@@ -282,10 +282,10 @@ public class SeparateTest {
 				.collect(Collectors.toList()))
 				.containsExactly(
 						"{()}",
-						"{(<_.0>)}",
-						"{(<_.0>, <_.1>)} : (<_.0> ≠ <_.1>)",
-						"{(<_.0>, <_.1>, <_.2>)} : (<_.0> ≠ <_.1>) || (<_.0> ≠ <_.2>) || (<_.1> ≠ <_.2>)",
-						"{(<_.0>, <_.1>, <_.2>, <_.3>)} : (<_.0> ≠ <_.1>) || (<_.0> ≠ <_.2>) || (<_.0> ≠ <_.3>) || (<_.2> ≠ <_.3>) || (<_.1> ≠ <_.2>) || (<_.1> ≠ <_.3>)");
+						"{(_.0)}",
+						"{(_.0, _.1)} : (_.0 ≠ _.1)",
+						"{(_.0, _.1, _.2)} : (_.0 ≠ _.1) || (_.0 ≠ _.2) || (_.1 ≠ _.2)",
+						"{(_.0, _.1, _.2, _.3)} : (_.0 ≠ _.1) || (_.0 ≠ _.2) || (_.0 ≠ _.3) || (_.2 ≠ _.3) || (_.1 ≠ _.2) || (_.1 ≠ _.3)");
 	}
 
 	@Test
