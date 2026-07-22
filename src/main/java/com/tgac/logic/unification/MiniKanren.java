@@ -442,6 +442,32 @@ public class MiniKanren {
 				.map(v -> (Reified<T>) v);
 	}
 
+	/**
+	 * {@link #reify} plus the holes it renamed, in slot order: the i-th list
+	 * element is the variable the reified term names {@code _.i}. The rename
+	 * pass numbers holes by first occurrence, so this IS the term's free-var
+	 * order — callers building positional structures over the holes (residue
+	 * slots) get the correspondence by construction, not by a parallel walk.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Fiber<Tuple2<Reified<T>, java.util.List<LVar<?>>>> reifyWithHoles(
+			Substitutions s, Term<T> item) {
+		return walkAll(s, item)
+				.flatMap(v -> reifyS(Substitutions.empty(), v)
+						.flatMap(rp -> walkAll(rp, v)
+								.map(reified -> Tuple.of((Reified<T>) reified, holesInOrder(rp)))));
+	}
+
+	/** Invert the rename substitution: slot i = the var bound to {@code _.i}. */
+	private static java.util.List<LVar<?>> holesInOrder(Substitutions renames) {
+		LVar<?>[] slots = new LVar<?>[(int) renames.size()];
+		for (Tuple2<LVar<?>, Term<?>> entry : renames.map()) {
+			ReifiedVar<?> name = (ReifiedVar<?>) entry._2;
+			slots[Integer.parseInt(name.getName().substring(2))] = entry._1;
+		}
+		return Arrays.asList(slots);
+	}
+
 	@SuppressWarnings("unchecked")
 	public static Fiber<Substitutions> reifyS(Substitutions s, Term<?> val) {
 		// shallow walk only: a deep walk would rebuild structures with rename

@@ -29,12 +29,8 @@ import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
-import io.vavr.control.Option;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -130,13 +126,13 @@ public class Tabling {
 		// keyed widening: the call pattern is the table key, so no optimizer may
 		// move binders across it — the contract as a type, not an accident of opacity
 		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k -> {
-			return MiniKanren.reify(callerPkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
+			return MiniKanren.reifyWithHoles(callerPkg.substitution(), argsTerm.getObjectTerm()).flatMap(reified -> {
 				// the call's REGION: reify anonymizes the vars, project anonymizes
-				// the knowledge about them — positionally, over the free vars in
-				// first-occurrence order. Non-projectable knowledge cannot enter
-				// the key, and unkeyed knowledge means wrong reuse — refuse.
-				java.util.List<LVar<?>> callVars = freeVars(callerPkg, argsTerm);
-				Projection projection = Projection.of(callerPkg, callVars);
+				// the knowledge about them — positionally, residue slot i = the
+				// hole reify names _.i, by construction. Non-projectable knowledge
+				// cannot enter the key, and unkeyed knowledge means wrong reuse.
+				Reified<?> reifiedArgs = reified._1;
+				Projection projection = Projection.of(callerPkg, reified._2);
 				Call key = Call.of(relation, reifiedArgs, projection.getResidues());
 				Table table = callerPkg.getStore(Table.class);
 				// a weighted solve whose semiring cannot table (non-idempotent,
@@ -203,40 +199,6 @@ public class Tabling {
 	}
 
 	/**
-	 * The call's free variables — the walked args term's unbound vars in
-	 * first-occurrence preorder. Slot i of every projected residue means
-	 * callVars[i]; alpha-equal calls derive the same order from the same
-	 * structure, which is what makes residues align across variants.
-	 */
-	private static java.util.List<LVar<?>> freeVars(Package pkg, Unifiable<?> argsTerm) {
-		java.util.List<LVar<?>> out = new ArrayList<>();
-		Set<LVar<?>> seen = new HashSet<>();
-		ArrayDeque<Term<?>> pending = new ArrayDeque<>();
-		pending.push(argsTerm);
-		while (!pending.isEmpty()) {
-			Term<?> term = pkg.walk(pending.pop());
-			if (term.asVar().isDefined()) {
-				LVar<?> v = (LVar<?>) term.asVar().get();
-				if (seen.add(v)) {
-					out.add(v);
-				}
-				continue;
-			}
-			Option<Iterable<Term<?>>> members = MiniKanren.members(term);
-			if (members.isDefined()) {
-				ArrayList<Term<?>> children = new ArrayList<>();
-				for (Term<?> child : members.get()) {
-					children.add(child);
-				}
-				for (int i = children.size() - 1; i >= 0; i--) {
-					pending.push(children.get(i));
-				}
-			}
-		}
-		return out;
-	}
-
-	/**
 	 * The caller's constraint knowledge about the call vars, projected per
 	 * store: the residues that join the {@link Call} key, and the restate
 	 * goals that seed the master's body with exactly that knowledge. A store
@@ -265,8 +227,8 @@ public class Tabling {
 									+ store.getClass().getSimpleName() + " at a tabled call");
 				}
 				Projectable projectable = (Projectable) store;
-				PartialOrder residue = (PartialOrder) projectable.project(callVars);
-				PartialOrder top = (PartialOrder) projectable.project(Collections.emptyList());
+				PartialOrder residue = projectable.project(callVars);
+				PartialOrder top = projectable.project(Collections.emptyList());
 				if (!residue.equals(top)) {
 					residues = residues.put(store.getClass(), residue);
 					restates.add(projectable.restate(residue, targets));
