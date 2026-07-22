@@ -15,6 +15,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Array;
+import io.vavr.collection.HashMap;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.List;
@@ -60,7 +61,7 @@ public class ProjectionTest {
 		// restated onto a FRESH var, the knowledge constrains it identically:
 		// solving enumerates exactly the projected domain
 		Unifiable<Integer> fresh = lvar();
-		List<Integer> values = store.restate(residue, Arrays.asList(fresh))
+		List<Integer> values = residue.restate(Arrays.<Unifiable<?>> asList(fresh))
 				.solve(fresh)
 				.map(Term::<Integer> get)
 				.sorted()
@@ -74,11 +75,50 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = FiniteDomainConstraints.empty();
 		DomainResidue residue = store.project(Arrays.asList(varOf(fresh)));
 
-		List<Integer> values = store.restate(residue, Arrays.asList(fresh))
+		List<Integer> values = residue.restate(Arrays.<Unifiable<?>> asList(fresh))
 				.and(Constraints.unify(fresh, lval(5)))
 				.solve(fresh)
 				.map(Term::<Integer> get)
 				.collect(Collectors.toList());
 		assertThat(values).containsExactly(5);
+	}
+
+	@Test
+	public void aCoupledProjectionSaysItIsWidened() {
+		// a live propagator watching a supplied var cannot ride the residue —
+		// the residue must SAY it under-states; the boundary decides refusal
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
+		FiniteDomainConstraints store = ((FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
+				.withDomain(varOf(y), dom(1, 2, 3))
+				.prepend(Propagator.of(FiniteDomainConstraints.class,
+						Arrays.<Term<?>> asList(x, y),
+						pkg -> Verdict.keep())));
+
+		// wholly-covered coupling: still outside the vocabulary — widened
+		assertThat(store.project(Arrays.asList(varOf(x), varOf(y))).isWidened()).isTrue();
+		// escaping coupling: y unsupplied — widened
+		assertThat(store.project(Arrays.asList(varOf(x))).isWidened()).isTrue();
+		// no supplied var is watched — the residue tells the whole truth
+		Unifiable<Integer> z = lvar();
+		assertThat(store.project(Arrays.asList(varOf(z))).isWidened()).isFalse();
+	}
+
+	@Test
+	public void widenedIsAdvisoryNotIdentity() {
+		// two callers widened to the same domains searched the same region —
+		// the flag must not split keys
+		HashMap<Integer, Domain<?>> slots = HashMap.of(0, dom(1, 2));
+		assertThat(DomainResidue.of(slots, true))
+				.isEqualTo(DomainResidue.of(slots, false));
+	}
+
+	@Test
+	public void domainsOnlyProjectionIsNotWidened() {
+		Unifiable<Integer> x = lvar();
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
+		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p);
+		assertThat(store.project(Arrays.asList(varOf(x))).isWidened()).isFalse();
 	}
 }

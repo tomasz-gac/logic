@@ -10,14 +10,12 @@ import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.finitedomain.domains.Empty;
-import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
-import com.tgac.logic.unification.Unifiable;
 import com.tgac.logic.unification.Term;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
@@ -303,6 +301,17 @@ class FiniteDomainConstraints implements ConstraintStore,
 		return FiniteDomainConstraints.of(domains.put(x, xd), constraints);
 	}
 
+	/**
+	 * Current vocabulary: DOMAINS ONLY — per-var, positional, post-propagation
+	 * (a coupling's arc-consistent shadow is already in each domain; the
+	 * correlation itself is not expressible yet). Live propagators are outside
+	 * the vocabulary and handled at the tabling boundary: dropped soundly on
+	 * the call side (the master searches wider, the caller filters — the
+	 * containment law), refused on the answer side via {@link #discharged}.
+	 * Stage 2 (tabled-constraints.md) extends the vocabulary with propagator
+	 * recipes and moves the escape refusal HERE, per {@link Projectable#project}'s
+	 * whole-truth-or-throw contract.
+	 */
 	@Override
 	public DomainResidue project(List<LVar<?>> vars) {
 		HashMap<Integer, Domain<?>> slots = HashMap.empty();
@@ -312,16 +321,27 @@ class FiniteDomainConstraints implements ConstraintStore,
 				slots = slots.put(i, d.get());
 			}
 		}
-		return DomainResidue.of(slots);
+		return DomainResidue.of(slots, watchesAnyOf(vars));
 	}
 
-	@Override
-	@SuppressWarnings("unchecked")
-	public Goal restate(DomainResidue residue, List<Unifiable<?>> vars) {
-		return residue.getSlots().foldLeft(Goal.success(), (goal, slot) ->
-				Conjunction.of(goal, FiniteDomain.dom(
-						(Unifiable<Object>) vars.get(slot._1),
-						(Domain<Object>) slot._2)));
+	/**
+	 * A live propagator watching a supplied var means the residue under-states
+	 * (couplings are outside the domains-only vocabulary — wholly covered or
+	 * escaping alike). Identity comparison: the caller passes walked roots and
+	 * custody keeps knowledge at roots; a watcher aliased away from its root
+	 * pre-dates that custody and under-flags — acceptable while the flag is
+	 * advisory, to revisit when stage 2 consumes it (tabled-constraints.md).
+	 */
+	private boolean watchesAnyOf(List<LVar<?>> vars) {
+		java.util.Set<LVar<?>> supplied = new java.util.HashSet<>(vars);
+		for (Propagator propagator : constraints) {
+			for (Term<?> watched : propagator.watchedTerms()) {
+				if (watched.asVar().isDefined() && supplied.contains(watched.asVar().get())) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/**

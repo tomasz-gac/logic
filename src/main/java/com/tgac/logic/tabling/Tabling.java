@@ -7,13 +7,13 @@ import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.unification.LVal.lval;
 
-import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Region;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Residue;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -226,11 +226,11 @@ public class Tabling {
 									+ store.getClass().getSimpleName() + " at a tabled call");
 				}
 				Projectable projectable = (Projectable) store;
-				PartialOrder residue = projectable.project(callVars);
-				PartialOrder top = projectable.project(Collections.emptyList());
+				Residue residue = projectable.project(callVars);
+				Residue top = projectable.project(Collections.emptyList());
 				if (!residue.equals(top)) {
 					residues = residues.put(store.getClass(), residue);
-					restates.add(projectable.restate(residue, targets));
+					restates.add(residue.restate(targets));
 				}
 			}
 			return new Projection(residues, restates);

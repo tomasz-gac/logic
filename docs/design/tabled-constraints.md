@@ -121,7 +121,24 @@ against a rename substitution; this is its data-shaped sibling. AS BUILT: POSITI
 (`reifyWithHoles` derives the order from the one rename pass), so no renaming
 machinery crosses the store boundary. `project` of the empty list is ⊤, and
 ⊤ residues stay OUT of keys — calls under irrelevant knowledge stay
-constraint-free variants.
+constraint-free variants. THE CONTRACT (decided, flag over throw —
+Tom's refinement): project tells the whole truth about its vars or FLAGS —
+a residue that cannot express live knowledge about a supplied var (a
+coupling outside the vocabulary, or one escaping to an unsupplied local)
+says so via `Residue.isWidened`, and the residue RESTATES ITSELF
+(`Residue.restate` — it is self-describing knowledge needing only public
+factories, not the store that projected it). One vocabulary rides every
+usage — call keys and answer residues are the same projection; the store
+never learns which side it serves; only the store can SEE the shortfall,
+only the BOUNDARY has the context to refuse. The refusal's reasons differ
+by side and both bind: on answers refusing a widened residue is NECESSARY
+(dropped local knowledge replays wrong answers — nothing re-filters); on
+calls it is POLICY — a widened key is sound by containment (the master
+searches wider, the caller filters), so ACCEPTING it is precisely the
+call-abstraction knob, one boundary branch away. Stage 1 accepts widened
+calls (the shipped, pinned behavior) and answers do not project yet.
+Widened is ADVISORY, excluded from residue equality: callers widened to
+the same region share an entry.
 
 ### 5.2 `entails(mine, other) → boolean`
 
@@ -223,13 +240,22 @@ growth.)
 
 1. **DONE (July 2026).** Hooks + FD-only, exact-equality keys, unconstrained
    answers still rejected. (`TabledUnderDomainsTest` pins it.)
-2. Constrained ANSWERS for FD (residue storage + `restate` + subsumption
-   dedup). OPEN HAZARD to resolve first: per-var residues lose arg↔arg
-   correlation routed through a body-local (`x1 = w = x2, w ∈ {1,2}` must not
-   decay to independent domains — replay would admit (1,2), unsound). Carry
-   couplings with renamed locals, ground locals before projection, or
-   restrict eligible bodies — the human's call. And purely-local residues
-   must be DECIDED (a witness exists) before dropping.
+2. Constrained ANSWERS for FD — SPEC DECIDED (July 2026): RECIPES —
+   `Propagator` gains a rebuild field (vars → the public factory re-call);
+   residues extend to domains + hole-covered propagators (recipe, slots);
+   restate replays both. ALWAYS-PORT-ALL: the one vocabulary rides both
+   boundaries — couplings join call keys AND answer residues, key ⟺ restate
+   atomically (restated-but-unkeyed is the §3.1 bug). Residues FLAG
+   widening (the §5.1 contract) and the boundary refuses: a widened ANSWER
+   residue refuses at produce (necessity); a widened CALL key refuses or
+   widens per policy (strict default, the abstraction knob later).
+   `discharged` demotes to the ground-answer fast path. Purely-local
+   DOMAINS have a decidable witness and drop; local-escaping couplings
+   refuse until a renamed-extra-holes extension has a paying customer.
+   Known cost: stage-1's sharing-by-key-collision fragments (couplings
+   tighten keys) — sharing properly returns at stage 3 via containment;
+   and arg-coupled-to-private-var at a tabled call becomes illegal until
+   grounded/labeled (the abstraction knob's likely first trigger).
 3. Pointwise-⊑ call subsumption.
 4. Neq widening — only with a motivating use case; the deduction/termination
    trade needs one to be judged.
