@@ -1,7 +1,7 @@
 # Tabled constraints — the price list for merging the two fixpoint engines
 
-**Status: DESIGN SKETCH (July 2026, from a design conversation with Tom). Not
-implemented, not scheduled. This is the successor to `fixpoint-machine.md`'s
+**Status: STAGE 1 SHIPPED (July 2026) — tabled calls under FD domains run,
+region-keyed; stages 2–4 remain design (AS-BUILT notes inline). This is the successor to `fixpoint-machine.md`'s
 "don't merge the engines prematurely" caveat: it prices the merge so the
 decision can be made deliberately when a use case pays for it. Until then, the
 wall stands (see §2).**
@@ -36,7 +36,12 @@ Two guard pins keep the machines apart
 (`TabledTest.shouldRejectTabledCallsUnderActiveConstraints`,
 `shouldRejectConstrainedAnswers`): a tabled call under an active constraint
 store throws, and a tabled answer whose variables carry residue throws. The
-wall is loud, cheap and sound. It exists because the naive merge is SILENTLY
+wall is loud, cheap and sound. AS BUILT (stage 1): the CALL-side wall is now
+PER-STORE — a non-empty store implementing `Projectable` participates (its
+residue keys the call); one that cannot project still refuses loudly. The
+ANSWER-side wall stands, refined by `Projectable.discharged`: live knowledge
+on an answer refuses, spent bookkeeping (stale domains under bindings)
+passes. The guard tests were refined, never deleted. It exists because the naive merge is SILENTLY
 WRONG in three distinct ways (§3) — do not weaken the guards without
 implementing this design.
 
@@ -89,7 +94,9 @@ POINTWISE: A entails B iff every factor of A entails its counterpart in B.
 So no cross-domain vocabulary is needed. Comparison is intra-store business;
 the driver-side fold ANDs opaque per-store verdicts — the same custody
 principle as the store boundary itself (stores understand their own state;
-the framework combines answers it does not inspect).
+the framework combines answers it does not inspect). Pointwise is per-STORE,
+not per-variable: a store's own factor may be irreducibly JOINT (the row-set
+store's residue is a relation over the call vars) — native, not a violation.
 
 **Known, accepted incompleteness:** the pointwise product order approximates
 semantic entailment from below. Example: A = `x ∈ {1..5}` (FD) ∧ `x ≠ 3`
@@ -109,9 +116,12 @@ growing three OPTIONAL hooks, plus logic in `Tabling`:
 
 "My knowledge about these variables, canonically renamed" — an opaque,
 store-specific value. Half of this exists: `reify` already renders residue
-against a rename substitution; this is its data-shaped sibling. It MUST share
-the call key's alpha-renaming (the `reifyS` substitution) so variable
-identities line up between the reified arguments and every store's residue.
+against a rename substitution; this is its data-shaped sibling. AS BUILT: POSITIONAL instead of renamed —
+`project(List<LVar>)`, residue slot i = the hole the key names `_.i`
+(`reifyWithHoles` derives the order from the one rename pass), so no renaming
+machinery crosses the store boundary. `project` of the empty list is ⊤, and
+⊤ residues stay OUT of keys — calls under irrelevant knowledge stay
+constraint-free variants.
 
 ### 5.2 `entails(mine, other) → boolean`
 
@@ -134,14 +144,30 @@ adoption moment ("adoption not rewrite, when a customer exists" — the
 customer arrived twice at once); Domain is the prototype instance. For FD: domain-wise ⊆.
 For Neq: record-set implication (hard in general; see §6). Reflexive,
 transitive; `entails` need not be complete (a conservative `false` costs
-reuse, not soundness).
+reuse, not soundness). AS BUILT: subsumed exactly as predicted — residues are
+`PartialOrder` values (leq ALONE; the meet is not demanded, since consumers
+only compare — and `Comparable` was rejected: a total order cannot express
+incomparable regions). One driver-side `leq` is the whole fold. The
+TERMINATION gate was DROPPED AS A TYPE (Tom's ruling): infinite residue
+antichains are program misconstruction, exactly like tabling an unbounded
+generator — never statically rejected elsewhere. Finite-lattice-ness is a
+documented per-store SUFFICIENT CONDITION; `Projectable` is the SOUNDNESS
+gate (unprojected knowledge cannot be keyed); Neq is admissible whenever
+someone gives it project/restate over its record-set meet-semilattice.
 
 ### 5.3 `restate(residue) → Goal`
 
 Turn my residue back into statements through the normal public entries
 (`resolve`/`activate`/`narrowed`), so a consumer replaying a cached answer
 re-imposes its guards — the meet-at-consumption. Without this hook, cached
-answers silently generalize (the second guard test's scenario).
+answers silently generalize (the second guard test's scenario). AS BUILT:
+restate is ALSO the call-entry hook — the master runs FROM THE KEY (the
+caller's constraint stores stripped: absence is ⊤, posting re-registers; the
+key's residues restated ahead of the body), so the cache holds exactly the
+region the key names and every caller, the first included, filters at
+consumption by its own state. The master-from-key pin: two callers share a
+key, one privately coupled — the cache must hold the key's answers, not the
+coupling's subset.
 
 ### 5.4 What Tabling does with them
 
@@ -155,6 +181,11 @@ answers silently generalize (the second guard test's scenario).
   own tighter state filters answers at consumption for free.
 - **Answers** = (reified term, map storeClass → residue); replay =
   instantiate + `restate` each residue. Dedup by pointwise entailment.
+- AS BUILT (stage 1): `Call` carries `(relation, reified args, storeClass →
+  residue)` with exact residue equality; subsumptive reuse is
+  CONSTRAINT-FREE-ONLY — positional slot spaces do not align across
+  different hole counts, so region containment between constrained calls
+  waits for stage 3's correspondence machinery.
 
 ### 5.5 The termination gate
 
@@ -190,10 +221,15 @@ growth.)
 
 ## 6. Staging, if ever implemented
 
-1. Hooks + FD-only, exact-equality keys, unconstrained answers still rejected.
-   (Smallest sound opening; already useful: tabled relations under domains.)
+1. **DONE (July 2026).** Hooks + FD-only, exact-equality keys, unconstrained
+   answers still rejected. (`TabledUnderDomainsTest` pins it.)
 2. Constrained ANSWERS for FD (residue storage + `restate` + subsumption
-   dedup).
+   dedup). OPEN HAZARD to resolve first: per-var residues lose arg↔arg
+   correlation routed through a body-local (`x1 = w = x2, w ∈ {1,2}` must not
+   decay to independent domains — replay would admit (1,2), unsound). Carry
+   couplings with renamed locals, ground locals before projection, or
+   restrict eligible bodies — the human's call. And purely-local residues
+   must be DECIDED (a witness exists) before dropping.
 3. Pointwise-⊑ call subsumption.
 4. Neq widening — only with a motivating use case; the deduction/termination
    trade needs one to be judged.

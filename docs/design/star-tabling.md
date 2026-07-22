@@ -117,7 +117,7 @@ solves, and runs in three phases:
 - **Explore.** Ordinary structural (key-level) tabling — REUSED unchanged, a
   NORMAL run. It finds every key and seals, exactly as plain tabling does. The
   real value is never folded into the (presence) cell; it rides the package,
-  escapes toward `solve`, and is tagged EXPLORATION so the closed collector drops
+  escapes toward `solve`, and is tagged a `Fragment` so the closed collector drops
   it. The tag names the phase — a bounded solve tags the same escapes and just
   never filters.
 - **Solve.** At each seal, compute the answers' values by star, as PURE DATA —
@@ -361,8 +361,11 @@ seal freezes one entry's slice of the equation graph, and an entry is solvable
 only with its whole dependency closure over that graph — the equation system's
 coupling; dependency-ordered sealing guarantees that at any entry's seal the
 whole closure has sealed too, earlier (a constant by then) or atomically with it
-(a sleeper ring group-seals). So the closed mode solves at the closure's last
-announcement — nothing ever waits across cascades — and inner SCCs solve first,
+(a sleeper ring group-seals, and the group is fully MARKED before any member is
+announced). So the closed mode solves at the closure's FIRST announcement —
+later members' hooks find the values and release their own stashed readers, an
+unmarked closure member at a hook is an invariant breach and throws — nothing
+ever waits across cascades — and inner SCCs solve first,
 becoming constants for the outer ones, bottom-up without imposing an order. At
 each solve it reads the captured `A`/`b` off the `DependencyGraph` (§4.1–4.2),
 runs the star as pure arithmetic
@@ -383,7 +386,7 @@ every key and sealing (proven by the `p(X):-p(X)` termination). The presence cel
 folds presence, which is bounded, so nothing diverges and there is no special
 machinery here. The real semiring value rides along on the package but is NOT
 folded into the presence cell — it escapes toward `solve`, and every such escape
-is tagged EXPLORATION and dropped at `solveClosed`'s collector (each is a fragment
+is tagged a `Fragment` and dropped at `solveClosed`'s collector (each is a fragment
 until the loops are summed). The tag names the PHASE, not a verdict: a
 bounded/streaming solve tags the same escapes and simply never filters them; the
 closed collector filters them, while an untagged non-tabled answer (from a branch
@@ -395,7 +398,7 @@ no separate probe pass. It writes them into a first-class `DependencyGraph`
 answer term is unique only within its entry and the graph spans a whole closure
 of entries — and the directed edges are `Edge(from, to)`, "from depends on to."
 Each derivation carries, on its IMMUTABLE package, a RECURRENT record of which
-looping (still-open) `Node`s it has consumed, appended by `onConsume`. At the
+looping (still-open) `Node`s it has consumed, appended by the mode's `absorb`. At the
 hook the produce routes on that count:
 
 - **0 consumed → a base.** A non-recursive answer; its value is the base `b_i` —
@@ -474,7 +477,7 @@ deliver by reading the cell; the finalized value has to TRAVEL out through the
 continuation that carries it to the collector.
 
 The carriers are the READER CHAINS. Every caller consumes through one, and
-during explore every delivery a chain makes is a FRAGMENT (tagged EXPLORATION,
+during explore every delivery a chain makes is a FRAGMENT (the `Fragment` tag,
 dropped at the closed collector). A chain ends at a sealed entry in exactly one
 of two ways — PARKED at the seal (drained by it and handed to the mode) or
 CAUGHT UP after it — and at that end a TOP-LEVEL chain is replayed exactly
@@ -503,12 +506,14 @@ values — `loop(x) ∧ loop(x)` comes out `x ⊗ x` by construction.
 
 Reused, unchanged: the structural key search, completion detection (both tiers),
 the group seal and its virtual merge, the cascade order. NEW: the mode seam
-(`TablingMode` — the skeleton's phase hooks, with `Streaming` and `Closed` as its
-two implementations), base + coefficient recording plus the nonlinearity guard
+(`TablingMode` — the derivation algebra `bodyState`/`absorb`/`capture` plus the
+EMIT events `sealed`/`caughtUp`, with `Streaming` and `Closed` as its two
+implementations; `Closed` keeps each entry's emission state in a per-entry
+`Life`), base + coefficient recording plus the nonlinearity guard
 (explore), the closure walk and the ~20-line Kleene solver
 (solve), and the reader-chain replay (emit) — all of the closed logic in the
 weight package. The tabling core's own contributions are the anonymous master
-and the seal hook that hands the drained subscribers to the mode. The part that
+and the sealed hook handing each entry's drained subscribers to the mode. The part that
 is usually hardest — knowing WHEN an SCC is complete and WHICH calls it
 contains — is exactly what the completion machinery already provides.
 
@@ -516,7 +521,7 @@ contains — is exactly what the completion machinery already provides.
 
 Under a parallel scheduler, a partial (pre-star) package can be in flight when
 its coat's region seals concurrently. Since a sealed region's exploration is
-complete and its answers will be emitted, such an EXPLORATION-tagged package (a
+complete and its answers will be emitted, such a Fragment-tagged package (a
 doomed straggler) is redundant and can be killed early
 (`coat.region.isSealed()` → fail the branch) instead of running to the collector
 to be dropped there. It is SAFE because the billing discipline keeps a region

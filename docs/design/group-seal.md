@@ -127,9 +127,14 @@ work in S — and phase two just certified there has been none since before
 phase one. The same circularity that justifies the singleton rule's
 check-then-CAS gap justifies this one.)
 
-**Sealing and hand-off.** CAS each member's flag — a lost CAS means a
-racing group seal got there first; skip that member's drain, no harm —
-then drain every sealed member's parked sleepers. The dead sleepers feed
+**Sealing and hand-off.** CAS EVERY member's flag first, then announce:
+the marking loop completes over the whole group before any member's
+`onSealed` hook fires, so every hook observes the group fully sealed
+(RegionTest pins it — this is what lets the closed mode's first-announced
+hook solve the whole closure, and makes an unsealed closure member sighted
+at a hook an invariant breach, which `Closed` converts to a loud throw).
+A lost CAS means a racing group seal got there first; skip that member's
+drain, no harm. Then drain every sealed member's parked sleepers. The dead sleepers feed
 the ORDINARY cascade: each one's owner is awoken and rechecked, so a group
 seal can unlock further singleton or group seals outside the set, exactly
 like any other seal.

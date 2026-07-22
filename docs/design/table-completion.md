@@ -93,7 +93,8 @@ complete. End-of-search only.
   under its own caller's coat) and is carried untouched everywhere else:
   forks inherit it, parked Registrations freeze it, wakes resume it.
   Branch-local by construction — no trail, no unwind, no thread-locals.
-- **The primitives** (tabling/primitives, logic-free, generic): a
+- **The primitives** (`functional`'s `fibers/primitives` — lifted July 2026;
+  logic-free, generic): a
   `MonotoneCell<V,S>` holds each entry's answers — a persistent
   `JoinSet<A>` value (join-semilattice; join-idempotence IS the dedup
   discipline, gate-checked) plus parked subscribers, grow-wakes,
@@ -147,8 +148,8 @@ weight, not emission), negation/ifte (no new bindings), reclamation,
 prefetch. VALUES-FINAL is a separate event belonging to the star machinery
 (star-tabling.md, shipped) — but dependency-ordered sealing makes SEALED ⟹
 SOLVABLE: at any entry's seal its dependency closure over the captured edge
-graph has sealed too, so the closed mode solves and records values at the
-closure's last announcement. SOLVED is mode state, not a second Region
+graph has sealed too (group marking completes before any hook fires), so the
+closed mode solves and records values at the closure's FIRST announcement. SOLVED is mode state, not a second Region
 flag. On acyclic SCCs it coincides with keys-final for free. Do not
 conflate the two.
 

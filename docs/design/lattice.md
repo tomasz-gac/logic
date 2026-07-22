@@ -684,3 +684,13 @@ remain live consumers-to-be, unchanged in design.
   incompleteness).
 - No speculative operations on the interface: every method must have a
   shipping consumer at adoption time.
+
+**`PartialOrder` (July 2026):** extracted ABOVE both semilattices in
+`functional/algebra` — `leq` alone, the entailment order. Consumers that only
+COMPARE knowledge (TCLP call keys, subsumption, dedup) bound their values by
+it and no more; both semilattices extend it, deriving `leq` from their
+operation, so every lattice value qualifies unchanged. Not `Comparable`: a
+total order must rank every pair and would lie about incomparable knowledge.
+The law kits certify what they prove — `checkMeet` gained the order sweeps
+and records `partial-order`, so semilattice witnesses are order-certified
+through the kit chain, not annotation lists.

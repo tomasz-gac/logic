@@ -11,7 +11,7 @@ tests.
 1. **TDD.** Write a failing test first, watch it fail, then make it pass. For a bug, first
    write a test that reproduces it.
 2. **The test suite is your safety net.** `mvn test` must end in `BUILD SUCCESS`. Never
-   commit or merge with a red suite. Count today: ~315 tests. If the count drops, you
+   commit or merge with a red suite. Count today: ~443 tests. If the count drops, you
    deleted or emptied a test — don't.
 3. **Test output must be pristine.** No `System.out.println` in tests or in `src/main`.
    Assert results; don't print them. (One intentional exception is documented below.)
@@ -156,16 +156,19 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
   (native debugging, simpler tabling, natural cut) as a separate experimental module; the
   completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
-- `docs/design/tabled-constraints.md` — DESIGN SKETCH: merging tabling and constraints
-  (TCLP): three intra-domain store hooks (project/entails/restate), pointwise product-order
-  entailment, the antichain termination gate. Read before weakening the tabling guard tests.
+- `docs/design/tabled-constraints.md` — STAGE 1 SHIPPED (July 2026): tabled calls
+  under FD domains, region-keyed (`Projectable` residues, positional; the master
+  runs FROM THE KEY). Stages 2–4 remain design: constrained answers (purification
+  hazard pending the human's call), region subsumption, Neq. Read before touching
+  the tabling guard tests.
 - `docs/design/substitutions-migration.md` — MOSTLY SHIPPED (Steps A–C: the
   unifier typed over Substitutions, the kind-tagged decompose shared by unify
   and members); Step D (representation swaps) remains, benchmark-gated. Read
   before touching MiniKanren internals.
 - `docs/design/table-completion.md` — AS BUILT: per-call completion detection
-  (the EnclosingCall coat, the anonymous master, the Region/ledger primitives,
-  the two-edge graph and its seal criterion). Read before touching tabling.
+  (the EnclosingCall coat, the anonymous master, the Region/ledger primitives —
+  lifted to functional's `fibers/primitives`, July 2026 — the two-edge graph and
+  its seal criterion). Read before touching tabling.
 - `docs/design/star-tabling.md` — AS BUILT: closed-semiring (star) tabling —
   wait-mode explore with base/edge capture at produce, dependency-ordered
   sealing (SEALED ⟹ SOLVABLE; one joint solve per edge-graph closure),

@@ -76,6 +76,7 @@ The driver speaks to stores through exactly two triggers, each answered by a
 Fiber<Revision> revise(Prefix, Package);   // bindings arrived — broadcast
 Fiber<Revision> stated(Stored, Package);   // your item was stated — owner only
 // plus lifecycle: enforce (commit before reify), reify (render residue)
+// optional capability: Projectable (project/restate/discharged — see below)
 ```
 
 A store's reaction is COMPLETE: custody checks, re-examining its own watchers
@@ -98,6 +99,18 @@ else crosses any boundary:
 A store-emitted run is the degenerate always-ripe suspension. Cross-store
 interaction is therefore one thing: bindings, through the substitution — the
 blackboard. Everything else is intra-store or store↔driver scheduling.
+
+**Optional capability (July 2026): `Projectable<R extends PartialOrder<R>>`**
+— `project(vars)` reports the store's knowledge about a POSITIONAL var list
+as a residue (slot i = vars[i], absence = ⊤, empty-list projection IS ⊤);
+`restate(residue, vars)` re-imposes one through the public posts;
+`discharged(state)` distinguishes live from spent knowledge (stale domains
+under bindings). The residue's one cross-store obligation is its
+`PartialOrder` — leq is entailment, all any consumer asks. This is the
+tabling boundary's contract (tabled-constraints.md, stage 1 as built); FD is
+the prototype (`DomainResidue`, a meet-valued slot map with pointwise
+intersect). Participation in tabled calls requires it: unprojected knowledge
+cannot be keyed, and unkeyed knowledge means wrong reuse.
 
 ## 4. Intra-store machinery (FD's, privately)
 

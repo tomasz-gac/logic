@@ -170,6 +170,18 @@ constrained by: dynamic planning and deferred lookups are SUBSTITUTES
 consumers LATER across barriers — the tabling-safe direction). Build at
 most one.
 
+**The re-pricing dial (July 2026, decided with the human):** three
+positions — (1) re-price every forcing (SHIPPED; catches value-skew);
+(2) memo per adornment (exact map; re-price exactly when boundness
+CHANGES — more-bound prices only drop, but non-uniformly, so relative
+order can flip); (3) reuse the nearest more-general cached plan
+(`SubsumptionMap` retrieval; sound by confluence — stale order is only
+ever slow). The deciding signal is the SOURCE-ADVERTISED cost of pricing
+itself (pldb's `external-relations.md` §4: FREE sources always re-sort,
+PRICED sources memo, UNAVAILABLE sources reuse — everything prices ∞
+there anyway). This settles the memo's benchmark gate structurally for
+the common cases; only the tuning between positions stays empirical.
+
 Related for free: **tabled bodies self-optimize** — the tabling
 combinator wraps its own body (the barrier binds outsiders, not the
 owner); the master applies once per variant, so plans are memoized by the
