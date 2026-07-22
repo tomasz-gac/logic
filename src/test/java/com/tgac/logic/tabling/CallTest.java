@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Reified;
-import com.tgac.logic.unification.ReifiedVar;
+import com.tgac.logic.unification.Hole;
 import io.vavr.Tuple;
 import org.junit.Test;
 
@@ -51,8 +51,8 @@ public class CallTest {
 		Tabled<Object> rel = relation();
 
 		// reified holes are equal by canonical name
-		Call call1 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), ReifiedVar.of(0))));
-		Call call2 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), ReifiedVar.of(0))));
+		Call call1 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), Hole.of(0))));
+		Call call2 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), Hole.of(0))));
 
 		assertThat(call1).isEqualTo(call2);
 	}

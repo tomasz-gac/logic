@@ -7,9 +7,11 @@ import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.unification.LVal.lval;
 
+import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.algebra.PartialOrder;
+import com.tgac.functional.fibers.primitives.JoinMap;
+import com.tgac.functional.fibers.primitives.Region;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.goals.Conjunction;
@@ -17,8 +19,6 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.optimizer.Barrier;
-import com.tgac.functional.fibers.primitives.JoinMap;
-import com.tgac.functional.fibers.primitives.Region;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
@@ -125,49 +125,48 @@ public class Tabling {
 		Unifiable<?> argsTerm = lval(args instanceof Term ? Tuple.of(args) : args);
 		// keyed widening: the call pattern is the table key, so no optimizer may
 		// move binders across it — the contract as a type, not an accident of opacity
-		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k -> {
-			return MiniKanren.reifyWithHoles(callerPkg.substitution(), argsTerm.getObjectTerm()).flatMap(reified -> {
-				// the call's REGION: reify anonymizes the vars, project anonymizes
-				// the knowledge about them — positionally, residue slot i = the
-				// hole reify names _.i, by construction. Non-projectable knowledge
-				// cannot enter the key, and unkeyed knowledge means wrong reuse.
-				Reified<?> reifiedArgs = reified._1;
-				Projection projection = Projection.of(callerPkg, reified._2);
-				Call key = Call.of(relation, reifiedArgs, projection.getResidues());
-				Table table = callerPkg.getStore(Table.class);
-				// a weighted solve whose semiring cannot table (non-idempotent,
-				// non-closed) would silently drop weights here — refuse loudly
-				table.assertTablingAllowed();
-				// subsumptive reuse: a sealed general entry is a read-only relation
-				// containing every answer this instance call could produce (subset
-				// property) — read it through consume's unification filter
-				TableEntry<Object> subsumer = table.reusableSubsumer(key);
-				if (subsumer != null) {
-					return consume(subsumer, k, callerPkg, argsTerm, 0, table);
-				}
-				TableEntry<Object> entry = table.getOrCreateEntry(key);
-				if (entry.tryBecomeMaster()) {
-					// the ANONYMOUS MASTER: the body runs as detached work billed
-					// to this entry — it belongs to no caller. Every caller, the
-					// first included, reads the cell as a consumer; the sleeper it
-					// parks is the dependency edge completion detection needs, so
-					// a caller can never seal ahead of a call it depends on. The
-					// body runs FROM THE KEY: the first caller's constraint stores
-					// are stripped and the key's residues restated, so the cache
-					// holds exactly the region the key names — every caller
-					// (the first included) filters at consumption by its own state
-					Package bodyPkg = stripConstraints(table.bodyState(callerPkg))
-							.putStore(new EnclosingCall(entry));
-					Goal seeded = projection.seed(body.get());
-					// the seal fires EMIT: the drained subscribers are its targets
-					entry.getRegion().onSealed(drained -> table.sealed(entry, drained));
-					return Fiber.detach(Region.track(entry.getRegion(),
-									produce(entry, seeded, bodyPkg, argsTerm, table)))
-							.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
-				}
-				return consume(entry, k, callerPkg, argsTerm, 0, table);
-			});
-		});
+		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k ->
+				MiniKanren.reifyWithHoles(callerPkg.substitution(), argsTerm.getObjectTerm()).flatMap(reified -> {
+					// the call's REGION: reify anonymizes the vars, project anonymizes
+					// the knowledge about them — positionally, residue slot i = the
+					// hole reify names _.i, by construction. Non-projectable knowledge
+					// cannot enter the key, and unkeyed knowledge means wrong reuse.
+					Reified<?> reifiedArgs = reified._1;
+					Projection projection = Projection.of(callerPkg, reified._2);
+					Call key = Call.of(relation, reifiedArgs, projection.getResidues());
+					Table table = callerPkg.getStore(Table.class);
+					// a weighted solve whose semiring cannot table (non-idempotent,
+					// non-closed) would silently drop weights here — refuse loudly
+					table.assertTablingAllowed();
+					// subsumptive reuse: a sealed general entry is a read-only relation
+					// containing every answer this instance call could produce (subset
+					// property) — read it through consume's unification filter
+					TableEntry<Object> subsumer = table.reusableSubsumer(key);
+					if (subsumer != null) {
+						return consume(subsumer, k, callerPkg, argsTerm, 0, table);
+					}
+					TableEntry<Object> entry = table.getOrCreateEntry(key);
+					if (entry.tryBecomeMaster()) {
+						// the ANONYMOUS MASTER: the body runs as detached work billed
+						// to this entry — it belongs to no caller. Every caller, the
+						// first included, reads the cell as a consumer; the sleeper it
+						// parks is the dependency edge completion detection needs, so
+						// a caller can never seal ahead of a call it depends on. The
+						// body runs FROM THE KEY: the first caller's constraint stores
+						// are stripped and the key's residues restated, so the cache
+						// holds exactly the region the key names — every caller
+						// (the first included) filters at consumption by its own state
+						Package bodyPkg = stripConstraints(table.bodyState(callerPkg))
+								.putStore(new EnclosingCall(entry));
+						Goal seeded = projection.seed(body.get());
+						// the seal fires EMIT: the drained subscribers are its targets
+						entry.getRegion().onSealed(drained -> table.sealed(entry, drained));
+						return Fiber.detach(Region.track(entry.getRegion(),
+										produce(entry, seeded, bodyPkg, argsTerm, table)))
+								.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
+					}
+					return consume(entry, k, callerPkg, argsTerm, 0, table);
+				}));
 	}
 
 	/**
@@ -216,7 +215,7 @@ public class Tabling {
 		static Projection of(Package callerPkg, java.util.List<LVar<?>> callVars) {
 			Map<Class<?>, Object> residues = HashMap.empty();
 			java.util.List<Goal> restates = new ArrayList<>();
-			java.util.List<Unifiable<?>> targets = new ArrayList<Unifiable<?>>(callVars);
+			java.util.List<Unifiable<?>> targets = new ArrayList<>(callVars);
 			for (Packaged store : callerPkg.getStores().values()) {
 				if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
 					continue;

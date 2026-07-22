@@ -27,7 +27,7 @@ public interface Term<T> extends Supplier<T> {
 		return Option.none();
 	}
 
-	default Option<ReifiedVar<T>> asReified() {
+	default Option<Hole<T>> asReified() {
 		return Option.none();
 	}
 

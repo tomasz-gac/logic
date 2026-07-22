@@ -5,7 +5,7 @@ package com.tgac.logic.tabling.subsumption;
 
 import com.tgac.functional.index.ImmutableIndex;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.ReifiedVar;
+import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
@@ -74,7 +74,7 @@ public final class SubsumptionMap<V> {
 			Term<?> head = terms.head();
 			List<Term<?>> rest = terms.tail();
 			followHoleEdge(state.getNode(), rest, pending);
-			if (head instanceof ReifiedVar) {
+			if (head instanceof Hole) {
 				// only a hole covers a hole — a stored concrete position cannot
 				continue;
 			}
@@ -122,7 +122,7 @@ public final class SubsumptionMap<V> {
 		while (!pending.isEmpty()) {
 			Term<?> term = pending.head();
 			pending = pending.tail();
-			if (term instanceof ReifiedVar) {
+			if (term instanceof Hole) {
 				out.add(Edge.Hole.HOLE);
 				continue;
 			}

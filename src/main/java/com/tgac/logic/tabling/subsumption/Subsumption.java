@@ -4,7 +4,7 @@ package com.tgac.logic.tabling.subsumption;
 // ABOUTME: matching, holes binding consistently — the retrieval's precision layer.
 
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.ReifiedVar;
+import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -39,8 +39,8 @@ public final class Subsumption {
 			Tuple2<Term<?>, Term<?>> pair = pending.pop();
 			Term<?> g = pair._1;
 			Term<?> s = pair._2;
-			if (g instanceof ReifiedVar) {
-				int hole = ((ReifiedVar<?>) g).getNumber();
+			if (g instanceof Hole) {
+				int hole = ((Hole<?>) g).getNumber();
 				Term<?> bound = binding.get(hole);
 				if (bound == null) {
 					binding.put(hole, s);
@@ -49,7 +49,7 @@ public final class Subsumption {
 				}
 				continue;
 			}
-			if (s instanceof ReifiedVar) {
+			if (s instanceof Hole) {
 				// a concrete general position cannot cover the hole's instances
 				return false;
 			}

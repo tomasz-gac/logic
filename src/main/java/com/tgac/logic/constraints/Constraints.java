@@ -41,7 +41,7 @@ public class Constraints {
 	}
 
 	public static <T> Cont<Reified<T>, Nothing> reify(Package s, Term<T> x) {
-		// after renaming every node is an LVal, a ReifiedVar, or a Constrained wrapper
+		// after renaming every node is an LVal, a Hole, or a Constrained wrapper
 		return enforce(s, x).apply(s)
 				.flatMap(Constraints::verifyNoPendingSuspensions)
 				.flatMap(s1 -> Cont.defer(() ->

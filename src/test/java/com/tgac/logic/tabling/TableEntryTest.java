@@ -10,7 +10,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
-import com.tgac.logic.unification.ReifiedVar;
+import com.tgac.logic.unification.Hole;
 import io.vavr.Tuple;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -83,8 +83,8 @@ public class TableEntryTest {
 
 		// Reified answers carry canonical hole names, so terms that
 		// differ only in token objects are the same answer
-		assertThat(entry.addAnswer(answer(Tuple.of(ReifiedVar.of(0), lval("bob"))), true).isDefined()).isTrue();
-		assertThat(entry.addAnswer(answer(Tuple.of(ReifiedVar.of(0), lval("bob"))), true).isDefined()).isFalse();
+		assertThat(entry.addAnswer(answer(Tuple.of(Hole.of(0), lval("bob"))), true).isDefined()).isTrue();
+		assertThat(entry.addAnswer(answer(Tuple.of(Hole.of(0), lval("bob"))), true).isDefined()).isFalse();
 
 		assertThat(entry.getAnswerCount()).isEqualTo(1);
 	}

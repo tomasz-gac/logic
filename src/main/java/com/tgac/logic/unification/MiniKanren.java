@@ -435,7 +435,7 @@ public class MiniKanren {
 
 	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Reified<T>> reify(Substitutions s, Term<T> item) {
-		// after renaming, every node is an LVal or a ReifiedVar — both Reified
+		// after renaming, every node is an LVal or a Hole — both Reified
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Substitutions.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)))
@@ -461,7 +461,7 @@ public class MiniKanren {
 	private static java.util.List<LVar<?>> holesInOrder(Substitutions renames) {
 		LVar<?>[] slots = new LVar<?>[(int) renames.size()];
 		for (Tuple2<LVar<?>, Term<?>> entry : renames.map()) {
-			slots[((ReifiedVar<?>) entry._2).getNumber()] = entry._1;
+			slots[((Hole<?>) entry._2).getNumber()] = entry._1;
 		}
 		return Arrays.asList(slots);
 	}
@@ -474,7 +474,7 @@ public class MiniKanren {
 				.flatMap(v -> v.asVar()
 						// a var that walked to something else is already renamed
 						.map(u -> u == val ?
-								extend(s, (LVar<Object>) u, ReifiedVar.of((int) s.size())) :
+								extend(s, (LVar<Object>) u, Hole.of((int) s.size())) :
 								s)
 						.map(Fiber::done)
 						.orElse(() -> members(v)

@@ -17,11 +17,11 @@ import lombok.Value;
  * @author TGa
  */
 @Value(staticConstructor = "of")
-public class ReifiedVar<T> implements Reified<T> {
+public class Hole<T> implements Reified<T> {
 	int number;
 
 	@Override
-	public Option<ReifiedVar<T>> asReified() {
+	public Option<Hole<T>> asReified() {
 		return Option.of(this);
 	}
 
