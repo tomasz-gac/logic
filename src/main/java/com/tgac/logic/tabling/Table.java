@@ -47,8 +47,13 @@ public class Table implements Packaged {
 	/** Map from calls to their table entries */
 	private final ConcurrentHashMap<Call, TableEntry<Object>> entries = new ConcurrentHashMap<>();
 
-	/** Every entry's call pattern, retrievable by subsumption (general covers specific). */
-	private final SubsumptionMap<TableEntry<Object>> subsumption = new SubsumptionMap<>();
+	/**
+	 * Per relation, every entry's argument pattern retrievable by subsumption
+	 * (general covers specific). Partitioning by relation lives HERE — the map
+	 * itself is one relation-agnostic key space.
+	 */
+	private final ConcurrentHashMap<Tabled<?>, SubsumptionMap<TableEntry<Object>>> subsumption =
+			new ConcurrentHashMap<>();
 
 	/** The algorithm: streaming vs closed/star. */
 	private final TablingMode mode;
@@ -132,7 +137,8 @@ public class Table implements Packaged {
 	public TableEntry<Object> getOrCreateEntry(Call call) {
 		return entries.computeIfAbsent(call, c -> {
 			TableEntry<Object> entry = new TableEntry<>(c, mode.cellSemiring());
-			subsumption.put(c, entry);
+			subsumption.computeIfAbsent(c.getRelation(), relation -> new SubsumptionMap<>())
+					.put(c.getArguments(), entry);
 			return entry;
 		});
 	}
@@ -158,7 +164,11 @@ public class Table implements Packaged {
 	 * subsumption trie ({@link SubsumptionMap}); runs only on exact misses.
 	 */
 	public TableEntry<Object> findSealedSubsumer(Call key) {
-		for (TableEntry<Object> e : subsumption.subsumers(key)) {
+		SubsumptionMap<TableEntry<Object>> patterns = subsumption.get(key.getRelation());
+		if (patterns == null) {
+			return null;
+		}
+		for (TableEntry<Object> e : patterns.subsumers(key.getArguments())) {
 			if (e.isComplete()) {
 				return e;
 			}
