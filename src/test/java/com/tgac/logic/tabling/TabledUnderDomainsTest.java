@@ -73,9 +73,11 @@ public class TabledUnderDomainsTest {
 
 	@Test
 	public void theMasterRunsFromTheKeyNotFromTheFirstCaller() {
-		// caller 1 privately couples x+y=4; caller 2 shares the KEY (same
-		// domains) but not the coupling. The cache must hold the key's nine
-		// pairs, not caller 1's three — else caller 2 is silently incomplete.
+		// caller 1's x+y=4 coupling is CARRIED into its key (stage 2), so the
+		// two callers hold DIFFERENT keys: caller 1's master searches the
+		// coupled region (3 pairs), caller 2's the rectangle (9). This also
+		// pins the sealed-subsumer gate: caller 1's narrower entry must never
+		// serve caller 2 — a constrained entry under-states its term pattern.
 		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> p = grid();
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();

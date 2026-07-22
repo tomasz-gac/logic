@@ -20,6 +20,7 @@ import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.function.BinaryOperator;
@@ -131,6 +132,30 @@ public class FiniteDomain {
 				.apply(FiniteDomainConstraints.register(p));
 	}
 
+	private static <T> Goal fdConstraint(Array<Unifiable<T>> us,
+			Function<Package, Verdict> body,
+			Function<List<Unifiable<?>>, Goal> recipe) {
+		return p -> Propagation.activate(
+						Propagator.of(FiniteDomainConstraints.class, us.toJavaList(), body, recipe))
+				.apply(FiniteDomainConstraints.register(p));
+	}
+
+	// The rebuild recipes: ONE static instance per factory — identity equality
+	// is what makes equal coupling shapes yield equal residues (alpha-stable
+	// keys). Each re-invokes its internal factory, which self-registers.
+	@SuppressWarnings("unchecked")
+	private static final Function<List<Unifiable<?>>, Goal> LEQ_RECIPE =
+			vs -> leqFD((Unifiable<Object>) vs.get(0), (Unifiable<Object>) vs.get(1));
+	@SuppressWarnings("unchecked")
+	private static final Function<List<Unifiable<?>>, Goal> ADD_RECIPE =
+			vs -> addoFD((Unifiable<Object>) vs.get(0), (Unifiable<Object>) vs.get(1), (Unifiable<Object>) vs.get(2));
+	@SuppressWarnings("unchecked")
+	private static final Function<List<Unifiable<?>>, Goal> MUL_RECIPE =
+			vs -> mulFD((Unifiable<Object>) vs.get(0), (Unifiable<Object>) vs.get(1), (Unifiable<Object>) vs.get(2));
+	@SuppressWarnings("unchecked")
+	private static final Function<List<Unifiable<?>>, Goal> SEPARATE_RECIPE =
+			vs -> separateFDC((Unifiable<Object>) vs.get(0), (Unifiable<Object>) vs.get(1));
+
 	private static <T> Function<Package, Verdict> gated(Array<Unifiable<T>> us,
 			Function<Array<VarWithDomain<T>>, Verdict> verdict) {
 		return s -> letDomain(s, us)
@@ -183,7 +208,8 @@ public class FiniteDomain {
 				Array.of(less, more),
 				gated(Array.of(less, more), vds ->
 						Tuple.of(vds.get(0), vds.get(1))
-								.apply(FiniteDomain::leqVerdict)));
+								.apply(FiniteDomain::leqVerdict)),
+				LEQ_RECIPE);
 	}
 
 	private static <T> Verdict leqVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
@@ -222,7 +248,8 @@ public class FiniteDomain {
 								.apply((u, v, w) ->
 										addVerdict(u, v, w,
 												u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
-												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))));
+												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))),
+				ADD_RECIPE);
 	}
 
 	private static <T> Verdict addVerdict(
@@ -274,7 +301,8 @@ public class FiniteDomain {
 								.apply((u, v, w) ->
 										mulVerdict(u, v, w,
 												u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
-												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))));
+												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))),
+				MUL_RECIPE);
 	}
 
 	private static <T> Verdict mulVerdict(
@@ -392,7 +420,8 @@ public class FiniteDomain {
 							}
 							return Verdict.keep();
 						}))
-						.getOrElse(Verdict::keep));
+						.getOrElse(Verdict::keep),
+				SEPARATE_RECIPE);
 	}
 
 	private static <T> Option<Arithmetic<T>> getSingleElement(Domain<T> dom) {

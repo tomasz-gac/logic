@@ -19,6 +19,7 @@ import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
+import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
@@ -321,27 +322,44 @@ class FiniteDomainConstraints implements ConstraintStore,
 				slots = slots.put(i, d.get());
 			}
 		}
-		return DomainResidue.of(slots, watchesAnyOf(vars));
+		io.vavr.collection.HashSet<CarriedConstraint> carried = io.vavr.collection.HashSet.empty();
+		boolean widened = false;
+		for (Propagator propagator : constraints) {
+			CarriedConstraint coupling = carry(propagator, vars);
+			if (coupling != null) {
+				carried = carried.add(coupling);
+			} else {
+				// uncarried live knowledge ANYWHERE — the residue under-states
+				widened = true;
+			}
+		}
+		return DomainResidue.of(slots, carried, widened);
 	}
 
 	/**
-	 * A live propagator watching a supplied var means the residue under-states
-	 * (couplings are outside the domains-only vocabulary — wholly covered or
-	 * escaping alike). Identity comparison: the caller passes walked roots and
-	 * custody keeps knowledge at roots; a watcher aliased away from its root
-	 * pre-dates that custody and under-flags — acceptable while the flag is
-	 * advisory, to revisit when stage 2 consumes it (tabled-constraints.md).
+	 * A propagator is carriable when it has a recipe and every watched VAR is
+	 * supplied — its args map to residue slots (grounds ride as themselves).
+	 * Identity comparison against walked roots: a watcher aliased away from
+	 * its root under-flags — acceptable while the flag is advisory, to
+	 * revisit when boundaries consume it strictly (tabled-constraints.md).
 	 */
-	private boolean watchesAnyOf(List<LVar<?>> vars) {
-		java.util.Set<LVar<?>> supplied = new java.util.HashSet<>(vars);
-		for (Propagator propagator : constraints) {
-			for (Term<?> watched : propagator.watchedTerms()) {
-				if (watched.asVar().isDefined() && supplied.contains(watched.asVar().get())) {
-					return true;
+	private static CarriedConstraint carry(Propagator propagator, List<LVar<?>> vars) {
+		if (propagator.recipe() == null) {
+			return null;
+		}
+		java.util.List<Object> args = new ArrayList<>();
+		for (Term<?> watched : propagator.watchedTerms()) {
+			if (watched.asVar().isDefined()) {
+				int slot = vars.indexOf(watched.asVar().get());
+				if (slot < 0) {
+					return null;    // escapes to an unsupplied var
 				}
+				args.add(slot);
+			} else {
+				args.add(watched);
 			}
 		}
-		return false;
+		return CarriedConstraint.of(propagator.recipe(), Array.ofAll(args));
 	}
 
 	/**

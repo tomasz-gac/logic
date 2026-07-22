@@ -9,6 +9,7 @@ import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
+import io.vavr.collection.HashSet;
 import java.util.List;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -36,11 +37,18 @@ public class DomainResidue implements MeetSemilattice<DomainResidue>, Residue<Do
 
 	HashMap<Integer, Domain<?>> slots;
 
+	/** Couplings expressible over the slots — replayed by {@link #restate}. */
+	HashSet<CarriedConstraint> carried;
+
 	@EqualsAndHashCode.Exclude
 	boolean widened;
 
 	public static DomainResidue of(HashMap<Integer, Domain<?>> slots) {
-		return DomainResidue.of(slots, false);
+		return DomainResidue.of(slots, HashSet.empty(), false);
+	}
+
+	public static DomainResidue of(HashMap<Integer, Domain<?>> slots, boolean widened) {
+		return DomainResidue.of(slots, HashSet.empty(), widened);
 	}
 
 	@Override
@@ -48,18 +56,22 @@ public class DomainResidue implements MeetSemilattice<DomainResidue>, Residue<Do
 	public DomainResidue meet(DomainResidue other) {
 		return DomainResidue.of(slots.merge(other.slots,
 						(a, b) -> ((Domain<Object>) a).intersect((Domain<Object>) b)),
+				carried.union(other.carried),
 				widened || other.widened);
 	}
 
-	/** One {@code dom} post per slot — the public entry, so replay propagates
-	 * like fresh knowledge (first examination, watchers, cascade). */
+	/** One {@code dom} post per slot, then each carried coupling through its
+	 * recipe — all public entries, so replay propagates like fresh knowledge
+	 * (first examination, watchers, cascade). */
 	@Override
 	@SuppressWarnings("unchecked")
 	public Goal restate(List<Unifiable<?>> vars) {
-		return slots.foldLeft(Goal.success(), (goal, slot) ->
+		Goal domains = slots.foldLeft(Goal.success(), (goal, slot) ->
 				Conjunction.of(goal, FiniteDomain.dom(
 						(Unifiable<Object>) vars.get(slot._1),
 						(Domain<Object>) slot._2)));
+		return carried.foldLeft(domains, (goal, coupling) ->
+				Conjunction.of(goal, coupling.restate(vars)));
 	}
 
 	/** Any slot narrowed to nothing — the residue denotes an unsatisfiable region. */

@@ -169,7 +169,11 @@ public class Table implements Packaged {
 			return null;
 		}
 		for (TableEntry<Object> e : patterns.subsumers(key.getArguments())) {
-			if (e.isComplete()) {
+			// the trie prunes by TERM pattern only — the full gate (relation
+			// identity, constraint-free-only residues) is Call.subsumes: a
+			// constrained entry is NARROWER than its term pattern claims and
+			// must never serve a wider caller (silent incompleteness)
+			if (e.isComplete() && e.getCall().subsumes(key)) {
 				return e;
 			}
 		}
