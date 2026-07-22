@@ -5,6 +5,7 @@ package com.tgac.logic.constraints.store;
 
 import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
@@ -37,9 +38,23 @@ import java.util.List;
  */
 public interface Projectable<R extends PartialOrder<R>> extends ConstraintStore {
 
-	/** This store's knowledge about {@code vars}, slot i ↔ vars[i]; absence = ⊤. */
+	/**
+	 * This store's knowledge about {@code vars}, slot i ↔ vars[i]; absence = ⊤.
+	 * Projecting the EMPTY list is the ⊤ residue — the caller's triviality test.
+	 */
 	R project(List<LVar<?>> vars);
 
 	/** Re-impose {@code residue} onto live vars, same slots, via public posts. */
 	Goal restate(R residue, List<Unifiable<?>> vars);
+
+	/**
+	 * No LIVE knowledge remains under {@code state} — everything this store
+	 * holds is spent bookkeeping (stale domains under bindings, discharged
+	 * watchers). The answer-side gate: a tabled answer is admissible while its
+	 * stores are discharged; live knowledge on an answer is refused until
+	 * constrained answers exist. Conservative default: empty is discharged.
+	 */
+	default boolean discharged(Package state) {
+		return isEmpty();
+	}
 }

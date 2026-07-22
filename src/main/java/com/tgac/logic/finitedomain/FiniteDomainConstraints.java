@@ -324,4 +324,15 @@ class FiniteDomainConstraints implements ConstraintStore,
 						(Domain<Object>) slot._2)));
 	}
 
+	/**
+	 * Domains under bindings are STALE by design ({@link DomainUpdate} — the
+	 * map is not pruned on collapse), so live knowledge is: any pending
+	 * propagator, or a domain whose variable still walks to a variable.
+	 */
+	@Override
+	public boolean discharged(Package state) {
+		return constraints.isEmpty()
+				&& domains.keySet().forAll(v -> state.walk(v).isVal());
+	}
+
 }

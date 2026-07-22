@@ -9,23 +9,37 @@ import static com.tgac.logic.unification.LVal.lval;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.optimizer.Barrier;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Region;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
+import io.vavr.collection.Map;
+import io.vavr.control.Option;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.Value;
 
 /**
  * Provides tabling (memoization) for logic goals to prevent infinite loops
@@ -116,9 +130,14 @@ public class Tabling {
 		// keyed widening: the call pattern is the table key, so no optimizer may
 		// move binders across it — the contract as a type, not an accident of opacity
 		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k -> {
-			assertNoConstraints(callerPkg, "at a tabled call");
 			return MiniKanren.reify(callerPkg.substitution(), argsTerm).flatMap(reifiedArgs -> {
-				Call key = Call.of(relation, reifiedArgs);
+				// the call's REGION: reify anonymizes the vars, project anonymizes
+				// the knowledge about them — positionally, over the free vars in
+				// first-occurrence order. Non-projectable knowledge cannot enter
+				// the key, and unkeyed knowledge means wrong reuse — refuse.
+				java.util.List<LVar<?>> callVars = freeVars(callerPkg, argsTerm);
+				Projection projection = Projection.of(callerPkg, callVars);
+				Call key = Call.of(relation, reifiedArgs, projection.getResidues());
 				Table table = callerPkg.getStore(Table.class);
 				// a weighted solve whose semiring cannot table (non-idempotent,
 				// non-closed) would silently drop weights here — refuse loudly
@@ -137,14 +156,17 @@ public class Tabling {
 					// first included, reads the cell as a consumer; the sleeper it
 					// parks is the dependency edge completion detection needs, so
 					// a caller can never seal ahead of a call it depends on. The
-					// body still runs from the first caller's state — the variant
-					// call pattern lives in its substitutions — reset to a fresh,
-					// caller-agnostic running value by the mode
-					Package bodyPkg = table.bodyState(callerPkg).putStore(new EnclosingCall(entry));
+					// body runs FROM THE KEY: the first caller's constraint stores
+					// are stripped and the key's residues restated, so the cache
+					// holds exactly the region the key names — every caller
+					// (the first included) filters at consumption by its own state
+					Package bodyPkg = stripConstraints(table.bodyState(callerPkg))
+							.putStore(new EnclosingCall(entry));
+					Goal seeded = projection.seed(body.get());
 					// the seal fires EMIT: the drained subscribers are its targets
 					entry.getRegion().onSealed(drained -> table.sealed(entry, drained));
 					return Fiber.detach(Region.track(entry.getRegion(),
-									produce(entry, body.get(), bodyPkg, argsTerm, table)))
+									produce(entry, seeded, bodyPkg, argsTerm, table)))
 							.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
 				}
 				return consume(entry, k, callerPkg, argsTerm, 0, table);
@@ -181,22 +203,121 @@ public class Tabling {
 	}
 
 	/**
-	 * Tabling does not capture constraints yet: variant keys ignore
-	 * constraint stores, and answers are cached as plain reified terms. A
-	 * cache produced under one constraint context and consumed under another
-	 * would silently generalize answers, so any active constraint store
-	 * around a tabled call or answer is rejected loudly instead.
+	 * The call's free variables — the walked args term's unbound vars in
+	 * first-occurrence preorder. Slot i of every projected residue means
+	 * callVars[i]; alpha-equal calls derive the same order from the same
+	 * structure, which is what makes residues align across variants.
 	 */
-	private static void assertNoConstraints(Package pkg, String when) {
+	private static java.util.List<LVar<?>> freeVars(Package pkg, Unifiable<?> argsTerm) {
+		java.util.List<LVar<?>> out = new ArrayList<>();
+		Set<LVar<?>> seen = new HashSet<>();
+		ArrayDeque<Term<?>> pending = new ArrayDeque<>();
+		pending.push(argsTerm);
+		while (!pending.isEmpty()) {
+			Term<?> term = pkg.walk(pending.pop());
+			if (term.asVar().isDefined()) {
+				LVar<?> v = (LVar<?>) term.asVar().get();
+				if (seen.add(v)) {
+					out.add(v);
+				}
+				continue;
+			}
+			Option<Iterable<Term<?>>> members = MiniKanren.members(term);
+			if (members.isDefined()) {
+				ArrayList<Term<?>> children = new ArrayList<>();
+				for (Term<?> child : members.get()) {
+					children.add(child);
+				}
+				for (int i = children.size() - 1; i >= 0; i--) {
+					pending.push(children.get(i));
+				}
+			}
+		}
+		return out;
+	}
+
+	/**
+	 * The caller's constraint knowledge about the call vars, projected per
+	 * store: the residues that join the {@link Call} key, and the restate
+	 * goals that seed the master's body with exactly that knowledge. A store
+	 * that cannot project cannot enter the key, and unkeyed knowledge means
+	 * silently wrong reuse — refused loudly. A ⊤ residue (nothing known about
+	 * the call vars) stays out of the key, so calls under irrelevant
+	 * knowledge stay constraint-free variants.
+	 */
+	@Value
+	private static class Projection {
+		Map<Class<?>, Object> residues;
+		java.util.List<Goal> restates;
+
+		@SuppressWarnings({"unchecked", "rawtypes"})
+		static Projection of(Package callerPkg, java.util.List<LVar<?>> callVars) {
+			Map<Class<?>, Object> residues = HashMap.empty();
+			java.util.List<Goal> restates = new ArrayList<>();
+			java.util.List<Unifiable<?>> targets = new ArrayList<Unifiable<?>>(callVars);
+			for (Packaged store : callerPkg.getStores().values()) {
+				if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
+					continue;
+				}
+				if (!(store instanceof Projectable)) {
+					throw new IllegalStateException(
+							"Tabling cannot key constraints it cannot project: non-empty "
+									+ store.getClass().getSimpleName() + " at a tabled call");
+				}
+				Projectable projectable = (Projectable) store;
+				PartialOrder residue = (PartialOrder) projectable.project(callVars);
+				PartialOrder top = (PartialOrder) projectable.project(Collections.emptyList());
+				if (!residue.equals(top)) {
+					residues = residues.put(store.getClass(), residue);
+					restates.add(projectable.restate(residue, targets));
+				}
+			}
+			return new Projection(residues, restates);
+		}
+
+		/** The master's goal: the key's knowledge re-imposed, then the body. */
+		Goal seed(Goal body) {
+			if (restates.isEmpty()) {
+				return body;
+			}
+			Goal seeded = body;
+			for (int i = restates.size() - 1; i >= 0; i--) {
+				seeded = Conjunction.of(restates.get(i), seeded);
+			}
+			return seeded;
+		}
+	}
+
+	/** Remove every constraint-store factor: absence is ⊤, posting re-registers. */
+	private static Package stripConstraints(Package pkg) {
+		Package result = pkg;
+		for (Packaged store : pkg.getStores().values()) {
+			if (store instanceof ConstraintStore) {
+				result = result.withoutStore(store.getClass());
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Answers are cached as plain reified terms, so LIVE knowledge on an
+	 * answer would be cached as an unconstrained template and replayed too
+	 * generally — refused until constrained answers exist (stage 2). Spent
+	 * bookkeeping (stale domains under bindings) is admissible: the
+	 * projecting store decides via {@link Projectable#discharged}.
+	 */
+	private static void assertAnswerUnconstrained(Package pkg) {
 		pkg.getStores().values().toJavaStream()
 				.filter(ConstraintStore.class::isInstance)
 				.map(ConstraintStore.class::cast)
 				.filter(cs -> !cs.isEmpty())
+				.filter(cs -> !(cs instanceof Projectable)
+						|| !((Projectable<?>) cs).discharged(pkg))
 				.findAny()
 				.ifPresent(cs -> {
 					throw new IllegalStateException(
 							"Tabling does not capture constraints yet: non-empty "
-									+ cs.getClass().getSimpleName() + " " + when);
+									+ cs.getClass().getSimpleName() + " on a tabled answer");
 				});
 	}
 
@@ -214,7 +335,7 @@ public class Tabling {
 			Unifiable<?> argsTerm,
 			Table table) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
-			assertNoConstraints(answerPkg, "on a tabled answer");
+			assertAnswerUnconstrained(answerPkg);
 			// the coat is the canary: a goal that returned a fresh package instead
 			// of deriving from its input shed every store — the damage downstream
 			// is SILENT (answers reified over fresh substitutions cache
