@@ -81,13 +81,9 @@ public final class SubsumptionMap<V> {
 						.forEach(child -> pending.push(Tuple.of(child, rest)));
 			} else {
 				ArrayList<Term<?>> children = childrenOf(members.get());
-				List<Term<?>> unfolded = rest;
-				for (int i = children.size() - 1; i >= 0; i--) {
-					unfolded = unfolded.prepend(children.get(i));
-				}
-				List<Term<?>> next = unfolded;
+				List<Term<?>> unfolded = rest.prependAll(children);
 				node.getLookup().get(new Edge.Branch(children.size()))
-						.forEach(child -> pending.push(Tuple.of(child, next)));
+						.forEach(child -> pending.push(Tuple.of(child, unfolded)));
 			}
 		}
 		return result;
@@ -96,10 +92,10 @@ public final class SubsumptionMap<V> {
 	/** A stored pattern's preorder edge path — the only side that serializes. */
 	private static Array<Edge> flatten(Term<?> pattern) {
 		ArrayList<Edge> out = new ArrayList<>();
-		ArrayDeque<Term<?>> pending = new ArrayDeque<>();
-		pending.push(pattern);
+		List<Term<?>> pending = List.of(pattern);
 		while (!pending.isEmpty()) {
-			Term<?> term = pending.pop();
+			Term<?> term = pending.head();
+			pending = pending.tail();
 			if (term instanceof ReifiedVar) {
 				out.add(Edge.Hole.HOLE);
 				continue;
@@ -111,9 +107,7 @@ public final class SubsumptionMap<V> {
 			}
 			ArrayList<Term<?>> children = childrenOf(members.get());
 			out.add(new Edge.Branch(children.size()));
-			for (int i = children.size() - 1; i >= 0; i--) {
-				pending.push(children.get(i));
-			}
+			pending = pending.prependAll(children);
 		}
 		return Array.ofAll(out);
 	}
