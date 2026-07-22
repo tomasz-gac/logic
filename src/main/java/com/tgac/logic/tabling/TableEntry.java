@@ -5,8 +5,8 @@ package com.tgac.logic.tabling;
 
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
-import com.tgac.logic.tabling.primitives.JoinMap;
-import com.tgac.logic.tabling.primitives.Region;
+import com.tgac.functional.region.JoinMap;
+import com.tgac.functional.region.Region;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
