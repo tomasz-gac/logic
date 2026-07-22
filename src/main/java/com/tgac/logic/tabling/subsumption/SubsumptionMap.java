@@ -7,7 +7,6 @@ import com.tgac.functional.index.ImmutableIndex;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.ReifiedVar;
 import com.tgac.logic.unification.Term;
-import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
@@ -16,6 +15,7 @@ import io.vavr.control.Option;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
+import lombok.Value;
 
 /**
  * Generalization retrieval over reified patterns — the dual of an index probe:
@@ -49,15 +49,25 @@ public final class SubsumptionMap<V> {
 				node -> node.updateValue(entries -> entries.put(pattern, value))));
 	}
 
+	/**
+	 * One live hypothesis of the walk: some stored prefix led to {@code node},
+	 * and {@code remaining} are the query subterms its patterns must still cover.
+	 */
+	@Value
+	private static class State<V> {
+		ImmutableIndex<Edge, HashMap<Term<?>, V>> node;
+		List<Term<?>> remaining;
+	}
+
 	/** Every stored value whose pattern subsumes {@code query}. */
 	public java.util.List<V> subsumers(Term<?> query) {
 		java.util.List<V> result = new ArrayList<>();
-		ArrayDeque<Tuple2<ImmutableIndex<Edge, HashMap<Term<?>, V>>, List<Term<?>>>> pending = new ArrayDeque<>();
-		pending.push(Tuple.of(root.get(), List.of(query)));
+		ArrayDeque<State<V>> pending = new ArrayDeque<>();
+		pending.push(new State<>(root.get(), List.of(query)));
 		while (!pending.isEmpty()) {
-			Tuple2<ImmutableIndex<Edge, HashMap<Term<?>, V>>, List<Term<?>>> state = pending.pop();
-			ImmutableIndex<Edge, HashMap<Term<?>, V>> node = state._1;
-			List<Term<?>> terms = state._2;
+			State<V> state = pending.pop();
+			ImmutableIndex<Edge, HashMap<Term<?>, V>> node = state.getNode();
+			List<Term<?>> terms = state.getRemaining();
 			if (terms.isEmpty()) {
 				for (Tuple2<Term<?>, V> entry : node.getValue()) {
 					if (Subsumption.subsumes(entry._1, query)) {
@@ -70,7 +80,7 @@ public final class SubsumptionMap<V> {
 			List<Term<?>> rest = terms.tail();
 			// a stored hole covers the head wholesale — pop it
 			node.getLookup().get(Edge.Hole.HOLE)
-					.forEach(child -> pending.push(Tuple.of(child, rest)));
+					.forEach(child -> pending.push(new State<>(child, rest)));
 			if (head instanceof ReifiedVar) {
 				// only a hole covers a hole — a stored concrete position cannot
 				continue;
@@ -78,12 +88,12 @@ public final class SubsumptionMap<V> {
 			Option<Iterable<Term<?>>> members = MiniKanren.members(head);
 			if (members.isEmpty()) {
 				node.getLookup().get(new Edge.Atom(head))
-						.forEach(child -> pending.push(Tuple.of(child, rest)));
+						.forEach(child -> pending.push(new State<>(child, rest)));
 			} else {
 				ArrayList<Term<?>> children = childrenOf(members.get());
 				List<Term<?>> unfolded = rest.prependAll(children);
 				node.getLookup().get(new Edge.Branch(children.size()))
-						.forEach(child -> pending.push(Tuple.of(child, unfolded)));
+						.forEach(child -> pending.push(new State<>(child, unfolded)));
 			}
 		}
 		return result;
