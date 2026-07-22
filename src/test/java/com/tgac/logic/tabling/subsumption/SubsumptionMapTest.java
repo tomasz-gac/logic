@@ -1,4 +1,4 @@
-package com.tgac.logic.tabling;
+package com.tgac.logic.tabling.subsumption;
 
 // ABOUTME: Pins the subsumption map: term-indexed retrieval of stored calls whose
 // ABOUTME: pattern generalizes the query, with nonlinear-hole precision.
@@ -8,6 +8,9 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.tabling.Call;
+import com.tgac.logic.tabling.Tabled;
+import com.tgac.logic.tabling.Tabling;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Substitutions;
