@@ -66,37 +66,53 @@ public final class SubsumptionMap<V> {
 		pending.push(new State<>(root.get(), List.of(query)));
 		while (!pending.isEmpty()) {
 			State<V> state = pending.pop();
-			ImmutableIndex<Edge, HashMap<Term<?>, V>> node = state.getNode();
 			List<Term<?>> terms = state.getRemaining();
 			if (terms.isEmpty()) {
-				for (Tuple2<Term<?>, V> entry : node.getValue()) {
-					if (Subsumption.subsumes(entry._1, query)) {
-						result.add(entry._2);
-					}
-				}
+				collectSubsumers(state.getNode(), query, result);
 				continue;
 			}
 			Term<?> head = terms.head();
 			List<Term<?>> rest = terms.tail();
-			// a stored hole covers the head wholesale — pop it
-			node.getLookup().get(Edge.Hole.HOLE)
-					.forEach(child -> pending.push(new State<>(child, rest)));
+			followHoleEdge(state.getNode(), rest, pending);
 			if (head instanceof ReifiedVar) {
 				// only a hole covers a hole — a stored concrete position cannot
 				continue;
 			}
-			Option<Iterable<Term<?>>> members = MiniKanren.members(head);
-			if (members.isEmpty()) {
-				node.getLookup().get(new Edge.Atom(head))
-						.forEach(child -> pending.push(new State<>(child, rest)));
-			} else {
-				ArrayList<Term<?>> children = childrenOf(members.get());
-				List<Term<?>> unfolded = rest.prependAll(children);
-				node.getLookup().get(new Edge.Branch(children.size()))
-						.forEach(child -> pending.push(new State<>(child, unfolded)));
-			}
+			followExactEdge(state.getNode(), head, rest, pending);
 		}
 		return result;
+	}
+
+	/** An exhausted path is a complete stored serialization covering the query — harvest it. */
+	private static <V> void collectSubsumers(ImmutableIndex<Edge, HashMap<Term<?>, V>> node,
+			Term<?> query, java.util.List<V> result) {
+		for (Tuple2<Term<?>, V> entry : node.getValue()) {
+			if (Subsumption.subsumes(entry._1, query)) {
+				result.add(entry._2);
+			}
+		}
+	}
+
+	/** A stored hole covers the head wholesale — pop it. */
+	private static <V> void followHoleEdge(ImmutableIndex<Edge, HashMap<Term<?>, V>> node,
+			List<Term<?>> rest, ArrayDeque<State<V>> pending) {
+		node.getLookup().get(Edge.Hole.HOLE)
+				.forEach(child -> pending.push(new State<>(child, rest)));
+	}
+
+	/** The head's structural edge: an atom matches by equality, a composite unfolds. */
+	private static <V> void followExactEdge(ImmutableIndex<Edge, HashMap<Term<?>, V>> node,
+			Term<?> head, List<Term<?>> rest, ArrayDeque<State<V>> pending) {
+		Option<Iterable<Term<?>>> members = MiniKanren.members(head);
+		if (members.isEmpty()) {
+			node.getLookup().get(new Edge.Atom(head))
+					.forEach(child -> pending.push(new State<>(child, rest)));
+		} else {
+			ArrayList<Term<?>> children = childrenOf(members.get());
+			List<Term<?>> unfolded = rest.prependAll(children);
+			node.getLookup().get(new Edge.Branch(children.size()))
+					.forEach(child -> pending.push(new State<>(child, unfolded)));
+		}
 	}
 
 	/** A stored pattern's preorder edge path — the only side that serializes. */
