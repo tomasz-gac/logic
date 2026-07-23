@@ -101,19 +101,20 @@ interaction is therefore one thing: bindings, through the substitution — the
 blackboard. Everything else is intra-store or store↔driver scheduling.
 
 **Optional capability (July 2026): `Projectable<R extends Residue<R>>`**
-— `project(vars)` reports the store's knowledge about a POSITIONAL var list
-as a `Residue` (slot i = vars[i], absence = ⊤, empty-list projection IS ⊤).
-The residue RESTATES ITSELF through the public posts (`Residue.restate`),
-carries entailment (`PartialOrder.leq` — all any consumer asks), and is
-HONEST about its limits: `isWidened` says live knowledge about the supplied
-vars could not be expressed (a coupling outside the vocabulary or escaping
-to an unsupplied local) — the store reports what only it can see; the
-tabling boundary refuses with the context only it has (tabled-constraints.md
-§5.1 for the per-side reasons). `discharged(state)` distinguishes live from
-spent knowledge (stale domains under bindings). FD is the prototype
-(`DomainResidue`, a meet-valued slot map with pointwise intersect).
-Participation in tabled calls requires the capability: unprojected
-knowledge cannot be keyed, and unkeyed knowledge means wrong reuse.
+— `project(vars, wideningAllowed)` reports the store's knowledge about a
+POSITIONAL var list as a `Residue` (slot i = vars[i], absence = ⊤,
+empty-list projection IS ⊤). It TRANSCRIBES everything expressible —
+domains and wholly-covered couplings, the latter carried as LIVE propagator
+objects with (var → slot) maps; the parameter governs only the
+inexpressible remainder (escapes): dropped by permission or thrown when
+exactness was demanded. The residue RESTATES ITSELF through the public
+posts (`Residue.restate` — carried couplings alias-unify onto the live
+vars and re-activate) and carries entailment (`PartialOrder.leq` — all any
+consumer asks; matching is containment, tabled-constraints.md §5.4).
+`discharged(state)` distinguishes live from spent knowledge (stale domains
+under bindings). FD is the prototype (`DomainResidue`). Participation in
+tabled calls requires the capability: unprojected knowledge cannot be
+keyed, and unkeyed knowledge means wrong reuse.
 
 ## 4. Intra-store machinery (FD's, privately)
 

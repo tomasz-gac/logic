@@ -158,9 +158,9 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
 - `docs/design/tabled-constraints.md` — STAGE 1 SHIPPED (July 2026): tabled calls
   under FD domains, region-keyed (`Projectable` residues, positional; the master
-  runs FROM THE KEY). Stages 2–4 remain design; stage 2's spec is DECIDED (recipes,
-  always-port-all, widened-flagged residues with boundary refusal — §5.1/§6).
-  Read before touching the tabling guard tests.
+  runs FROM THE KEY). Stages 2–4 remain design; stage 2's spec is DECIDED (live propagator
+  objects carried, project(vars, wideningAllowed), entailment matching —
+  §5.1/§5.4/§6). Read before touching the tabling guard tests.
 - `docs/design/substitutions-migration.md` — MOSTLY SHIPPED (Steps A–C: the
   unifier typed over Substitutions, the kind-tagged decompose shared by unify
   and members); Step D (representation swaps) remains, benchmark-gated. Read
