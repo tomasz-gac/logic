@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
@@ -126,15 +127,20 @@ public class FiniteDomain {
 	 * against the live state (constraint-kernel.md).
 	 */
 	private static <T> Goal fdConstraint(Array<Unifiable<T>> us,
-			Function<Package, Verdict> body) {
+			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
 		return p -> Propagation.activate(
-						Propagator.of(FiniteDomainConstraints.class, us.toJavaList(), body))
+						Propagator.of(FiniteDomainConstraints.class, us, body))
 				.apply(FiniteDomainConstraints.register(p));
 	}
 
-private static <T> Function<Package, Verdict> gated(Array<Unifiable<T>> us,
+	@SuppressWarnings("unchecked")
+	private static <T> Array<? extends Term<T>> typed(Array<? extends Term<?>> watched) {
+		return (Array<? extends Term<T>>) watched;
+	}
+
+	private static <T> BiFunction<Array<? extends Term<?>>, Package, Verdict> gated(
 			Function<Array<VarWithDomain<T>>, Verdict> verdict) {
-		return s -> letDomain(s, us)
+		return (watched, s) -> letDomain(s, FiniteDomain.<T> typed(watched))
 				.filter(uds -> uds.toJavaStream()
 						.noneMatch(ud -> ud.getDomain().isEmpty()))
 				.map(verdict)
@@ -182,7 +188,7 @@ private static <T> Function<Package, Verdict> gated(Array<Unifiable<T>> us,
 	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
 		return fdConstraint(
 				Array.of(less, more),
-				gated(Array.of(less, more), vds ->
+				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1))
 								.apply(FiniteDomain::leqVerdict)));
 	}
@@ -218,7 +224,7 @@ private static <T> Function<Package, Verdict> gated(Array<Unifiable<T>> us,
 	static <T> Goal addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
 		return fdConstraint(
 				Array.of(a, b, rhs),
-				gated(Array.of(a, b, rhs), vds ->
+				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
 								.apply((u, v, w) ->
 										addVerdict(u, v, w,
@@ -270,7 +276,7 @@ private static <T> Function<Package, Verdict> gated(Array<Unifiable<T>> us,
 	static <T> Goal mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
 		return fdConstraint(
 				Array.of(a, b, rhs),
-				gated(Array.of(a, b, rhs), vds ->
+				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
 								.apply((u, v, w) ->
 										mulVerdict(u, v, w,
@@ -365,7 +371,7 @@ private static <T> Function<Package, Verdict> gated(Array<Unifiable<T>> us,
 	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
 		return fdConstraint(
 				Array.of(l, r),
-				s -> letDomain(s, Array.of(l, r))
+				(watched, s) -> letDomain(s, FiniteDomain.<T> typed(watched))
 						.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
 						.map(ds -> ds.apply((ld, rd) -> {
 							Option<Tuple2<Arithmetic<T>, Arithmetic<T>>> zip = MiniKanren.zip(

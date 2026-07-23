@@ -141,7 +141,7 @@ public class TabledTest {
 
 		assertThatThrownBy(() -> notThree.apply(Tuple.of(x)).solve(x).count())
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("constraint");
+				.hasMessageContaining("non-projectable");
 	}
 
 	private final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> pathNoSelf =

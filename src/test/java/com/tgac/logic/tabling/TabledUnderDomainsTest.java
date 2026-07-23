@@ -225,4 +225,63 @@ public class TabledUnderDomainsTest {
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("escapes");
 	}
+
+	@Test
+	public void twoConsumptionsOfACoupledAnswerAreIndependent() {
+		// a conditional answer is a SCHEMA over its holes: each consumption
+		// replays a fresh instance of the carried coupling, so consuming the
+		// same answer twice yields the full product, never just the diagonal
+		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> region =
+				Tabling.define(args -> args.apply((a, b) ->
+						FiniteDomain.dom(a, dom(1, 2, 3))
+								.and(FiniteDomain.dom(b, dom(1, 2, 3)))
+								.and(FiniteDomain.addo(a, b, lval(4)))));
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Unifiable<Integer> u = lvar();
+		Unifiable<Integer> v = lvar();
+
+		long quads = region.apply(Tuple.of(x, y))
+				.and(region.apply(Tuple.of(u, v)))
+				.solve(lval(Tuple.of(x, y, u, v)))
+				.count();
+		assertThat(quads).isEqualTo(9);   // the coupled line (1,3)(2,2)(3,1), squared
+	}
+
+	@Test
+	public void twoConsumptionsOfADomainOnlyAnswerAreIndependent() {
+		Tabled<Tuple1<Unifiable<Integer>>> gen =
+				Tabling.define(args -> args.apply(a ->
+						FiniteDomain.dom(a, dom(1, 2))));
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		long pairs = gen.apply(Tuple.of(x))
+				.and(gen.apply(Tuple.of(y)))
+				.solve(lval(Tuple.of(x, y)))
+				.count();
+		assertThat(pairs).isEqualTo(4);
+	}
+
+	@Test(timeout = 10_000)
+	public void recursionUnderACarriedCouplingSharesItsEntry() {
+		// the master seeds its body from the key by re-activating the carried
+		// object ITSELF (an identity renaming yields the identical instance);
+		// the recursive call projects that same object, its key lands in the
+		// same entry, and the search terminates instead of minting entries
+		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> rel =
+				Tabling.defineRecursive(self -> args -> args.apply((a, b) ->
+						unify(a, lval(1)).and(unify(b, lval(3)))
+								.or(Goal.defer(() -> self.apply(Tuple.of(a, b))))));
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		long answers = FiniteDomain.dom(x, dom(1, 2, 3))
+				.and(FiniteDomain.dom(y, dom(1, 2, 3)))
+				.and(FiniteDomain.addo(x, y, lval(4)))
+				.and(rel.apply(Tuple.of(x, y)))
+				.solve(lval(Tuple.of(x, y)))
+				.count();
+		assertThat(answers).isEqualTo(1);   // (1,3)
+	}
 }

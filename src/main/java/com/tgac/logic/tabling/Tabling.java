@@ -11,6 +11,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Region;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Residue;
@@ -398,15 +399,18 @@ public class Tabling {
 			AnswerKey key = answer._1;
 			Object cellValue = answer._2;
 			// Fresh variables per consumption, so separate consumptions of the
-			// same answer don't alias each other's free variables; a conditional
-			// answer then RESTATES its residues onto the fresh holes before
-			// delivery — the meet-at-consumption (a violated residue silently
-			// fails the delivery, exactly like a failed unification)
+			// same answer don't alias each other's free variables. The arg
+			// bindings enter through the chokepoint (Propagation.resolve), so
+			// the caller's stores revise on delivery; a conditional answer then
+			// RESTATES its residues onto the fresh holes — the meet-at-
+			// consumption (a violated store or residue silently fails the
+			// delivery, exactly like a failed unification)
 			return MiniKanren.instantiateWithHoles(key.getTerm()).flatMap(inst ->
-					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), inst._1.getObjectTerm())
-							.map(callerPkg::withSubstitutions)
-							.map(unifiedPkg -> restateAll(key.getResidues(), inst._2)
-									.apply(unifiedPkg)
+					MiniKanren.unifyPrefix(callerPkg.substitution(), argsTerm.getObjectTerm(), inst._1.getObjectTerm())
+							.map(prefix -> Conjunction.of(
+											Propagation.resolve(prefix),
+											restateAll(key.getResidues(), inst._2))
+									.apply(callerPkg)
 									// streaming ⊗s the cell value in; closed records the loop
 									.apply(constrainedPkg -> k.apply(table.absorb(constrainedPkg,
 											entry, key.getTerm(), cellValue, EnclosingCall.entryOf(callerPkg))))

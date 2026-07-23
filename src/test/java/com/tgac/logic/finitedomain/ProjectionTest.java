@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
@@ -19,6 +20,7 @@ import io.vavr.Tuple;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.List;
@@ -37,7 +39,7 @@ public class ProjectionTest {
 
 	private static Propagator keeper(Unifiable<?>... watched) {
 		return Propagator.of(FiniteDomainConstraints.class,
-				Arrays.<Term<?>> asList(watched), pkg -> Verdict.keep());
+				Arrays.<Term<?>> asList(watched), (terms, pkg) -> Verdict.keep());
 	}
 
 	@Test
@@ -154,21 +156,60 @@ public class ProjectionTest {
 	}
 
 	@Test
-	public void aCarriedCouplingReplaysByAliasingOntoLiveVars() {
-		// replay unifies the live var with the propagator's ORIGINAL watched
-		// var and re-activates the object: binding the original reaches the
-		// fresh var through the alias
+	public void aCarriedCouplingReplaysAsAFreshInstanceOverTheGivenVars() {
+		// the residue is a schema: replay registers the propagator rebuilt to
+		// watch the given vars — the constraint applies to THEM, and the
+		// original watched vars stay independent (no aliasing)
 		Unifiable<Integer> orig = lvar();
-		CarriedConstraint carried = CarriedConstraint.of(keeper(orig),
+		Propagator notSeven = Propagator.of(FiniteDomainConstraints.class,
+				Arrays.<Term<?>> asList(orig), (terms, pkg) -> {
+					Term<?> watched = pkg.walk(terms.get(0));
+					return watched.isVal() && Integer.valueOf(7).equals(watched.get())
+							? Verdict.fail()
+							: Verdict.keep();
+				});
+		CarriedConstraint carried = CarriedConstraint.of(notSeven,
 				Array.of(Tuple.of(varOf(orig), 0)));
 		DomainResidue residue = DomainResidue.of(HashMap.empty(), HashSet.of(carried));
 
 		Unifiable<Integer> fresh = lvar();
-		List<Integer> values = residue.restate(Arrays.<Unifiable<?>> asList(fresh))
-				.and(Constraints.unify(orig, lval(7)))
+		assertThat(residue.restate(Arrays.<Unifiable<?>> asList(fresh))
+				.and(Constraints.unify(fresh, lval(7)))
 				.solve(fresh)
-				.map(Term::<Integer> get)
-				.collect(Collectors.toList());
-		assertThat(values).containsExactly(7);
+				.count()).isEqualTo(0);
+		assertThat(residue.restate(Arrays.<Unifiable<?>> asList(fresh))
+				.and(Constraints.unify(orig, lval(7)))
+				.and(Constraints.unify(fresh, lval(3)))
+				.solve(fresh)
+				.count()).isEqualTo(1);
+	}
+
+	@Test
+	public void restatingOntoTheWatchedVarsReactivatesTheLiveObject() {
+		// an identity renaming yields the identical instance: the master
+		// seeding its body from the key re-activates the carried object
+		// itself, so a recursive call projects the SAME object and its key
+		// lands in the same table entry
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Propagator posted = keeper(x, y, lval(4));
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
+		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
+				.withDomain(varOf(y), dom(1, 2, 3))
+				.prepend(posted);
+
+		DomainResidue residue = store.project(Arrays.asList(varOf(x), varOf(y)), true);
+		List<Integer> seen = new ArrayList<>();
+		residue.restate(Arrays.<Unifiable<?>> asList(x, y))
+				.and(pkg -> {
+					FiniteDomainConstraints seeded = FiniteDomainConstraints.getFDStore(pkg);
+					seen.add(seeded.getConstraints().exists(c -> c == posted) ? 1 : 0);
+					return Goal.success().apply(pkg);
+				})
+				.and(Constraints.unify(x, lval(1)))
+				.and(Constraints.unify(y, lval(3)))
+				.solve(x)
+				.count();
+		assertThat(seen).containsExactly(1);
 	}
 }

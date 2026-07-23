@@ -39,7 +39,7 @@ public class ParametersTest {
 		Propagator constraint = Propagator.of(
 				FiniteDomainConstraints.class,
 				Arrays.asList(prefix.get()._1),
-				st -> Verdict.keep());
+				(watched, st) -> Verdict.keep());
 
 		Package[] box = new Package[1];
 		Package pkg = Package.of(HashMap.empty(),
