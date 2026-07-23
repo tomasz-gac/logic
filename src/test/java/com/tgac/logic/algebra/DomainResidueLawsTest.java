@@ -7,12 +7,15 @@ import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.PartialOrderLaws;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
+import com.tgac.logic.finitedomain.CarriedConstraint;
 import com.tgac.logic.finitedomain.DomainResidue;
+import com.tgac.logic.finitedomain.FiniteDomainTestSupport;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
+import io.vavr.collection.HashSet;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.AfterClass;
@@ -34,12 +37,17 @@ public class DomainResidueLawsTest {
 
 	@Test
 	public void residuesAreAMeetSemilattice() {
+		CarriedConstraint coupling = FiniteDomainTestSupport.keeperCarried();
+		CarriedConstraint other = FiniteDomainTestSupport.keeperCarried();
 		List<DomainResidue> featured = Arrays.asList(
 				DomainResidue.of(HashMap.empty()),                          // ⊤ everywhere
 				DomainResidue.of(HashMap.of(0, dom(1, 2, 3))),
 				DomainResidue.of(HashMap.of(0, dom(2, 3, 5))),
 				DomainResidue.of(HashMap.of(1, dom(7))),                    // incomparable with slot-0 ones
-				DomainResidue.of(HashMap.of(0, dom(1, 2), 1, dom(7, 8))));
+				DomainResidue.of(HashMap.of(0, dom(1, 2), 1, dom(7, 8))),
+				DomainResidue.of(HashMap.of(0, dom(1, 2, 3)), HashSet.of(coupling)),
+				DomainResidue.of(HashMap.of(0, dom(1, 2)), HashSet.of(coupling, other)),
+				DomainResidue.of(HashMap.empty(), HashSet.of(other)));
 		SemilatticeLaws.checkMeet(featured);
 		PartialOrderLaws.check(featured);
 	}

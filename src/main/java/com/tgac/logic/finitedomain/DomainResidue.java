@@ -46,6 +46,22 @@ public class DomainResidue implements MeetSemilattice<DomainResidue>, Residue<Do
 				carried.union(other.carried));
 	}
 
+	/**
+	 * Entailment checked slotwise, without materializing the meet: every slot
+	 * {@code other} constrains must be at-least-as-narrow here (an absent slot
+	 * is ⊤, so it can entail nothing), and every coupling {@code other}
+	 * carries must ride here too. The same order the meet derives — the laws
+	 * test sweeps both against each other — at an early-exit, allocation-free
+	 * cost, which matters because tabling folds this over every cached answer.
+	 */
+	@Override
+	@SuppressWarnings("unchecked")
+	public boolean leq(DomainResidue other) {
+		return other.slots.forAll(slot -> slots.get(slot._1)
+				.exists(mine -> ((Domain<Object>) mine).leq((Domain<Object>) slot._2)))
+				&& carried.containsAll(other.carried);
+	}
+
 	/** One {@code dom} post per slot, then each carried coupling through its
 	 * recipe — all public entries, so replay propagates like fresh knowledge
 	 * (first examination, watchers, cascade). */
