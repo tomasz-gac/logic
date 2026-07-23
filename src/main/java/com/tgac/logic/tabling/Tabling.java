@@ -11,7 +11,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Region;
-import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Residue;
@@ -252,6 +252,13 @@ public class Tabling {
 		}
 	}
 
+	/** The delivery unification through the public entry — a helper so the
+	 * two-Unifiable overload resolves (with {@code T = Object} the
+	 * {@code (Unifiable<T>, T)} overload would be applicable too). */
+	private static <T> Goal unifyArgs(Unifiable<T> args, Unifiable<T> instantiated) {
+		return Constraints.unify(args, instantiated);
+	}
+
 	/** Every residue re-imposed onto the instantiation's fresh holes — ground
 	 * answers restate nothing and the goal is success. */
 	private static Goal restateAll(Map<Class<?>, Object> residues, java.util.List<LVar<?>> freshHoles) {
@@ -386,6 +393,7 @@ public class Tabling {
 	 * {@link #respawn} continues it when new answers arrive, and the
 	 * fixpoint abandons it otherwise.
 	 */
+	@SuppressWarnings("unchecked")
 	private static Fiber<Nothing> consume(
 			TableEntry<Object> entry,
 			Fiber.Fn<Package, Nothing> k,
@@ -399,26 +407,22 @@ public class Tabling {
 			AnswerKey key = answer._1;
 			Object cellValue = answer._2;
 			// Fresh variables per consumption, so separate consumptions of the
-			// same answer don't alias each other's free variables. The arg
-			// bindings enter through the chokepoint (Propagation.resolve), so
-			// the caller's stores revise on delivery; a conditional answer then
-			// RESTATES its residues onto the fresh holes — the meet-at-
-			// consumption (a violated store or residue silently fails the
-			// delivery, exactly like a failed unification)
+			// same answer don't alias each other's free variables. Delivery is
+			// a goal: unify the caller's args with the instantiation — through
+			// the public entry, so the caller's stores revise — then RESTATE
+			// the residues onto the fresh holes. The meet-at-consumption: a
+			// failed unification, a violated store or a violated residue all
+			// silently fail the delivery and consumption moves on
 			return MiniKanren.instantiateWithHoles(key.getTerm()).flatMap(inst ->
-					MiniKanren.unifyPrefix(callerPkg.substitution(), argsTerm.getObjectTerm(), inst._1.getObjectTerm())
-							.map(prefix -> Conjunction.of(
-											Propagation.resolve(prefix),
-											restateAll(key.getResidues(), inst._2))
-									.apply(callerPkg)
-									// streaming ⊗s the cell value in; closed records the loop
-									.apply(constrainedPkg -> k.apply(table.absorb(constrainedPkg,
-											entry, key.getTerm(), cellValue, EnclosingCall.entryOf(callerPkg))))
-									.flatMap(__ -> Fiber.defer(() ->
-											consume(entry, k, callerPkg, argsTerm, index + 1, table))))
-							.getOrElse(() -> Fiber.defer(() ->
-									consume(entry, k, callerPkg, argsTerm, index + 1, table)))
-							.flatMap(fib -> fib));
+					Conjunction.of(
+									unifyArgs((Unifiable<Object>) argsTerm, (Unifiable<Object>) inst._1),
+									restateAll(key.getResidues(), inst._2))
+							.apply(callerPkg)
+							// streaming ⊗s the cell value in; closed records the loop
+							.apply(constrainedPkg -> k.apply(table.absorb(constrainedPkg,
+									entry, key.getTerm(), cellValue, EnclosingCall.entryOf(callerPkg))))
+							.flatMap(__ -> Fiber.defer(() ->
+									consume(entry, k, callerPkg, argsTerm, index + 1, table))));
 		}
 
 		return parkWhenCaughtUp(entry, k, callerPkg, argsTerm, index, table);
