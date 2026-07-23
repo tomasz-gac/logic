@@ -18,6 +18,7 @@ import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Predicates;
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
@@ -303,18 +304,12 @@ class FiniteDomainConstraints implements ConstraintStore,
 	}
 
 	/**
-	 * Current vocabulary: DOMAINS ONLY — per-var, positional, post-propagation
-	 * (a coupling's arc-consistent shadow is already in each domain; the
-	 * correlation itself is not expressible yet). Live propagators are outside
-	 * the vocabulary and handled at the tabling boundary: dropped soundly on
-	 * the call side (the master searches wider, the caller filters — the
-	 * containment law), refused on the answer side via {@link #discharged}.
-	 * Stage 2 (tabled-constraints.md) extends the vocabulary with propagator
-	 * recipes and moves the escape refusal HERE, per {@link Projectable#project}'s
-	 * whole-truth-or-throw contract.
+	 * TRANSCRIBES everything expressible: per-slot domains (post-propagation)
+	 * plus every wholly-covered coupling as its LIVE propagator object with a
+	 * (var → slot) map. {@code wideningAllowed} governs only the escapes.
 	 */
 	@Override
-	public DomainResidue project(List<LVar<?>> vars) {
+	public DomainResidue project(List<LVar<?>> vars, boolean wideningAllowed) {
 		HashMap<Integer, Domain<?>> slots = HashMap.empty();
 		for (int i = 0; i < vars.size(); i++) {
 			Option<Domain<?>> d = domains.get(vars.get(i));
@@ -323,43 +318,41 @@ class FiniteDomainConstraints implements ConstraintStore,
 			}
 		}
 		io.vavr.collection.HashSet<CarriedConstraint> carried = io.vavr.collection.HashSet.empty();
-		boolean widened = false;
 		for (Propagator propagator : constraints) {
 			CarriedConstraint coupling = carry(propagator, vars);
 			if (coupling != null) {
 				carried = carried.add(coupling);
-			} else {
-				// uncarried live knowledge ANYWHERE — the residue under-states
-				widened = true;
+			} else if (!wideningAllowed) {
+				// exactness was demanded and this coupling escapes the vars —
+				// the declared context makes the refusal ours to raise
+				throw new IllegalStateException(
+						"exact projection demanded but a live constraint escapes the "
+								+ "projected vars — ground the escaping var or include it");
 			}
+			// else: dropped by permission — the caller declared widening sound
 		}
-		return DomainResidue.of(slots, carried, widened);
+		return DomainResidue.of(slots, carried);
 	}
 
 	/**
-	 * A propagator is carriable when it has a recipe and every watched VAR is
-	 * supplied — its args map to residue slots (grounds ride as themselves).
+	 * A propagator is carriable when every watched VAR is supplied — carried
+	 * as the LIVE OBJECT plus its (var → slot) map; grounds need no entry.
 	 * Identity comparison against walked roots: a watcher aliased away from
-	 * its root under-flags — acceptable while the flag is advisory, to
-	 * revisit when boundaries consume it strictly (tabled-constraints.md).
+	 * its root fails carriage and falls to the wideningAllowed handling.
 	 */
 	private static CarriedConstraint carry(Propagator propagator, List<LVar<?>> vars) {
-		if (propagator.recipe() == null) {
-			return null;
-		}
-		java.util.List<Object> args = new ArrayList<>();
+		java.util.List<Tuple2<LVar<?>, Integer>> varSlots = new ArrayList<>();
 		for (Term<?> watched : propagator.watchedTerms()) {
 			if (watched.asVar().isDefined()) {
-				int slot = vars.indexOf(watched.asVar().get());
+				LVar<?> var = (LVar<?>) watched.asVar().get();
+				int slot = vars.indexOf(var);
 				if (slot < 0) {
 					return null;    // escapes to an unsupplied var
 				}
-				args.add(slot);
-			} else {
-				args.add(watched);
+				varSlots.add(Tuple.of(var, slot));
 			}
 		}
-		return CarriedConstraint.of(propagator.recipe(), Array.ofAll(args));
+		return CarriedConstraint.of(propagator, Array.ofAll(varSlots));
 	}
 
 	/**

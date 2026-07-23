@@ -226,8 +226,10 @@ public class Tabling {
 									+ store.getClass().getSimpleName() + " at a tabled call");
 				}
 				Projectable projectable = (Projectable) store;
-				Residue residue = projectable.project(callVars);
-				Residue top = projectable.project(Collections.emptyList());
+				// call side: widening allowed — escapes stay caller-private,
+				// sound by containment, filtered at consumption
+				Residue residue = projectable.project(callVars, true);
+				Residue top = projectable.project(Collections.emptyList(), true);
 				if (!residue.equals(top)) {
 					residues = residues.put(store.getClass(), residue);
 					restates.add(residue.restate(targets));

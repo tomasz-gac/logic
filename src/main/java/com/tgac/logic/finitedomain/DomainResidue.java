@@ -11,7 +11,6 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import java.util.List;
-import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
@@ -26,11 +25,6 @@ import lombok.Value;
  * residues over a FIXED var list form a finite lattice (subsets of finite
  * domains), the sufficient condition for a bounded tabling ascent.
  *
- * <p>{@code widened} is ADVISORY ({@link Residue#isWidened}) and excluded
- * from equality: it says the store's live knowledge exceeded this vocabulary
- * (a propagator watching a supplied var), not what region this residue
- * states. Meet propagates it disjunctively — combined knowledge understates
- * if either side did.
  */
 @Value(staticConstructor = "of")
 public class DomainResidue implements MeetSemilattice<DomainResidue>, Residue<DomainResidue> {
@@ -40,15 +34,8 @@ public class DomainResidue implements MeetSemilattice<DomainResidue>, Residue<Do
 	/** Couplings expressible over the slots — replayed by {@link #restate}. */
 	HashSet<CarriedConstraint> carried;
 
-	@EqualsAndHashCode.Exclude
-	boolean widened;
-
 	public static DomainResidue of(HashMap<Integer, Domain<?>> slots) {
-		return DomainResidue.of(slots, HashSet.empty(), false);
-	}
-
-	public static DomainResidue of(HashMap<Integer, Domain<?>> slots, boolean widened) {
-		return DomainResidue.of(slots, HashSet.empty(), widened);
+		return DomainResidue.of(slots, HashSet.empty());
 	}
 
 	@Override
@@ -56,8 +43,7 @@ public class DomainResidue implements MeetSemilattice<DomainResidue>, Residue<Do
 	public DomainResidue meet(DomainResidue other) {
 		return DomainResidue.of(slots.merge(other.slots,
 						(a, b) -> ((Domain<Object>) a).intersect((Domain<Object>) b)),
-				carried.union(other.carried),
-				widened || other.widened);
+				carried.union(other.carried));
 	}
 
 	/** One {@code dom} post per slot, then each carried coupling through its

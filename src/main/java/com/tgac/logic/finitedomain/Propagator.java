@@ -4,13 +4,10 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: parked lifecycle; watch matching resolves against the live state.
 
 import com.tgac.logic.constraints.store.Watches;
-import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unifiable;
-import java.util.List;
 import java.util.function.Function;
 
 /**
@@ -25,34 +22,21 @@ public final class Propagator implements Stored {
 	private final Class<? extends Store> storeClass;
 	private final Iterable<? extends Term<?>> watchedTerms;
 	private final Function<Package, Verdict> body;
-	/** The factory's static rebuild constant, or null: uncarriable. */
-	private final Function<List<Unifiable<?>>, Goal> recipe;
 
 	private Propagator(Class<? extends Store> storeClass,
 			Iterable<? extends Term<?>> watchedTerms,
-			Function<Package, Verdict> body,
-			Function<List<Unifiable<?>>, Goal> recipe) {
+			Function<Package, Verdict> body) {
 		this.storeClass = storeClass;
 		this.watchedTerms = watchedTerms;
 		this.body = body;
-		this.recipe = recipe;
 	}
 
-	/** A propagator from its owning store, watched terms and body — uncarriable. */
+	/** A propagator from its owning store, watched terms and body. */
 	public static Propagator of(
 			Class<? extends Store> storeClass,
 			Iterable<? extends Term<?>> watchedTerms,
 			Function<Package, Verdict> body) {
-		return new Propagator(storeClass, watchedTerms, body, null);
-	}
-
-	/** As above, with the factory's rebuild recipe: projectable into residues. */
-	public static Propagator of(
-			Class<? extends Store> storeClass,
-			Iterable<? extends Term<?>> watchedTerms,
-			Function<Package, Verdict> body,
-			Function<List<Unifiable<?>>, Goal> recipe) {
-		return new Propagator(storeClass, watchedTerms, body, recipe);
+		return new Propagator(storeClass, watchedTerms, body);
 	}
 
 	/** The terms whose variables this propagator watches — as stated, un-walked. */
@@ -60,10 +44,6 @@ public final class Propagator implements Stored {
 		return watchedTerms;
 	}
 
-	/** The factory's rebuild recipe, or null when this propagator is uncarriable. */
-	public Function<List<Unifiable<?>>, Goal> recipe() {
-		return recipe;
-	}
 
 	/** Re-examine against the current state. Reads anything, mutates nothing. */
 	public Verdict propagate(Package state) {

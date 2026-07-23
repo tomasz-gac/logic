@@ -19,9 +19,8 @@ import java.util.List;
  *
  * <p>ONE VOCABULARY, EVERY USAGE: whatever {@code project} can express rides
  * every consumer of this capability alike — call keys and answer residues are
- * the same projection; there is no per-usage variant, and the store never
- * learns which side it is serving. What it cannot express it must FLAG
- * rather than silently drop (see {@code project}).
+ * the same projection; the store never learns WHICH side it serves, only the
+ * STRENGTH demanded ({@code wideningAllowed}).
  *
  * <p>THE CORRESPONDENCE IS THE CALLER'S: slot {@code i} means {@code vars[i]},
  * and the caller owns the ordering discipline that makes residues align across
@@ -44,18 +43,17 @@ public interface Projectable<R extends Residue<R>> extends ConstraintStore {
 	 * This store's knowledge about {@code vars}, slot i ↔ vars[i]; absence = ⊤.
 	 * Projecting the EMPTY list is the ⊤ residue — the caller's triviality test.
 	 *
-	 * <p>THE CONTRACT: the whole truth about {@code vars}, or an HONEST flag —
-	 * never a silently partial residue. Live knowledge about a supplied var
-	 * that the residue cannot express (a coupling outside the vocabulary, or
-	 * one escaping to an unsupplied local) sets {@link Residue#isWidened} —
-	 * only the store can see the shortfall; only the BOUNDARY has the context
-	 * to refuse, and its reasons differ by side (tabled-constraints.md §5.1):
-	 * a widened ANSWER residue replays wrong answers (nothing re-filters) —
-	 * refusal there is necessary; a widened CALL key is sound by containment
-	 * (the master searches wider, the caller filters) — acceptance there IS
-	 * the call-abstraction knob.
+	 * <p>THE CONTRACT: TRANSCRIBE everything expressible — domains and
+	 * wholly-covered couplings alike; permission to widen is not an
+	 * instruction to widen. {@code wideningAllowed} governs only the
+	 * INEXPRESSIBLE remainder (a coupling escaping to an unsupplied var):
+	 * dropped silently when allowed — the caller declared the widening sound
+	 * on its side (containment: a wider search, filtered at consumption) —
+	 * or {@link IllegalStateException} when exactness was demanded: the
+	 * parameter carries the boundary's context in, which is what makes the
+	 * refusal the store's to raise (tabled-constraints.md §5.1).
 	 */
-	R project(List<LVar<?>> vars);
+	R project(List<LVar<?>> vars, boolean wideningAllowed);
 
 	/**
 	 * No LIVE knowledge remains under {@code state} — everything this store

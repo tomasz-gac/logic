@@ -121,24 +121,24 @@ against a rename substitution; this is its data-shaped sibling. AS BUILT: POSITI
 (`reifyWithHoles` derives the order from the one rename pass), so no renaming
 machinery crosses the store boundary. `project` of the empty list is ⊤, and
 ⊤ residues stay OUT of keys — calls under irrelevant knowledge stay
-constraint-free variants. THE CONTRACT (decided, flag over throw —
-Tom's refinement): project tells the whole truth about its vars or FLAGS —
-a residue that cannot express live knowledge about a supplied var (a
-coupling outside the vocabulary, or one escaping to an unsupplied local)
-says so via `Residue.isWidened`, and the residue RESTATES ITSELF
-(`Residue.restate` — it is self-describing knowledge needing only public
-factories, not the store that projected it). One vocabulary rides every
-usage — call keys and answer residues are the same projection; the store
-never learns which side it serves; only the store can SEE the shortfall,
-only the BOUNDARY has the context to refuse. The refusal's reasons differ
-by side and both bind: on answers refusing a widened residue is NECESSARY
-(dropped local knowledge replays wrong answers — nothing re-filters); on
-calls it is POLICY — a widened key is sound by containment (the master
-searches wider, the caller filters), so ACCEPTING it is precisely the
-call-abstraction knob, one boundary branch away. Stage 1 accepts widened
-calls (the shipped, pinned behavior) and answers do not project yet.
-Widened is ADVISORY, excluded from residue equality: callers widened to
-the same region share an entry.
+constraint-free variants. THE CONTRACT (third revision — Tom's:
+parameter over flag over throw): `project(vars, wideningAllowed)`
+TRANSCRIBES everything expressible — domains AND wholly-covered couplings
+alike; permission to widen is not an instruction to widen. The parameter
+governs only the INEXPRESSIBLE REMAINDER (a coupling escaping to an
+unsupplied local): dropped silently when allowed, THROWN when exactness
+was demanded — the parameter carries the boundary's context INTO the
+store, which is what legitimizes the throw (the earlier objection was
+that the store lacks the context to refuse; now the demand is explicit).
+The store still never learns WHICH side it serves — only the strength
+demanded. `isWidened` is GONE: no flag, no advisory metadata, no equality
+exclusions. Couplings are carried as the LIVE PROPAGATOR OBJECTS plus a
+watched-var → slot map — no factory recipes, no shape tokens, no custom
+equality; default object identity is the membership base. The residue
+restates itself (`Residue.restate`): call-side replay re-activates the
+same objects on the same vars; answer-side replay ALIAS-UNIFIES each
+fresh hole with the propagator's original watched var and re-activates —
+custody and the Watches chain matcher walk through aliases by design.
 
 ### 5.2 `entails(mine, other) → boolean`
 
@@ -203,6 +203,24 @@ coupling's subset.
   CONSTRAINT-FREE-ONLY — positional slot spaces do not align across
   different hole counts, so region containment between constrained calls
   waits for stage 3's correspondence machinery.
+- STAGE 2 DECIDES (Tom): matching is ENTAILMENT, not equality — use ANY
+  entry (open or sealed alike; joining a wider in-progress entry is sound
+  by the subset property, mid-stream) with the same relation, Herbrand
+  args-subsumption, and `caller.residue ⊑ entry.residue` (the containment
+  law verbatim: caller knows at least as much, entry's region covers
+  caller's); else mint. Exact equality survives as the hash fast path
+  (same store state ⇒ identical residue ⇒ equal key). Carried-coupling
+  entailment is IDENTITY-CONSERVATIVE: down a recursion the store holds
+  the LITERAL SAME propagator object (posted once, persists until
+  discharged), so recursive variants under one constraint context share
+  their entry — the reuse TCLP exists for — while two INDEPENDENT posts
+  of a same-shaped coupling are incomparable and recompute: a conservative
+  false costs reuse, never soundness. This unifies variant matching, the
+  sealed-subsumer path and the old constraint-free-only rule under one
+  containment check, and it is stage 3 arriving early in conservative
+  form; semantic coupling-entailment (shape tokens) is the optional later
+  strengthening, not a prerequisite. Racing minters may create comparable
+  entries — benign, both truthful.
 
 ### 5.5 The termination gate
 
@@ -240,22 +258,27 @@ growth.)
 
 1. **DONE (July 2026).** Hooks + FD-only, exact-equality keys, unconstrained
    answers still rejected. (`TabledUnderDomainsTest` pins it.)
-2. Constrained ANSWERS for FD — SPEC DECIDED (July 2026): RECIPES —
-   `Propagator` gains a rebuild field (vars → the public factory re-call);
-   residues extend to domains + hole-covered propagators (recipe, slots);
-   restate replays both. ALWAYS-PORT-ALL: the one vocabulary rides both
-   boundaries — couplings join call keys AND answer residues, key ⟺ restate
-   atomically (restated-but-unkeyed is the §3.1 bug). Residues FLAG
-   widening (the §5.1 contract) and the boundary refuses: a widened ANSWER
-   residue refuses at produce (necessity); a widened CALL key refuses or
-   widens per policy (strict default, the abstraction knob later).
-   `discharged` demotes to the ground-answer fast path. Purely-local
-   DOMAINS have a decidable witness and drop; local-escaping couplings
-   refuse until a renamed-extra-holes extension has a paying customer.
-   Known cost: stage-1's sharing-by-key-collision fragments (couplings
-   tighten keys) — sharing properly returns at stage 3 via containment;
-   and arg-coupled-to-private-var at a tabled call becomes illegal until
-   grounded/labeled (the abstraction knob's likely first trigger).
+2. Constrained ANSWERS for FD — SPEC (fourth revision, July 2026; the
+   recipe/flag drafts are superseded): `project(vars, wideningAllowed)`
+   transcribes all expressible knowledge — domains plus covered couplings
+   as (LIVE PROPAGATOR OBJECT, watched-var → slot map), default identity,
+   no recipes, no flags, no custom equality. ALWAYS-PORT-ALL holds: one
+   projection rides both boundaries; the call side passes
+   wideningAllowed=true (escapes drop — caller-private, sound by
+   containment, filtered at consumption), the answer side demands
+   exactness (escape to a body-local THROWS at produce: label the local or
+   lift it into the answer). Master restate re-activates the carried
+   objects on the same vars (call side needs no aliasing); answer replay
+   instantiates fresh holes, alias-unifies them to the propagators'
+   original vars, and re-activates. Answer DEDUP is the leq insert-guard:
+   append-only, a new (term, residues) answer joins iff no existing
+   same-term answer's residue entails it — no retraction (delivered
+   answers stand; indexes stay monotone), no equality anywhere
+   (PartialOrder suffices; identity is the membership base within an
+   entry). `discharged` is the ground-answer fast path. Purely-local
+   DOMAINS have a decidable witness and drop. Matching is entailment
+   (§5.4). Closed/star mode is excluded — orthogonal concern, refused
+   loudly until designed.
 3. Pointwise-⊑ call subsumption.
 4. Neq widening — only with a motivating use case; the deduction/termination
    trade needs one to be judged.

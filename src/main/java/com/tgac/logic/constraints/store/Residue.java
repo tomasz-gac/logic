@@ -10,30 +10,25 @@ import java.util.List;
 
 /**
  * What {@link Projectable#project} returns: knowledge about a positional var
- * list, comparable by entailment ({@code leq}), and HONEST about its own
- * limits — {@link #isWidened} says whether live knowledge about the supplied
- * vars could not be expressed (a coupling outside the vocabulary, or one
- * escaping to an unsupplied local). The store reports; the BOUNDARY refuses,
- * with per-side reasons (tabled-constraints.md §5.1): on answers a widened
- * residue replays wrong answers (nothing re-filters) — refusal is necessary;
- * on calls dropping is sound by containment (the master searches wider, the
- * caller filters) — refusal is chosen strictness, and acceptance is the
- * call-abstraction knob.
+ * list, comparable by ENTAILMENT ({@code leq}) — which is all any consumer
+ * asks: matching is containment (use an entry whose region entails-covers
+ * yours), dedup is the leq insert-guard, and a conservative incomparable
+ * costs reuse, never soundness (tabled-constraints.md §5.4). Equality is
+ * only the degenerate fast path.
  *
- * <p>WIDENED IS ADVISORY, NOT IDENTITY: two residues stating the same region
- * are equal regardless of the flag — keys name what the master searches, and
- * callers widened to the same region should share an entry.
+ * <p>The residue transcribes EVERYTHING the projection could express —
+ * domains and covered couplings alike; what could not be expressed was
+ * handled at projection time per the demanded strength
+ * ({@link Projectable#project}'s {@code wideningAllowed}).
  */
 public interface Residue<R extends Residue<R>> extends PartialOrder<R> {
 
-	boolean isWidened();
-
 	/**
 	 * Re-impose this knowledge onto live vars, same slots as at projection —
-	 * through PUBLIC statement entries (constraint posts), so a replayed
-	 * residue propagates like freshly stated knowledge. The residue restates
-	 * ITSELF: it is self-describing (its slots, its values, its recipes) and
-	 * needs the public factories, not the store instance that projected it.
+	 * through PUBLIC statement entries, so a replayed residue propagates like
+	 * freshly stated knowledge. Carried couplings replay as their live
+	 * propagator objects, alias-unified onto the given vars; on the call side
+	 * the vars are the originals and the aliasing no-ops.
 	 */
 	Goal restate(List<Unifiable<?>> vars);
 }
