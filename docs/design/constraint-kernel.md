@@ -108,8 +108,10 @@ domains and wholly-covered couplings, the latter carried as LIVE propagator
 objects with (var → slot) maps; the parameter governs only the
 inexpressible remainder (escapes): dropped by permission or thrown when
 exactness was demanded. The residue RESTATES ITSELF through the public
-posts (`Residue.restate` — carried couplings alias-unify onto the live
-vars and re-activate) and carries entailment (`PartialOrder.leq` — all any
+posts (`Residue.restate` — replay is a RENAMING: carried couplings
+register the propagator rebuilt over the live vars, `Propagator.watching`;
+an identity renaming re-activates the live object itself, which is what
+recursion's entry-sharing rides on) and carries entailment (`PartialOrder.leq` — all any
 consumer asks; matching is containment, tabled-constraints.md §5.4).
 `discharged(state)` distinguishes live from spent knowledge (stale domains
 under bindings). FD is the prototype (`DomainResidue`). Participation in
