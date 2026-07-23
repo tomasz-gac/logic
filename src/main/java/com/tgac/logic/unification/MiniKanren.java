@@ -433,6 +433,21 @@ public class MiniKanren {
 				.getOrElse(done(u));
 	}
 
+	/**
+	 * The term with hole {@code _.i} replaced by {@code bySlot.get(i)} — the
+	 * positional instantiation a transcribed residue uses to re-target its
+	 * knowledge onto live vars. Holes beyond the list become fresh variables,
+	 * as in {@link #instantiate(Reified)}.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Fiber<Term<T>> instantiate(Term<T> term, java.util.List<? extends Term<?>> bySlot) {
+		ConcurrentMap<Integer, Term<Object>> seeded = new ConcurrentHashMap<>();
+		for (int i = 0; i < bySlot.size(); i++) {
+			seeded.put(i, (Term<Object>) bySlot.get(i));
+		}
+		return instantiateTerm(term, seeded);
+	}
+
 	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Reified<T>> reify(Substitutions s, Term<T> item) {
 		// after renaming, every node is an LVal or a Hole — both Reified

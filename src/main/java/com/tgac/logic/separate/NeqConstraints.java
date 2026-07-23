@@ -7,21 +7,30 @@ import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
+import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
+import io.vavr.Tuple2;
+import io.vavr.collection.HashMap;
+import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class NeqConstraints implements ConstraintStore, MeetSemilattice<NeqConstraints> {
+class NeqConstraints implements Projectable<NeqResidue>, MeetSemilattice<NeqConstraints> {
 	public static final NeqConstraints EMPTY = NeqConstraints.of(LinkedHashSet.empty());
 	LinkedHashSet<NeqConstraint> constraints;
 
@@ -76,6 +85,66 @@ class NeqConstraints implements ConstraintStore, MeetSemilattice<NeqConstraints>
 	@Override
 	public <T> Goal enforce(Term<T> x) {
 		return Goal.success();
+	}
+
+	/**
+	 * TRANSCRIBES every record wholly over {@code vars}: LHS var → slot, RHS
+	 * term with projected vars renamed to canonical holes — pure data, so
+	 * same-shaped contexts from unrelated lineages project equal residues.
+	 * {@code wideningAllowed} governs only the escapes (a record touching an
+	 * unsupplied var): dropped by permission, refused when exactness demanded.
+	 */
+	@Override
+	public NeqResidue project(java.util.List<LVar<?>> vars, boolean wideningAllowed) {
+		HashMap<LVar<?>, Term<?>> renames = HashMap.empty();
+		for (int i = 0; i < vars.size(); i++) {
+			renames = renames.put(vars.get(i), Hole.of(i));
+		}
+		Substitutions rename = Substitutions.of(renames);
+		HashSet<HashMap<Integer, Term<?>>> transcribed = HashSet.empty();
+		for (NeqConstraint record : constraints) {
+			HashMap<Integer, Term<?>> slots = transcribe(record, rename);
+			if (slots != null) {
+				transcribed = transcribed.add(slots);
+			} else if (!wideningAllowed) {
+				throw new IllegalStateException(
+						"exact projection demanded but a disequality escapes the "
+								+ "projected vars — ground the escaping var or include it");
+			}
+			// else: dropped by permission — the caller declared widening sound
+		}
+		return NeqResidue.of(transcribed);
+	}
+
+	/** Slot → renamed forbidden term, or null when any var escapes the projection. */
+	private static HashMap<Integer, Term<?>> transcribe(NeqConstraint record, Substitutions rename) {
+		HashMap<Integer, Term<?>> slots = HashMap.empty();
+		for (Tuple2<LVar<?>, Term<?>> pair : record.getSeparate()) {
+			Term<?> lhs = rename.walk(pair._1);
+			if (!lhs.asReified().isDefined()) {
+				return null;    // the constrained var itself is not projected
+			}
+			Term<?> rhs = MiniKanren.walkAll(rename, pair._2).get();
+			if (hasVars(rhs)) {
+				return null;    // the forbidden term reaches an unprojected var
+			}
+			slots = slots.put(((Hole<?>) lhs).getNumber(), rhs);
+		}
+		return slots;
+	}
+
+	/** Iterative structural scan — deep spines must not recurse. */
+	private static boolean hasVars(Term<?> t) {
+		Deque<Term<?>> work = new ArrayDeque<>();
+		work.push(t);
+		while (!work.isEmpty()) {
+			Term<?> current = work.pop();
+			if (current.asVar().isDefined()) {
+				return true;
+			}
+			MiniKanren.members(current).forEach(members -> members.forEach(work::push));
+		}
+		return false;
 	}
 
 	@Override
