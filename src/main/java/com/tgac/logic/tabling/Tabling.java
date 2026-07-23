@@ -253,9 +253,8 @@ public class Tabling {
 
 	/** Every residue re-imposed onto the instantiation's fresh holes — ground
 	 * answers restate nothing and the goal is success. */
-	@SuppressWarnings("unchecked")
 	private static Goal restateAll(Map<Class<?>, Object> residues, java.util.List<LVar<?>> freshHoles) {
-		java.util.List<Unifiable<?>> targets = new ArrayList<Unifiable<?>>(freshHoles);
+		java.util.List<Unifiable<?>> targets = new ArrayList<>(freshHoles);
 		Goal seeded = Goal.success();
 		for (Tuple2<Class<?>, Object> entry : residues) {
 			seeded = Conjunction.of(seeded, ((Residue<?>) entry._2).restate(targets));
@@ -296,7 +295,7 @@ public class Tabling {
 			}
 			if (!(store instanceof Projectable)) {
 				throw new IllegalStateException(
-						"Tabling does not capture constraints yet: non-empty "
+						"Tabling does not support non-projectable store: non-empty "
 								+ store.getClass().getSimpleName() + " on a tabled answer");
 			}
 			Projectable projectable = (Projectable) store;
