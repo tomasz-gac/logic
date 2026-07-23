@@ -35,19 +35,22 @@ public class Call {
 	}
 
 	/**
-	 * Herbrand call subsumption: does this pattern generalize {@code other}?
-	 * Same relation by identity, arguments by {@link Subsumption#subsumes} —
-	 * and CONSTRAINT-FREE ONLY: positional residues do not align across
-	 * different hole counts, so region containment between constrained calls
-	 * is stage-3 machinery. When it holds, every answer of {@code other} is
-	 * among this call's answers (the subset property), so a SEALED entry for
-	 * this call may serve {@code other} as a read-only relation.
+	 * Region containment: does this call's region cover {@code other}'s?
+	 * Same relation by identity, arguments by {@link Subsumption#subsumes},
+	 * residues by pointwise entailment — {@code other ⊑ this} per store
+	 * (absent = ⊤; a class this call knows about that other does not is a
+	 * refusal: a narrower entry never serves a wider caller). Carried
+	 * couplings compare by store-object identity — recursion under one
+	 * constraint context shares (the same propagator persists down the
+	 * store); independent same-shaped posts are conservatively incomparable.
+	 * When containment holds, every answer {@code other} is entitled to is
+	 * among this call's answers (the subset property), so this call's entry —
+	 * open or sealed — may serve {@code other} through consume's filter.
 	 */
 	public boolean subsumes(Call other) {
 		return relation == other.relation
-				&& residues.isEmpty()
-				&& other.residues.isEmpty()
-				&& Subsumption.subsumes(arguments, other.arguments);
+				&& Subsumption.subsumes(arguments, other.arguments)
+				&& AnswerKey.residuesLeq(other.residues, residues);
 	}
 
 	@Override

@@ -111,6 +111,10 @@ public class Table implements Packaged {
 		return mode.bodyState(callerPkg);
 	}
 
+	boolean supportsConstrainedAnswers() {
+		return mode.supportsConstrainedAnswers();
+	}
+
 	Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
 			Object cellValue, TableEntry<Object> enclosingCall) {
 		return mode.absorb(unifiedPkg, entry, consumedAnswer, cellValue, enclosingCall);
@@ -144,12 +148,27 @@ public class Table implements Packaged {
 	}
 
 	/**
-	 * A SEALED general entry to reuse for {@code key} instead of minting a fresh
-	 * master — present only on an exact miss, since an exact entry is the call's
-	 * own master. The general's answers are a superset filtered by consumption.
+	 * An entry whose region CONTAINS {@code key}'s, to consume instead of
+	 * minting a fresh master: the exact hit first (tightest, O(1)), else any
+	 * containing entry — OPEN included, since joining a wider in-progress
+	 * entry is sound mid-stream by the subset property. The entry's answers
+	 * are a superset filtered by consumption (unify + the caller's own state).
 	 */
 	public TableEntry<Object> reusableSubsumer(Call key) {
-		return getEntry(key) == null ? findSealedSubsumer(key) : null;
+		TableEntry<Object> exact = getEntry(key);
+		if (exact != null) {
+			return exact;
+		}
+		SubsumptionMap<TableEntry<Object>> patterns = subsumption.get(key.getRelation());
+		if (patterns == null) {
+			return null;
+		}
+		for (TableEntry<Object> e : patterns.subsumers(key.getArguments())) {
+			if (e.getCall().subsumes(key)) {
+				return e;
+			}
+		}
+		return null;
 	}
 
 	/**

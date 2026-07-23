@@ -25,8 +25,8 @@ public class TableEntryTest {
 				Semirings.BOOLEAN);
 	}
 
-	private static Reified<?> answer(Object value) {
-		return (Reified<?>) lval(value);
+	private static AnswerKey answer(Object value) {
+		return AnswerKey.of((Reified<?>) lval(value));
 	}
 
 	private static Registration registrationAt(int index) {
@@ -55,8 +55,8 @@ public class TableEntryTest {
 
 		assertThat(entry.getAnswerCount()).isEqualTo(0);
 
-		Reified<?> ans1 = answer(Tuple.of("alice", "bob"));
-		Reified<?> ans2 = answer(Tuple.of("charlie", "dave"));
+		AnswerKey ans1 = answer(Tuple.of("alice", "bob"));
+		AnswerKey ans2 = answer(Tuple.of("charlie", "dave"));
 
 		assertThat(entry.addAnswer(ans1, true).isDefined()).isTrue();
 		assertThat(entry.addAnswer(ans2, true).isDefined()).isTrue();

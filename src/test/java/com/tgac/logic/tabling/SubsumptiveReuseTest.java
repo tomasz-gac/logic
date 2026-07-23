@@ -125,19 +125,25 @@ public class SubsumptiveReuseTest {
 	}
 
 	@Test
-	public void unsealedGeneralDoesNotServe() {
+	public void anOpenGeneralWithALiveMasterServesMidStream() {
+		// entailment matching joins OPEN entries: the instance call consumes
+		// the general's in-progress cache (sound by the subset property) and
+		// mints NOTHING — one entry serves both. Every production entry has a
+		// live master (its creator CASes immediately), which is what makes
+		// mid-stream joining live as well as sound.
 		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> rel = pairs();
 		Package p = Package.empty().withStore(Table.empty());
 
-		// a general entry exists but was never mastered: unsealed forever
-		Call generalKey = Call.of(rel, pattern(Tuple.of(lvar(), lvar())));
-		p.getStore(Table.class).getOrCreateEntry(generalKey);
-
-		// the bound call must mint its own master and compute fresh
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> out = lvar();
-		assertThat(rel.apply(Tuple.of(lval(2), out)).solveFrom(p, out, BreadthFirstScheduler::new).count())
-				.isEqualTo(1);
-		assertThat(p.getStore(Table.class).entries()).hasSize(2);
+		long n = rel.apply(Tuple.of(x, y))
+				.and(rel.apply(Tuple.of(lval(2), out)))
+				.solveFrom(p, lval(Tuple.of(x, y, out)), BreadthFirstScheduler::new)
+				.count();
+
+		assertThat(n).isEqualTo(2);   // general (1,10) (2,20) × instance (2,20)
+		assertThat(p.getStore(Table.class).entries()).hasSize(1);
 	}
 
 	@Test

@@ -7,7 +7,6 @@ import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Region;
-import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
@@ -44,14 +43,14 @@ public class TableEntry<V> {
 	 * call whose body it is a line of — its coat.
 	 */
 	@Getter
-	private final Region<JoinMap<Reified<?>, V>, Registration> region;
+	private final Region<JoinMap<AnswerKey, V>, Registration> region;
 
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
-		this.region = new Region<JoinMap<Reified<?>, V>, Registration>(
+		this.region = new Region<JoinMap<AnswerKey, V>, Registration>(
 				JoinMap.empty(semiring),
 				r -> r.getEnclosingCall() == null ? null : r.getEnclosingCall().getRegion());
 	}
@@ -72,9 +71,23 @@ public class TableEntry<V> {
 		return masterActive.compareAndSet(false, true);
 	}
 
-	/** @return the drained subscribers to respawn, or none if the answer is a duplicate */
-	public Option<List<Registration>> addAnswer(Reified<?> answerTerm, V value) {
-		return region.grow(v -> v.append(answerTerm, value));
+	/**
+	 * @return the drained subscribers to respawn, or none if the answer is a
+	 * 		duplicate — exact (the cell's fold refused) or ENTAILED: a same-term
+	 * 		answer whose residues cover the new one's makes it redundant (its
+	 * 		replay contributes a subset region). Append-only: a wider newcomer
+	 * 		never retracts a narrower veteran — delivered answers stand.
+	 */
+	public Option<List<Registration>> addAnswer(AnswerKey key, V value) {
+		if (!key.getResidues().isEmpty()) {
+			for (AnswerKey existing : region.read().order) {
+				if (existing.getTerm().equals(key.getTerm())
+						&& AnswerKey.residuesLeq(key.getResidues(), existing.getResidues())) {
+					return Option.none();
+				}
+			}
+		}
+		return region.grow(v -> v.append(key, value));
 	}
 
 	/** @return false if answers arrived past the consumer's index — keep reading */
@@ -83,7 +96,7 @@ public class TableEntry<V> {
 				v -> registration.getNextIndex() >= v.size());
 	}
 
-	public Tuple2<Reified<?>, V> getAnswerAt(int index) {
+	public Tuple2<AnswerKey, V> getAnswerAt(int index) {
 		return region.read().get(index);
 	}
 

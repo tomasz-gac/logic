@@ -49,6 +49,11 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
+	public boolean supportsConstrainedAnswers() {
+		return true;
+	}
+
+	@Override
 	public Package bodyState(Package callerPkg) {
 		return weightWriter.apply(callerPkg, semiring.one());
 	}

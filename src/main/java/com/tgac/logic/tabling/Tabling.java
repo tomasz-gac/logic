@@ -251,6 +251,18 @@ public class Tabling {
 		}
 	}
 
+	/** Every residue re-imposed onto the instantiation's fresh holes — ground
+	 * answers restate nothing and the goal is success. */
+	@SuppressWarnings("unchecked")
+	private static Goal restateAll(Map<Class<?>, Object> residues, java.util.List<LVar<?>> freshHoles) {
+		java.util.List<Unifiable<?>> targets = new ArrayList<Unifiable<?>>(freshHoles);
+		Goal seeded = Goal.success();
+		for (Tuple2<Class<?>, Object> entry : residues) {
+			seeded = Conjunction.of(seeded, ((Residue<?>) entry._2).restate(targets));
+		}
+		return seeded;
+	}
+
 	/** Remove every constraint-store factor: absence is ⊤, posting re-registers. */
 	private static Package stripConstraints(Package pkg) {
 		Package result = pkg;
@@ -263,25 +275,45 @@ public class Tabling {
 	}
 
 	/**
-	 * Answers are cached as plain reified terms, so LIVE knowledge on an
-	 * answer would be cached as an unconstrained template and replayed too
-	 * generally — refused until constrained answers exist (stage 2). Spent
-	 * bookkeeping (stale domains under bindings) is admissible: the
-	 * projecting store decides via {@link Projectable#discharged}.
+	 * An answer's residues: each projecting store's LIVE knowledge over the
+	 * answer's holes, demanded EXACT — an escape to a body-local throws (the
+	 * store's refusal; ground the local or lift it into the answer). Spent
+	 * bookkeeping is waved through by {@link Projectable#discharged} — the
+	 * ground-answer fast path. Non-projectable live knowledge still refuses,
+	 * and constrained answers under a mode that cannot replay them (closed)
+	 * refuse before caching.
 	 */
-	private static void assertAnswerUnconstrained(Package pkg) {
-		pkg.getStores().values().toJavaStream()
-				.filter(ConstraintStore.class::isInstance)
-				.map(ConstraintStore.class::cast)
-				.filter(cs -> !cs.isEmpty())
-				.filter(cs -> !(cs instanceof Projectable)
-						|| !((Projectable<?>) cs).discharged(pkg))
-				.findAny()
-				.ifPresent(cs -> {
-					throw new IllegalStateException(
-							"Tabling does not capture constraints yet: non-empty "
-									+ cs.getClass().getSimpleName() + " on a tabled answer");
-				});
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static Map<Class<?>, Object> answerResidues(
+			Package answerPkg, java.util.List<LVar<?>> answerHoles, Table table) {
+		Map<Class<?>, Object> residues = HashMap.empty();
+		for (Packaged store : answerPkg.getStores().values()) {
+			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
+				continue;
+			}
+			if (store instanceof Projectable && ((Projectable<?>) store).discharged(answerPkg)) {
+				continue;
+			}
+			if (!(store instanceof Projectable)) {
+				throw new IllegalStateException(
+						"Tabling does not capture constraints yet: non-empty "
+								+ store.getClass().getSimpleName() + " on a tabled answer");
+			}
+			Projectable projectable = (Projectable) store;
+			Residue residue = projectable.project(answerHoles, false);
+			// the triviality baseline compares, it does not transcribe — never
+			// demand exactness of a probe over no vars
+			Residue top = projectable.project(Collections.emptyList(), true);
+			if (!residue.equals(top)) {
+				residues = residues.put(store.getClass(), residue);
+			}
+		}
+		if (!residues.isEmpty() && !table.supportsConstrainedAnswers()) {
+			throw new IllegalStateException(
+					"constrained answers under closed/star tabling are not designed: "
+							+ "weights over conditional answers is an orthogonal, open concern");
+		}
+		return residues;
 	}
 
 	/**
@@ -298,7 +330,6 @@ public class Tabling {
 			Unifiable<?> argsTerm,
 			Table table) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
-			assertAnswerUnconstrained(answerPkg);
 			// the coat is the canary: a goal that returned a fresh package instead
 			// of deriving from its input shed every store — the damage downstream
 			// is SILENT (answers reified over fresh substitutions cache
@@ -310,14 +341,16 @@ public class Tabling {
 								+ "derived from the incoming one, never minted fresh "
 								+ "(the body's EnclosingCall coat is missing or foreign)");
 			}
-			return MiniKanren.reify(answerPkg.substitution(), argsTerm).flatMap(answerTerm -> {
-				// what the cell caches: the term and the value this derivation
-				// carries — caller-agnostic, since the body ran from ONE
-				Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, answerTerm);
-				return entry.addAnswer(cached._1, cached._2)
-						.map(parked -> respawn(entry, parked, table))
-						.getOrElse(() -> done(nothing()));
-			});
+			return MiniKanren.reifyWithHoles(answerPkg.substitution(), argsTerm.getObjectTerm())
+					.flatMap(reified -> {
+						Map<Class<?>, Object> residues = answerResidues(answerPkg, reified._2, table);
+						// what the cell caches: the term and the value this derivation
+						// carries — caller-agnostic, since the body ran from ONE
+						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1);
+						return entry.addAnswer(AnswerKey.of(cached._1, residues), cached._2)
+								.map(parked -> respawn(entry, parked, table))
+								.getOrElse(() -> done(nothing()));
+					});
 		});
 	}
 
@@ -362,17 +395,22 @@ public class Tabling {
 			Table table) {
 
 		if (index < entry.getAnswerCount()) {
-			Tuple2<Reified<?>, Object> answer = entry.getAnswerAt(index);
+			Tuple2<AnswerKey, Object> answer = entry.getAnswerAt(index);
+			AnswerKey key = answer._1;
 			Object cellValue = answer._2;
 			// Fresh variables per consumption, so separate consumptions of the
-			// same answer don't alias each other's free variables
-			return MiniKanren.instantiate(answer._1).flatMap(freshTerm ->
-					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), freshTerm.getObjectTerm())
+			// same answer don't alias each other's free variables; a conditional
+			// answer then RESTATES its residues onto the fresh holes before
+			// delivery — the meet-at-consumption (a violated residue silently
+			// fails the delivery, exactly like a failed unification)
+			return MiniKanren.instantiateWithHoles(key.getTerm()).flatMap(inst ->
+					MiniKanren.unify(callerPkg.substitution(), argsTerm.getObjectTerm(), inst._1.getObjectTerm())
 							.map(callerPkg::withSubstitutions)
-							// streaming ⊗s the cell value in; closed records the loop
-							.map(unifiedPkg -> table.absorb(unifiedPkg, entry, answer._1,
-									cellValue, EnclosingCall.entryOf(callerPkg)))
-							.map(weightedPkg -> k.apply(weightedPkg)
+							.map(unifiedPkg -> restateAll(key.getResidues(), inst._2)
+									.apply(unifiedPkg)
+									// streaming ⊗s the cell value in; closed records the loop
+									.apply(constrainedPkg -> k.apply(table.absorb(constrainedPkg,
+											entry, key.getTerm(), cellValue, EnclosingCall.entryOf(callerPkg))))
 									.flatMap(__ -> Fiber.defer(() ->
 											consume(entry, k, callerPkg, argsTerm, index + 1, table))))
 							.getOrElse(() -> Fiber.defer(() ->

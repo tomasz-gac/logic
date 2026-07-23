@@ -266,7 +266,7 @@ final class Closed implements TablingMode {
 			SemiringStore readerValue = storeOf(reader.getPkg());
 			Fiber<Nothing> result = done(nothing());
 			for (int i = 0; i < entry.getAnswerCount(); i++) {
-				Reified<?> answerTerm = entry.getAnswerAt(i)._1;
+				Reified<?> answerTerm = entry.getAnswerAt(i)._1.getTerm();
 				SemiringStore x = values.get(answerTerm);
 				if (x == null) {
 					continue;

@@ -457,6 +457,27 @@ public class MiniKanren {
 								.map(reified -> Tuple.of((Reified<T>) reified, holesInOrder(rp)))));
 	}
 
+	/**
+	 * {@link #instantiate} plus the fresh vars it minted, in slot order: the
+	 * i-th list element is the fresh {@link LVar} standing where the term said
+	 * {@code _.i} — the mirror of {@link #reifyWithHoles}, for callers that
+	 * must re-impose positional knowledge (residues) onto the instantiation.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Fiber<Tuple2<Unifiable<T>, java.util.List<LVar<?>>>> instantiateWithHoles(Reified<T> term) {
+		ConcurrentMap<Integer, Term<Object>> fresh = new ConcurrentHashMap<>();
+		return instantiateTerm(term, fresh)
+				.map(t -> Tuple.of((Unifiable<T>) t, freshBySlot(fresh)));
+	}
+
+	private static java.util.List<LVar<?>> freshBySlot(ConcurrentMap<Integer, Term<Object>> fresh) {
+		LVar<?>[] slots = new LVar<?>[fresh.size()];
+		for (ConcurrentMap.Entry<Integer, Term<Object>> entry : fresh.entrySet()) {
+			slots[entry.getKey()] = (LVar<?>) entry.getValue();
+		}
+		return Arrays.asList(slots);
+	}
+
 	/** Invert the rename substitution: slot i = the var numbered {@code _.i}. */
 	private static java.util.List<LVar<?>> holesInOrder(Substitutions renames) {
 		LVar<?>[] slots = new LVar<?>[(int) renames.size()];

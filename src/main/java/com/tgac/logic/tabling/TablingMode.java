@@ -40,6 +40,16 @@ public interface TablingMode {
 	IdempotentSemiring<Object> cellSemiring();
 
 	/**
+	 * Whether answers may carry constraint residues. Streaming supports them
+	 * (replay restates at consumption); the closed/star mode does not — weights
+	 * over conditional answers is an undesigned, orthogonal interaction,
+	 * refused loudly at produce.
+	 */
+	default boolean supportsConstrainedAnswers() {
+		return false;
+	}
+
+	/**
 	 * The anonymous master's starting package: fresh, caller-agnostic body
 	 * state (running value reset to ONE) — derived from the first caller's
 	 * package, whose substitutions carry the call pattern.

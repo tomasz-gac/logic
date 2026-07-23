@@ -33,7 +33,7 @@ final class StarTabling {
 		List<Node> nodes = new ArrayList<>();
 		for (TableEntry<Object> entry : entries) {
 			for (int i = 0; i < entry.getAnswerCount(); i++) {
-				Node node = new Node(entry, entry.getAnswerAt(i)._1);
+				Node node = new Node(entry, entry.getAnswerAt(i)._1.getTerm());
 				index.put(node, nodes.size());
 				nodes.add(node);
 			}

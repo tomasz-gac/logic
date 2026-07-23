@@ -139,16 +139,90 @@ public class TabledUnderDomainsTest {
 	}
 
 	@Test
-	public void anAnswerCarryingALiveDomainIsStillRefused() {
-		// the body constrains its arg but never grounds it: the answer would
-		// carry live knowledge — stage 2's territory, refused loudly
+	public void aDomainOnlyBodyBecomesAGenerator() {
+		// stage 2: the body's live domain rides the answer as a residue and
+		// replays at consumption — reify-time labelling enumerates it
 		Tabled<Tuple1<Unifiable<Integer>>> vague =
 				Tabling.define(args -> args.apply(x ->
 						FiniteDomain.dom(x, dom(1, 2, 3))));
 		Unifiable<Integer> x = lvar();
 
-		assertThatThrownBy(() -> vague.apply(Tuple.of(x)).solve(x).count())
+		List<Integer> values = vague.apply(Tuple.of(x))
+				.solve(x)
+				.map(Term::<Integer> get)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(values).containsExactly(1, 2, 3);
+	}
+
+	@Test
+	public void aCoupledAnswerCarriesItsConstraint() {
+		// domains AND the addo ride the answer; consumption replays both and
+		// labelling enumerates exactly the coupled region
+		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> region =
+				Tabling.define(args -> args.apply((a, b) ->
+						FiniteDomain.dom(a, dom(1, 2, 3))
+								.and(FiniteDomain.dom(b, dom(1, 2, 3)))
+								.and(FiniteDomain.addo(a, b, lval(4)))));
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		long pairs = region.apply(Tuple.of(x, y))
+				.solve(lval(Tuple.of(x, y)))
+				.count();
+		assertThat(pairs).isEqualTo(3);   // (1,3) (2,2) (3,1)
+	}
+
+	@Test
+	public void consumersFilterConditionalAnswers() {
+		// the consumer's own narrower domain meets the replayed residue
+		Tabled<Tuple1<Unifiable<Integer>>> vague =
+				Tabling.define(args -> args.apply(x ->
+						FiniteDomain.dom(x, dom(1, 2, 3))));
+		Unifiable<Integer> x = lvar();
+
+		List<Integer> values = FiniteDomain.dom(x, dom(2, 3))
+				.and(vague.apply(Tuple.of(x)))
+				.solve(x)
+				.map(Term::<Integer> get)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(values).containsExactly(2, 3);
+	}
+
+	@Test
+	public void narrowerRedundantAnswersDedupByEntailment() {
+		// two derivations of the SAME hole-term: the narrower residue is
+		// entailed by the wider and must not replay a second time
+		Tabled<Tuple1<Unifiable<Integer>>> gen =
+				Tabling.define(args -> args.apply(x ->
+						FiniteDomain.dom(x, dom(1, 2, 3))
+								.or(FiniteDomain.dom(x, dom(1, 2)))));
+		Unifiable<Integer> x = lvar();
+
+		List<Integer> values = gen.apply(Tuple.of(x))
+				.solve(x)
+				.map(Term::<Integer> get)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(values).containsExactly(1, 2, 3);
+	}
+
+	@Test
+	public void aCouplingEscapingToALocalIsRefusedLoudly() {
+		// the body couples its arg to a local it never grounds: the answer
+		// projection demands exactness and the escape throws
+		Tabled<Tuple1<Unifiable<Integer>>> leaky =
+				Tabling.define(args -> args.apply(x -> {
+					Unifiable<Integer> w = lvar();
+					return FiniteDomain.dom(x, dom(1, 2, 3))
+							.and(FiniteDomain.dom(w, dom(1, 2, 3)))
+							.and(FiniteDomain.addo(x, w, lval(4)));
+				}));
+		Unifiable<Integer> x = lvar();
+
+		assertThatThrownBy(() -> leaky.apply(Tuple.of(x)).solve(x).count())
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("constraint");
+				.hasMessageContaining("escapes");
 	}
 }
