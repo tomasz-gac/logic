@@ -33,15 +33,19 @@ carry it.
 ## 2. Today: the wall
 
 Two guard pins keep the machines apart
-(`TabledTest.shouldRejectTabledCallsUnderActiveConstraints`,
-`shouldRejectConstrainedAnswers`): a tabled call under an active constraint
-store throws, and a tabled answer whose variables carry residue throws. The
-wall is loud, cheap and sound. AS BUILT (stage 1): the CALL-side wall is now
+(`TabledTest.shouldRejectTabledCallsUnderNonProjectableConstraints`,
+`shouldRejectNonProjectableAnswerConstraints`): a tabled call under an
+active constraint store throws, and a tabled answer whose variables carry
+residue throws. The wall is loud, cheap and sound. AS BUILT (stage 1): the
+CALL-side wall is now
 PER-STORE — a non-empty store implementing `Projectable` participates (its
-residue keys the call); one that cannot project still refuses loudly. The
-ANSWER-side wall stands, refined by `Projectable.discharged`: live knowledge
-on an answer refuses, spent bookkeeping (stale domains under bindings)
-passes. The guard tests were refined, never deleted. It exists because the naive merge is SILENTLY
+residue keys the call); one that cannot project still refuses loudly. AS
+BUILT (stage 2): the ANSWER-side wall is per-store the same way — live
+projectable knowledge RIDES the answer as its residues, spent bookkeeping
+is waved through by `Projectable.discharged`, and only non-projectable
+live knowledge still refuses. With FD and Neq both projectable, no
+in-tree store is refusable — the pins keep the wall standing via a
+test-local opaque store. It exists because the naive merge is SILENTLY
 WRONG in three distinct ways (§3) — do not weaken the guards without
 implementing this design.
 
@@ -106,6 +110,66 @@ tighter). Cross-domain reasoning could see through this; the fold cannot. The
 cost is only a missed cache hit — recomputation, never wrong answers. That is
 the right trade for a decomposed API.
 
+### 4.1 The term slot: normalize what has a solved form
+
+*(Tom's question, July 2026: why is the substitutions factor privileged —
+`x = 5` lands INSIDE the key term while `x ∈ {1,2}` rides ALONGSIDE as a
+residue? Isn't that Byrd's unification-primacy leaking into the design?)*
+
+Not primacy — Substitutions is a lattice like the other factors (join =
+unify). The real property is that equality is the one constraint whose
+SOLVED FORM is expressible in the term syntax itself: a binding set has an
+MGU, and applying it (walking) rewrites a constrained term into an
+equivalent PLAIN term. Domains and disequalities have no term that denotes
+them, so their knowledge must ride next to the term as data. The law is
+"denotable knowledge lives in the term, everything else rides as residues"
+— and the engine already applies it dynamically: the moment FD knowledge
+becomes term-expressible (a singleton collapse) it migrates through the
+chokepoint into the substitutions factor and thence into any term that
+walks it. The key just inherits that law.
+
+Nor is the positional frame minted by the substitution store: slot i = the
+i-th free variable of the walked call pattern, first-occurrence order.
+Every store — substitutions included — reports against that one frame; a
+`Hole` is what a slot looks like WHEN IT OCCURS INSIDE A TERM (the key's
+`_.1`, a Neq record's forbidden term). Slots and holes are one
+canonicalization written in two places. Holes carry three loads:
+
+- **alpha-normal keys** — renaming by first occurrence turns
+  alpha-equivalence into structural equality, so lookup is a hash hit and
+  `SubsumptionMap` can index patterns at all;
+- **the ∀-binder marking** — a cached answer is quantified over exactly its
+  holes, and replay renames exactly those, every consumption (losing this
+  marking WAS the variable-capture bug, §5.1);
+- **shared cross-store coordinates** — the residue slot spaces.
+
+The rejected alternative is coherent and MORE uniform: key on the UNWALKED
+pattern plus a Herbrand residue ("slot 0 = 5") and match entries by
+entailment across every factor alike. The current scheme is exactly the
+optimization that uniform design admits: normalize what has a normal form
+(hash hit), entail only what doesn't (subsumption scan). Tabling does not
+assume equality's primacy; it exploits equality's solvability.
+
+**The layer beneath solvability** (Tom, July 2026 — the full account is
+lattice.md §5a, "the junction, per store"): the term syntax has no ∨, so
+"has a term normal form" = "disjunction-free". Substitutions is
+disjunction-free by architecture — unitary unification never creates
+alternatives, and every explicit ∨ (`conde`) exports to the search's ⊕ —
+so the store keeps its normal form because non-normalizable knowledge
+leaves as ALTERNATE ANSWERS. Domains and disequalities are compressed ⊕
+(finite and cofinite respectively) and so cannot be terms; they ride as
+residues. The term/residue boundary sits at "where unification stays
+unitary" and would move with the theory.
+
+**The residue predates TCLP** — as display. `NeqConstraints.reify`'s
+`Constrained` output IS `(term, residue)` rendered for a human: purify
+hole-renames the records against the answer frame and DROPS every record
+touching an unprojected var — `project`'s widening-drop by another name.
+The `=/=` display was a conditional answer that could only be read; stage
+2 made the same object replayable (answers-as-diffs' "one operation
+behind reification"). Re-expressing `reify` over `project` is recorded
+future unification work.
+
 ## 5. The design: three intra-domain hooks
 
 `Propagation` does not change at all — tabling does not route through the
@@ -135,10 +199,19 @@ demanded. `isWidened` is GONE: no flag, no advisory metadata, no equality
 exclusions. Couplings are carried as the LIVE PROPAGATOR OBJECTS plus a
 watched-var → slot map — no factory recipes, no shape tokens, no custom
 equality; default object identity is the membership base. The residue
-restates itself (`Residue.restate`): call-side replay re-activates the
-same objects on the same vars; answer-side replay ALIAS-UNIFIES each
-fresh hole with the propagator's original watched var and re-activates —
-custody and the Watches chain matcher walk through aliases by design.
+restates itself (`Residue.restate`), and replay is a RENAMING — a
+conditional answer is ∀-quantified over its holes, so every consumption
+instantiates a fresh copy of the conditions. Propagator bodies are
+POSITIONAL (`(watched, pkg) → Verdict`, no lexical capture), so
+answer-side replay registers the propagator REBUILT over the fresh holes
+(`Propagator.watching`); the call side is an identity renaming and
+re-activates the live object ITSELF — which is what lets a recursive
+call project the same object and land in its creator's entry
+(`recursionUnderACarriedCouplingSharesItsEntry`). The superseded
+alias-unify replay (fifth revision retired it) was VARIABLE CAPTURE:
+two consumptions of one answer in a query welded onto the shared
+original vars and only the diagonal survived
+(`twoConsumptionsOfACoupledAnswerAreIndependent` pins the fix).
 
 ### 5.2 `entails(mine, other) → boolean`
 
@@ -234,6 +307,14 @@ variable set form a finite lattice"** (equivalently: no infinite antichains).
   record sets above some size to ⊤, trading deduction for termination) —
   a separate design decision, not assumed here.
 
+AS BUILT (July 2026): Neq PARTICIPATES, without the widening — records
+transcribe positionally (LHS var → slot, RHS terms hole-renamed: pure data,
+lineage-free, so independent same-shaped contexts project EQUAL residues
+and share entries — `TabledUnderNeqTest`). The finite-lattice gate is NOT
+enforced as a type: `Projectable`'s javadoc declares termination the
+author's responsibility, exactly like tabling an unbounded generator. The
+widening remains the upgrade if a workload hits the antichain.
+
 A store that declines the gate keeps today's wall; the guard tests become
 per-store rather than global.
 
@@ -258,8 +339,9 @@ growth.)
 
 1. **DONE (July 2026).** Hooks + FD-only, exact-equality keys, unconstrained
    answers still rejected. (`TabledUnderDomainsTest` pins it.)
-2. Constrained ANSWERS for FD — SPEC (fourth revision, July 2026; the
-   recipe/flag drafts are superseded): `project(vars, wideningAllowed)`
+2. **DONE (July 2026).** Constrained ANSWERS for FD (fourth revision built,
+   fifth corrected replay; the recipe/flag/alias drafts are superseded):
+   `project(vars, wideningAllowed)`
    transcribes all expressible knowledge — domains plus covered couplings
    as (LIVE PROPAGATOR OBJECT, watched-var → slot map), default identity,
    no recipes, no flags, no custom equality. ALWAYS-PORT-ALL holds: one
@@ -267,10 +349,13 @@ growth.)
    wideningAllowed=true (escapes drop — caller-private, sound by
    containment, filtered at consumption), the answer side demands
    exactness (escape to a body-local THROWS at produce: label the local or
-   lift it into the answer). Master restate re-activates the carried
-   objects on the same vars (call side needs no aliasing); answer replay
-   instantiates fresh holes, alias-unifies them to the propagators'
-   original vars, and re-activates. Answer DEDUP is the leq insert-guard:
+   lift it into the answer). Master restate is an identity renaming — it
+   re-activates the carried objects themselves; answer replay
+   instantiates fresh holes and registers the propagators REBUILT over
+   them (§5.1 — the alias-unify draft was variable capture). Delivery
+   itself is goal-shaped: consume unifies args through `Constraints.unify`
+   (the chokepoint), so the caller's stores revise on delivery like any
+   other statement. Answer DEDUP is the leq insert-guard:
    append-only, a new (term, residues) answer joins iff no existing
    same-term answer's residue entails it — no retraction (delivered
    answers stand; indexes stay monotone), no equality anywhere
@@ -279,9 +364,13 @@ growth.)
    DOMAINS have a decidable witness and drop. Matching is entailment
    (§5.4). Closed/star mode is excluded — orthogonal concern, refused
    loudly until designed.
-3. Pointwise-⊑ call subsumption.
-4. Neq widening — only with a motivating use case; the deduction/termination
-   trade needs one to be judged.
+3. Pointwise-⊑ call subsumption — landed early with stage 2 in conservative
+   form (§5.4: entailment matching, open-entry joining); the optional
+   strengthenings (shape tokens, cross-hole-count alignment) wait for a
+   workload that misses them.
+4. Neq — SHIPPED UNWIDENED (July 2026, §5.5 AS BUILT): transcribed record
+   residues, termination the author's responsibility. The widening remains
+   the upgrade, still gated on a motivating use case.
 
 Each stage lands green with the guard tests refined, not deleted.
 

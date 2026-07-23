@@ -291,6 +291,53 @@ annotation family (Barrier = don't move; Bounded = here's my price;
 dom = defer this disjunction; tabled = fold and share this subtree) —
 the user licenses folds, the optimizer only schedules and prices them.
 
+**The junction, per store — where each citizen keeps its ⊕ (Tom, July
+2026).** Classify every store by where its disjunctions live and the
+term/residue split of the tabling key falls out as a theorem. The term
+syntax has no ∨-connective — a term denotes a point — so "has a term
+normal form" and "is disjunction-free" are the same property.
+Substitutions is disjunction-free BY ARCHITECTURE, not luck: syntactic
+first-order unification is UNITARY (one mgu, never a choice of
+unifiers), so combining equations never creates alternatives; and every
+explicit ∨ in the language (`conde`) exports to the search's ⊕, each
+branch keeping a disjunction-free store. The store keeps its normal
+form because everything non-normalizable leaves as alternate answers —
+which is why its knowledge dissolves into the key term
+(tabled-constraints.md §4.1): not equality's primacy, equality's
+SOLVABILITY. Falsifiable consequence: the boundary sits at "where
+unification stays unitary" and would move with the theory (AC
+operators, strings — finitely many mgus ⇒ the substitution store itself
+needs domain-like residues). Domains are ⊕ held captive as data:
+`x∈{1..5}` is a finite disjunction compressed so propagation computes
+over all branches at once (interval arithmetic = branch-free arithmetic
+over a whole ⊕); LABELLING is the export back to the search, deferred
+as long as possible. Neq holds a COFINITE ⊕ — never exportable
+(infinite branching), only verifiable — which is why FD's enforce
+labels and Neq's is success. And the SIGN of the knowledge picks the
+data's direction: a domain descends WITH its region (positive
+knowledge, data→region isotone); a record set GROWS as its region
+shrinks (negative knowledge — negation flips the lattice, data→region
+antitone). Join-shaped accumulation is the answer set's shape: negative
+constraint knowledge and answer knowledge are both ascending machines,
+and the antitone flip is exactly why Neq fails the finiteness gate (the
+antichain) while FD self-certifies quiescence.
+
+**Branches-as-data, the trilogy (Tom's question: would Substitutions as
+a store, expressing branches as data, be useful?).** It exists at two
+granularities and is planned at the third. Var-granular: a DOMAIN is
+`x=1 ∨ x=2` held as data. Call-granular: the TABLE — an entry's answer
+set is a disjunction of substitution deltas as data, consumed by
+enumeration; tabling IS the substitution store's residue materialized
+per call. The general form is the row-set store (pldb's table
+constraint / GAC): branches held as whole tuples, propagated WITHOUT
+enumeration — push what all surviving branches agree on (per variable:
+the projection of surviving rows, narrowing domains; for whole
+substitutions: the lgg — ANTI-UNIFICATION, the join the substitution
+lattice already owns), delete branches killed by incoming bindings,
+fail at zero. A domain generalized from values to substitutions;
+constructive disjunction, with enumeration deferred to labelling like
+every other data-⊕.
+
 **The junction, generalized: the quotient tower (July 2026).** The junction
 is one rung of a ladder, and the ladder is the theory that connects the two
 algebras (Tom's synthesis; the literature had already built it in pieces).
