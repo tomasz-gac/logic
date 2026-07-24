@@ -8,6 +8,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
@@ -116,12 +117,12 @@ public class NeqProjectionTest {
 				.project(Arrays.asList(varOf(x)));
 
 		Unifiable<Integer> fresh = lvar();
-		assertThat(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh))).stated()
+		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh))))
 				.and(Constraints.unify(fresh, lval(5)))
 				.solve(fresh)
 				.count()).isEqualTo(0);
 		Unifiable<Integer> fresh2 = lvar();
-		assertThat(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh2))).stated()
+		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh2))))
 				.and(Constraints.unify(fresh2, lval(6)))
 				.solve(fresh2)
 				.count()).isEqualTo(1);
@@ -137,14 +138,14 @@ public class NeqProjectionTest {
 
 		Unifiable<Integer> f = lvar();
 		Unifiable<Integer> g = lvar();
-		assertThat(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f, g))).stated()
+		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f, g))))
 				.and(Constraints.unify(f, lval(3)))
 				.and(Constraints.unify(g, lval(3)))
 				.solve(f)
 				.count()).isEqualTo(0);
 		Unifiable<Integer> f2 = lvar();
 		Unifiable<Integer> g2 = lvar();
-		assertThat(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f2, g2))).stated()
+		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f2, g2))))
 				.and(Constraints.unify(f2, lval(3)))
 				.and(Constraints.unify(g2, lval(4)))
 				.solve(f2)
@@ -187,18 +188,33 @@ public class NeqProjectionTest {
 	}
 
 	@Test
-	public void aStatedStoreReimposesItsRecords() {
-		// stated() re-verifies each record against the target state like a
+	public void anAbsorbedStoreReimposesItsRecords() {
+		// absorb re-verifies each record against the target state like a
 		// freshly posted disequality
 		Unifiable<Integer> x = lvar();
 		NeqConstraints neq = store(record(varOf(x), lval(5)));
 
-		assertThat(neq.stated()
+		assertThat(Propagation.absorb(neq)
 				.and(Constraints.unify(x, lval(5)))
 				.solve(x)
 				.count()).isEqualTo(0);
-		assertThat(neq.stated()
+		assertThat(Propagation.absorb(neq)
 				.and(Constraints.unify(x, lval(6)))
+				.solve(x)
+				.count()).isEqualTo(1);
+	}
+
+	@Test
+	public void absorbingAViolatedRecordFailsTheBranch() {
+		// meet is completed by normalize: a record the target's bindings
+		// already violate dies at absorption, not at some later wake
+		Unifiable<Integer> x = lvar();
+		assertThat(Constraints.unify(x, lval(5))
+				.and(Propagation.absorb(store(record(varOf(x), lval(5)))))
+				.solve(x)
+				.count()).isEqualTo(0);
+		assertThat(Constraints.unify(x, lval(6))
+				.and(Propagation.absorb(store(record(varOf(x), lval(5)))))
 				.solve(x)
 				.count()).isEqualTo(1);
 	}

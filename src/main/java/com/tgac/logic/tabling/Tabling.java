@@ -12,6 +12,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Region;
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
@@ -231,7 +232,7 @@ public class Tabling {
 				Projectable<?> keyed = ((Projectable<?>) store).project(callVars);
 				if (!keyed.isEmpty()) {
 					residues = residues.put(store.getClass(), keyed);
-					restates.add(keyed.rename(Renaming.ofSlots(targets)).stated());
+					restates.add(Propagation.absorb(keyed.rename(Renaming.ofSlots(targets))));
 				}
 			}
 			return new Projection(residues, restates);
@@ -273,7 +274,8 @@ public class Tabling {
 		Renaming mint = Renaming.into(seed);
 		Goal seeded = Goal.success();
 		for (Tuple2<Class<?>, Object> entry : key.getResidues()) {
-			seeded = Conjunction.of(seeded, ((Projectable<?>) entry._2).rename(mint).stated());
+			seeded = Conjunction.of(seeded,
+					Propagation.absorb(((Projectable<?>) entry._2).rename(mint)));
 		}
 		return seeded;
 	}

@@ -4,6 +4,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: worklist that makes the fixpoint explicit, and verdict administration.
 
 import com.tgac.functional.Exceptions;
+import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.MFiber;
@@ -81,6 +82,30 @@ public final class Propagation {
 	 */
 	public static Goal activate(Stored item) {
 		return s -> enqueue(s.withStored(item), new Agenda.Stated(item));
+	}
+
+	/**
+	 * The bulk statement entry — the trigger family's third row: a whole
+	 * FACTOR arrives. Meets {@code factor} into its resident store
+	 * (registering it when absent) and queues the store's
+	 * {@link ConstraintStore#normalize re-normalization}: verification of
+	 * what the meet brought in, first examinations, the internal fixpoint —
+	 * meet is completed by normalize, and a met factor answers no queries in
+	 * between (the two run inside one drain). How tabling seeds a master
+	 * from its key and replays an answer's delta.
+	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public static Goal absorb(ConstraintStore factor) {
+		return p -> {
+			if (factor.isEmpty()) {
+				return Cont.just(p);
+			}
+			ConstraintStore resident = (ConstraintStore) p.getStores()
+					.get(factor.getClass()).getOrNull();
+			ConstraintStore met = resident == null ? factor
+					: (ConstraintStore) ((MeetSemilattice) resident).meet((MeetSemilattice) factor);
+			return enqueue(p.putStore(met), new Agenda.Absorbed(factor));
+		};
 	}
 
 	/**
@@ -333,6 +358,28 @@ public final class Propagation {
 			@Override
 			public String toString() {
 				return "stated(" + item + ")";
+			}
+		}
+
+		/** A factor was met into its store — the owning store re-normalizes. */
+		static final class Absorbed extends Item {
+			final ConstraintStore factor;
+
+			Absorbed(ConstraintStore factor) {
+				this.factor = factor;
+			}
+
+			@Override
+			Goal apply() {
+				return s -> reviseAll(s,
+						(cs, p) -> factor.getClass() == cs.getClass() ?
+								cs.normalize(p) :
+								Fiber.done(Revision.unchanged()));
+			}
+
+			@Override
+			public String toString() {
+				return "absorbed(" + factor + ")";
 			}
 		}
 

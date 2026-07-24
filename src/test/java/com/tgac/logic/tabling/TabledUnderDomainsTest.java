@@ -316,6 +316,32 @@ public class TabledUnderDomainsTest {
 	}
 
 	@Test
+	public void aCarriedCouplingWatchingAHomeBoundVarStaysStrong() {
+		// mulo's wait-guard keeps a propagator parked with one watched var
+		// BOUND at home (w=0). Capture walks the watched terms, inlining the
+		// ground — the carried constraint means x·0=z, not x·w′=z for a fresh
+		// existential. The pairs must satisfy z=0; slack here yields all nine
+		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> rel =
+				Tabling.define(args -> args.apply((x, z) -> {
+					Unifiable<Integer> w = lvar();
+					return FiniteDomain.dom(x, dom(0, 1, 2))
+							.and(FiniteDomain.dom(z, dom(0, 1, 2)))
+							.and(FiniteDomain.multo(x, w, z))
+							.and(unify(w, lval(0)));
+				}));
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> z = lvar();
+
+		List<String> pairs = rel.apply(Tuple.of(x, z))
+				.solve(lval(Tuple.of(x, z)))
+				.map(Object::toString)
+				.distinct()
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(pairs).containsExactly("{({0}, {0})}", "{({1}, {0})}", "{({2}, {0})}");
+	}
+
+	@Test
 	public void aWiderAnswerIsNotSubsumedByANarrowerCoupledOne() {
 		// same term, one disjunct coupled (x ≤ y parked), one not: the wider
 		// answer carries FEWER constraints and must never be judged redundant

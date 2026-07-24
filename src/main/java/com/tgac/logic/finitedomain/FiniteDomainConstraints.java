@@ -1,7 +1,6 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.functional.algebra.Bottomed;
-import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.functional.algebra.MonotoneDrain;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
@@ -24,8 +23,6 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Predicates;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.Array;
-import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
@@ -183,6 +180,51 @@ class FiniteDomainConstraints implements
 				continue;
 			}
 			factor = consume(DomainUpdate.apply(state, factor, state.walk(binding._2), dom),
+					factor, inferred, runs, queue);
+			if (factor == null) {
+				return Fiber.done(Revision.fail());
+			}
+			// the entry is spent the moment its verification passed (ground) or
+			// its domain followed the representative (alias) — prune it here,
+			// while we already hold it, so the factor never drifts
+			factor = FiniteDomainConstraints.of(
+					factor.domains.remove(binding._1), factor.constraints);
+		}
+		return cascade(state, factor, inferred, runs, queue);
+	}
+
+	/**
+	 * Wholesale self-reaction — a factor was met into this store
+	 * ({@link com.tgac.logic.constraints.Propagation#absorb}): entries whose
+	 * name no longer lives at its root verify against the binding (fail on
+	 * miss) or follow the representative, every propagator takes its first
+	 * examination against the met state, and the cascade drains.
+	 */
+	@Override
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public Fiber<Revision> normalize(Package state) {
+		if (isBottom()) {
+			return Fiber.done(Revision.fail());
+		}
+		FiniteDomainConstraints factor = this;
+		List<Prefix> inferred = new ArrayList<>();
+		List<Goal> runs = new ArrayList<>();
+		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
+		for (Tuple2<Term<?>, Domain<?>> entry : domains) {
+			Term<?> walked = state.walk(entry._1);
+			if (walked == entry._1) {
+				continue;    // live at its root
+			}
+			factor = consume(DomainUpdate.apply(state, factor, walked, entry._2),
+					factor, inferred, runs, queue);
+			if (factor == null) {
+				return Fiber.done(Revision.fail());
+			}
+			factor = FiniteDomainConstraints.of(
+					factor.domains.remove(entry._1), factor.constraints);
+		}
+		for (Propagator propagator : constraints) {
+			factor = consume(examine(propagator, state.putStore(factor), factor),
 					factor, inferred, runs, queue);
 			if (factor == null) {
 				return Fiber.done(Revision.fail());
@@ -361,9 +403,11 @@ class FiniteDomainConstraints implements
 				FiniteDomainConstraints.of(out, outConstraints));
 	}
 
-	/** Domains re-keyed through the renaming — an entry whose name resolves
+	/**
+	 * Domains re-keyed through the renaming — an entry whose name resolves
 	 * to a value is spent bookkeeping (verified when it bound) and drops;
-	 * propagators re-watch their renamed terms. */
+	 * propagators re-watch their renamed terms.
+	 */
 	@Override
 	public FiniteDomainConstraints rename(Renaming renaming) {
 		LinkedHashMap<Term<?>, Domain<?>> renamedDomains = LinkedHashMap.empty();
@@ -376,17 +420,6 @@ class FiniteDomainConstraints implements
 		HashSet<Propagator> renamedConstraints = constraints.map(p ->
 				p.watching(p.watchedTerms().map(renaming::apply)));
 		return FiniteDomainConstraints.of(renamedDomains, renamedConstraints);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public Goal stated() {
-		Goal posts = domains.foldLeft(Goal.success(), (goal, entry) ->
-				Conjunction.of(goal, FiniteDomain.dom(
-						(Unifiable<Object>) entry._1, (Domain<Object>) entry._2)));
-		return constraints.foldLeft(posts, (goal, propagator) ->
-				Conjunction.of(goal, p -> Propagation.activate(propagator)
-						.apply(register(p))));
 	}
 
 }

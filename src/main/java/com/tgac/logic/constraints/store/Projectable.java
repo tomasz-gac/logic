@@ -16,11 +16,15 @@ import java.util.List;
  * over the store's own {@link MeetSemilattice}:
  *
  * <pre>
- * key projection   = split(callVars)._1.rename(canonical)     — {@link #project}
- * master seeding   = key.rename(ofSlots(callVars)).stated()
- * answer capture   = rename(walking(home))                    — normalization
- * answer replay    = rename(into(seeds)).stated()             — ∃ by minting
+ * key projection   = split(callVars)._1.rename(canonical)        — {@link #project}
+ * master seeding   = absorb(key.rename(ofSlots(callVars)))
+ * answer capture   = rename(walking(home))                       — normalization
+ * answer replay    = absorb(rename(into(seeds)))                 — ∃ by minting
  * </pre>
+ *
+ * Imposition is the DRIVER's: {@code Propagation.absorb(factor)} meets the
+ * factor into its resident store and queues {@link ConstraintStore#normalize}
+ * — the store owns what normal means, the driver owns statement.
  *
  * Comparison (subsumption keys, entailment matching, dedup) is the lattice
  * order the store already has; a hole-named store compares structurally
@@ -55,15 +59,6 @@ public interface Projectable<S extends Projectable<S>> extends ConstraintStore, 
 	 * {@link Renaming#ofSlots} convert live↔canonical.
 	 */
 	S rename(Renaming renaming);
-
-	/**
-	 * This store as a re-expressible goal: impose every item it holds
-	 * through the PUBLIC statement entries, so the knowledge propagates like
-	 * freshly stated constraints (first examination, watchers, cascade) and
-	 * re-verifies against the target state. Valid on LIVE-named knowledge —
-	 * a contract, not a type.
-	 */
-	Goal stated();
 
 	/**
 	 * This store's knowledge about {@code vars} in canonical names, slot i ↔

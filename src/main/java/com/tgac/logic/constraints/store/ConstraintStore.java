@@ -61,6 +61,22 @@ public interface ConstraintStore extends Store {
 	}
 
 	/**
+	 * A whole factor was met into this store ({@code Propagation.absorb}) —
+	 * the third trigger, after bindings ({@link #revise}) and single items
+	 * ({@link #stated}). The store re-establishes its normal form against
+	 * {@code state}: re-verify what the meet brought in (a violated record or
+	 * an out-of-domain binding FAILS), take first examinations, run the
+	 * internal fixpoint. Same scheduling and routing contract as
+	 * {@link #revise}. A met factor answers no queries before its
+	 * normalization ran — meet is completed by normalize. Stores absorbed
+	 * through the driver MUST override; the default is for stores never
+	 * offered to {@code absorb}.
+	 */
+	default Fiber<Revision> normalize(Package state) {
+		return Fiber.done(Revision.unchanged());
+	}
+
+	/**
 	 * Render this store's residual constraints into the reified answer: after the
 	 * answer term is renamed, each store attaches whatever still constrains it —
 	 * disequality its surviving records, finite domains nothing (enforce grounded

@@ -1,16 +1,18 @@
 package com.tgac.logic.finitedomain;
 
 // ABOUTME: Pins the FD store's single-sorted boundary algebra: named value-equal
-// ABOUTME: propagators, lossless split, renaming across namespaces, stated replay.
+// ABOUTME: propagators, lossless split, renaming across namespaces, absorbed replay.
 
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
@@ -42,6 +44,45 @@ public class ProjectionTest {
 	}
 
 	// ---- the propagator identity ----
+
+	@Test
+	public void absorbVerifiesIncomingKnowledgeAgainstBindings() {
+		// meet is completed by normalize: knowledge arriving about an
+		// already-bound name verifies against the binding — out-of-domain
+		// fails the branch, in-domain is spent and drops
+		Unifiable<Integer> x = lvar();
+		FiniteDomainConstraints incoming = FiniteDomainConstraints.empty()
+				.withDomain(varOf(x), dom(1, 2));
+
+		assertThat(Constraints.unify(x, lval(7))
+				.and(Propagation.absorb(incoming))
+				.solve(x)
+				.count()).isEqualTo(0);
+
+		FiniteDomainConstraints wide = FiniteDomainConstraints.empty()
+				.withDomain(varOf(x), dom(5, 7, 9));
+		assertThat(Constraints.unify(x, lval(7))
+				.and(Propagation.absorb(wide))
+				.solve(x)
+				.count()).isEqualTo(1);
+	}
+
+	@Test
+	public void bindingPrunesTheDomainEntry() {
+		// revise removes the entry the moment its verification passes — the
+		// factor never drifts, and capture-normalization has nothing to drop
+		Unifiable<Integer> x = lvar();
+		boolean[] pruned = new boolean[1];
+		FiniteDomain.dom(x, dom(1, 2, 3))
+				.and(Constraints.unify(x, lval(2)))
+				.and(p -> {
+					pruned[0] = FiniteDomainConstraints.getFDStore(p).getDomains().isEmpty();
+					return Goal.success().apply(p);
+				})
+				.solve(x)
+				.count();
+		assertThat(pruned[0]).isTrue();
+	}
 
 	@Test
 	public void aPropagatorIsItsNameOverItsTerms() {
@@ -208,12 +249,12 @@ public class ProjectionTest {
 	// ---- stated: the store as a re-expressible goal ----
 
 	@Test
-	public void aStatedStoreReimposesItsKnowledge() {
+	public void anAbsorbedStoreReimposesItsKnowledge() {
 		Unifiable<Integer> x = lvar();
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p);
 
-		List<Integer> values = store.stated()
+		List<Integer> values = Propagation.absorb(store)
 				.solve(x)
 				.map(Term::<Integer> get)
 				.sorted()
@@ -257,7 +298,7 @@ public class ProjectionTest {
 		Unifiable<Integer> fresh = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
 		seed.put(varOf(orig), fresh);
-		assertThat(store.rename(Renaming.into(seed)).stated()
+		assertThat(Propagation.absorb(store.rename(Renaming.into(seed)))
 				.and(Constraints.unify(fresh, lval(7)))
 				.solve(fresh)
 				.count()).isEqualTo(0);
@@ -265,7 +306,7 @@ public class ProjectionTest {
 		Unifiable<Integer> fresh2 = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed2 = new java.util.HashMap<>();
 		seed2.put(varOf(orig), fresh2);
-		assertThat(store.rename(Renaming.into(seed2)).stated()
+		assertThat(Propagation.absorb(store.rename(Renaming.into(seed2)))
 				.and(Constraints.unify(orig, lval(7)))
 				.and(Constraints.unify(fresh2, lval(3)))
 				.solve(fresh2)

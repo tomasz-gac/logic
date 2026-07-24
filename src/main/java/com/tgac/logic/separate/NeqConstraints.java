@@ -137,25 +137,6 @@ class NeqConstraints implements Projectable<NeqConstraints> {
 		})));
 	}
 
-	@Override
-	public Goal stated() {
-		Goal all = Goal.success();
-		for (NeqConstraint record : constraints) {
-			all = Conjunction.of(all, statedRecord(record));
-		}
-		return all;
-	}
-
-	private static Goal statedRecord(NeqConstraint record) {
-		java.util.List<Object> lhs = new java.util.ArrayList<>();
-		java.util.List<Object> rhs = new java.util.ArrayList<>();
-		for (Tuple2<Term<?>, Term<?>> pair : record.getSeparate()) {
-			lhs.add(pair._1);
-			rhs.add(pair._2);
-		}
-		return Disequality.<java.util.List<Object>> separate(LVal.lval(lhs), LVal.lval(rhs));
-	}
-
 	/** Iterative structural scan — deep spines must not recurse. */
 	private static boolean escapes(Term<?> t, Set<Term<?>> covered) {
 		Deque<Term<?>> work = new ArrayDeque<>();
@@ -173,11 +154,19 @@ class NeqConstraints implements Projectable<NeqConstraints> {
 		return false;
 	}
 
+	/** Wholesale re-verification IS this store's normal form — records are
+	 * re-checked and simplified against the state, violated records fail. */
 	@Override
-	public Fiber<Revision> revise(Prefix prefix, Package state) {
+	public Fiber<Revision> normalize(Package state) {
 		return Fiber.done(Disequality.verifyAndSimplify(constraints.toList(), state.substitution())
 				.map(c -> (Revision) Revision.updated(NeqConstraints.of(LinkedHashSet.ofAll(c))))
 				.getOrElse(Revision::fail));
+	}
+
+	@Override
+	public Fiber<Revision> revise(Prefix prefix, Package state) {
+		// the reaction was always wholesale — revise is normalize by another trigger
+		return normalize(state);
 	}
 
 	@Override
