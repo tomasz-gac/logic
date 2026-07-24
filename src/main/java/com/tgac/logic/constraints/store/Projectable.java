@@ -73,18 +73,4 @@ public interface Projectable<R extends Residue<R>> extends ConstraintStore {
 	 * re-verifies against the target state.
 	 */
 	Goal stated();
-
-	/**
-	 * No LIVE knowledge remains under {@code state} — everything this store
-	 * holds is spent bookkeeping (stale domains under bindings, discharged
-	 * watchers). The answer-side gate while answers must come out ground:
-	 * a tabled answer is admissible while its stores are discharged; live
-	 * knowledge on an answer is refused until constrained answers exist
-	 * (tabled-constraints.md stage 2, where this demotes to the ground-answer
-	 * fast path — skip projecting when everything is spent). Conservative
-	 * default: empty is discharged.
-	 */
-	default boolean discharged(Package state) {
-		return isEmpty();
-	}
 }

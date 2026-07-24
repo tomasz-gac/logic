@@ -387,15 +387,4 @@ class FiniteDomainConstraints implements ConstraintStore,
 		return CarriedConstraint.of(propagator, Array.ofAll(varSlots));
 	}
 
-	/**
-	 * Domains under bindings are STALE by design ({@link DomainUpdate} — the
-	 * map is not pruned on collapse), so live knowledge is: any pending
-	 * propagator, or a domain whose variable still walks to a variable.
-	 */
-	@Override
-	public boolean discharged(Package state) {
-		return constraints.isEmpty()
-				&& domains.keySet().forAll(v -> state.walk(v).isVal());
-	}
-
 }

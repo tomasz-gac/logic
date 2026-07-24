@@ -209,10 +209,12 @@ public class TabledUnderDomainsTest {
 	}
 
 	@Test
-	public void aCouplingEscapingToALocalIsRefusedLoudly() {
-		// the body couples its arg to a local it never grounds: the answer
-		// projection demands exactness and the escape throws
-		Tabled<Tuple1<Unifiable<Integer>>> leaky =
+	public void aCouplingThroughALocalCarriesTheLocalAsAWitness() {
+		// the body couples its arg to a local it never grounds: the WHOLE
+		// delta rides the answer — the local replays as an existential (a
+		// fresh var per consumption) and labelling enumerates exactly the
+		// projection of the coupled region onto the arg
+		Tabled<Tuple1<Unifiable<Integer>>> throughLocal =
 				Tabling.define(args -> args.apply(x -> {
 					Unifiable<Integer> w = lvar();
 					return FiniteDomain.dom(x, dom(1, 2, 3))
@@ -221,9 +223,59 @@ public class TabledUnderDomainsTest {
 				}));
 		Unifiable<Integer> x = lvar();
 
-		assertThatThrownBy(() -> leaky.apply(Tuple.of(x)).solve(x).count())
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("escapes");
+		List<Integer> values = throughLocal.apply(Tuple.of(x))
+				.solve(x)
+				.map(Term::<Integer> get)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(values).containsExactly(1, 2, 3);   // ∃w∈{1,2,3}: x+w=4
+	}
+
+	@Test
+	public void twoArgsCoupledThroughALocalStayCoupled() {
+		// x,y ∈ {1,2}, w ∈ {2,3}, x+y=w with only (x,y) as args: the carried
+		// witness keeps the coupling — (2,2) must die (2+2=4 ∉ {2,3})
+		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> rel =
+				Tabling.define(args -> args.apply((x, y) -> {
+					Unifiable<Integer> w = lvar();
+					return FiniteDomain.dom(x, dom(1, 2))
+							.and(FiniteDomain.dom(y, dom(1, 2)))
+							.and(FiniteDomain.dom(w, dom(2, 3)))
+							.and(FiniteDomain.addo(x, y, w));
+				}));
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		List<String> pairs = rel.apply(Tuple.of(x, y))
+				.solve(lval(Tuple.of(x, y)))
+				.map(Object::toString)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(pairs).containsExactly("{({1}, {1})}", "{({1}, {2})}", "{({2}, {1})}");
+	}
+
+	@Test
+	public void anUnsatisfiableIslandKillsTheAnswer() {
+		// a live island the propagators cannot refute (three vars, two
+		// values, pairwise ≠ — locally consistent, pigeonhole-dead) rides
+		// the answer and the consumer's labelling kills the emission: the
+		// tabled goal emits exactly what the untabled goal does — nothing
+		Tabled<Tuple1<Unifiable<Integer>>> withIsland =
+				Tabling.define(args -> args.apply(x -> {
+					Unifiable<Integer> z1 = lvar();
+					Unifiable<Integer> z2 = lvar();
+					Unifiable<Integer> z3 = lvar();
+					return FiniteDomain.dom(x, dom(1, 2))
+							.and(FiniteDomain.dom(z1, dom(1, 2)))
+							.and(FiniteDomain.dom(z2, dom(1, 2)))
+							.and(FiniteDomain.dom(z3, dom(1, 2)))
+							.and(FiniteDomain.separate(z1, z2))
+							.and(FiniteDomain.separate(z2, z3))
+							.and(FiniteDomain.separate(z1, z3));
+				}));
+		Unifiable<Integer> x = lvar();
+
+		assertThat(withIsland.apply(Tuple.of(x)).solve(x).count()).isEqualTo(0);
 	}
 
 	@Test
