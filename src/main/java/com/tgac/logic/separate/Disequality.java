@@ -43,7 +43,7 @@ public class Disequality {
 					.map(prefix -> prefix.isEmpty() ?
 							// they already unify: the disequality is violated
 							Cont.<Package, Nothing> complete(Nothing.nothing()) :
-							Cont.<Package, Nothing> just(s.withStored(NeqConstraint.of(prefix.toMap()))))
+							Cont.<Package, Nothing> just(s.withStored(NeqConstraint.of(HashMap.narrow(prefix.toMap())))))
 					// they cannot unify: already separate, nothing to record
 					.getOrElse(() -> Cont.just(s)));
 		});
@@ -112,7 +112,7 @@ public class Disequality {
 					// a non-empty delta is exactly the bindings still needed
 					// for the record to be violated — the simplified record.
 					// This way, we simplify constraint store on the fly
-					.map(d -> newConstraints.append(NeqConstraint.of(d)));
+					.map(d -> newConstraints.append(NeqConstraint.of(HashMap.narrow(d))));
 		} else {
 			// if unification fails, then constraint is redundant
 			// because substitutions already contain bound values
@@ -161,15 +161,15 @@ public class Disequality {
 						.collect(List.collector()));
 	}
 
-	private static Fiber<HashMap<LVar<?>, Term<?>>> walkAllConstraint(Substitutions s, HashMap<LVar<?>, Term<?>> c) {
+	private static Fiber<HashMap<Term<?>, Term<?>>> walkAllConstraint(Substitutions s, HashMap<Term<?>, Term<?>> c) {
 		return c.toJavaStream()
 				.map(valSub -> valSub.map(
 								val -> walkAll(s, val)
 										// this should be right since lhs of a substitution is unbound and unique
-										.map(u -> u.asVar().get()),
+										.map(u -> (Term<?>) u.asVar().get()),
 								sub -> walkAll(s, sub))
 						.apply(Fiber::zip))
-				.reduce(done(HashMap.empty()),
+				.reduce(done(HashMap.<Term<?>, Term<?>> empty()),
 						(acc, v) -> Fiber.zip(acc, v)
 								.map(ms -> ms.apply(HashMap::put)),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
@@ -187,11 +187,11 @@ public class Disequality {
 				.map(stream -> stream.collect(List.collector()));
 	}
 
-	private static Fiber<HashMap<Term<?>, Term<?>>> renameConstraint(Substitutions r, HashMap<LVar<?>, Term<?>> c) {
+	private static Fiber<HashMap<Term<?>, Term<?>>> renameConstraint(Substitutions r, HashMap<Term<?>, Term<?>> c) {
 		return c.toJavaStream()
 				.map(pair -> Fiber.zip(
-						walkAll(r, pair._1.getObjectTerm()),
-						walkAll(r, pair._2.getObjectTerm())))
+						walkAll(r, pair._1),
+						walkAll(r, pair._2)))
 				.reduce(done(HashMap.<Term<?>, Term<?>> empty()),
 						(acc, v) -> Fiber.zip(acc, v)
 								.map(ms -> ms._1.put(ms._2._1, ms._2._2)),
@@ -230,11 +230,21 @@ public class Disequality {
 			List<NeqConstraint> accConstraints) {
 		return accConstraints.toJavaStream()
 				.reduce(false,
-						(r, v) -> r || unifyConstraints(v, Substitutions.of(constraints.getSeparate()))
+						(r, v) -> r || unifyConstraints(v, Substitutions.of(varKeyed(constraints.getSeparate())))
 								.filter(HashMap::isEmpty)
 								.map(__ -> true)
 								.getOrElse(() -> false),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
+	}
+
+	/** A live record's pairs under their LVar roots — the store invariant
+	 * keeps every LHS an unbound var on the live side. */
+	private static HashMap<LVar<?>, Term<?>> varKeyed(HashMap<Term<?>, Term<?>> separate) {
+		HashMap<LVar<?>, Term<?>> keyed = HashMap.empty();
+		for (Tuple2<Term<?>, Term<?>> pair : separate) {
+			keyed = keyed.put((LVar<?>) pair._1.asVar().get(), pair._2);
+		}
+		return keyed;
 	}
 
 	static Fiber<List<NeqConstraint>> removeSubsumed(

@@ -103,7 +103,7 @@ class EnforceConstraintsFD {
 		}
 	}
 
-	private static void verifyAllConstrainedHaveDomain(Iterable<Propagator> constraints, Collection<LVar<?>> boundVariables) {
+	private static void verifyAllConstrainedHaveDomain(Iterable<Propagator> constraints, Collection<Term<?>> boundVariables) {
 		StreamSupport.stream(constraints.spliterator(), false)
 				.flatMap(c -> StreamSupport.stream(c.watchedTerms().spliterator(), false))
 				.filter(u -> u.asVal().isDefined())

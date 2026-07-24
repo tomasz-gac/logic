@@ -15,7 +15,6 @@ import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Residue;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -201,19 +200,21 @@ public class Tabling {
 
 	/**
 	 * The caller's constraint knowledge about the call vars, projected per
-	 * store: the residues that join the {@link Call} key, and the restate
-	 * goals that seed the master's body with exactly that knowledge. A store
-	 * that cannot project cannot enter the key, and unkeyed knowledge means
-	 * silently wrong reuse — refused loudly. A ⊤ residue (nothing known about
-	 * the call vars) stays out of the key, so calls under irrelevant
-	 * knowledge stay constraint-free variants.
+	 * store: the canonical (hole-named) key citizens that join the
+	 * {@link Call}, and the restate goals that seed the master's body with
+	 * exactly that knowledge — the key renamed back onto the call vars and
+	 * stated. A store that cannot project cannot enter the key, and unkeyed
+	 * knowledge means silently wrong reuse — refused loudly. An EMPTY
+	 * projection (nothing known about the call vars) stays out of the key,
+	 * so calls under irrelevant knowledge stay constraint-free variants;
+	 * caller-private knowledge is split away — sound by containment,
+	 * filtered at consumption.
 	 */
 	@Value
 	private static class Projection {
 		Map<Class<?>, Object> residues;
 		java.util.List<Goal> restates;
 
-		@SuppressWarnings({"unchecked", "rawtypes"})
 		static Projection of(Package callerPkg, java.util.List<LVar<?>> callVars) {
 			Map<Class<?>, Object> residues = HashMap.empty();
 			java.util.List<Goal> restates = new ArrayList<>();
@@ -227,14 +228,10 @@ public class Tabling {
 							"Tabling cannot key constraints it cannot project: non-empty "
 									+ store.getClass().getSimpleName() + " at a tabled call");
 				}
-				Projectable projectable = (Projectable) store;
-				// call side: widening allowed — escapes stay caller-private,
-				// sound by containment, filtered at consumption
-				Residue residue = projectable.project(callVars, true);
-				Residue top = projectable.project(Collections.emptyList(), true);
-				if (!residue.equals(top)) {
-					residues = residues.put(store.getClass(), residue);
-					restates.add(residue.restate(targets));
+				Projectable<?> keyed = ((Projectable<?>) store).project(callVars);
+				if (!keyed.isEmpty()) {
+					residues = residues.put(store.getClass(), keyed);
+					restates.add(keyed.rename(Renaming.ofSlots(targets)).stated());
 				}
 			}
 			return new Projection(residues, restates);

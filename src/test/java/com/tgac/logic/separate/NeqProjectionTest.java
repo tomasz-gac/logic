@@ -1,12 +1,11 @@
 package com.tgac.logic.separate;
 
-// ABOUTME: Pins the Neq store's Projectable capability: records transcribe onto
-// ABOUTME: positional slots as data — canonical across lineages, replayed by copy.
+// ABOUTME: Pins the Neq store's single-sorted boundary algebra: records as data
+// ABOUTME: over names, lossless split, canonical projection, renamed replay.
 
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.store.Renaming;
@@ -15,6 +14,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashSet;
 import java.util.Arrays;
@@ -31,10 +31,10 @@ public class NeqProjectionTest {
 		return NeqConstraints.of(LinkedHashSet.of(records));
 	}
 
-	private static NeqConstraint record(Object... varTermPairs) {
-		HashMap<LVar<?>, Term<?>> separate = HashMap.empty();
-		for (int i = 0; i < varTermPairs.length; i += 2) {
-			separate = separate.put((LVar<?>) varTermPairs[i], (Term<?>) varTermPairs[i + 1]);
+	private static NeqConstraint record(Object... nameTermPairs) {
+		HashMap<Term<?>, Term<?>> separate = HashMap.empty();
+		for (int i = 0; i < nameTermPairs.length; i += 2) {
+			separate = separate.put((Term<?>) nameTermPairs[i], (Term<?>) nameTermPairs[i + 1]);
 		}
 		return NeqConstraint.of(separate);
 	}
@@ -44,67 +44,64 @@ public class NeqProjectionTest {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints neq = store(record(varOf(x), lval(5)));
 
-		NeqResidue residue = neq.project(Arrays.asList(varOf(x)), true);
-		assertThat(residue.getRecords()).containsExactly(
-				HashMap.<Integer, Term<?>> of(0, lval(5)));
+		NeqConstraints keyed = neq.project(Arrays.asList(varOf(x)));
+		assertThat(keyed.getConstraints()).containsExactly(
+				record(Hole.of(0), lval(5)));
 
 		// a record referencing only OTHER vars is not knowledge about this list
 		Unifiable<Integer> z = lvar();
-		assertThat(neq.project(Arrays.asList(varOf(z)), true).getRecords()).isEmpty();
+		assertThat(neq.project(Arrays.asList(varOf(z))).isEmpty()).isTrue();
 	}
 
 	@Test
 	public void transcriptionIsCanonicalAcrossLineages() {
-		// x≠y from two unrelated var pairs projects to the SAME residue: the
-		// transcribed record is data over slots, no lineage in it — so
-		// independent same-shaped contexts compare equal and share entries
+		// x≠y from two unrelated var pairs projects to the SAME key: records
+		// are data over names, no lineage in them — independent same-shaped
+		// contexts compare equal and share entries
 		Unifiable<Integer> x1 = lvar();
 		Unifiable<Integer> y1 = lvar();
 		Unifiable<Integer> x2 = lvar();
 		Unifiable<Integer> y2 = lvar();
 
-		NeqResidue first = store(record(varOf(x1), y1))
-				.project(Arrays.asList(varOf(x1), varOf(y1)), true);
-		NeqResidue second = store(record(varOf(x2), y2))
-				.project(Arrays.asList(varOf(x2), varOf(y2)), true);
+		NeqConstraints first = store(record(varOf(x1), y1))
+				.project(Arrays.asList(varOf(x1), varOf(y1)));
+		NeqConstraints second = store(record(varOf(x2), y2))
+				.project(Arrays.asList(varOf(x2), varOf(y2)));
 
 		assertThat(first).isEqualTo(second);
-		assertThat(first.getRecords()).containsExactly(
-				HashMap.<Integer, Term<?>> of(0, Hole.of(1)));
+		assertThat(first.getConstraints()).containsExactly(
+				record(Hole.of(0), Hole.of(1)));
 	}
 
 	@Test
-	public void anEscapingRecordDropsByPermissionOrThrows() {
+	public void splitFactorsRecordsLosslessly() {
+		// a record touching an unsupplied var lands in the remainder;
+		// _1 ∧ _2 = this — the caller decides the remainder's fate
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> w = lvar();
 		NeqConstraints neq = store(
 				record(varOf(x), lval(5)),
 				record(varOf(x), w));
 
-		NeqResidue widened = neq.project(Arrays.asList(varOf(x)), true);
-		assertThat(widened.getRecords()).containsExactly(
-				HashMap.<Integer, Term<?>> of(0, lval(5)));
-
-		assertThatThrownBy(() -> neq.project(Arrays.asList(varOf(x)), false))
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("escapes");
+		Tuple2<NeqConstraints, NeqConstraints> halves = neq.split(Arrays.asList(varOf(x)));
+		assertThat(halves._1.getConstraints()).containsExactly(record(varOf(x), lval(5)));
+		assertThat(halves._2.getConstraints()).containsExactly(record(varOf(x), w));
+		assertThat(halves._1.meet(halves._2)).isEqualTo(neq);
 	}
 
 	@Test
 	public void projectingTheEmptyListIsTop() {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints neq = store(record(varOf(x), lval(5)));
-		assertThat(neq.project(Collections.<LVar<?>> emptyList(), true).getRecords()).isEmpty();
+		assertThat(neq.project(Collections.<LVar<?>> emptyList()).isEmpty()).isTrue();
 	}
 
 	@Test
 	public void leqIsRecordContainment() {
 		Unifiable<Integer> x = lvar();
 		LVar<?> v = varOf(x);
-		NeqResidue narrow = store(record(v, lval(5)), record(v, lval(6)))
-				.project(Arrays.asList(v), true);
-		NeqResidue wide = store(record(v, lval(5)))
-				.project(Arrays.asList(v), true);
+		NeqConstraints narrow = store(record(v, lval(5)), record(v, lval(6)));
+		NeqConstraints wide = store(record(v, lval(5)));
 
 		// more disequalities = smaller region = entails
 		assertThat(narrow.leq(wide)).isTrue();
@@ -115,16 +112,16 @@ public class NeqProjectionTest {
 	@Test
 	public void restateReimposesTheDisequality() {
 		Unifiable<Integer> x = lvar();
-		NeqResidue residue = store(record(varOf(x), lval(5)))
-				.project(Arrays.asList(varOf(x)), true);
+		NeqConstraints keyed = store(record(varOf(x), lval(5)))
+				.project(Arrays.asList(varOf(x)));
 
 		Unifiable<Integer> fresh = lvar();
-		assertThat(residue.restate(Arrays.<Unifiable<?>> asList(fresh))
+		assertThat(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh))).stated()
 				.and(Constraints.unify(fresh, lval(5)))
 				.solve(fresh)
 				.count()).isEqualTo(0);
 		Unifiable<Integer> fresh2 = lvar();
-		assertThat(residue.restate(Arrays.<Unifiable<?>> asList(fresh2))
+		assertThat(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh2))).stated()
 				.and(Constraints.unify(fresh2, lval(6)))
 				.solve(fresh2)
 				.count()).isEqualTo(1);
@@ -132,26 +129,38 @@ public class NeqProjectionTest {
 
 	@Test
 	public void restateCouplesTheProjectedSlots() {
-		// x≠y transcribed over [x,y] replays between the TARGET pair
+		// x≠y canonicalized over [x,y] replays between the TARGET pair
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		NeqResidue residue = store(record(varOf(x), y))
-				.project(Arrays.asList(varOf(x), varOf(y)), true);
+		NeqConstraints keyed = store(record(varOf(x), y))
+				.project(Arrays.asList(varOf(x), varOf(y)));
 
 		Unifiable<Integer> f = lvar();
 		Unifiable<Integer> g = lvar();
-		assertThat(residue.restate(Arrays.<Unifiable<?>> asList(f, g))
+		assertThat(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f, g))).stated()
 				.and(Constraints.unify(f, lval(3)))
 				.and(Constraints.unify(g, lval(3)))
 				.solve(f)
 				.count()).isEqualTo(0);
 		Unifiable<Integer> f2 = lvar();
 		Unifiable<Integer> g2 = lvar();
-		assertThat(residue.restate(Arrays.<Unifiable<?>> asList(f2, g2))
+		assertThat(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f2, g2))).stated()
 				.and(Constraints.unify(f2, lval(3)))
 				.and(Constraints.unify(g2, lval(4)))
 				.solve(f2)
 				.count()).isEqualTo(1);
+	}
+
+	@Test
+	public void aCompoundRecordSplitsByItsFullSupport() {
+		// x ≠ (y, 5): covered over [x, y], remainder over [x] alone
+		Unifiable<Integer> y = lvar();
+		Unifiable<Object> x = lvar();
+		NeqConstraints neq = store(record(varOf(x), lval(Tuple.of(y, lval(5)))));
+
+		assertThat(neq.split(Arrays.asList(varOf(x), varOf(y)))._1.getConstraints()).hasSize(1);
+		assertThat(neq.split(Arrays.asList(varOf(x)))._1.isEmpty()).isTrue();
+		assertThat(neq.split(Arrays.asList(varOf(x)))._2.getConstraints()).hasSize(1);
 	}
 
 	@Test
@@ -168,10 +177,10 @@ public class NeqProjectionTest {
 		seed.put(varOf(x), a);
 		Renaming renaming = Renaming.into(seed);
 
-		NeqConstraints renamed = (NeqConstraints) neq.rename(renaming);
+		NeqConstraints renamed = neq.rename(renaming);
 		NeqConstraint only = renamed.getConstraints().head();
-		assertThat(only.getSeparate().containsKey(varOf(a))).isTrue();
-		Term<?> mintedW = only.getSeparate().get(varOf(a)).get();
+		assertThat(only.getSeparate().containsKey(a)).isTrue();
+		Term<?> mintedW = only.getSeparate().get(a).get();
 		assertThat(mintedW.asVar().isDefined()).isTrue();
 		assertThat(mintedW).isNotEqualTo(w);
 		assertThat(renaming.apply(w)).isSameAs(mintedW);
@@ -192,21 +201,5 @@ public class NeqProjectionTest {
 				.and(Constraints.unify(x, lval(6)))
 				.solve(x)
 				.count()).isEqualTo(1);
-	}
-
-	@Test
-	public void aCompoundRecordCarriesWhenAllItsVarsAreSupplied() {
-		// x ≠ (y, 5): expressible over [x, y], escapes [x] alone
-		Unifiable<Integer> y = lvar();
-		Unifiable<Object> x = lvar();
-		NeqConstraints neq = store(record(varOf(x), lval(Tuple.of(y, lval(5)))));
-
-		NeqResidue both = neq.project(Arrays.asList(varOf(x), varOf(y)), true);
-		assertThat(both.getRecords()).hasSize(1);
-
-		assertThat(neq.project(Arrays.asList(varOf(x)), true).getRecords()).isEmpty();
-		assertThatThrownBy(() -> neq.project(Arrays.asList(varOf(x)), false))
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("escapes");
 	}
 }

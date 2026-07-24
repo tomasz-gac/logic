@@ -4,7 +4,6 @@ import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
-import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
@@ -14,26 +13,26 @@ import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
-import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class NeqConstraints implements Projectable<NeqResidue>, MeetSemilattice<NeqConstraints> {
+class NeqConstraints implements Projectable<NeqConstraints> {
 	public static final NeqConstraints EMPTY = NeqConstraints.of(LinkedHashSet.empty());
 	LinkedHashSet<NeqConstraint> constraints;
 
@@ -58,6 +57,12 @@ class NeqConstraints implements Projectable<NeqResidue>, MeetSemilattice<NeqCons
 	@Override
 	public NeqConstraints meet(NeqConstraints other) {
 		return NeqConstraints.of(constraints.addAll(other.constraints));
+	}
+
+	/** Record containment directly — the order the union-meet derives. */
+	@Override
+	public boolean leq(NeqConstraints other) {
+		return constraints.containsAll(other.constraints);
 	}
 
 	public static Package register(Package a) {
@@ -91,61 +96,42 @@ class NeqConstraints implements Projectable<NeqResidue>, MeetSemilattice<NeqCons
 	}
 
 	/**
-	 * TRANSCRIBES every record wholly over {@code vars}: LHS var → slot, RHS
-	 * term with projected vars renamed to canonical holes — pure data, so
-	 * same-shaped contexts from unrelated lineages project equal residues.
-	 * {@code wideningAllowed} governs only the escapes (a record touching an
-	 * unsupplied var): dropped by permission, refused when exactness demanded.
+	 * Lossless factoring: a record goes to the covered half iff every var it
+	 * touches (LHS names and RHS term vars alike) is supplied.
+	 * {@code _1 ∧ _2 = this}.
 	 */
 	@Override
-	public NeqResidue project(java.util.List<LVar<?>> vars, boolean wideningAllowed) {
-		HashMap<LVar<?>, Term<?>> renames = HashMap.empty();
-		for (int i = 0; i < vars.size(); i++) {
-			renames = renames.put(vars.get(i), Hole.of(i));
-		}
-		Substitutions rename = Substitutions.of(renames);
-		HashSet<HashMap<Integer, Term<?>>> transcribed = HashSet.empty();
+	public Tuple2<NeqConstraints, NeqConstraints> split(java.util.List<LVar<?>> vars) {
+		Set<Term<?>> covered = new java.util.HashSet<>(vars);
+		LinkedHashSet<NeqConstraint> in = LinkedHashSet.empty();
+		LinkedHashSet<NeqConstraint> out = LinkedHashSet.empty();
 		for (NeqConstraint record : constraints) {
-			HashMap<Integer, Term<?>> slots = transcribe(record, rename);
-			if (slots != null) {
-				transcribed = transcribed.add(slots);
-			} else if (!wideningAllowed) {
-				throw new IllegalStateException(
-						"exact projection demanded but a disequality escapes the "
-								+ "projected vars — ground the escaping var or include it");
+			if (fits(record, covered)) {
+				in = in.add(record);
+			} else {
+				out = out.add(record);
 			}
-			// else: dropped by permission — the caller declared widening sound
 		}
-		return NeqResidue.of(transcribed);
+		return Tuple.of(NeqConstraints.of(in), NeqConstraints.of(out));
 	}
 
-	/** Slot → renamed forbidden term, or null when any var escapes the projection. */
-	private static HashMap<Integer, Term<?>> transcribe(NeqConstraint record, Substitutions rename) {
-		HashMap<Integer, Term<?>> slots = HashMap.empty();
-		for (Tuple2<LVar<?>, Term<?>> pair : record.getSeparate()) {
-			Term<?> lhs = rename.walk(pair._1);
-			if (!lhs.asReified().isDefined()) {
-				return null;    // the constrained var itself is not projected
+	private static boolean fits(NeqConstraint record, Set<Term<?>> covered) {
+		for (Tuple2<Term<?>, Term<?>> pair : record.getSeparate()) {
+			if (!covered.contains(pair._1) || escapes(pair._2, covered)) {
+				return false;
 			}
-			Term<?> rhs = MiniKanren.walkAll(rename, pair._2).get();
-			if (hasVars(rhs)) {
-				return null;    // the forbidden term reaches an unprojected var
-			}
-			slots = slots.put(((Hole<?>) lhs).getNumber(), rhs);
 		}
-		return slots;
+		return true;
 	}
 
-	/** Records with their vars translated through the renaming: LHS vars stay
-	 * vars (the store invariant keeps them unbound), RHS terms map deeply. */
+	/** Records with their names translated through the renaming — LHS names
+	 * map like any other (live var ↔ canonical hole), RHS terms map deeply. */
 	@Override
 	public NeqConstraints rename(Renaming renaming) {
 		return NeqConstraints.of(LinkedHashSet.ofAll(constraints.map(record -> {
-			HashMap<LVar<?>, Term<?>> renamed = HashMap.empty();
-			for (Tuple2<LVar<?>, Term<?>> pair : record.getSeparate()) {
-				renamed = renamed.put(
-						(LVar<?>) renaming.apply(pair._1).asVar().get(),
-						renaming.apply(pair._2));
+			HashMap<Term<?>, Term<?>> renamed = HashMap.empty();
+			for (Tuple2<Term<?>, Term<?>> pair : record.getSeparate()) {
+				renamed = renamed.put(renaming.apply(pair._1), renaming.apply(pair._2));
 			}
 			return NeqConstraint.of(renamed);
 		})));
@@ -163,7 +149,7 @@ class NeqConstraints implements Projectable<NeqResidue>, MeetSemilattice<NeqCons
 	private static Goal statedRecord(NeqConstraint record) {
 		java.util.List<Object> lhs = new java.util.ArrayList<>();
 		java.util.List<Object> rhs = new java.util.ArrayList<>();
-		for (Tuple2<LVar<?>, Term<?>> pair : record.getSeparate()) {
+		for (Tuple2<Term<?>, Term<?>> pair : record.getSeparate()) {
 			lhs.add(pair._1);
 			rhs.add(pair._2);
 		}
@@ -171,15 +157,18 @@ class NeqConstraints implements Projectable<NeqResidue>, MeetSemilattice<NeqCons
 	}
 
 	/** Iterative structural scan — deep spines must not recurse. */
-	private static boolean hasVars(Term<?> t) {
+	private static boolean escapes(Term<?> t, Set<Term<?>> covered) {
 		Deque<Term<?>> work = new ArrayDeque<>();
 		work.push(t);
 		while (!work.isEmpty()) {
 			Term<?> current = work.pop();
 			if (current.asVar().isDefined()) {
-				return true;
+				if (!covered.contains(current)) {
+					return true;
+				}
+			} else {
+				MiniKanren.members(current).forEach(members -> members.forEach(work::push));
 			}
-			MiniKanren.members(current).forEach(members -> members.forEach(work::push));
 		}
 		return false;
 	}

@@ -41,9 +41,8 @@ import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class FiniteDomainConstraints implements ConstraintStore,
-		Projectable<DomainResidue>,
-		MeetSemilattice<FiniteDomainConstraints>, Bottomed {
+class FiniteDomainConstraints implements
+		Projectable<FiniteDomainConstraints>, Bottomed {
 	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
 
 	// the canonical dead store: any-empty-domain meets normalize to it, and the
@@ -56,8 +55,8 @@ class FiniteDomainConstraints implements ConstraintStore,
 		return p.withStore(EMPTY);
 	}
 
-	// cKanren domains
-	LinkedHashMap<LVar<?>, Domain<?>> domains;
+	// cKanren domains — keyed by NAME: a live LVar or a canonical Hole
+	LinkedHashMap<Term<?>, Domain<?>> domains;
 
 	// cKanren constraints
 	HashSet<Propagator> constraints;
@@ -71,10 +70,12 @@ class FiniteDomainConstraints implements ConstraintStore,
 	}
 
 	/**
-	 * The store as a product order: domains pointwise (a missing variable is ⊤),
-	 * propagators by set intersection. Both components only ever descend during
-	 * propagation — narrowing shrinks domains, subsumption discharges propagators
-	 * — so this is the cascade's termination measure.
+	 * The store as a product order in the KNOWLEDGE direction: domains
+	 * pointwise (a missing name is ⊤), propagators by set union — more
+	 * constraints is more knowledge, smaller region, lower. The cascade
+	 * still terminates against this order: domains strictly narrow (the
+	 * equal-domain guard) and discharge only ever REMOVES propagators
+	 * (knowledge gone redundant — the factor rises, the region stands).
 	 */
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
@@ -82,8 +83,8 @@ class FiniteDomainConstraints implements ConstraintStore,
 		if (isBottom() || other.isBottom()) {
 			return BOTTOM;
 		}
-		LinkedHashMap<LVar<?>, Domain<?>> met = domains;
-		for (Tuple2<LVar<?>, Domain<?>> entry : other.domains) {
+		LinkedHashMap<Term<?>, Domain<?>> met = domains;
+		for (Tuple2<Term<?>, Domain<?>> entry : other.domains) {
 			Domain<?> mine = met.get(entry._1).getOrNull();
 			Domain<?> narrowed = mine == null ? entry._2
 					: (Domain<?>) ((Domain) mine).meet((Domain) entry._2);
@@ -92,7 +93,28 @@ class FiniteDomainConstraints implements ConstraintStore,
 			}
 			met = met.put(entry._1, narrowed);
 		}
-		return new FiniteDomainConstraints(met, constraints.intersect(other.constraints));
+		return new FiniteDomainConstraints(met, constraints.union(other.constraints));
+	}
+
+	/**
+	 * Entailment checked slotwise, without materializing the meet: every
+	 * name {@code other} constrains must be at-least-as-narrow here, and
+	 * every constraint {@code other} holds must ride here too. The same
+	 * order the meet derives, at an early-exit, allocation-free cost —
+	 * subsumption keys, entailment matching and answer dedup all fold this.
+	 */
+	@Override
+	@SuppressWarnings("unchecked")
+	public boolean leq(FiniteDomainConstraints other) {
+		if (isBottom()) {
+			return true;
+		}
+		if (other.isBottom()) {
+			return false;
+		}
+		return other.domains.forAll(entry -> domains.get(entry._1)
+				.exists(mine -> ((Domain<Object>) mine).leq((Domain<Object>) entry._2)))
+				&& constraints.containsAll(other.constraints);
 	}
 
 	/**
@@ -135,7 +157,7 @@ class FiniteDomainConstraints implements ConstraintStore,
 		return p.getStore(FiniteDomainConstraints.class);
 	}
 
-	public static <T> Option<Domain<T>> getDom(Package p, LVar<T> x) {
+	public static <T> Option<Domain<T>> getDom(Package p, Term<T> x) {
 		return getFDStore(p).getDomain(x);
 	}
 
@@ -298,56 +320,57 @@ class FiniteDomainConstraints implements ConstraintStore,
 		}
 	}
 
-	public <T> Option<Domain<T>> getDomain(LVar<T> v) {
+	public <T> Option<Domain<T>> getDomain(Term<T> v) {
 		return domains.get(v)
 				.flatMap(Types.castAs(Domain.class));
 	}
 
-	public FiniteDomainConstraints withDomain(LVar<?> x, Domain<?> xd) {
+	public FiniteDomainConstraints withDomain(Term<?> x, Domain<?> xd) {
 		return FiniteDomainConstraints.of(domains.put(x, xd), constraints);
 	}
 
 	/**
-	 * TRANSCRIBES everything expressible: per-slot domains (post-propagation)
-	 * plus every wholly-covered coupling as its LIVE propagator object with a
-	 * (var → slot) map. {@code wideningAllowed} governs only the escapes.
+	 * Lossless factoring: domains partition by name membership, a propagator
+	 * goes to the covered half iff every watched VAR is supplied (grounds
+	 * are always covered). {@code _1 ∧ _2 = this}.
 	 */
 	@Override
-	public DomainResidue project(List<LVar<?>> vars, boolean wideningAllowed) {
-		HashMap<Integer, Domain<?>> slots = HashMap.empty();
-		for (int i = 0; i < vars.size(); i++) {
-			Option<Domain<?>> d = domains.get(vars.get(i));
-			if (d.isDefined()) {
-				slots = slots.put(i, d.get());
+	public Tuple2<FiniteDomainConstraints, FiniteDomainConstraints> split(List<LVar<?>> vars) {
+		Set<Term<?>> covered = new java.util.HashSet<>(vars);
+		LinkedHashMap<Term<?>, Domain<?>> in = LinkedHashMap.empty();
+		LinkedHashMap<Term<?>, Domain<?>> out = LinkedHashMap.empty();
+		for (Tuple2<Term<?>, Domain<?>> entry : domains) {
+			if (covered.contains(entry._1)) {
+				in = in.put(entry);
+			} else {
+				out = out.put(entry);
 			}
 		}
-		io.vavr.collection.HashSet<CarriedConstraint> carried = io.vavr.collection.HashSet.empty();
+		HashSet<Propagator> inConstraints = HashSet.empty();
+		HashSet<Propagator> outConstraints = HashSet.empty();
 		for (Propagator propagator : constraints) {
-			CarriedConstraint coupling = carry(propagator, vars);
-			if (coupling != null) {
-				carried = carried.add(coupling);
-			} else if (!wideningAllowed) {
-				// exactness was demanded and this coupling escapes the vars —
-				// the declared context makes the refusal ours to raise
-				throw new IllegalStateException(
-						"exact projection demanded but a live constraint escapes the "
-								+ "projected vars — ground the escaping var or include it");
+			boolean fits = propagator.watchedTerms().forAll(watched ->
+					!watched.asVar().isDefined() || covered.contains(watched));
+			if (fits) {
+				inConstraints = inConstraints.add(propagator);
+			} else {
+				outConstraints = outConstraints.add(propagator);
 			}
-			// else: dropped by permission — the caller declared widening sound
 		}
-		return DomainResidue.of(slots, carried);
+		return Tuple.of(FiniteDomainConstraints.of(in, inConstraints),
+				FiniteDomainConstraints.of(out, outConstraints));
 	}
 
-	/** Domains re-keyed through the renaming — an entry whose var resolves to
-	 * a value is spent bookkeeping (verified when it bound) and drops;
+	/** Domains re-keyed through the renaming — an entry whose name resolves
+	 * to a value is spent bookkeeping (verified when it bound) and drops;
 	 * propagators re-watch their renamed terms. */
 	@Override
 	public FiniteDomainConstraints rename(Renaming renaming) {
-		LinkedHashMap<LVar<?>, Domain<?>> renamedDomains = LinkedHashMap.empty();
-		for (Tuple2<LVar<?>, Domain<?>> entry : domains) {
+		LinkedHashMap<Term<?>, Domain<?>> renamedDomains = LinkedHashMap.empty();
+		for (Tuple2<Term<?>, Domain<?>> entry : domains) {
 			Term<?> target = renaming.apply(entry._1);
-			if (target.asVar().isDefined()) {
-				renamedDomains = renamedDomains.put((LVar<?>) target.asVar().get(), entry._2);
+			if (!target.asVal().isDefined()) {
+				renamedDomains = renamedDomains.put(target, entry._2);
 			}
 		}
 		HashSet<Propagator> renamedConstraints = constraints.map(p ->
@@ -364,27 +387,6 @@ class FiniteDomainConstraints implements ConstraintStore,
 		return constraints.foldLeft(posts, (goal, propagator) ->
 				Conjunction.of(goal, p -> Propagation.activate(propagator)
 						.apply(register(p))));
-	}
-
-	/**
-	 * A propagator is carriable when every watched VAR is supplied — carried
-	 * as the LIVE OBJECT plus its (var → slot) map; grounds need no entry.
-	 * Identity comparison against walked roots: a watcher aliased away from
-	 * its root fails carriage and falls to the wideningAllowed handling.
-	 */
-	private static CarriedConstraint carry(Propagator propagator, List<LVar<?>> vars) {
-		java.util.List<Tuple2<LVar<?>, Integer>> varSlots = new ArrayList<>();
-		for (Term<?> watched : propagator.watchedTerms()) {
-			if (watched.asVar().isDefined()) {
-				LVar<?> var = (LVar<?>) watched.asVar().get();
-				int slot = vars.indexOf(var);
-				if (slot < 0) {
-					return null;    // escapes to an unsupplied var
-				}
-				varSlots.add(Tuple.of(var, slot));
-			}
-		}
-		return CarriedConstraint.of(propagator, Array.ofAll(varSlots));
 	}
 
 }

@@ -315,6 +315,34 @@ public class TabledUnderDomainsTest {
 		assertThat(pairs).isEqualTo(4);
 	}
 
+	@Test
+	public void aWiderAnswerIsNotSubsumedByANarrowerCoupledOne() {
+		// same term, one disjunct coupled (x ≤ y parked), one not: the wider
+		// answer carries FEWER constraints and must never be judged redundant
+		// under the narrower — more constraints is MORE knowledge, lower in
+		// the store order, and dedup's insert-guard reads that order
+		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> rel =
+				Tabling.define(args -> args.apply((x, y) ->
+						FiniteDomain.dom(x, dom(1, 2))
+								.and(FiniteDomain.dom(y, dom(1, 2)))
+								.and(FiniteDomain.leq(x, y))
+								.or(FiniteDomain.dom(x, dom(1, 2))
+										.and(FiniteDomain.dom(y, dom(1, 2))))));
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		List<String> distinct = rel.apply(Tuple.of(x, y))
+				.solve(lval(Tuple.of(x, y)))
+				.map(Object::toString)
+				.distinct()
+				.sorted()
+				.collect(Collectors.toList());
+		// the wider disjunct's (2,1) survives; losing it means the wider
+		// answer was wrongly dropped by an inverted constraint order
+		assertThat(distinct).containsExactly(
+				"{({1}, {1})}", "{({1}, {2})}", "{({2}, {1})}", "{({2}, {2})}");
+	}
+
 	@Test(timeout = 10_000)
 	public void recursionUnderACarriedCouplingSharesItsEntry() {
 		// the master seeds its body from the key by re-activating the carried

@@ -1,76 +1,76 @@
 package com.tgac.logic.constraints.store;
 
-// ABOUTME: A store that can report its knowledge about a var list as a residue
-// ABOUTME: and re-impose one — the projection half of tabled constraints.
+// ABOUTME: A store whose knowledge can change variable namespaces: a semilattice
+// ABOUTME: with rename and split — keys, seeding and answer replay are compositions.
 
-import com.tgac.functional.algebra.PartialOrder;
+import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
+import io.vavr.Tuple2;
 import java.util.List;
 
 /**
- * The projection capability: report this store's knowledge about a POSITIONAL
- * var list as an opaque residue, and re-impose a residue onto live vars. The
- * residue's only cross-store obligation is its {@link PartialOrder}:
- * {@code mine.leq(theirs)} is entailment, which is all consumers ever ask
- * (subsumption keys, cache reuse, dedup) — combination happens through
- * {@link Residue#restate} and the kernel's own machinery, never by merging
- * residue objects.
+ * The boundary capability, single-sorted: a store IS a residue over its own
+ * names — live {@link LVar}s or canonical {@link com.tgac.logic.unification.Hole}s
+ * alike — and every boundary operation is a composition of three primitives
+ * over the store's own {@link MeetSemilattice}:
  *
- * <p>ONE VOCABULARY, EVERY USAGE: whatever {@code project} can express rides
- * every consumer of this capability alike — call keys and answer residues are
- * the same projection; the store never learns WHICH side it serves, only the
- * STRENGTH demanded ({@code wideningAllowed}).
+ * <pre>
+ * key projection   = split(callVars)._1.rename(canonical)     — {@link #project}
+ * master seeding   = key.rename(ofSlots(callVars)).stated()
+ * answer capture   = rename(walking(home))                    — normalization
+ * answer replay    = rename(into(seeds)).stated()             — ∃ by minting
+ * </pre>
  *
- * <p>THE CORRESPONDENCE IS THE CALLER'S: slot {@code i} means {@code vars[i]},
- * and the caller owns the ordering discipline that makes residues align across
- * calls (tabling derives it from the reified key's holes in first-occurrence
- * order — no renaming machinery crosses this boundary). Callers pass WALKED
- * vars; the store reads its own knowledge, it does not chase substitutions.
+ * Comparison (subsumption keys, entailment matching, dedup) is the lattice
+ * order the store already has; a hole-named store compares structurally
+ * across packages because holes are canonical names. There is no widening
+ * parameter and no exactness refusal: keys widen by construction (the
+ * caller keeps {@code split}'s covered half), and answers carry the whole
+ * factor. Participation in tabling requires this capability — knowledge
+ * that cannot cross namespaces cannot be keyed or cached, and unkeyed
+ * knowledge means silently wrong reuse.
  *
- *
- * <p>Participation in tabling requires this capability — knowledge that
- * cannot be projected cannot enter call keys, and unkeyed knowledge means
- * silently wrong cache reuse. TERMINATION is a separate, undeclared concern:
- * a store whose residues over a fixed var list form a finite lattice bounds
- * the tabling ascent (FD does, by construction); one that does not (record
- * sets over unbounded values) can ascend forever on adversarial programs —
- * the author's responsibility, exactly like tabling an unbounded generator.
+ * <p>TERMINATION is a separate, undeclared concern: a store whose canonical
+ * images over a fixed var list form a finite lattice bounds the tabling
+ * ascent (FD does); one that does not (record sets over unbounded values)
+ * can ascend forever on adversarial programs — the author's responsibility,
+ * exactly like tabling an unbounded generator.
  */
-public interface Projectable<R extends Residue<R>> extends ConstraintStore {
+public interface Projectable<S extends Projectable<S>> extends ConstraintStore, MeetSemilattice<S> {
 
 	/**
-	 * This store's knowledge about {@code vars}, slot i ↔ vars[i]; absence = ⊤.
-	 * Projecting the EMPTY list is the ⊤ residue — the caller's triviality test.
-	 *
-	 * <p>THE CONTRACT: TRANSCRIBE everything expressible — domains and
-	 * wholly-covered couplings alike; permission to widen is not an
-	 * instruction to widen. {@code wideningAllowed} governs only the
-	 * INEXPRESSIBLE remainder (a coupling escaping to an unsupplied var):
-	 * dropped silently when allowed — the caller declared the widening sound
-	 * on its side (containment: a wider search, filtered at consumption) —
-	 * or {@link IllegalStateException} when exactness was demanded: the
-	 * parameter carries the boundary's context in, which is what makes the
-	 * refusal the store's to raise (tabled-constraints.md §5.1).
+	 * Lossless factoring: (the knowledge expressible over {@code vars}, the
+	 * remainder) — {@code _1 ∧ _2 = this}. The store decides what is
+	 * separable (custody); the CALLER decides what to do with the halves:
+	 * keys keep {@code _1} and discard the caller-private remainder.
 	 */
-	R project(List<LVar<?>> vars, boolean wideningAllowed);
+	Tuple2<S, S> split(List<LVar<?>> vars);
 
 	/**
-	 * This store's knowledge under changed variable names — the SAME sort
-	 * (live names to live names): {@link Renaming#walking} normalizes at a
-	 * boundary crossing (entries whose var resolves to a value are spent and
+	 * This store's knowledge under changed names — {@link Renaming#walking}
+	 * normalizes (entries whose name resolves to a value are spent and
 	 * drop), {@link Renaming#into} retargets at replay (unseeded vars mint
-	 * fresh — the existential). The store IS a residue over its own names;
-	 * restatement is {@code rename(r).stated()}.
+	 * fresh — the existential), {@link Renaming#canonical} and
+	 * {@link Renaming#ofSlots} convert live↔canonical.
 	 */
-	Projectable<R> rename(Renaming renaming);
+	S rename(Renaming renaming);
 
 	/**
-	 * This store as a re-expressible goal: impose every item it holds through
-	 * the PUBLIC statement entries, so the knowledge propagates like freshly
-	 * stated constraints (first examination, watchers, cascade) and
-	 * re-verifies against the target state.
+	 * This store as a re-expressible goal: impose every item it holds
+	 * through the PUBLIC statement entries, so the knowledge propagates like
+	 * freshly stated constraints (first examination, watchers, cascade) and
+	 * re-verifies against the target state. Valid on LIVE-named knowledge —
+	 * a contract, not a type.
 	 */
 	Goal stated();
+
+	/**
+	 * This store's knowledge about {@code vars} in canonical names, slot i ↔
+	 * vars[i] — the comparable key citizen. Projecting the empty list of an
+	 * empty store is the empty store: the triviality test is {@code isEmpty}.
+	 */
+	default S project(List<LVar<?>> vars) {
+		return split(vars)._1.rename(Renaming.canonical(vars));
+	}
 }

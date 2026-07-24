@@ -1,28 +1,25 @@
 package com.tgac.logic.finitedomain;
 
-// ABOUTME: Pins the FD store's Projectable capability: transcribe domains and
-// ABOUTME: covered couplings; wideningAllowed governs only the escapes.
+// ABOUTME: Pins the FD store's single-sorted boundary algebra: named value-equal
+// ABOUTME: propagators, lossless split, renaming across namespaces, stated replay.
 
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
-import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.HashSet;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.List;
@@ -44,71 +41,7 @@ public class ProjectionTest {
 				Arrays.<Term<?>> asList(watched), (terms, pkg) -> Verdict.keep());
 	}
 
-	@Test
-	public void renamingByWalkDropsSpentEntries() {
-		// normalization at answer capture: entries whose var walks to a value
-		// are spent bookkeeping (verified when they bound) and fall away;
-		// live entries keep their names
-		Unifiable<Integer> x = lvar();
-		Unifiable<Integer> y = lvar();
-		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
-		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
-				.withDomain(varOf(y), dom(7, 8));
-		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
-
-		FiniteDomainConstraints normalized =
-				(FiniteDomainConstraints) store.rename(Renaming.walking(bound));
-		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
-		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
-	}
-
-	@Test
-	public void renamingIntoTargetsMintsSharedFreshVars() {
-		// replay: seeded correspondences apply, unseeded vars mint fresh ones
-		// (the ∃) — and ONE Renaming shared by both applications keeps a
-		// shared local the same variable on both sides
-		Unifiable<Integer> x = lvar();
-		Unifiable<Integer> w = lvar();
-		Unifiable<Integer> a = lvar();
-		Propagator coupling = keeper(x, w);
-		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
-		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
-				.withDomain(varOf(w), dom(2, 3))
-				.prepend(coupling);
-
-		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
-		seed.put(varOf(x), a);
-		Renaming renaming = Renaming.into(seed);
-
-		FiniteDomainConstraints renamed = (FiniteDomainConstraints) store.rename(renaming);
-		assertThat(renamed.getDomain(varOf(a)).get()).isEqualTo(dom(1, 2));
-		assertThat(renamed.getDomain(varOf(w)).isDefined()).isFalse();
-
-		// w went somewhere fresh — and a SECOND application of the same
-		// renaming sends w to the SAME fresh var
-		Propagator renamedCoupling = renamed.getConstraints().head();
-		Term<?> mintedW = renamedCoupling.watchedTerms().get(1);
-		assertThat(mintedW.asVar().isDefined()).isTrue();
-		assertThat(mintedW).isNotEqualTo(w);
-		assertThat(renaming.apply(w)).isSameAs(mintedW);
-		assertThat(renamedCoupling.watchedTerms().get(0)).isEqualTo(a);
-	}
-
-	@Test
-	public void aStatedStoreReimposesItsKnowledge() {
-		// stated() is the store as a re-expressible goal: domains post, the
-		// couplings activate — restate = rename then stated
-		Unifiable<Integer> x = lvar();
-		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
-		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p);
-
-		List<Integer> values = store.stated()
-				.solve(x)
-				.map(Term::<Integer> get)
-				.sorted()
-				.collect(Collectors.toList());
-		assertThat(values).containsExactly(1, 2);
-	}
+	// ---- the propagator identity ----
 
 	@Test
 	public void aPropagatorIsItsNameOverItsTerms() {
@@ -142,6 +75,59 @@ public class ProjectionTest {
 		assertThat(store.getConstraints()).hasSize(1);
 	}
 
+	// ---- renaming ----
+
+	@Test
+	public void renamingByWalkDropsSpentEntries() {
+		// normalization at answer capture: entries whose var walks to a value
+		// are spent bookkeeping (verified when they bound) and fall away;
+		// live entries keep their names
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
+		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
+				.withDomain(varOf(y), dom(7, 8));
+		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
+
+		FiniteDomainConstraints normalized = store.rename(Renaming.walking(bound));
+		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
+		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
+	}
+
+	@Test
+	public void renamingIntoTargetsMintsSharedFreshVars() {
+		// replay: seeded correspondences apply, unseeded vars mint fresh ones
+		// (the ∃) — and ONE Renaming shared by both applications keeps a
+		// shared local the same variable on both sides
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> w = lvar();
+		Unifiable<Integer> a = lvar();
+		Propagator coupling = keeper(x, w);
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
+		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
+				.withDomain(varOf(w), dom(2, 3))
+				.prepend(coupling);
+
+		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
+		seed.put(varOf(x), a);
+		Renaming renaming = Renaming.into(seed);
+
+		FiniteDomainConstraints renamed = store.rename(renaming);
+		assertThat(renamed.getDomain(a).get()).isEqualTo(dom(1, 2));
+		assertThat(renamed.getDomain(varOf(w)).isDefined()).isFalse();
+
+		// w went somewhere fresh — and a SECOND application of the same
+		// renaming sends w to the SAME fresh var
+		Propagator renamedCoupling = renamed.getConstraints().head();
+		Term<?> mintedW = renamedCoupling.watchedTerms().get(1);
+		assertThat(mintedW.asVar().isDefined()).isTrue();
+		assertThat(mintedW).isNotEqualTo(w);
+		assertThat(renaming.apply(w)).isSameAs(mintedW);
+		assertThat(renamedCoupling.watchedTerms().get(0)).isEqualTo(a);
+	}
+
+	// ---- the canonical namespace: keys ----
+
 	@Test
 	public void projectReadsKnowledgePositionally() {
 		Unifiable<Integer> x = lvar();
@@ -151,28 +137,84 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
 				.withDomain(varOf(y), dom(7, 8));
 
-		DomainResidue residue = store.project(Arrays.asList(varOf(x), varOf(y)), true);
-		assertThat(residue.getSlots().get(0).get()).isEqualTo(dom(1, 2, 3));
-		assertThat(residue.getSlots().get(1).get()).isEqualTo(dom(7, 8));
+		FiniteDomainConstraints keyed = store.project(Arrays.asList(varOf(x), varOf(y)));
+		assertThat(keyed.getDomain(Hole.of(0)).get()).isEqualTo(dom(1, 2, 3));
+		assertThat(keyed.getDomain(Hole.of(1)).get()).isEqualTo(dom(7, 8));
 
-		// unconstrained var: absent slot = ⊤; order is the caller's
-		DomainResidue sparse = store.project(Arrays.asList(varOf(z), varOf(y)), true);
-		assertThat(sparse.getSlots().containsKey(0)).isFalse();
-		assertThat(sparse.getSlots().get(1).get()).isEqualTo(dom(7, 8));
+		// unconstrained var: absent name = ⊤; order is the caller's
+		FiniteDomainConstraints sparse = store.project(Arrays.asList(varOf(z), varOf(y)));
+		assertThat(sparse.getDomain(Hole.of(0)).isDefined()).isFalse();
+		assertThat(sparse.getDomain(Hole.of(1)).get()).isEqualTo(dom(7, 8));
 	}
 
 	@Test
-	public void restateReimposesTheProjectedKnowledge() {
+	public void aCoveredCouplingProjectsCanonically() {
+		// every watched var supplied: the coupling rides the key as the same
+		// NAME over the slot holes — comparable across packages
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
+		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
+				.withDomain(varOf(y), dom(1, 2, 3))
+				.prepend(keeper(x, y, lval(4)));
+
+		FiniteDomainConstraints keyed = store.project(Arrays.asList(varOf(x), varOf(y)));
+		assertThat(keyed.getConstraints()).hasSize(1);
+		Propagator carried = keyed.getConstraints().head();
+		assertThat(carried.watchedTerms()).containsExactly(Hole.of(0), Hole.of(1), lval(4));
+	}
+
+	@Test
+	public void splitFactorsLosslessly() {
+		// (covered, remainder) with _1 ∧ _2 = this: the escaping coupling and
+		// the foreign domain land in the remainder — the CALLER decides what
+		// to do with it (keys discard; nothing is ever silently widened here)
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> w = lvar();
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
+		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
+				.withDomain(varOf(w), dom(2, 3))
+				.prepend(keeper(x, w, lval(6)));
+
+		Tuple2<FiniteDomainConstraints, FiniteDomainConstraints> halves =
+				store.split(Arrays.asList(varOf(x)));
+		assertThat(halves._1.getDomain(varOf(x)).isDefined()).isTrue();
+		assertThat(halves._1.getConstraints()).isEmpty();
+		assertThat(halves._2.getDomain(varOf(w)).isDefined()).isTrue();
+		assertThat(halves._2.getConstraints()).hasSize(1);
+		assertThat(halves._1.meet(halves._2)).isEqualTo(store);
+	}
+
+	@Test
+	public void projectionIsCanonicalAcrossPostings() {
+		// one store state projects equal keys twice, and an INDEPENDENT
+		// same-shaped post projects the same key: name over slots, no lineage
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
+		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
+				.prepend(keeper(x, y));
+
+		FiniteDomainConstraints first = store.project(Arrays.asList(varOf(x), varOf(y)));
+		FiniteDomainConstraints again = store.project(Arrays.asList(varOf(x), varOf(y)));
+		assertThat(first).isEqualTo(again);
+
+		FiniteDomainConstraints reposted = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
+				.prepend(keeper(x, y));
+		assertThat(reposted.project(Arrays.asList(varOf(x), varOf(y))))
+				.isEqualTo(first);
+	}
+
+	// ---- stated: the store as a re-expressible goal ----
+
+	@Test
+	public void aStatedStoreReimposesItsKnowledge() {
 		Unifiable<Integer> x = lvar();
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p);
-		DomainResidue residue = store.project(Arrays.asList(varOf(x)), true);
 
-		// restated onto a FRESH var, the knowledge constrains it identically:
-		// solving enumerates exactly the projected domain
-		Unifiable<Integer> fresh = lvar();
-		List<Integer> values = residue.restate(Arrays.<Unifiable<?>> asList(fresh))
-				.solve(fresh)
+		List<Integer> values = store.stated()
+				.solve(x)
 				.map(Term::<Integer> get)
 				.sorted()
 				.collect(Collectors.toList());
@@ -180,65 +222,9 @@ public class ProjectionTest {
 	}
 
 	@Test
-	public void emptyResidueRestatesToSuccess() {
-		Unifiable<Integer> fresh = lvar();
-		FiniteDomainConstraints store = FiniteDomainConstraints.empty();
-		DomainResidue residue = store.project(Arrays.asList(varOf(fresh)), true);
-
-		List<Integer> values = residue.restate(Arrays.<Unifiable<?>> asList(fresh))
-				.and(Constraints.unify(fresh, lval(5)))
-				.solve(fresh)
-				.map(Term::<Integer> get)
-				.collect(Collectors.toList());
-		assertThat(values).containsExactly(5);
-	}
-
-	@Test
-	public void aCoveredCouplingIsCarriedAsItsLiveObject() {
-		// every watched var supplied: the propagator itself rides the residue
-		// with its (var → slot) map — under either strength
-		Unifiable<Integer> x = lvar();
-		Unifiable<Integer> y = lvar();
-		Propagator coupling = keeper(x, y, lval(4));
-		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
-		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
-				.withDomain(varOf(y), dom(1, 2, 3))
-				.prepend(coupling);
-
-		DomainResidue wide = store.project(Arrays.asList(varOf(x), varOf(y)), true);
-		DomainResidue exact = store.project(Arrays.asList(varOf(x), varOf(y)), false);
-		assertThat(wide.getCarried()).hasSize(1);
-		assertThat(exact.getCarried()).hasSize(1);
-		CarriedConstraint carried = wide.getCarried().head();
-		assertThat(carried.getPropagator()).isSameAs(coupling);
-		assertThat(carried.getVarSlots()).hasSize(2);   // grounds need no entry
-	}
-
-	@Test
-	public void anEscapingCouplingDropsByPermissionOrThrows() {
-		// one watched var unsupplied: dropped silently under wideningAllowed,
-		// refused loudly when exactness was demanded
-		Unifiable<Integer> x = lvar();
-		Unifiable<Integer> w = lvar();
-		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
-		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
-				.prepend(keeper(x, w, lval(6)));
-
-		DomainResidue widened = store.project(Arrays.asList(varOf(x)), true);
-		assertThat(widened.getCarried()).isEmpty();
-		assertThat(widened.getSlots().get(0).get()).isEqualTo(dom(1, 2, 3));
-
-		assertThatThrownBy(() -> store.project(Arrays.asList(varOf(x)), false))
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("escapes");
-	}
-
-	@Test
-	public void carriedIdentityIsTheNameOverTheVars() {
-		// one store state (e.g. down a recursion) yields EQUAL residues, and
-		// so does an INDEPENDENT post of the same relation on the same vars:
-		// same knowledge, stated twice — carried couplings compare by value
-		// (name over terms), not by which posting minted the object
+	public void seedingRestatesTheKeyOntoTheCallVars() {
+		// master seeding: the canonical key renamed back onto the call vars
+		// and stated — the seeded store holds the constraint BY VALUE
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Propagator posted = keeper(x, y);
@@ -246,21 +232,17 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.prepend(posted);
 
-		DomainResidue first = store.project(Arrays.asList(varOf(x), varOf(y)), true);
-		DomainResidue again = store.project(Arrays.asList(varOf(x), varOf(y)), true);
-		assertThat(first).isEqualTo(again);
-
-		FiniteDomainConstraints reposted = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
-				.prepend(keeper(x, y));
-		assertThat(reposted.project(Arrays.asList(varOf(x), varOf(y)), true))
-				.isEqualTo(first);
+		FiniteDomainConstraints keyed = store.project(Arrays.asList(varOf(x), varOf(y)));
+		FiniteDomainConstraints seeded = keyed.rename(
+				Renaming.ofSlots(Arrays.<Term<?>> asList(x, y)));
+		assertThat(seeded.getConstraints().head()).isEqualTo(posted);
+		assertThat(seeded.getDomain(varOf(x)).get()).isEqualTo(dom(1, 2));
 	}
 
 	@Test
-	public void aCarriedCouplingReplaysAsAFreshInstanceOverTheGivenVars() {
-		// the residue is a schema: replay registers the propagator rebuilt to
-		// watch the given vars — the constraint applies to THEM, and the
-		// original watched vars stay independent (no aliasing)
+	public void aReplayedCouplingConstrainsTheTargetsNotTheOriginals() {
+		// replay is a renaming: the constraint applies to the target vars,
+		// and the original vars stay independent (no aliasing)
 		Unifiable<Integer> orig = lvar();
 		Propagator notSeven = Propagator.of(FiniteDomainConstraints.class, "not_seven",
 				Arrays.<Term<?>> asList(orig), (terms, pkg) -> {
@@ -269,48 +251,24 @@ public class ProjectionTest {
 							? Verdict.fail()
 							: Verdict.keep();
 				});
-		CarriedConstraint carried = CarriedConstraint.of(notSeven,
-				Array.of(Tuple.of(varOf(orig), 0)));
-		DomainResidue residue = DomainResidue.of(HashMap.empty(), HashSet.of(carried));
+		FiniteDomainConstraints store =
+				(FiniteDomainConstraints) FiniteDomainConstraints.empty().prepend(notSeven);
 
 		Unifiable<Integer> fresh = lvar();
-		assertThat(residue.restate(Arrays.<Unifiable<?>> asList(fresh))
+		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
+		seed.put(varOf(orig), fresh);
+		assertThat(store.rename(Renaming.into(seed)).stated()
 				.and(Constraints.unify(fresh, lval(7)))
 				.solve(fresh)
 				.count()).isEqualTo(0);
-		assertThat(residue.restate(Arrays.<Unifiable<?>> asList(fresh))
+
+		Unifiable<Integer> fresh2 = lvar();
+		java.util.Map<LVar<?>, Term<?>> seed2 = new java.util.HashMap<>();
+		seed2.put(varOf(orig), fresh2);
+		assertThat(store.rename(Renaming.into(seed2)).stated()
 				.and(Constraints.unify(orig, lval(7)))
-				.and(Constraints.unify(fresh, lval(3)))
-				.solve(fresh)
+				.and(Constraints.unify(fresh2, lval(3)))
+				.solve(fresh2)
 				.count()).isEqualTo(1);
-	}
-
-	@Test
-	public void restatingOntoTheWatchedVarsReactivatesTheLiveObject() {
-		// an identity renaming yields the identical instance: the master
-		// seeding its body from the key re-activates the carried object
-		// itself, so a recursive call projects the SAME object and its key
-		// lands in the same table entry
-		Unifiable<Integer> x = lvar();
-		Unifiable<Integer> y = lvar();
-		Propagator posted = keeper(x, y, lval(4));
-		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
-		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
-				.withDomain(varOf(y), dom(1, 2, 3))
-				.prepend(posted);
-
-		DomainResidue residue = store.project(Arrays.asList(varOf(x), varOf(y)), true);
-		List<Integer> seen = new ArrayList<>();
-		residue.restate(Arrays.<Unifiable<?>> asList(x, y))
-				.and(pkg -> {
-					FiniteDomainConstraints seeded = FiniteDomainConstraints.getFDStore(pkg);
-					seen.add(seeded.getConstraints().exists(c -> c == posted) ? 1 : 0);
-					return Goal.success().apply(pkg);
-				})
-				.and(Constraints.unify(x, lval(1)))
-				.and(Constraints.unify(y, lval(3)))
-				.solve(x)
-				.count();
-		assertThat(seen).containsExactly(1);
 	}
 }

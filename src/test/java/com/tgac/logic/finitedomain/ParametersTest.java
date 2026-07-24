@@ -64,7 +64,7 @@ public class ParametersTest {
 		List<Package> collect = Utils.collect(EnforceConstraintsFD.forceAns(i)
 				.apply(Package.empty().withStore(
 						FiniteDomainConstraints.of(
-								LinkedHashMap.<LVar<?>, Domain<?>> empty()
+								LinkedHashMap.<Term<?>, Domain<?>> empty()
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
 								HashSet.empty()))));
 
@@ -83,7 +83,7 @@ public class ParametersTest {
 		List<Package> collect = Utils.collect(
 				EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
 						.apply(Package.empty().withStore(FiniteDomainConstraints.of(
-								LinkedHashMap.<LVar<?>, Domain<?>> empty()
+								LinkedHashMap.<Term<?>, Domain<?>> empty()
 										.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
 										.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
 								HashSet.empty()))));
