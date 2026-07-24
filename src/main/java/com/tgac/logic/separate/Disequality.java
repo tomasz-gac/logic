@@ -237,8 +237,10 @@ public class Disequality {
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
-	/** A live record's pairs under their LVar roots — the store invariant
-	 * keeps every LHS an unbound var on the live side. */
+	/**
+	 * A live record's pairs under their LVar roots — the store invariant
+	 * keeps every LHS an unbound var on the live side.
+	 */
 	private static HashMap<LVar<?>, Term<?>> varKeyed(HashMap<Term<?>, Term<?>> separate) {
 		HashMap<LVar<?>, Term<?>> keyed = HashMap.empty();
 		for (Tuple2<Term<?>, Term<?>> pair : separate) {

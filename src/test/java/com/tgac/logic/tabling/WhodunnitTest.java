@@ -22,8 +22,8 @@ import io.vavr.Tuple;
 import io.vavr.Tuple1;
 import io.vavr.collection.Array;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Test;
 
 /**
@@ -39,19 +39,19 @@ import org.junit.Test;
  * Three mechanisms carry this program, and each is load-bearing:
  *
  * 1. TABLING. The route runs through a CYCLE: every lap of the ring is
- *    another derivation, so the untabled query has infinitely many proofs —
- *    the first test shows the stream never drying. Tabled, the ring seals
- *    at five rooms.
+ * another derivation, so the untabled query has infinitely many proofs —
+ * the first test shows the stream never drying. Tabled, the ring seals
+ * at five rooms.
  * 2. REGION KEYS. The recursive reach call happens under live FD domains
- *    (and, inside the investigation, under the coroner's constraints) —
- *    the wall that stood here before TCLP refused any tabled call under a
- *    non-empty constraint store.
+ * (and, inside the investigation, under the coroner's constraints) —
+ * the wall that stood here before TCLP refused any tabled call under a
+ * non-empty constraint store.
  * 3. WITNESS LOCALS. The murder hour is a body local: it rides each cached
- *    answer as an existential with its domain and couplings. The cook is
- *    cached "guilty GIVEN some hour" — her multiplication law waits — and
- *    is acquitted only at consumption, when labelling her witness finds no
- *    hour fitting both laws. Before stage 2.5, a constraint reaching a
- *    body local was refused at the answer.
+ * answer as an existential with its domain and couplings. The cook is
+ * cached "guilty GIVEN some hour" — her multiplication law waits — and
+ * is acquitted only at consumption, when labelling her witness finds no
+ * hour fitting both laws. Before stage 2.5, a constraint reaching a
+ * body local was refused at the answer.
  */
 public class WhodunnitTest {
 
@@ -131,7 +131,7 @@ public class WhodunnitTest {
 		Unifiable<Integer> room = lvar();
 		List<Integer> rooms = reachableFromGarden().apply(Tuple.of(room))
 				.solve(room)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.distinct()
 				.sorted()
 				.collect(Collectors.toList());
@@ -147,7 +147,7 @@ public class WhodunnitTest {
 		Unifiable<Integer> who = lvar();
 		List<Integer> culprits = investigation.apply(Tuple.of(who))
 				.solveFrom(p, who, BreadthFirstScheduler::new)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.distinct()
 				.collect(Collectors.toList());
 		assertThat(culprits).containsExactly(3);

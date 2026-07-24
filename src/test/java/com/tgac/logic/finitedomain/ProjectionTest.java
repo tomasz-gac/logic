@@ -23,8 +23,8 @@ import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Test;
 
 public class ProjectionTest {
@@ -256,7 +256,7 @@ public class ProjectionTest {
 
 		List<Integer> values = Propagation.absorb(store)
 				.solve(x)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.sorted()
 				.collect(Collectors.toList());
 		assertThat(values).containsExactly(1, 2);

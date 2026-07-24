@@ -32,7 +32,6 @@ import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.collection.Map;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -251,17 +250,21 @@ public class Tabling {
 		}
 	}
 
-	/** The delivery unification through the public entry — a helper so the
+	/**
+	 * The delivery unification through the public entry — a helper so the
 	 * two-Unifiable overload resolves (with {@code T = Object} the
-	 * {@code (Unifiable<T>, T)} overload would be applicable too). */
+	 * {@code (Unifiable<T>, T)} overload would be applicable too).
+	 */
 	private static <T> Goal unifyArgs(Unifiable<T> args, Unifiable<T> instantiated) {
 		return Constraints.unify(args, instantiated);
 	}
 
-	/** Every answer factor renamed through ONE shared mint and re-stated —
+	/**
+	 * Every answer factor renamed through ONE shared mint and re-stated —
 	 * seeded holes go to the instantiation's fresh vars, everything else
 	 * (body locals) mints fresh per delivery: the existential. Ground answers
-	 * have no factors and the goal is success. */
+	 * have no factors and the goal is success.
+	 */
 	private static Goal restateAll(AnswerKey key, java.util.List<LVar<?>> freshHoles) {
 		if (key.getResidues().isEmpty()) {
 			return Goal.success();

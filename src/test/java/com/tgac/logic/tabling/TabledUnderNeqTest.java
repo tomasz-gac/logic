@@ -15,8 +15,8 @@ import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
-import java.util.stream.Collectors;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.Test;
 
 public class TabledUnderNeqTest {
@@ -59,14 +59,14 @@ public class TabledUnderNeqTest {
 		List<Integer> constrained = Disequality.separate(x, lval(2))
 				.and(gen.apply(Tuple.of(x)))
 				.solveFrom(p, x, BreadthFirstScheduler::new)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.collect(Collectors.toList());
 		assertThat(constrained).containsExactly(1);
 
 		Unifiable<Integer> z = lvar();
 		List<Integer> free = gen.apply(Tuple.of(z))
 				.solveFrom(p, z, BreadthFirstScheduler::new)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.sorted()
 				.collect(Collectors.toList());
 		assertThat(free).containsExactly(1, 2);

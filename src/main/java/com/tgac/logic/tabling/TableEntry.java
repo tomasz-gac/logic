@@ -4,16 +4,11 @@ package com.tgac.logic.tabling;
 // ABOUTME: production ledger (what is still working for it), behind one facade.
 
 import com.tgac.functional.algebra.IdempotentSemiring;
-import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Region;
-import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.Tuple3;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 

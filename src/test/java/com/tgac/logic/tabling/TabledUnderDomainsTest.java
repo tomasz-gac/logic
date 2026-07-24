@@ -7,13 +7,11 @@ import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
-import com.tgac.logic.finitedomain.Domain;
-import io.vavr.collection.Array;
 import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
@@ -22,6 +20,7 @@ import io.vavr.Tuple;
 import io.vavr.Tuple1;
 import io.vavr.Tuple2;
 import io.vavr.Tuple4;
+import io.vavr.collection.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -64,7 +63,7 @@ public class TabledUnderDomainsTest {
 		List<Integer> values = FiniteDomain.dom(x, dom(1, 2, 3))
 				.and(gen.apply(Tuple.of(x)))
 				.solve(x)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.sorted()
 				.collect(Collectors.toList());
 
@@ -132,7 +131,7 @@ public class TabledUnderDomainsTest {
 				.and(unify(x, lval(2)))
 				.and(gen.apply(Tuple.of(x)))
 				.solve(x)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.collect(Collectors.toList());
 
 		assertThat(values).containsExactly(2);
@@ -149,7 +148,7 @@ public class TabledUnderDomainsTest {
 
 		List<Integer> values = vague.apply(Tuple.of(x))
 				.solve(x)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.sorted()
 				.collect(Collectors.toList());
 		assertThat(values).containsExactly(1, 2, 3);
@@ -184,7 +183,7 @@ public class TabledUnderDomainsTest {
 		List<Integer> values = FiniteDomain.dom(x, dom(2, 3))
 				.and(vague.apply(Tuple.of(x)))
 				.solve(x)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.sorted()
 				.collect(Collectors.toList());
 		assertThat(values).containsExactly(2, 3);
@@ -202,7 +201,7 @@ public class TabledUnderDomainsTest {
 
 		List<Integer> values = gen.apply(Tuple.of(x))
 				.solve(x)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.sorted()
 				.collect(Collectors.toList());
 		assertThat(values).containsExactly(1, 2, 3);
@@ -225,7 +224,7 @@ public class TabledUnderDomainsTest {
 
 		List<Integer> values = throughLocal.apply(Tuple.of(x))
 				.solve(x)
-				.map(Term::<Integer> get)
+				.map(Term::<Integer>get)
 				.sorted()
 				.collect(Collectors.toList());
 		assertThat(values).containsExactly(1, 2, 3);   // ∃w∈{1,2,3}: x+w=4

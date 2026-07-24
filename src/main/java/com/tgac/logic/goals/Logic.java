@@ -12,7 +12,6 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.unification.LList;
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;

@@ -4,8 +4,8 @@ import static com.tgac.logic.unification.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
 import org.junit.Test;
 

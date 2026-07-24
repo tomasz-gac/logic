@@ -60,7 +60,6 @@ public interface ConstraintStore extends Store {
 		return Fiber.done(Revision.unchanged());
 	}
 
-
 	/**
 	 * Render this store's residual constraints into the reified answer: after the
 	 * answer term is renamed, each store attaches whatever still constrains it —

@@ -3,8 +3,8 @@ package com.tgac.logic.tabling.subsumption;
 // ABOUTME: Herbrand pattern subsumption over reified terms: one-way instance
 // ABOUTME: matching, holes binding consistently — the retrieval's precision layer.
 
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;

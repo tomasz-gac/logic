@@ -1,8 +1,8 @@
 package com.tgac.logic.separate;
 
+import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Reified;
-import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;

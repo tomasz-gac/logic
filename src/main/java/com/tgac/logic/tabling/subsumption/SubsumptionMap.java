@@ -4,8 +4,8 @@ package com.tgac.logic.tabling.subsumption;
 // ABOUTME: a discrimination trie prunes candidates, Subsumption.subsumes decides.
 
 import com.tgac.functional.index.ImmutableIndex;
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;

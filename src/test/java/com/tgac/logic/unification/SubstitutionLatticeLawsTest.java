@@ -4,7 +4,6 @@ package com.tgac.logic.unification;
 // ABOUTME: up to solved form — the engine's core state under the same algebra.
 
 import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.laws.LawCoverage;
@@ -37,7 +36,7 @@ public class SubstitutionLatticeLawsTest {
 	};
 
 	private static <T> LVar<T> var() {
-		return LVar.<T>lvar().asVar().get();
+		return LVar.<T> lvar().asVar().get();
 	}
 
 	@Test

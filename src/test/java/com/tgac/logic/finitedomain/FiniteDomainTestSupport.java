@@ -9,8 +9,6 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.Tuple;
-import io.vavr.collection.Array;
 import java.util.Collections;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;

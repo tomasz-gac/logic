@@ -9,11 +9,9 @@ import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
-import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
-import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
@@ -124,8 +122,10 @@ class NeqConstraints implements Projectable<NeqConstraints> {
 		return true;
 	}
 
-	/** Records with their names translated through the renaming — LHS names
-	 * map like any other (live var ↔ canonical hole), RHS terms map deeply. */
+	/**
+	 * Records with their names translated through the renaming — LHS names
+	 * map like any other (live var ↔ canonical hole), RHS terms map deeply.
+	 */
 	@Override
 	public NeqConstraints rename(Renaming renaming) {
 		return NeqConstraints.of(LinkedHashSet.ofAll(constraints.map(record -> {
@@ -154,8 +154,10 @@ class NeqConstraints implements Projectable<NeqConstraints> {
 		return false;
 	}
 
-	/** Wholesale re-verification IS this store's normal form — records are
-	 * re-checked and simplified against the state, violated records fail. */
+	/**
+	 * Wholesale re-verification IS this store's normal form — records are
+	 * re-checked and simplified against the state, violated records fail.
+	 */
 	@Override
 	public Fiber<Revision> normalize(Package state) {
 		return Fiber.done(Disequality.verifyAndSimplify(constraints.toList(), state.substitution())
