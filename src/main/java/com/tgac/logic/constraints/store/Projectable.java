@@ -4,7 +4,8 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: with rename and split — keys, seeding and answer replay are compositions.
 
 import com.tgac.functional.algebra.MeetSemilattice;
-import com.tgac.logic.goals.Goal;
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import io.vavr.Tuple2;
 import java.util.List;
@@ -59,6 +60,19 @@ public interface Projectable<S extends Projectable<S>> extends ConstraintStore, 
 	 * {@link Renaming#ofSlots} convert live↔canonical.
 	 */
 	S rename(Renaming renaming);
+
+	/**
+	 * The ARRIVAL half of the boundary capability ({@link #split} and
+	 * {@link #rename} are the departure half): a whole factor was met into
+	 * this store ({@code Propagation.absorb}) — the trigger family's third
+	 * row, after bindings ({@code revise}) and single items ({@code stated}).
+	 * Re-establish normal form against {@code state}: re-verify what the meet
+	 * brought in (a violated record or an out-of-domain binding FAILS), take
+	 * first examinations, run the internal fixpoint. Same scheduling and
+	 * routing contract as {@code revise}. A met factor answers no queries
+	 * before its normalization ran — meet is completed by normalize.
+	 */
+	Fiber<Revision> normalize(Package state);
 
 	/**
 	 * This store's knowledge about {@code vars} in canonical names, slot i ↔

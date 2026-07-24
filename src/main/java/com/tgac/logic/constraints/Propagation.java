@@ -10,6 +10,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Goal;
@@ -95,7 +96,7 @@ public final class Propagation {
 	 * from its key and replays an answer's delta.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public static Goal absorb(ConstraintStore factor) {
+	public static Goal absorb(Projectable<?> factor) {
 		return p -> {
 			if (factor.isEmpty()) {
 				return Cont.just(p);
@@ -363,9 +364,9 @@ public final class Propagation {
 
 		/** A factor was met into its store — the owning store re-normalizes. */
 		static final class Absorbed extends Item {
-			final ConstraintStore factor;
+			final Projectable<?> factor;
 
-			Absorbed(ConstraintStore factor) {
+			Absorbed(Projectable<?> factor) {
 				this.factor = factor;
 			}
 
@@ -373,7 +374,7 @@ public final class Propagation {
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> factor.getClass() == cs.getClass() ?
-								cs.normalize(p) :
+								((Projectable<?>) cs).normalize(p) :
 								Fiber.done(Revision.unchanged()));
 			}
 
