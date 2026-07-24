@@ -126,10 +126,10 @@ public class FiniteDomain {
 	 * and queues its first examination; wakes re-examine the same parked object
 	 * against the live state (constraint-kernel.md).
 	 */
-	private static <T> Goal fdConstraint(Array<Unifiable<T>> us,
+	private static <T> Goal fdConstraint(String name, Array<Unifiable<T>> us,
 			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
 		return p -> Propagation.activate(
-						Propagator.of(FiniteDomainConstraints.class, us, body))
+						Propagator.of(FiniteDomainConstraints.class, name, us, body))
 				.apply(FiniteDomainConstraints.register(p));
 	}
 
@@ -186,7 +186,7 @@ public class FiniteDomain {
 	}
 
 	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
-		return fdConstraint(
+		return fdConstraint("leq",
 				Array.of(less, more),
 				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1))
@@ -222,7 +222,7 @@ public class FiniteDomain {
 	}
 
 	static <T> Goal addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return fdConstraint(
+		return fdConstraint("add",
 				Array.of(a, b, rhs),
 				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
@@ -274,7 +274,7 @@ public class FiniteDomain {
 	}
 
 	static <T> Goal mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return fdConstraint(
+		return fdConstraint("mul",
 				Array.of(a, b, rhs),
 				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
@@ -369,7 +369,7 @@ public class FiniteDomain {
 	}
 
 	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
-		return fdConstraint(
+		return fdConstraint("separate",
 				Array.of(l, r),
 				(watched, s) -> letDomain(s, FiniteDomain.<T> typed(watched))
 						.map(ds -> Tuple.of(ds.get(0), ds.get(1)))

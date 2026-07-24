@@ -37,7 +37,7 @@ public class ParametersTest {
 						(m, t) -> m.put(t._1, t._2));
 
 		Propagator constraint = Propagator.of(
-				FiniteDomainConstraints.class,
+				FiniteDomainConstraints.class, "keep",
 				Arrays.asList(prefix.get()._1),
 				(watched, st) -> Verdict.keep());
 

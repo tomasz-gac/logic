@@ -27,7 +27,7 @@ public class FiniteDomainConstraintsLawsTest {
 
 	private static final LVar<?> X = (LVar<?>) lvar().asVar().get();
 	private static final LVar<?> Y = (LVar<?>) lvar().asVar().get();
-	private static final Propagator KEEP = Propagator.of(FiniteDomainConstraints.class,
+	private static final Propagator KEEP = Propagator.of(FiniteDomainConstraints.class, "keep",
 			Collections.singletonList(X), (watched, state) -> Verdict.keep());
 
 	@Test

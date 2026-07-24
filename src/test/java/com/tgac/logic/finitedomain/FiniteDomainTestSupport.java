@@ -28,7 +28,7 @@ public final class FiniteDomainTestSupport {
 	/** A slot-0 carried keeper over a fresh var — identity-distinct per call. */
 	public static CarriedConstraint keeperCarried() {
 		LVar<?> x = (LVar<?>) lvar().asVar().get();
-		Propagator keeper = Propagator.of(FiniteDomainConstraints.class,
+		Propagator keeper = Propagator.of(FiniteDomainConstraints.class, "keep",
 				Collections.<Term<?>> singletonList(x), (watched, state) -> Verdict.keep());
 		return CarriedConstraint.of(keeper, Array.of(Tuple.of(x, 0)));
 	}

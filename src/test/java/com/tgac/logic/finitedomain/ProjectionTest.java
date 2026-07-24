@@ -38,8 +38,40 @@ public class ProjectionTest {
 	}
 
 	private static Propagator keeper(Unifiable<?>... watched) {
-		return Propagator.of(FiniteDomainConstraints.class,
+		return Propagator.of(FiniteDomainConstraints.class, "keep",
 				Arrays.<Term<?>> asList(watched), (terms, pkg) -> Verdict.keep());
+	}
+
+	@Test
+	public void aPropagatorIsItsNameOverItsTerms() {
+		// value equality (storeClass, name, watched): a constraint is "which
+		// relation over which terms" — the body is determined by the name.
+		// Renamed instances of one post compare equal, and so do two
+		// independent posts of the same relation on the same vars: the same
+		// knowledge, stated twice (idempotent re-posting)
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Propagator posted = keeper(x, y);
+
+		assertThat(posted.watching(Array.of(x, y))).isEqualTo(posted);
+		assertThat(keeper(x, y)).isEqualTo(posted);
+
+		Unifiable<Integer> z = lvar();
+		assertThat(keeper(x, z)).isNotEqualTo(posted);
+		assertThat(Propagator.of(FiniteDomainConstraints.class, "other",
+				Arrays.<Term<?>> asList(x, y), (terms, pkg) -> Verdict.keep()))
+				.isNotEqualTo(posted);
+	}
+
+	@Test
+	public void statingTheSameConstraintTwiceIsOnePropagator() {
+		// the MeetSemilattice doctrine made structural: duplicate posts merge
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.empty()
+				.prepend(keeper(x, y))
+				.prepend(keeper(x, y));
+		assertThat(store.getConstraints()).hasSize(1);
 	}
 
 	@Test
@@ -134,10 +166,11 @@ public class ProjectionTest {
 	}
 
 	@Test
-	public void carriedIdentityIsTheStoreObjectNotTheShape() {
-		// one store state (e.g. down a recursion) yields EQUAL residues — the
-		// literal same propagator object; an independent same-shaped post is
-		// incomparable: a conservative false that costs reuse, never soundness
+	public void carriedIdentityIsTheNameOverTheVars() {
+		// one store state (e.g. down a recursion) yields EQUAL residues, and
+		// so does an INDEPENDENT post of the same relation on the same vars:
+		// same knowledge, stated twice — carried couplings compare by value
+		// (name over terms), not by which posting minted the object
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Propagator posted = keeper(x, y);
@@ -152,7 +185,7 @@ public class ProjectionTest {
 		FiniteDomainConstraints reposted = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.prepend(keeper(x, y));
 		assertThat(reposted.project(Arrays.asList(varOf(x), varOf(y)), true))
-				.isNotEqualTo(first);
+				.isEqualTo(first);
 	}
 
 	@Test
@@ -161,7 +194,7 @@ public class ProjectionTest {
 		// watch the given vars — the constraint applies to THEM, and the
 		// original watched vars stay independent (no aliasing)
 		Unifiable<Integer> orig = lvar();
-		Propagator notSeven = Propagator.of(FiniteDomainConstraints.class,
+		Propagator notSeven = Propagator.of(FiniteDomainConstraints.class, "not_seven",
 				Arrays.<Term<?>> asList(orig), (terms, pkg) -> {
 					Term<?> watched = pkg.walk(terms.get(0));
 					return watched.isVal() && Integer.valueOf(7).equals(watched.get())
