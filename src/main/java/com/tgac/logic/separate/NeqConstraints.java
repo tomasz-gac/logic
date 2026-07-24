@@ -8,11 +8,14 @@ import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
+import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.LVal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
@@ -131,6 +134,40 @@ class NeqConstraints implements Projectable<NeqResidue>, MeetSemilattice<NeqCons
 			slots = slots.put(((Hole<?>) lhs).getNumber(), rhs);
 		}
 		return slots;
+	}
+
+	/** Records with their vars translated through the renaming: LHS vars stay
+	 * vars (the store invariant keeps them unbound), RHS terms map deeply. */
+	@Override
+	public NeqConstraints rename(Renaming renaming) {
+		return NeqConstraints.of(LinkedHashSet.ofAll(constraints.map(record -> {
+			HashMap<LVar<?>, Term<?>> renamed = HashMap.empty();
+			for (Tuple2<LVar<?>, Term<?>> pair : record.getSeparate()) {
+				renamed = renamed.put(
+						(LVar<?>) renaming.apply(pair._1).asVar().get(),
+						renaming.apply(pair._2));
+			}
+			return NeqConstraint.of(renamed);
+		})));
+	}
+
+	@Override
+	public Goal stated() {
+		Goal all = Goal.success();
+		for (NeqConstraint record : constraints) {
+			all = Conjunction.of(all, statedRecord(record));
+		}
+		return all;
+	}
+
+	private static Goal statedRecord(NeqConstraint record) {
+		java.util.List<Object> lhs = new java.util.ArrayList<>();
+		java.util.List<Object> rhs = new java.util.ArrayList<>();
+		for (Tuple2<LVar<?>, Term<?>> pair : record.getSeparate()) {
+			lhs.add(pair._1);
+			rhs.add(pair._2);
+		}
+		return Disequality.<java.util.List<Object>> separate(LVal.lval(lhs), LVal.lval(rhs));
 	}
 
 	/** Iterative structural scan — deep spines must not recurse. */

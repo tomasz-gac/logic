@@ -9,11 +9,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -40,6 +42,72 @@ public class ProjectionTest {
 	private static Propagator keeper(Unifiable<?>... watched) {
 		return Propagator.of(FiniteDomainConstraints.class, "keep",
 				Arrays.<Term<?>> asList(watched), (terms, pkg) -> Verdict.keep());
+	}
+
+	@Test
+	public void renamingByWalkDropsSpentEntries() {
+		// normalization at answer capture: entries whose var walks to a value
+		// are spent bookkeeping (verified when they bound) and fall away;
+		// live entries keep their names
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
+		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
+				.withDomain(varOf(y), dom(7, 8));
+		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
+
+		FiniteDomainConstraints normalized =
+				(FiniteDomainConstraints) store.rename(Renaming.walking(bound));
+		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
+		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
+	}
+
+	@Test
+	public void renamingIntoTargetsMintsSharedFreshVars() {
+		// replay: seeded correspondences apply, unseeded vars mint fresh ones
+		// (the ∃) — and ONE Renaming shared by both applications keeps a
+		// shared local the same variable on both sides
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> w = lvar();
+		Unifiable<Integer> a = lvar();
+		Propagator coupling = keeper(x, w);
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
+		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
+				.withDomain(varOf(w), dom(2, 3))
+				.prepend(coupling);
+
+		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
+		seed.put(varOf(x), a);
+		Renaming renaming = Renaming.into(seed);
+
+		FiniteDomainConstraints renamed = (FiniteDomainConstraints) store.rename(renaming);
+		assertThat(renamed.getDomain(varOf(a)).get()).isEqualTo(dom(1, 2));
+		assertThat(renamed.getDomain(varOf(w)).isDefined()).isFalse();
+
+		// w went somewhere fresh — and a SECOND application of the same
+		// renaming sends w to the SAME fresh var
+		Propagator renamedCoupling = renamed.getConstraints().head();
+		Term<?> mintedW = renamedCoupling.watchedTerms().get(1);
+		assertThat(mintedW.asVar().isDefined()).isTrue();
+		assertThat(mintedW).isNotEqualTo(w);
+		assertThat(renaming.apply(w)).isSameAs(mintedW);
+		assertThat(renamedCoupling.watchedTerms().get(0)).isEqualTo(a);
+	}
+
+	@Test
+	public void aStatedStoreReimposesItsKnowledge() {
+		// stated() is the store as a re-expressible goal: domains post, the
+		// couplings activate — restate = rename then stated
+		Unifiable<Integer> x = lvar();
+		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
+		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p);
+
+		List<Integer> values = store.stated()
+				.solve(x)
+				.map(Term::<Integer> get)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(values).containsExactly(1, 2);
 	}
 
 	@Test

@@ -5,11 +5,14 @@ import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.functional.algebra.MonotoneDrain;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.reflection.Types;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.finitedomain.domains.Empty;
+import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
@@ -17,6 +20,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Unifiable;
 import io.vavr.Predicates;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -332,6 +336,34 @@ class FiniteDomainConstraints implements ConstraintStore,
 			// else: dropped by permission — the caller declared widening sound
 		}
 		return DomainResidue.of(slots, carried);
+	}
+
+	/** Domains re-keyed through the renaming — an entry whose var resolves to
+	 * a value is spent bookkeeping (verified when it bound) and drops;
+	 * propagators re-watch their renamed terms. */
+	@Override
+	public FiniteDomainConstraints rename(Renaming renaming) {
+		LinkedHashMap<LVar<?>, Domain<?>> renamedDomains = LinkedHashMap.empty();
+		for (Tuple2<LVar<?>, Domain<?>> entry : domains) {
+			Term<?> target = renaming.apply(entry._1);
+			if (target.asVar().isDefined()) {
+				renamedDomains = renamedDomains.put((LVar<?>) target.asVar().get(), entry._2);
+			}
+		}
+		HashSet<Propagator> renamedConstraints = constraints.map(p ->
+				p.watching(p.watchedTerms().map(renaming::apply)));
+		return FiniteDomainConstraints.of(renamedDomains, renamedConstraints);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Goal stated() {
+		Goal posts = domains.foldLeft(Goal.success(), (goal, entry) ->
+				Conjunction.of(goal, FiniteDomain.dom(
+						(Unifiable<Object>) entry._1, (Domain<Object>) entry._2)));
+		return constraints.foldLeft(posts, (goal, propagator) ->
+				Conjunction.of(goal, p -> Propagation.activate(propagator)
+						.apply(register(p))));
 	}
 
 	/**

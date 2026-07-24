@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
@@ -150,6 +151,46 @@ public class NeqProjectionTest {
 				.and(Constraints.unify(f2, lval(3)))
 				.and(Constraints.unify(g2, lval(4)))
 				.solve(f2)
+				.count()).isEqualTo(1);
+	}
+
+	@Test
+	public void renamingRecordsFollowsTheSharedRenaming() {
+		// a record's vars translate through the given Renaming — seeded vars
+		// to their targets, unseeded vars to minted fresh ones shared with
+		// any other store applying the same renaming
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> w = lvar();
+		Unifiable<Integer> a = lvar();
+		NeqConstraints neq = store(record(varOf(x), w));
+
+		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
+		seed.put(varOf(x), a);
+		Renaming renaming = Renaming.into(seed);
+
+		NeqConstraints renamed = (NeqConstraints) neq.rename(renaming);
+		NeqConstraint only = renamed.getConstraints().head();
+		assertThat(only.getSeparate().containsKey(varOf(a))).isTrue();
+		Term<?> mintedW = only.getSeparate().get(varOf(a)).get();
+		assertThat(mintedW.asVar().isDefined()).isTrue();
+		assertThat(mintedW).isNotEqualTo(w);
+		assertThat(renaming.apply(w)).isSameAs(mintedW);
+	}
+
+	@Test
+	public void aStatedStoreReimposesItsRecords() {
+		// stated() re-verifies each record against the target state like a
+		// freshly posted disequality
+		Unifiable<Integer> x = lvar();
+		NeqConstraints neq = store(record(varOf(x), lval(5)));
+
+		assertThat(neq.stated()
+				.and(Constraints.unify(x, lval(5)))
+				.solve(x)
+				.count()).isEqualTo(0);
+		assertThat(neq.stated()
+				.and(Constraints.unify(x, lval(6)))
+				.solve(x)
 				.count()).isEqualTo(1);
 	}
 

@@ -4,6 +4,7 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: and re-impose one — the projection half of tabled constraints.
 
 import com.tgac.functional.algebra.PartialOrder;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import java.util.List;
@@ -54,6 +55,24 @@ public interface Projectable<R extends Residue<R>> extends ConstraintStore {
 	 * refusal the store's to raise (tabled-constraints.md §5.1).
 	 */
 	R project(List<LVar<?>> vars, boolean wideningAllowed);
+
+	/**
+	 * This store's knowledge under changed variable names — the SAME sort
+	 * (live names to live names): {@link Renaming#walking} normalizes at a
+	 * boundary crossing (entries whose var resolves to a value are spent and
+	 * drop), {@link Renaming#into} retargets at replay (unseeded vars mint
+	 * fresh — the existential). The store IS a residue over its own names;
+	 * restatement is {@code rename(r).stated()}.
+	 */
+	Projectable<R> rename(Renaming renaming);
+
+	/**
+	 * This store as a re-expressible goal: impose every item it holds through
+	 * the PUBLIC statement entries, so the knowledge propagates like freshly
+	 * stated constraints (first examination, watchers, cascade) and
+	 * re-verifies against the target state.
+	 */
+	Goal stated();
 
 	/**
 	 * No LIVE knowledge remains under {@code state} — everything this store
