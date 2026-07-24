@@ -4,8 +4,6 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: with rename and split — keys, seeding and answer replay are compositions.
 
 import com.tgac.functional.algebra.MeetSemilattice;
-import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import io.vavr.Tuple2;
 import java.util.List;
@@ -24,8 +22,10 @@ import java.util.List;
  * </pre>
  *
  * Imposition is the DRIVER's: {@code Propagation.absorb(factor)} meets the
- * factor into its resident store and queues {@link ConstraintStore#normalize}
- * — the store owns what normal means, the driver owns statement.
+ * factor into its resident store and queues {@link Absorbable#normalize} —
+ * the store owns what normal means, the driver owns statement. The ARRIVAL
+ * half is {@link Absorbable}, a capability of its own (bulk-loadable does
+ * not imply table-compatible); this interface adds the DEPARTURE half.
  *
  * Comparison (subsumption keys, entailment matching, dedup) is the lattice
  * order the store already has; a hole-named store compares structurally
@@ -42,7 +42,7 @@ import java.util.List;
  * can ascend forever on adversarial programs — the author's responsibility,
  * exactly like tabling an unbounded generator.
  */
-public interface Projectable<S extends Projectable<S>> extends ConstraintStore, MeetSemilattice<S> {
+public interface Projectable<S extends Projectable<S>> extends Absorbable<S> {
 
 	/**
 	 * Lossless factoring: (the knowledge expressible over {@code vars}, the
@@ -60,19 +60,6 @@ public interface Projectable<S extends Projectable<S>> extends ConstraintStore, 
 	 * {@link Renaming#ofSlots} convert live↔canonical.
 	 */
 	S rename(Renaming renaming);
-
-	/**
-	 * The ARRIVAL half of the boundary capability ({@link #split} and
-	 * {@link #rename} are the departure half): a whole factor was met into
-	 * this store ({@code Propagation.absorb}) — the trigger family's third
-	 * row, after bindings ({@code revise}) and single items ({@code stated}).
-	 * Re-establish normal form against {@code state}: re-verify what the meet
-	 * brought in (a violated record or an out-of-domain binding FAILS), take
-	 * first examinations, run the internal fixpoint. Same scheduling and
-	 * routing contract as {@code revise}. A met factor answers no queries
-	 * before its normalization ran — meet is completed by normalize.
-	 */
-	Fiber<Revision> normalize(Package state);
 
 	/**
 	 * This store's knowledge about {@code vars} in canonical names, slot i ↔
