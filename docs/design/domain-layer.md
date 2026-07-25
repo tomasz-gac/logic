@@ -7,7 +7,7 @@ layer. The thesis is Out of the Tar Pit's, with the machinery to cash it:
 relation; reads are projections of the fact base and writes are absorptions
 into it — one algebra** (`split`/`rename` depart, `meet`/`normalize`
 arrive; constraint-kernel.md has the store contracts, lattice.md §5a the
-theory). Status: DESIGN. The build list is §7 (the seam §5, versioning §6); the driving example is
+theory). Status: DESIGN. The build list is §8 (the seam §5, versioning §6, execution §7); the driving example is
 chosen and everything else is expressed against it.
 
 ## 1. The driving example: caveated authorization
@@ -146,6 +146,8 @@ judgment). The pipeline:
 
     log ─► FactSource ─► absorb ─► base facts ─► tabled derived relations
         ─► standing queries with PARKED consumers ─► derived events out
+            (execution model: §7 — realized as per-watermark reruns of
+             cold one-shot solves; the resident driver is parked)
 
 **The parked-consumer machinery is an incremental view-maintenance
 engine**: an arriving event flows through the fixpoint and wakes exactly
@@ -235,14 +237,30 @@ one call `employee(id, name, dept)` passes through them in order:
    delivery detail; Fiber.external (#64) makes it a suspension.
    Orthogonal to all of the above.
 
-The two apparent enlargements are compositions, not interface growth:
+One apparent enlargement is a composition, not interface growth:
 CONSTRAINED ROWS (a column holding a canonical factor, §4.4) change the
 row's TYPE — delivery must be rename+absorb instead of unify — not the
-seam; and the UNENDING SOURCE (the log, §4.5) breaks exactly one thing,
-per-pattern completeness, so the streaming species is a SEPARATE, LATER
-extension whose only addition is the offset declaration ("complete up to
-N") that seal-at-offset consumes. FactSource proper stays finite,
-pull-based, pldb-pure.
+seam. The other apparent enlargement is a CATEGORY ERROR, corrected:
+**FactSource has no streaming species — logs are not sources.** A log
+answers exactly one question ("what's after offset N?"); the seam's
+value is answering ARBITRARY questions (the walked pattern, residues as
+predicates, count for the optimizer) — and "implement rows(pattern) by
+scanning the topic" is a parody, not an implementation. The industry
+name is STREAM–TABLE DUALITY: a stream is a table's changelog, a table
+is a stream's materialization, and queries go to tables, always:
+
+    topic (transport, ordered, unqueryable)
+      │  consumed by a MATERIALIZER — an adapter, never the engine
+      ▼
+    materialization (a DB table via a sink connector; an in-engine
+                     row-set factor absorbed per wave, #61)
+      │  fronted by FactSource: rows/count/modes/pin
+      ▼
+    the solve — which never sees the log at all
+
+The log's offset SURVIVES the demotion: the materialization's `pin()`
+token is "applied through offset N". FactSource stays finite,
+pull-based, pldb-pure — with no exceptions at all.
 
 ## 6. Versioning: epochs, pins, and the rest of the world
 
@@ -362,8 +380,176 @@ the rest of the world does not grant consistency — the engine converts
 that into VISIBLE, CHECKABLE staleness instead of invisible, hoped-for
 freshness.
 
-## 7. Build list (dependency order — this IS the pldb phase plan)
+### 6.5 Snapshot mechanics: one pin per solve
 
+The pin is per-SOLVE, not per-answer. At solve start (or lazily at each
+source's first touch) the source pins and the handle joins a solve-scoped
+`Snapshots` store — the Table pattern: a plain Packaged citizen, invisible
+to propagation. All reads go through the handles; answers carry no stamps
+in memory (they would all carry the same one — the vector is a property of
+the solve, ambient). The stamp materializes only where something LEAVES
+the solve: the client response (one vector per reply — the consistency
+token) and the persisted entry (one vector per entry).
+
+The pin is not an added luxury: TABLING ALREADY IMPOSES SNAPSHOT
+SEMANTICS, implicitly. The first call to a source-backed relation caches
+what its fetch saw; every later call is served from the entry — the
+extension is frozen at an accidental instant, per relation, uncoordinated.
+`pin()` takes the snapshot the Table was already taking and makes it
+declared, simultaneous across sources, and reportable.
+
+The seal's certificate is against the composite: `sealed@{source→token}`,
+complete fixpoint over the facts visible in that vector. "Up to N" is a
+property of COMPONENTS, not the vector: an offset component is ordered
+(reuse composes — a reader pinned ≥ N warm-starts and consumes the tail);
+a mutable component is an equality point (reuse demands ==, no "up to").
+One log collapses the vector to a single ordered component. Stamping
+starts COARSE (the whole solve's vector per entry — sound,
+over-invalidates); the per-entry dependency footprint is the refinement,
+evidence-gated like every sharpening in this engine.
+
+## 7. Execution at the boundary: the engine stays cold
+
+The correction that shapes everything here: reactive-streams territory —
+per-item demand, error propagation, cancellation, backpressure — is NOT
+where the engine belongs, and it does not need to go there.
+
+**Solve is cold and pull-based, and that is load-bearing.** The answer
+stream's `tryAdvance` drives the scheduler: no pull, no work — request(1)
+semantics by construction. A one-shot solve has perfect backpressure,
+error = exception to the caller, resources scoped to the call. Preserve
+this property; do not build a hot engine.
+
+**Effects never live in goals.** A goal is a semiring element — the
+optimizer's whole license is reorder/factor/price, and a side-effecting
+goal is not reorderable; worse, goals run per derivation branch (a branch
+that emits then fails has published a lie) and respawned consumers re-run
+continuations (per-respawn double-fire). The boundary is already the
+effect seam: sources are adapters IN (FactSource), sinks are adapters OUT
+— the solve returns stamped answers and the SUBSCRIBER does IO.
+Transactional produce, retries, outbox: the adapter's problem, solved
+with the infrastructure's own tools.
+
+**The execution model for live data: a reactive runtime outside, the
+engine as a pure function inside.**
+
+    reactive pipeline (backpressure, errors, disposal — its job)
+        per batch/watermark:  poll log → advance materialization (§5) →
+                              pin@offset → one-shot solve (warm) →
+                              stamped answer SET out
+
+The WAVE is the honest demand unit: per-answer backpressure inside a
+fixpoint is not honorable (a propagation cascade is as big as it is);
+inter-wave flow control is natural because both edges pull (a Kafka poll
+IS demand). This is batch processing at watermark granularity, said
+plainly.
+
+**The law that defines correctness**: a standing evaluation at watermark
+V is observationally equivalent to a fresh one-shot solve pinned at V.
+V1 IS rerun-per-pin — zero new semantics, correct by construction,
+blunted by warm starts. A resident "standing driver" (cursors preserved
+across waves, re-arming aggregates, notify-not-kill barrier seals) is
+PARKED as a possible optimization behind the same pure interface, with an
+explicit admission test: (a) measured rerun cost a real workload cannot
+bear, AND (b) designed demand, error and cancellation semantics. Note
+what rerun-per-pin dodges: a resident driver's operator state is parked
+continuations — CLOSURES, which cannot be checkpointed; stateful
+streaming engines built their hardest machinery (aligned barriers,
+atomic state snapshots) precisely because their operator state is not
+reconstructible. Ours is: log + pure function; the cache is an
+accelerator, never consistency-critical state.
+
+### 7.1 Exactly-once: the adapter transacts, purity does the rest
+
+    loop { begin txn
+           batch   = consumer.poll()                  // offsets (N, M]
+           answers = solve(query, pin@M, warm)        // PURE, deterministic
+           producer.send(stamped answers)
+           producer.sendOffsetsToTransaction(M)       // offsets+outputs atomic
+           commit }
+
+Crash → abort → redeliver → the solve REPRODUCES the outputs
+(determinism). Two obligations and one liberation:
+
+- **determinism of answer SETS** is the leaned-on property (answer ORDER
+  under parallel schedulers varies; the adapter emits waves as
+  canonically-ordered sets, or downstream dedups on (key, stamp)). This
+  wants its own pin, template: the scheduler-equivalence suite.
+- event IDs belong in fact terms (entry dedup is by answer identity; two
+  genuine equal payments must be distinct answers) — the counting
+  discipline of §4.5.
+- **the memo store needs NO transactional coordination: it is a cache of
+  THEOREMS.** An entry stamped @M is a true statement about the prefix
+  ≤ M regardless of consumer-group commit state; aborted waves re-derive
+  identical entries; content-addressed writes make re-persisting a no-op.
+  The cache may run ahead of the committed offset harmlessly. Only the
+  classic pair — offsets + output topic — is atomic, and Kafka
+  transactions cover exactly that pair natively.
+
+This loop is §6.3's rung 3 GENERALIZED — poll the world forward, convert
+to ordered observations, solve pure per pin, record how far you read
+atomically with what you emitted. One pattern, one parameter: WHO
+MAINTAINS THE LOG (the broker: Kafka, cost zero; CDC: the changelog
+manufactured from the WAL; raw REST: you build it — the ingestion log).
+`sendOffsetsToTransaction` is Kafka-specific sugar for the universal
+obligation; the general form is the OUTBOX: one transaction over
+(observations, cursor, outputs).
+
+**Division of labor, decided:** base facts (EDB) land by COMMODITY
+plumbing — a Connect JDBC sink into Postgres, `pin()` on LSN, the
+FactSource SQL adapter unmodified; doing this "with logic" adds risk and
+nothing else. Derived relations (IDB) are materialized BY THE ENGINE —
+per-watermark solves persisting sealed answers back into tables ordinary
+SQL clients can also read — because that layer is what nothing on the
+shelf can express: a MATERIALIZED VIEW WHOSE ROWS ARE CONDITIONAL
+(recursive closure with caveats, witnesses, entailment-deduped). We
+compete with the streaming-SQL products (ksqlDB, Materialize et al.)
+nowhere and complement them everywhere: they keep plain views fresh —
+including true incremental retraction, the hard math we deliberately
+skip — we produce the views SQL cannot define. Kafka itself stays
+SPINE, NOT FACE: never a query surface, but the durable ordered source
+of truth, the replay substrate every re-epoch and rebuild presupposes,
+and the authority the pins are borrowed from.
+
+### 7.2 Warm starts: the in-memory ladder first
+
+Between waves and retries IN ONE PROCESS, before any persistence:
+
+1. **Retry at the same pin = share the Package.** Shipped behavior
+   (every shared-package solveFrom does it): the retried solve finds
+   masters run and answers cached; retry costs ≈ emission. No
+   coordination with the aborted transaction — theorems again.
+2. **Advancing the pin = `Table.advance()`** — the one small new
+   feature: per entry, clear the seal, reset the master flag, KEEP the
+   answer set as a dedup seed; rebuild fresh entry shells (regions and
+   ledgers are per-solve runtime — the answers are the durable part, the
+   counters never were). Next solve re-runs masters, source entries
+   fetch only the tail, re-derived answers bounce off the insert-guard,
+   nonmonotone reads wait for the new seal. Sound because monotone. A
+   pin field on Table guards misuse (assert solve pin == table pin
+   unless advanced).
+3. **Mutable component changed = drop the table.** `Table.empty()` is
+   the in-memory epoch.
+
+ACROSS RESTARTS, the persistence tiers (each optional, each gated):
+T1 — persist SOURCE entries only (ground tuples: trivial marshal, no
+registry) — avoids re-fetching history; derived layers recompute in
+memory from warm base facts; small effort, dominant win (IO rules).
+T2 — persist sealed DERIVED entries for exact-stamp reuse (as-of/audit,
+repeated queries, cross-process): needs the marshal gaps — durable
+relation names, `Renaming.canonicalizing` (witness locals mint HOLES at
+persist, not lvars), hole-keyed `into` seeding at load, the name→body
+registry, an `onSealed` write-behind. Each small, together bounded.
+T3 — incremental extension of warm derived entries (≥-reuse plus tail):
+semi-naive across solves = delta rules = bodies as data — GATED ON
+GOALS-AS-DATA, indefinitely deferrable; T1+T2 with in-memory
+recomputation approximates it wherever IO dominated.
+
+## 8. Build list (dependency order — this IS the pldb phase plan)
+
+0. **In-memory table reuse** (§7.2): the pin field and retry-at-pin
+   assertion; `Table.advance()` (fresh entry shells, answers as dedup
+   seeds); drop-table epoch — the enabling step for per-wave reruns.
 1. **Capture-solve** (§3): produce's path public; small; first `AnswerKey`
    consumer outside tabling.
 2. **#59/#60 FactSource**: the SEAM of §5 — rows/count/modes plus
@@ -375,8 +561,8 @@ freshness.
    its front door — the store the theory seat predicted
    (lattice.md §5a, branches-as-data).
 4. **#64 Fiber.external**: the REST/injection seam (designed, unbuilt).
-5. **Standing solve**: a scheduler mode idling on injection instead of
-   declaring exhaustion — most of it is #64's wait-for theory.
+5. **Determinism pin**: per-pin answer-SET determinism across schedulers
+   (§7.1 leans on it) — template: the scheduler-equivalence suite.
 6. **Seal-at-offset** (§4.5): the barrier generalization of completion
    detection (table-completion.md).
 7. **#68 suspensions × tabled calls**: this workload trips it immediately
@@ -385,7 +571,7 @@ freshness.
    with windows and limits; Postgres behind; `check`/`list`/`explain` in
    front; each item above lands against it, not against toys.
 
-## 8. Non-goals and limits
+## 9. Non-goals and limits
 
 - **Not an ORM, not a general database**: base facts live in real stores;
   the engine is the derived layer and the write-admission layer.
@@ -399,7 +585,7 @@ freshness.
   (counting projections, provenance for `explain`) but is NOT assumed by
   anything above.
 
-## 9. Where knowledge lives
+## 10. Where knowledge lives
 
 constraint-kernel.md (store contracts, absorb's triggers) ·
 tabled-constraints.md (regions, witnesses, consumption) · lattice.md §5a
