@@ -148,6 +148,15 @@ public class Tabling {
 					}
 					TableEntry<Object> entry = table.getOrCreateEntry(key);
 					if (entry.tryBecomeMaster()) {
+						// the key cannot represent a parked suspension and the
+						// caller-agnostic body must not inherit one — refuse loudly;
+						// consuming an existing entry under one stays legal (the
+						// caller's copy ripens through its own chokepoint)
+						if (Propagation.suspensionsPending(callerPkg)) {
+							throw new IllegalStateException(
+									"a tabled call cannot become master under parked suspensions: "
+											+ "the call key cannot see them and the body must not inherit them");
+						}
 						// the ANONYMOUS MASTER: the body runs as detached work billed
 						// to this entry — it belongs to no caller. Every caller, the
 						// first included, reads the cell as a consumer; the sleeper it
@@ -352,6 +361,13 @@ public class Tabling {
 						"a goal inside a tabled body dropped its stores: packages must be "
 								+ "derived from the incoming one, never minted fresh "
 								+ "(the body's EnclosingCall coat is missing or foreign)");
+			}
+			// a parked suspension is a condition the answer still owes; the
+			// AnswerKey cannot carry it, so caching now would drop the debt
+			if (Propagation.suspensionsPending(answerPkg)) {
+				throw new IllegalStateException(
+						"an answer may not leave a tabled body while suspensions pend: "
+								+ "the owed condition cannot ride the answer");
 			}
 			return MiniKanren.reifyWithHoles(answerPkg.substitution(), argsTerm.getObjectTerm())
 					.flatMap(reified -> {
