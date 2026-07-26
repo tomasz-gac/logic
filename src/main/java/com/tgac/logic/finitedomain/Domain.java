@@ -32,7 +32,6 @@ public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Option<Object> asPoint() {
 		return this instanceof Singleton ?
 				Option.of(((Singleton<T>) this).getValue().getValue()) :
