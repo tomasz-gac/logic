@@ -1,10 +1,10 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.functional.algebra.Bottomed;
-import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;
 import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.finitedomain.domains.Singleton;
+import io.vavr.control.Option;
 import java.util.stream.Stream;
 import lombok.EqualsAndHashCode;
 
@@ -13,13 +13,30 @@ import lombok.EqualsAndHashCode;
  * wiped domain, entailment derived from the meet — the equal-domain
  * termination guard has been computing {@code leq} since before it had the
  * name. Laws pinned by AlgebraicLawCoverageTest across all subclasses.
+ * The capability record ({@code lattice.Domain}) answers membership by
+ * {@link #contains} and collapse by the {@link Singleton} case; stabilization
+ * keeps the default exact equality — finite descent.
  */
 @EqualsAndHashCode
-public abstract class Domain<T> implements MeetSemilattice<Domain<T>>, Bottomed {
+public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<T>> {
 
 	@Override
 	public Domain<T> meet(Domain<T> other) {
 		return intersect(other);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public boolean admits(Object ground) {
+		return contains((T) ground);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Option<Object> asPoint() {
+		return this instanceof Singleton ?
+				Option.of(((Singleton<T>) this).getValue().getValue()) :
+				Option.none();
 	}
 
 	/**

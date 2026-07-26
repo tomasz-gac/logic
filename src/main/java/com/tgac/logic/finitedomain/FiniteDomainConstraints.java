@@ -101,23 +101,6 @@ class FiniteDomainConstraints extends LatticeStore<Domain<Object>, FiniteDomainC
 	}
 
 	@Override
-	protected boolean admits(Domain<Object> value, Object ground) {
-		return value.contains(ground);
-	}
-
-	@Override
-	protected Option<Object> asPoint(Domain<Object> value) {
-		return value instanceof Singleton ?
-				Option.of(((Singleton<Object>) value).getValue().getValue()) :
-				Option.none();
-	}
-
-	@Override
-	protected boolean stabilized(Domain<Object> previous, Domain<Object> next) {
-		return next.equals(previous);
-	}
-
-	@Override
 	public <T> Goal enforce(Term<T> x) {
 		return EnforceConstraintsFD.enforceConstraints(x);
 	}

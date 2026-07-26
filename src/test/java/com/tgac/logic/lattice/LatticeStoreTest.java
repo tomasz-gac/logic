@@ -6,8 +6,6 @@ package com.tgac.logic.lattice;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.functional.algebra.Bottomed;
-import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Goal;
@@ -28,12 +26,13 @@ import org.junit.Test;
  * arbitrary values — meet is intersection, a point is a size-one set. Everything
  * asserted here (ground verification, narrowing, collapse to an inferred
  * binding, named propagators waking on their terms, split and canonical rename)
- * is inherited machinery; the instance supplies only its capability record.
+ * is inherited machinery; the component lattice carries its capability record
+ * and the store supplies only its construction seams.
  */
 public class LatticeStoreTest {
 
 	/** The component lattice: a finite set of admissible values. */
-	static final class FlatSet implements MeetSemilattice<FlatSet>, Bottomed {
+	static final class FlatSet implements Domain<FlatSet> {
 		final HashSet<Object> values;
 
 		private FlatSet(HashSet<Object> values) {
@@ -60,6 +59,16 @@ public class LatticeStoreTest {
 		}
 
 		@Override
+		public boolean admits(Object ground) {
+			return values.contains(ground);
+		}
+
+		@Override
+		public Option<Object> asPoint() {
+			return values.size() == 1 ? Option.of(values.head()) : Option.none();
+		}
+
+		@Override
 		public boolean equals(Object o) {
 			return o instanceof FlatSet && values.equals(((FlatSet) o).values);
 		}
@@ -75,7 +84,7 @@ public class LatticeStoreTest {
 		}
 	}
 
-	/** The store: nothing but the capability record. */
+	/** The store: nothing but its construction seams. */
 	static final class FlatConstraints extends LatticeStore<FlatSet, FlatConstraints> {
 		private static final FlatConstraints EMPTY =
 				new FlatConstraints(LinkedHashMap.empty(), HashSet.empty());
@@ -98,21 +107,6 @@ public class LatticeStoreTest {
 		@Override
 		protected FlatConstraints bottomStore() {
 			return BOTTOM;
-		}
-
-		@Override
-		protected boolean admits(FlatSet value, Object ground) {
-			return value.values.contains(ground);
-		}
-
-		@Override
-		protected Option<Object> asPoint(FlatSet value) {
-			return value.values.size() == 1 ? Option.of(value.values.head()) : Option.none();
-		}
-
-		@Override
-		protected boolean stabilized(FlatSet previous, FlatSet next) {
-			return next.equals(previous);
 		}
 
 		@Override

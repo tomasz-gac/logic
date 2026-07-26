@@ -6,7 +6,6 @@ package com.tgac.logic.lattice;
 import static com.tgac.logic.unification.LVal.lval;
 
 import com.tgac.functional.algebra.Bottomed;
-import com.tgac.functional.algebra.MeetSemilattice;
 import com.tgac.functional.algebra.MonotoneDrain;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -44,13 +43,12 @@ import java.util.stream.StreamSupport;
  * or a canonical Hole — carrying a value of the component lattice {@code L},
  * plus the propagator kernel (named, value-equal, watched, cascaded, deduped).
  * Pointwise meet, slotwise leq, revise/normalize/stated, split and rename are
- * all inherited; a concrete store supplies its CAPABILITY RECORD — the
- * admission test of §2: {@link #admits} (revise's verification),
- * {@link #asPoint} (collapse to an inferred binding), {@link #stabilized}
- * (the termination guard policy) — and its construction seams {@link #create}
- * and {@link #bottomStore}.
+ * all inherited; the value's capability record ({@link Domain}) supplies
+ * verification, collapse and the termination guard, and a concrete store
+ * supplies only its construction seams {@link #create} and
+ * {@link #bottomStore} plus its {@code enforce}.
  */
-public abstract class LatticeStore<L extends MeetSemilattice<L> & Bottomed, S extends LatticeStore<L, S>>
+public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L, S>>
 		implements Projectable<S>, Bottomed {
 
 	// entries keyed by NAME: a live LVar or a canonical Hole
@@ -72,20 +70,6 @@ public abstract class LatticeStore<L extends MeetSemilattice<L> & Bottomed, S ex
 	 */
 	protected abstract S bottomStore();
 
-	/** Does a ground value lie in {@code value}? Revise's verification. */
-	protected abstract boolean admits(L value, Object ground);
-
-	/** The single value {@code value} has collapsed to, if any — an inferred binding. */
-	protected abstract Option<Object> asPoint(L value);
-
-	/**
-	 * The termination guard of wake-on-narrowing: is {@code next} no new
-	 * knowledge over {@code previous}? Finite descent answers exact equality;
-	 * infinite chains (reals) answer an ε/widening policy. Do not weaken it —
-	 * re-examination is licensed only by strict narrowing.
-	 */
-	protected abstract boolean stabilized(L previous, L next);
-
 	@SuppressWarnings("unchecked")
 	private S self() {
 		return (S) this;
@@ -104,7 +88,7 @@ public abstract class LatticeStore<L extends MeetSemilattice<L> & Bottomed, S ex
 	 * pointwise (a missing name is ⊤), propagators by set union — more
 	 * constraints is more knowledge, smaller region, lower. The cascade
 	 * still terminates against this order: values strictly narrow (the
-	 * {@link #stabilized} guard) and discharge only ever REMOVES propagators
+	 * {@link Domain#stabilized} guard) and discharge only ever REMOVES propagators
 	 * (knowledge gone redundant — the factor rises, the region stands).
 	 */
 	@Override
@@ -184,10 +168,9 @@ public abstract class LatticeStore<L extends MeetSemilattice<L> & Bottomed, S ex
 	 * consulted only for unbound variables), and anything else narrows the
 	 * factor with a re-examination note.
 	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
 	public Update update(Package state, Term<?> target, L value) {
 		if (target.isVal()) {
-			return admits(value, target.get()) ? Update.unchanged() : Update.fail();
+			return value.admits(target.get()) ? Update.unchanged() : Update.fail();
 		}
 		LVar<?> x = (LVar<?>) target.asVar().get();
 		L previous = values.get(x).getOrNull();
@@ -197,17 +180,17 @@ public abstract class LatticeStore<L extends MeetSemilattice<L> & Bottomed, S ex
 			if (effective.isBottom()) {
 				return Update.fail();
 			}
-			if (stabilized(previous, effective)) {
+			if (effective.stabilized(previous)) {
 				return Update.unchanged();
 			}
 		} else {
 			effective = value;
 		}
-		Option<Object> point = asPoint(effective);
+		Option<Object> point = effective.asPoint();
 		if (point.isDefined()) {
 			// only open variables collapse, so the mint succeeds; the defensive
 			// branch mirrors an already-bound no-op
-			return Prefix.binding(state.substitution(), (LVar) x, lval(point.get()))
+			return Prefix.binding(state.substitution(), x, lval(point.get()))
 					.<Update> map(prefix -> Update.applied(this).withInferred(prefix))
 					.getOrElse(Update.unchanged());
 		}
