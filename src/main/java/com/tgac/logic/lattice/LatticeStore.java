@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * The store residue that never mentions its value domain
@@ -48,6 +50,7 @@ import java.util.stream.StreamSupport;
  * supplies only its construction seams {@link #create} and
  * {@link #bottomStore} plus its {@code enforce}.
  */
+@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L, S>>
 		implements Projectable<S>, Bottomed {
 
@@ -55,11 +58,6 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	protected final LinkedHashMap<Term<?>, L> values;
 
 	protected final HashSet<Propagator> propagators;
-
-	protected LatticeStore(LinkedHashMap<Term<?>, L> values, HashSet<Propagator> propagators) {
-		this.values = values;
-		this.propagators = propagators;
-	}
 
 	/** The same store kind over different contents. */
 	protected abstract S create(LinkedHashMap<Term<?>, L> values, HashSet<Propagator> propagators);

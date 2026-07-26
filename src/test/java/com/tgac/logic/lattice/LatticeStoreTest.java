@@ -19,6 +19,7 @@ import io.vavr.control.Option;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.Value;
 import org.junit.Test;
 
 /**
@@ -32,12 +33,9 @@ import org.junit.Test;
 public class LatticeStoreTest {
 
 	/** The component lattice: a finite set of admissible values. */
-	static final class FlatSet implements Domain<FlatSet> {
-		final HashSet<Object> values;
-
-		private FlatSet(HashSet<Object> values) {
-			this.values = values;
-		}
+	@Value
+	static class FlatSet implements Domain<FlatSet> {
+		HashSet<Object> values;
 
 		static FlatSet of(Object... vs) {
 			return new FlatSet(HashSet.of(vs));
@@ -66,16 +64,6 @@ public class LatticeStoreTest {
 		@Override
 		public Option<Object> asPoint() {
 			return values.size() == 1 ? Option.of(values.head()) : Option.none();
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			return o instanceof FlatSet && values.equals(((FlatSet) o).values);
-		}
-
-		@Override
-		public int hashCode() {
-			return values.hashCode();
 		}
 
 		@Override

@@ -10,7 +10,10 @@ import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Array;
 import java.util.function.BiFunction;
+import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
  * The parked unit of the wake machinery (docs/design/constraint-kernel.md* §2.2). Extends {@link Stored} so park/remove route to the owning store without a
@@ -20,22 +23,14 @@ import lombok.EqualsAndHashCode;
  * remove-and-rerun.
  */
 @EqualsAndHashCode(of = {"storeClass", "name", "watchedTerms"})
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Propagator implements Stored {
 
+	@Getter
 	private final Class<? extends Store> storeClass;
 	private final String name;
 	private final Array<? extends Term<?>> watchedTerms;
 	private final BiFunction<Array<? extends Term<?>>, Package, Verdict> body;
-
-	private Propagator(Class<? extends Store> storeClass,
-			String name,
-			Array<? extends Term<?>> watchedTerms,
-			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
-		this.storeClass = storeClass;
-		this.name = name;
-		this.watchedTerms = watchedTerms;
-		this.body = body;
-	}
 
 	/**
 	 * A propagator from its owning store, name, watched terms and body. The
@@ -101,11 +96,6 @@ public final class Propagator implements Stored {
 			}
 		}
 		return false;
-	}
-
-	@Override
-	public Class<? extends Store> getStoreClass() {
-		return storeClass;
 	}
 
 	@Override
