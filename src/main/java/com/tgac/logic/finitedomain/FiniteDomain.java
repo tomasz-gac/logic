@@ -1,6 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Propagation;
@@ -72,41 +71,9 @@ public class FiniteDomain {
 		return 1;
 	}
 
+	@SuppressWarnings("unchecked")
 	private static Goal applyDom(Term<?> target, Domain<?> d) {
-		return s -> DomainUpdate
-				.apply(s, FiniteDomainConstraints.getFDStore(s), s.walk(target), d)
-				.<Cont<Package, Nothing>> match(
-						() -> Cont.complete(Nothing.nothing()),
-						() -> Cont.just(s),
-						applied -> {
-							Goal binds = applied.inferred().stream()
-									.map(Propagation::resolve)
-									.reduce(Goal.success(), Goal::and);
-							Goal wakes = applied.reexamine().stream()
-									.map(FiniteDomain::reexamineOwn)
-									.reduce(Goal.success(), Goal::and);
-							return binds.and(wakes).apply(s.putStore(applied.factor()));
-						});
-	}
-
-	/**
-	 * Statement-position re-examination of this domain's own watchers of
-	 * {@code x}: the store drains its cascade (a fiber — long cascades stay
-	 * fairly stepped) and the collapses it yields re-enter through the
-	 * chokepoint like any other inferred bindings.
-	 */
-	static Goal reexamineOwn(Term<?> x) {
-		return s -> Cont.defer(() -> FiniteDomainConstraints.reexamine(x, s)
-				.map(revision -> revision.<Cont<Package, Nothing>> match(
-						() -> Cont.complete(Nothing.nothing()),
-						() -> Cont.just(s),
-						upd -> {
-							Package updated = s.putStore(upd.factor());
-							return upd.inferred().stream()
-									.map(Propagation::resolve)
-									.reduce(Goal.success(), Goal::and)
-									.apply(updated);
-						})));
+		return FiniteDomainConstraints.empty().impose(target, (Domain<Object>) d);
 	}
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {

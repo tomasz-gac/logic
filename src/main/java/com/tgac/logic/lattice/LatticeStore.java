@@ -511,6 +511,11 @@ public abstract class LatticeStore<L extends MeetSemilattice<L> & Bottomed, S ex
 			return false;
 		}
 		LatticeStore<?, ?> that = (LatticeStore<?, ?>) o;
+		if (isBottom() || that.isBottom()) {
+			// ⊥ has exactly one representative per kind — identity, never structure,
+			// so an empty live store can never compare equal to the dead one
+			return false;
+		}
 		return values.equals(that.values) && propagators.equals(that.propagators);
 	}
 

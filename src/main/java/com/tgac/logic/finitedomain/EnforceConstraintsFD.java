@@ -68,7 +68,7 @@ class EnforceConstraintsFD {
 	}
 
 	private static Goal rerunConstraints(Term<?> x) {
-		return FiniteDomain.reexamineOwn(x);
+		return FiniteDomainConstraints.reexamine(x);
 	}
 
 	private static <T> Goal unifyWithAllDomainValues(Term<T> x, Domain<T> d) {

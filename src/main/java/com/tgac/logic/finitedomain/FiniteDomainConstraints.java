@@ -1,62 +1,48 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.functional.algebra.Bottomed;
-import com.tgac.functional.algebra.MonotoneDrain;
-import com.tgac.functional.fibers.Fiber;
+// ABOUTME: The finite-domain store: a LatticeStore over Domain values whose capability
+// ABOUTME: record is membership, singleton collapse and the equal-domain guard.
+
 import com.tgac.functional.reflection.Types;
-import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.store.Projectable;
-import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Revision;
-import com.tgac.logic.constraints.store.Suspension;
-import com.tgac.logic.finitedomain.domains.Empty;
+import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.lattice.Update;
-import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Stored;
-import com.tgac.logic.unification.LVar;
-import com.tgac.logic.unification.Prefix;
-import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.lattice.LatticeStore;
+import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.unification.Term;
-import io.vavr.Predicates;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-import lombok.RequiredArgsConstructor;
-import lombok.Value;
 
-@Value
-@RequiredArgsConstructor(staticName = "of")
-class FiniteDomainConstraints implements
-		Projectable<FiniteDomainConstraints>, Bottomed {
-	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
+/**
+ * The prototype {@link LatticeStore} instance (docs/design/lattice-store.md):
+ * component lattice {@link Domain} (meet = intersect), verification is
+ * membership, a {@link Singleton} collapses to an inferred binding, and the
+ * termination guard is exact domain equality — finite descent. Labelling
+ * ({@link EnforceConstraintsFD}) is this store's {@code enforce}.
+ */
+class FiniteDomainConstraints extends LatticeStore<Domain<Object>, FiniteDomainConstraints> {
+
+	private static final FiniteDomainConstraints EMPTY =
+			new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
 
 	// the canonical dead store: any-empty-domain meets normalize to it, and the
 	// cascade transitions to it on a failing update, so ⊥ IS the branch death
-	private static final LVar<?> SENTINEL = (LVar<?>) LVar.lvar().asVar().get();
-	private static final FiniteDomainConstraints BOTTOM = new FiniteDomainConstraints(
-			LinkedHashMap.of(SENTINEL, Empty.instance()), HashSet.empty());
+	private static final FiniteDomainConstraints BOTTOM =
+			new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
+
+	private FiniteDomainConstraints(LinkedHashMap<Term<?>, Domain<Object>> domains, HashSet<Propagator> constraints) {
+		super(domains, constraints);
+	}
+
+	@SuppressWarnings("unchecked")
+	static FiniteDomainConstraints of(LinkedHashMap<Term<?>, Domain<?>> domains, HashSet<Propagator> constraints) {
+		return new FiniteDomainConstraints((LinkedHashMap<Term<?>, Domain<Object>>) (LinkedHashMap<?, ?>) domains, constraints);
+	}
 
 	public static Package register(Package p) {
 		return p.withStore(EMPTY);
 	}
-
-	// cKanren domains — keyed by NAME: a live LVar or a canonical Hole
-	LinkedHashMap<Term<?>, Domain<?>> domains;
-
-	// cKanren constraints
-	HashSet<Propagator> constraints;
 
 	public static FiniteDomainConstraints empty() {
 		return EMPTY;
@@ -64,90 +50,6 @@ class FiniteDomainConstraints implements
 
 	static FiniteDomainConstraints bottom() {
 		return BOTTOM;
-	}
-
-	/**
-	 * The store as a product order in the KNOWLEDGE direction: domains
-	 * pointwise (a missing name is ⊤), propagators by set union — more
-	 * constraints is more knowledge, smaller region, lower. The cascade
-	 * still terminates against this order: domains strictly narrow (the
-	 * equal-domain guard) and discharge only ever REMOVES propagators
-	 * (knowledge gone redundant — the factor rises, the region stands).
-	 */
-	@Override
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	public FiniteDomainConstraints meet(FiniteDomainConstraints other) {
-		if (isBottom() || other.isBottom()) {
-			return BOTTOM;
-		}
-		LinkedHashMap<Term<?>, Domain<?>> met = domains;
-		for (Tuple2<Term<?>, Domain<?>> entry : other.domains) {
-			Domain<?> mine = met.get(entry._1).getOrNull();
-			Domain<?> narrowed = mine == null ? entry._2
-					: (Domain<?>) ((Domain) mine).meet((Domain) entry._2);
-			if (narrowed.isBottom()) {
-				return BOTTOM;
-			}
-			met = met.put(entry._1, narrowed);
-		}
-		return new FiniteDomainConstraints(met, constraints.union(other.constraints));
-	}
-
-	/**
-	 * Entailment checked slotwise, without materializing the meet: every
-	 * name {@code other} constrains must be at-least-as-narrow here, and
-	 * every constraint {@code other} holds must ride here too. The same
-	 * order the meet derives, at an early-exit, allocation-free cost —
-	 * subsumption keys, entailment matching and answer dedup all fold this.
-	 */
-	@Override
-	@SuppressWarnings("unchecked")
-	public boolean leq(FiniteDomainConstraints other) {
-		if (isBottom()) {
-			return true;
-		}
-		if (other.isBottom()) {
-			return false;
-		}
-		return other.domains.forAll(entry -> domains.get(entry._1)
-				.exists(mine -> ((Domain<Object>) mine).leq((Domain<Object>) entry._2)))
-				&& constraints.containsAll(other.constraints);
-	}
-
-	/**
-	 * Identity against the canonical instance: a live store never holds an
-	 * empty domain ({@link DomainUpdate} fails before storing one, and meet
-	 * short-circuits to {@link #BOTTOM}), so the dead store has exactly one
-	 * representative.
-	 */
-	@Override
-	public boolean isBottom() {
-		return this == BOTTOM;
-	}
-
-	@Override
-	public boolean isEmpty() {
-		return domains.isEmpty() && constraints.isEmpty();
-	}
-
-	@Override
-	public ConstraintStore remove(Stored c) {
-		return c instanceof Propagator ?
-				FiniteDomainConstraints.of(domains, constraints.remove((Propagator) c)) :
-				this;
-	}
-
-	@Override
-	public ConstraintStore prepend(Stored c) {
-		return c instanceof Propagator ?
-				FiniteDomainConstraints.of(domains, constraints.add((Propagator) c)) :
-				this;
-	}
-
-	@Override
-	public boolean contains(Stored c) {
-		return c instanceof Propagator &&
-				constraints.contains((Propagator) c);
 	}
 
 	public static FiniteDomainConstraints getFDStore(Package p) {
@@ -158,267 +60,65 @@ class FiniteDomainConstraints implements
 		return getFDStore(p).getDomain(x);
 	}
 
-	@Override
-	public <T> Goal enforce(Term<T> x) {
-		return EnforceConstraintsFD.enforceConstraints(x);
-	}
-
-	@Override
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	public Fiber<Revision> revise(Prefix prefix, Package state) {
-		// each newly bound value must lie in its variable's domain; a var-var
-		// binding aliases the two, so the domain follows the representative;
-		// every bound variable's watchers re-examine, then the cascade drains
-		FiniteDomainConstraints factor = this;
-		List<Prefix> inferred = new ArrayList<>();
-		List<Goal> runs = new ArrayList<>();
-		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
-			queue.add(binding._1);
-			Domain dom = (Domain) factor.getDomain((LVar) binding._1).getOrNull();
-			if (dom == null) {
-				continue;
-			}
-			factor = consume(DomainUpdate.apply(state, factor, state.walk(binding._2), dom),
-					factor, inferred, runs, queue);
-			if (factor == null) {
-				return Fiber.done(Revision.fail());
-			}
-			// the entry is spent the moment its verification passed (ground) or
-			// its domain followed the representative (alias) — prune it here,
-			// while we already hold it, so the factor never drifts
-			factor = FiniteDomainConstraints.of(
-					factor.domains.remove(binding._1), factor.constraints);
-		}
-		return cascade(state, factor, inferred, runs, queue);
-	}
-
-	/**
-	 * Wholesale self-reaction — a factor was met into this store
-	 * ({@link com.tgac.logic.constraints.Propagation#absorb}): entries whose
-	 * name no longer lives at its root verify against the binding (fail on
-	 * miss) or follow the representative, every propagator takes its first
-	 * examination against the met state, and the cascade drains.
-	 */
-	@Override
-	public Fiber<Revision> normalize(Package state) {
-		if (isBottom()) {
-			return Fiber.done(Revision.fail());
-		}
-		FiniteDomainConstraints factor = this;
-		List<Prefix> inferred = new ArrayList<>();
-		List<Goal> runs = new ArrayList<>();
-		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-		for (Tuple2<Term<?>, Domain<?>> entry : domains) {
-			Term<?> walked = state.walk(entry._1);
-			if (walked == entry._1) {
-				continue;    // live at its root
-			}
-			factor = consume(DomainUpdate.apply(state, factor, walked, entry._2),
-					factor, inferred, runs, queue);
-			if (factor == null) {
-				return Fiber.done(Revision.fail());
-			}
-			factor = FiniteDomainConstraints.of(
-					factor.domains.remove(entry._1), factor.constraints);
-		}
-		for (Propagator propagator : constraints) {
-			factor = consume(examine(propagator, state.putStore(factor), factor),
-					factor, inferred, runs, queue);
-			if (factor == null) {
-				return Fiber.done(Revision.fail());
-			}
-		}
-		return cascade(state, factor, inferred, runs, queue);
-	}
-
-	@Override
-	public Fiber<Revision> stated(Stored item, Package state) {
-		if (!(item instanceof Propagator)) {
-			return Fiber.done(Revision.unchanged());
-		}
-		List<Prefix> inferred = new ArrayList<>();
-		List<Goal> runs = new ArrayList<>();
-		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-		FiniteDomainConstraints factor = consume(
-				examine((Propagator) item, state.putStore(this), this),
-				this, inferred, runs, queue);
-		if (factor == null) {
-			return Fiber.done(Revision.fail());
-		}
-		return cascade(state, factor, inferred, runs, queue);
-	}
-
 	/**
 	 * The statement-position re-examination seam ({@code dom} narrowing an
 	 * existing domain, labelling's catch-up): drains this store's own cascade
 	 * from {@code x} against the live state.
 	 */
-	static Fiber<Revision> reexamine(Term<?> x, Package state) {
-		FiniteDomainConstraints self = getFDStore(state);
-		return self.cascade(state, self, new ArrayList<>(), new ArrayList<>(),
-				new ArrayDeque<>(Collections.singletonList(x)));
+	static Goal reexamine(Term<?> x) {
+		return EMPTY.reexamineOwn(x);
 	}
 
-	/**
-	 * This store's propagation loop: one iteration is one term whose watchers
-	 * re-examine; verdict updates discover further terms. The loop is the
-	 * unchecked {@link MonotoneDrain}: the store is the descending state
-	 * (domains narrow, subsumption discharges propagators) and a failing
-	 * update transitions to ⊥, short-circuiting the drain — but the
-	 * contraction laws hold by construction, not verification:
-	 * {@link DomainUpdate} couples re-examination to strict narrowing
-	 * (DomainUpdateContractTest pins it), so the per-step leq/equals sweeps
-	 * of the checked twin would verify what the toolkit cannot express
-	 * violating. Synchronous, so the whole cascade stays one fiber step; a
-	 * store hosting expensive propagators would use the fibered
-	 * {@code Worklist} twin instead — granularity is the store author's choice.
-	 */
-	private Fiber<Revision> cascade(Package state, FiniteDomainConstraints start,
-			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
-		FiniteDomainConstraints factor = MonotoneDrain.drainUnsafe(start, queue, (current, next) -> {
-			FiniteDomainConstraints stepped = current;
-			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
-			for (Propagator p : stepped.constraints.toJavaList()) {
-				if (!stepped.contains(p)) {
-					// an earlier verdict of this same trigger removed it
-					continue;
-				}
-				Package live = state.putStore(stepped);
-				if (!p.watches(live, next)) {
-					continue;
-				}
-				stepped = consume(examine(p, live, stepped), stepped, inferred, runs, discovered);
-				if (stepped == null) {
-					return MonotoneDrain.Step.stop(BOTTOM);
-				}
-			}
-			return MonotoneDrain.Step.proceed(stepped, discovered);
-		});
-		if (factor.isBottom()) {
-			return Fiber.done(Revision.fail());
-		}
-		if (factor == this && inferred.isEmpty() && runs.isEmpty()) {
-			return Fiber.done(Revision.unchanged());
-		}
-		Revision.Updated result = Revision.updated(factor);
-		for (Prefix prefix : inferred) {
-			result = result.withInferred(prefix);
-		}
-		for (Goal run : runs) {
-			// a store-level search effect is a degenerate (already ripe) suspension
-			result = result.withSuspend(Suspension.of(
-					Collections.emptyList(), p -> true, run));
-		}
-		return Fiber.done(result);
+	// cKanren domains — keyed by NAME: a live LVar or a canonical Hole
+	@SuppressWarnings("unchecked")
+	public LinkedHashMap<Term<?>, Domain<?>> getDomains() {
+		return (LinkedHashMap<Term<?>, Domain<?>>) (LinkedHashMap<?, ?>) values;
 	}
 
-	/** One propagator's verdict as an {@link Update} step against the factor. */
-	private static Update examine(Propagator p, Package live, FiniteDomainConstraints factor) {
-		return p.propagate(live).match(
-				Update::fail,
-				Update::unchanged,
-				() -> Update.applied(factor.remove(p)),
-				f -> f.apply(live, factor));
-	}
-
-	/**
-	 * Threads one step: the new factor (null when the branch died), payloads
-	 * accumulated, re-examination notes queued.
-	 */
-	private static FiniteDomainConstraints consume(Update step, FiniteDomainConstraints factor,
-			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
-		return step.match(
-				() -> null,
-				() -> factor,
-				applied -> {
-					inferred.addAll(applied.inferred());
-					runs.addAll(applied.runs());
-					queue.addAll(applied.reexamine());
-					return (FiniteDomainConstraints) applied.factor();
-				});
-	}
-
-	@Override
-	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package p) {
-		Set<LVar<?>> varsWithDomains = domains.keySet().toJavaStream()
-				.map(p::walk)
-				.flatMap(u -> u.asVar().toJavaStream())
-				.collect(Collectors.toSet());
-
-		Set<LVar<?>> constrainedVarsWithoutDomains = constraints.toJavaStream()
-				.map(Propagator::watchedTerms)
-				.flatMap(ts -> StreamSupport.stream(ts.spliterator(), false))
-				.map(p::walk)
-				.flatMap(u -> u.asVar().toJavaStream())
-				.filter(Predicates.not(varsWithDomains::contains))
-				.collect(Collectors.toSet());
-
-		if (!constrainedVarsWithoutDomains.isEmpty()) {
-			throw new IllegalStateException("Variables without domain detected: " + constrainedVarsWithoutDomains);
-		} else {
-			return unifiable;
-		}
+	// cKanren constraints
+	public HashSet<Propagator> getConstraints() {
+		return propagators;
 	}
 
 	public <T> Option<Domain<T>> getDomain(Term<T> v) {
-		return domains.get(v)
+		return getValue(v)
 				.flatMap(Types.castAs(Domain.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	public FiniteDomainConstraints withDomain(Term<?> x, Domain<?> xd) {
-		return FiniteDomainConstraints.of(domains.put(x, xd), constraints);
+		return withValue(x, (Domain<Object>) xd);
 	}
 
-	/**
-	 * Lossless factoring: domains partition by name membership, a propagator
-	 * goes to the covered half iff every watched VAR is supplied (grounds
-	 * are always covered). {@code _1 ∧ _2 = this}.
-	 */
 	@Override
-	public Tuple2<FiniteDomainConstraints, FiniteDomainConstraints> split(List<LVar<?>> vars) {
-		Set<Term<?>> covered = new java.util.HashSet<>(vars);
-		LinkedHashMap<Term<?>, Domain<?>> in = LinkedHashMap.empty();
-		LinkedHashMap<Term<?>, Domain<?>> out = LinkedHashMap.empty();
-		for (Tuple2<Term<?>, Domain<?>> entry : domains) {
-			if (covered.contains(entry._1)) {
-				in = in.put(entry);
-			} else {
-				out = out.put(entry);
-			}
-		}
-		HashSet<Propagator> inConstraints = HashSet.empty();
-		HashSet<Propagator> outConstraints = HashSet.empty();
-		for (Propagator propagator : constraints) {
-			boolean fits = propagator.watchedTerms().forAll(watched ->
-					!watched.asVar().isDefined() || covered.contains(watched));
-			if (fits) {
-				inConstraints = inConstraints.add(propagator);
-			} else {
-				outConstraints = outConstraints.add(propagator);
-			}
-		}
-		return Tuple.of(FiniteDomainConstraints.of(in, inConstraints),
-				FiniteDomainConstraints.of(out, outConstraints));
+	protected FiniteDomainConstraints create(LinkedHashMap<Term<?>, Domain<Object>> values, HashSet<Propagator> propagators) {
+		return new FiniteDomainConstraints(values, propagators);
 	}
 
-	/**
-	 * Domains re-keyed through the renaming — an entry whose name resolves
-	 * to a value is spent bookkeeping (verified when it bound) and drops;
-	 * propagators re-watch their renamed terms.
-	 */
 	@Override
-	public FiniteDomainConstraints rename(Renaming renaming) {
-		LinkedHashMap<Term<?>, Domain<?>> renamedDomains = LinkedHashMap.empty();
-		for (Tuple2<Term<?>, Domain<?>> entry : domains) {
-			Term<?> target = renaming.apply(entry._1);
-			if (!target.asVal().isDefined()) {
-				renamedDomains = renamedDomains.put(target, entry._2);
-			}
-		}
-		HashSet<Propagator> renamedConstraints = constraints.map(p ->
-				p.watching(p.watchedTerms().map(renaming::apply)));
-		return FiniteDomainConstraints.of(renamedDomains, renamedConstraints);
+	protected FiniteDomainConstraints bottomStore() {
+		return BOTTOM;
 	}
 
+	@Override
+	protected boolean admits(Domain<Object> value, Object ground) {
+		return value.contains(ground);
+	}
+
+	@Override
+	protected Option<Object> asPoint(Domain<Object> value) {
+		return value instanceof Singleton ?
+				Option.of(((Singleton<Object>) value).getValue().getValue()) :
+				Option.none();
+	}
+
+	@Override
+	protected boolean stabilized(Domain<Object> previous, Domain<Object> next) {
+		return next.equals(previous);
+	}
+
+	@Override
+	public <T> Goal enforce(Term<T> x) {
+		return EnforceConstraintsFD.enforceConstraints(x);
+	}
 }
