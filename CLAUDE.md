@@ -156,11 +156,24 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
   (native debugging, simpler tabling, natural cut) as a separate experimental module; the
   completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
-- `docs/design/tabled-constraints.md` — STAGE 1 SHIPPED (July 2026): tabled calls
-  under FD domains, region-keyed (`Projectable` residues, positional; the master
-  runs FROM THE KEY). Stages 2–4 remain design; stage 2's spec is DECIDED (live propagator
-  objects carried, project(vars, wideningAllowed), entailment matching —
-  §5.1/§5.4/§6). Read before touching the tabling guard tests.
+- `docs/design/tabled-constraints.md` — STAGES 1–3 SHIPPED (July 2026,
+  final form single-sorted): region keys via
+  `project = split._1.rename(canonical)`; answers carry their WHOLE
+  normalized delta (body locals as existential witnesses, islands
+  verified at labelling); entailment matching with named value-equal
+  couplings (cross-lineage entry sharing); replay = rename ∘ absorb.
+  Read before touching the tabling guard tests.
+- `docs/design/domain-layer.md` — APPROVED DESIGN: the engine as a domain
+  layer, the pldb phase's driving design — caveated authorization,
+  capture-solve, admission tickets, transactions-as-absorbs, FactSource
+  with pin(), epochs, cold execution and exactly-once, warm-start
+  ladders, stream–table duality. The pldb build list is its §8.
+- `docs/design/lattice-store.md` — DESIGN: the generic store family —
+  `LatticeStore<L>` (extracted inside #61), the co-store (Neq generalized
+  to excluded boxes = clauses over lattice literals, unit propagation),
+  the instance catalogue, the licensing theorems, GAC vs cascade, the
+  speculation tier, and the cross-store doctrine (the probe as the one
+  sanctioned bridge; #63's proposed scope).
 - `docs/design/substitutions-migration.md` — MOSTLY SHIPPED (Steps A–C: the
   unifier typed over Substitutions, the kind-tagged decompose shared by unify
   and members); Step D (representation swaps) remains, benchmark-gated. Read

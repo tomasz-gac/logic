@@ -40,10 +40,11 @@ residue throws. The wall is loud, cheap and sound. AS BUILT (stage 1): the
 CALL-side wall is now
 PER-STORE — a non-empty store implementing `Projectable` participates (its
 residue keys the call); one that cannot project still refuses loudly. AS
-BUILT (stage 2): the ANSWER-side wall is per-store the same way — live
-projectable knowledge RIDES the answer as its residues, spent bookkeeping
-is waved through by `Projectable.discharged`, and only non-projectable
-live knowledge still refuses. With FD and Neq both projectable, no
+BUILT (stage 2, final form): the ANSWER-side wall is per-store the same
+way — live knowledge RIDES the answer as its normalized factor (spent
+entries drop in the walking rename — no separate discharged predicate),
+and only non-projectable live knowledge still refuses. With FD and Neq
+both projectable, no
 in-tree store is refusable — the pins keep the wall standing via a
 test-local opaque store. It exists because the naive merge is SILENTLY
 WRONG in three distinct ways (§3) — do not weaken the guards without
@@ -164,7 +165,7 @@ unitary" and would move with the theory.
 **The residue predates TCLP** — as display. `NeqConstraints.reify`'s
 `Constrained` output IS `(term, residue)` rendered for a human: purify
 hole-renames the records against the answer frame and DROPS every record
-touching an unprojected var — `project`'s widening-drop by another name.
+touching an unprojected var — `split`'s discarded remainder by another name.
 The `=/=` display was a conditional answer that could only be read; stage
 2 made the same object replayable (answers-as-diffs' "one operation
 behind reification"). Re-expressing `reify` over `project` is recorded
@@ -172,46 +173,52 @@ future unification work.
 
 ## 5. The design: three intra-domain hooks
 
-`Propagation` does not change at all — tabling does not route through the
-driver (`Table` is a plain store). The whole feature is `ConstraintStore`
-growing three OPTIONAL hooks, plus logic in `Tabling`:
+Originally: `ConstraintStore` growing three optional hooks
+(project/entails/restate), `Propagation` untouched. AS BUILT the hooks
+CONVERGED into the capability ladder (constraint-kernel.md §3):
+`Absorbable` (meet + normalize — and `Propagation.absorb` DID join the
+driver as the bulk statement entry) and `Projectable` (split + rename,
+`project` derived). The subsections below keep the hook-by-hook history
+with their as-built resolutions:
 
-### 5.1 `project(vars, state, renaming) → Residue`
+### 5.1 The key projection — AS BUILT (final form, single-sorted)
 
-"My knowledge about these variables, canonically renamed" — an opaque,
-store-specific value. Half of this exists: `reify` already renders residue
-against a rename substitution; this is its data-shaped sibling. AS BUILT: POSITIONAL instead of renamed —
-`project(List<LVar>)`, residue slot i = the hole the key names `_.i`
-(`reifyWithHoles` derives the order from the one rename pass), so no renaming
-machinery crosses the store boundary. `project` of the empty list is ⊤, and
-⊤ residues stay OUT of keys — calls under irrelevant knowledge stay
-constraint-free variants. THE CONTRACT (third revision — Tom's:
-parameter over flag over throw): `project(vars, wideningAllowed)`
-TRANSCRIBES everything expressible — domains AND wholly-covered couplings
-alike; permission to widen is not an instruction to widen. The parameter
-governs only the INEXPRESSIBLE REMAINDER (a coupling escaping to an
-unsupplied local): dropped silently when allowed, THROWN when exactness
-was demanded — the parameter carries the boundary's context INTO the
-store, which is what legitimizes the throw (the earlier objection was
-that the store lacks the context to refuse; now the demand is explicit).
-The store still never learns WHICH side it serves — only the strength
-demanded. `isWidened` is GONE: no flag, no advisory metadata, no equality
-exclusions. Couplings are carried as the LIVE PROPAGATOR OBJECTS plus a
-watched-var → slot map — no factory recipes, no shape tokens, no custom
-equality; default object identity is the membership base. The residue
-restates itself (`Residue.restate`), and replay is a RENAMING — a
-conditional answer is ∀-quantified over its holes, so every consumption
-instantiates a fresh copy of the conditions. Propagator bodies are
-POSITIONAL (`(watched, pkg) → Verdict`, no lexical capture), so
-answer-side replay registers the propagator REBUILT over the fresh holes
-(`Propagator.watching`); the call side is an identity renaming and
-re-activates the live object ITSELF — which is what lets a recursive
-call project the same object and land in its creator's entry
-(`recursionUnderACarriedCouplingSharesItsEntry`). The superseded
-alias-unify replay (fifth revision retired it) was VARIABLE CAPTURE:
-two consumptions of one answer in a query welded onto the shared
-original vars and only the diagonal survived
-(`twoConsumptionsOfACoupledAnswerAreIndependent` pins the fix).
+The hook history (project-with-renaming → positional residues with a
+`wideningAllowed` parameter → carried-coupling identity semantics) is
+RETIRED wholesale; the lineage lives in git. The final form
+(constraint-kernel.md §3, lattice-store.md):
+
+**A store IS a residue over its own names.** Store internals are
+Term-keyed — a name is a live `LVar` or a canonical `Hole` — and the key
+operation is a composition of two primitives: `split(vars)` factors the
+store LOSSLESSLY into (covered, remainder) with `_1 ∧ _2 = this`, and
+`rename(canonical)` converts the covered half into hole names. `project
+(vars) = split(vars)._1.rename(canonical)` returns the store's OWN TYPE,
+hole-named, structurally comparable across packages. There is NO widening
+parameter and NO exactness throw: the CALLER owns the remainder's fate —
+keys discard it (sound by containment, filtered at consumption), answers
+never split at all (§6 stage 2.5: the whole delta rides). An EMPTY
+projection stays out of the key — calls under irrelevant knowledge remain
+constraint-free variants.
+
+**Couplings are named, value-equal propagators** — (storeClass, name,
+watched terms), body excluded, the name determining the body's semantics
+by contract. Two consequences replaced the identity doctrine: duplicate
+posts MERGE (idempotent re-posting made structural), and same-shaped
+contexts from unrelated lineages project EQUAL keys — cross-caller entry
+sharing, for FD couplings and Neq records alike.
+
+**Replay is a RENAMING, never an aliasing.** A conditional answer is
+∀-quantified over its holes; every consumption instantiates a fresh copy
+via one shared `Renaming` per delivery (seeded holes → instantiated vars,
+unseeded locals MINT fresh — the existential — shared across stores so a
+local carrying knowledge in two stores stays one variable), then
+`Propagation.absorb` meets the renamed factor in and queues `normalize`.
+The superseded alias-unify replay was VARIABLE CAPTURE — two consumptions
+of one answer welded onto shared originals, only the diagonal survived
+(`twoConsumptionsOfACoupledAnswerAreIndependent` pins the fix);
+recursion's entry-sharing now rides propagator VALUE equality, not object
+identity (`recursionUnderACarriedCouplingSharesItsEntry` still pins it).
 
 ### 5.2 `entails(mine, other) → boolean`
 
@@ -247,10 +254,13 @@ someone gives it project/restate over its record-set meet-semilattice.
 
 ### 5.3 `restate(residue) → Goal`
 
-Turn my residue back into statements through the normal public entries
-(`resolve`/`activate`/`narrowed`), so a consumer replaying a cached answer
-re-imposes its guards — the meet-at-consumption. Without this hook, cached
-answers silently generalize (the second guard test's scenario). AS BUILT:
+Turn my residue back into statements through the normal public entries,
+so a consumer replaying a cached answer re-imposes its guards — the
+meet-at-consumption. Without this hook, cached answers silently
+generalize (the second guard test's scenario). FINAL FORM: restate
+dissolved into `rename ∘ absorb` — the store renames itself onto the
+targets and the driver meets it in and normalizes (`stated()`'s
+goal-composition was an intermediate form, retired). AS BUILT:
 restate is ALSO the call-entry hook — the master runs FROM THE KEY (the
 caller's constraint stores stripped: absence is ⊤, posting re-registers; the
 key's residues restated ahead of the body), so the cache holds exactly the
@@ -281,14 +291,13 @@ coupling's subset.
   by the subset property, mid-stream) with the same relation, Herbrand
   args-subsumption, and `caller.residue ⊑ entry.residue` (the containment
   law verbatim: caller knows at least as much, entry's region covers
-  caller's); else mint. Exact equality survives as the hash fast path
-  (same store state ⇒ identical residue ⇒ equal key). Carried-coupling
-  entailment is IDENTITY-CONSERVATIVE: down a recursion the store holds
-  the LITERAL SAME propagator object (posted once, persists until
-  discharged), so recursive variants under one constraint context share
-  their entry — the reuse TCLP exists for — while two INDEPENDENT posts
-  of a same-shaped coupling are incomparable and recompute: a conservative
-  false costs reuse, never soundness. This unifies variant matching, the
+  caller's); else mint. Exact equality survives as the hash fast path.
+  Carried-coupling entailment was identity-conservative in the first
+  build; SUPERSEDED by named value-equality (§5.1): a coupling is its
+  name over its terms, so recursive variants share their entry AND two
+  independent posts of a same-shaped coupling now compare EQUAL —
+  cross-lineage reuse, the conservative false retired along with the
+  identity doctrine. This unifies variant matching, the
   sealed-subsumer path and the old constraint-free-only rule under one
   containment check, and it is stage 3 arriving early in conservative
   form; semantic coupling-entailment (shape tokens) is the optional later
@@ -339,38 +348,39 @@ growth.)
 
 1. **DONE (July 2026).** Hooks + FD-only, exact-equality keys, unconstrained
    answers still rejected. (`TabledUnderDomainsTest` pins it.)
-2. **DONE (July 2026).** Constrained ANSWERS for FD (fourth revision built,
-   fifth corrected replay; the recipe/flag/alias drafts are superseded):
-   `project(vars, wideningAllowed)`
-   transcribes all expressible knowledge — domains plus covered couplings
-   as (LIVE PROPAGATOR OBJECT, watched-var → slot map), default identity,
-   no recipes, no flags, no custom equality. ALWAYS-PORT-ALL holds: one
-   projection rides both boundaries; the call side passes
-   wideningAllowed=true (escapes drop — caller-private, sound by
-   containment, filtered at consumption), the answer side demands
-   exactness (escape to a body-local THROWS at produce: label the local or
-   lift it into the answer). Master restate is an identity renaming — it
-   re-activates the carried objects themselves; answer replay
-   instantiates fresh holes and registers the propagators REBUILT over
-   them (§5.1 — the alias-unify draft was variable capture). Delivery
-   itself is goal-shaped: consume unifies args through `Constraints.unify`
-   (the chokepoint), so the caller's stores revise on delivery like any
-   other statement. Answer DEDUP is the leq insert-guard:
-   append-only, a new (term, residues) answer joins iff no existing
-   same-term answer's residue entails it — no retraction (delivered
-   answers stand; indexes stay monotone), no equality anywhere
-   (PartialOrder suffices; identity is the membership base within an
-   entry). `discharged` is the ground-answer fast path. Purely-local
-   DOMAINS have a decidable witness and drop. Matching is entailment
-   (§5.4). Closed/star mode is excluded — orthogonal concern, refused
-   loudly until designed.
-3. Pointwise-⊑ call subsumption — landed early with stage 2 in conservative
-   form (§5.4: entailment matching, open-entry joining); the optional
-   strengthenings (shape tokens, cross-hole-count alignment) wait for a
-   workload that misses them.
-4. Neq — SHIPPED UNWIDENED (July 2026, §5.5 AS BUILT): transcribed record
-   residues, termination the author's responsibility. The widening remains
-   the upgrade, still gated on a motivating use case.
+2. **DONE (July 2026; final form single-sorted).** Constrained ANSWERS —
+   and past the early drafts (recipes, flags, alias replay, exactness
+   throws: all superseded), the landed shape is simpler than every spec
+   that preceded it. **An answer carries its WHOLE delta**: at produce,
+   each store factor is normalized against the answer's substitutions
+   (`rename(walking)` — spent entries drop; the ground-answer fast path
+   is a factor that normalizes to empty) and cached AS-IS — body locals,
+   couplings through them, and islands all ride
+   (`AnswerKey = (term, holeVars, factors)`). Nothing is projected on the
+   answer side, so nothing can escape and nothing refuses: a coupling
+   through an unground local replays as an existential witness (fresh
+   var per consumption via the shared Renaming) and the consumer's
+   labelling verifies what propagation could not refute (the pigeonhole
+   island emits nothing — untabled parity both directions). Consumption
+   is goal-shaped end to end: `Constraints.unify` on the args (the
+   chokepoint — caller stores revise on delivery), then
+   `Propagation.absorb(factor.rename(mint))` per factor. Answer DEDUP is
+   the leq insert-guard over the factors' own lattice order: append-only,
+   no retraction, one master's lineage making within-entry comparison
+   meaningful. Closed/star mode remains excluded — refused loudly until
+   designed.
+2.5. **Stage 2.5 (locals-as-witnesses) — absorbed into stage 2's final
+   form**: "carry the whole delta" subsumed the witness-slot and
+   support-closure designs; the escape refusal and its remedy ("ground
+   the local or lift it") retired with them.
+3. Pointwise-⊑ call subsumption — landed early with stage 2 in
+   conservative form (§5.4: entailment matching, open-entry joining), then
+   STRENGTHENED by named value-equality (§5.1): shape-token entailment
+   arrived as propagator identity, so cross-lineage coupled keys compare.
+   Remaining optional: cross-hole-count alignment — waits for a workload.
+4. Neq — SHIPPED UNWIDENED (July 2026, §5.5 AS BUILT), now as the
+   point-lattice instance of the co-store family (lattice-store.md §4).
+   The widening remains the upgrade, still gated on a motivating use case.
 
 Each stage lands green with the guard tests refined, not deleted.
 

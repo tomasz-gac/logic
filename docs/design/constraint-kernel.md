@@ -73,10 +73,12 @@ The driver speaks to stores through exactly two triggers, each answered by a
 `Fiber<Revision>`:
 
 ```java
-Fiber<Revision> revise(Prefix, Package);   // bindings arrived — broadcast
-Fiber<Revision> stated(Stored, Package);   // your item was stated — owner only
+Fiber<Revision> revise(Prefix, Package);     // bindings arrived — broadcast
+Fiber<Revision> stated(Stored, Package);     // your item was stated — owner only
+Fiber<Revision> normalize(Package);          // a FACTOR was met in — owner only
+                                             // (on Absorbable; the third trigger)
 // plus lifecycle: enforce (commit before reify), reify (render residue)
-// optional capability: Projectable (project/restate/discharged — see below)
+// capabilities: Absorbable (meet + normalize), Projectable (split/rename/project)
 ```
 
 A store's reaction is COMPLETE: custody checks, re-examining its own watchers
@@ -95,34 +97,62 @@ else crosses any boundary:
 |---|---|---|
 | **bind** | `Propagation.resolve(prefix)` | `Revision.withInferred(prefix)` |
 | **search** | `Propagation.suspend(w, ripe, body)` | `Revision.withSuspend(suspension)` |
+| **factor** | `Propagation.absorb(factor)` | *(none — meet is the driver's)* |
 
-A store-emitted run is the degenerate always-ripe suspension. Cross-store
-interaction is therefore one thing: bindings, through the substitution — the
-blackboard. Everything else is intra-store or store↔driver scheduling.
+A store-emitted run is the degenerate always-ripe suspension. `absorb` is
+the bulk statement entry: meet the incoming factor into the resident store
+(registering when absent) and queue its `normalize` in the same drain —
+meet is completed by normalize, and a met factor answers no queries in
+between. Cross-store interaction remains one thing: bindings, through the
+substitution — the blackboard. Everything else is intra-store or
+store↔driver scheduling.
 
-**Optional capability (July 2026): `Projectable<R extends Residue<R>>`**
-— `project(vars, wideningAllowed)` reports the store's knowledge about a
-POSITIONAL var list as a `Residue` (slot i = vars[i], absence = ⊤,
-empty-list projection IS ⊤). It TRANSCRIBES everything expressible —
-domains and wholly-covered couplings, the latter carried as LIVE propagator
-objects with (var → slot) maps; the parameter governs only the
-inexpressible remainder (escapes): dropped by permission or thrown when
-exactness was demanded. The residue RESTATES ITSELF through the public
-posts (`Residue.restate` — replay is a RENAMING: carried couplings
-register the propagator rebuilt over the live vars, `Propagator.watching`;
-an identity renaming re-activates the live object itself, which is what
-recursion's entry-sharing rides on) and carries entailment (`PartialOrder.leq` — all any
-consumer asks; matching is containment, tabled-constraints.md §5.4).
-`discharged(state)` distinguishes live from spent knowledge (stale domains
-under bindings). FD is the prototype (`DomainResidue`). Participation in
-tabled calls requires the capability: unprojected knowledge cannot be
-keyed, and unkeyed knowledge means wrong reuse.
+**The capability ladder (July 2026, single-sorted):**
+
+```
+ConstraintStore                              — lives in a package: revise, stated, enforce, reify
+  └─ Absorbable<S>  + MeetSemilattice<S>     — receives factors: meet + normalize (absorb's requirement)
+       └─ Projectable<S>                     — crosses namespaces: split + rename (tabling's requirement)
+```
+
+A store IS a residue over its own names — live `LVar`s or canonical
+`Hole`s alike (the store internals are Term-keyed) — and every boundary
+operation is a composition of three primitives over the store's own
+lattice: `split(vars)` factors losslessly (`_1 ∧ _2 = this`; the CALLER
+decides the remainder's fate — keys discard it, there is no widening
+parameter and no exactness refusal); `rename(Renaming)` changes names
+(walking normalizes — spent entries drop; into retargets — unseeded vars
+mint fresh, the existential, one shared Renaming per delivery keeping
+cross-store locals one variable; canonical/ofSlots convert live↔canonical);
+`project(vars)` is the DERIVED key form: `split(vars)._1.rename(canonical)`,
+returning the store's own type, hole-named, structurally comparable
+across packages. Comparison (subsumption keys, entailment matching,
+dedup) is the lattice order the store already has. Propagators are NAMED
+and VALUE-EQUAL — (storeClass, name, watched terms), body excluded; the
+name must uniquely determine the body's semantics, duplicate posts merge
+(idempotent re-posting made structural), and renamed instances compare
+equal, which is what recursion's entry-sharing rides on. Participation in
+tabled calls requires `Projectable`: unprojected knowledge cannot be
+keyed, and unkeyed knowledge means wrong reuse; bulk loading alone
+requires only `Absorbable` (a fact table is bulk-loadable without being
+table-compatible). The generalization of this shape to arbitrary value
+lattices is docs/design/lattice-store.md.
 
 ## 4. Intra-store machinery (FD's, privately)
 
 `finitedomain` owns the propagator toolkit — the driver never sees it:
 
-- **`Propagator`** — `(storeClass, watchedTerms, body)`, a concrete value.
+- **`Propagator`** — `(storeClass, NAME, watchedTerms, body)`, a concrete
+  value. Equality is (storeClass, name, watched) with the body EXCLUDED —
+  the body is POSITIONAL (`(watched, pkg) → Verdict`, no lexical capture),
+  so the constraint re-instantiates over different terms (`watching`) and
+  the name must uniquely determine the body's semantics (the contract on
+  `Propagator.of`; violating it merges distinct knowledge silently).
+  Duplicate posts of one relation on the same terms merge in the store —
+  idempotent re-posting made structural. Replay is a RENAMING, never an
+  aliasing: a carried coupling registers the propagator rebuilt over the
+  target vars; alias-replay was variable capture (two consumptions of one
+  answer welding together) and is retired.
 - **`Verdict`** — the body's lifecycle ruling: `fail | keep | subsumed |
   update(f)`. `keep` is the default-safe case (forgetting to re-park is
   unwritable). `update`'s `f : (Package, Store) → Update` is applied by the
