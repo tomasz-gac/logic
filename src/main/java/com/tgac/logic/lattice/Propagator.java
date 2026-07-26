@@ -66,6 +66,15 @@ public final class Propagator implements Stored {
 	}
 
 	/**
+	 * The body, for the OWNING store to recognize richer capabilities on its
+	 * own propagators (labelling, marshalling) — equality never consults it,
+	 * and no store may assume anything about a body it did not create.
+	 */
+	public BiFunction<Array<? extends Term<?>>, Package, Verdict> body() {
+		return body;
+	}
+
+	/**
 	 * The same constraint over different terms, positions one-to-one — a fresh
 	 * instance of the schema this propagator's body denotes. How a carried
 	 * coupling replays onto a consumption's fresh variables.
