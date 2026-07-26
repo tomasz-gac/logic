@@ -1,4 +1,4 @@
-package com.tgac.logic.finitedomain;
+package com.tgac.logic.lattice;
 
 // ABOUTME: A parked constraint body that reports a Verdict — the framework owns the
 // ABOUTME: parked lifecycle; watch matching resolves against the live state.

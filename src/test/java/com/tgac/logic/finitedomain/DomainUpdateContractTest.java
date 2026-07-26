@@ -1,5 +1,7 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.lattice.Update;
+
 // ABOUTME: Pins the toolkit coupling that terminates the unchecked cascade:
 // ABOUTME: re-examination only with strict narrowing, collapse infers only.
 

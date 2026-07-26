@@ -1,5 +1,8 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.lattice.Propagator;
+import com.tgac.logic.lattice.Verdict;
+
 // ABOUTME: Lattice laws for the FD store: pointwise domain meet × propagator-set
 // ABOUTME: intersection with a canonical bottom — claimed for the coverage gate.
 

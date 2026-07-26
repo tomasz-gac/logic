@@ -1,4 +1,4 @@
-package com.tgac.logic.finitedomain;
+package com.tgac.logic.lattice;
 
 // ABOUTME: The outcome a propagator reports after re-examining its constraint — the
 // ABOUTME: framework administers the parked lifecycle; bodies only ever report.

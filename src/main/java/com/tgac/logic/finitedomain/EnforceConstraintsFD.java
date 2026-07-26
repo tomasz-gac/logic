@@ -10,6 +10,7 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;

@@ -1,5 +1,8 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.lattice.Propagator;
+import com.tgac.logic.lattice.Verdict;
+
 // ABOUTME: Test-only access to the package-private FD store: builds packages
 // ABOUTME: with a recorded domain for pricing and law tests outside this package.
 
