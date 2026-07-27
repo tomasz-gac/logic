@@ -25,9 +25,19 @@ public class Registration {
 	Unifiable<?> argsTerm;
 	int nextIndex;
 
-	/** The fixpoint of the call whose execution this reader is a line of - whose
-	 * ledger its work bills to - or null at top level. */
+	/**
+	 * The fixpoint of the call whose execution this reader is a line of - whose
+	 * ledger its work bills to - or null at top level.
+	 */
 	Fixpoint<?, Registration> enclosing;
+
+	/**
+	 * The solve's table, reached through the caller's package — the shared
+	 * transport store every branch of one solve names identically.
+	 */
+	public Table getTable() {
+		return pkg.getStore(Table.class);
+	}
 
 	/** The reader at the call site: cursor at the start of the cache. */
 	static Registration reader(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {

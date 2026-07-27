@@ -3,14 +3,11 @@ package com.tgac.logic.tabling;
 // ABOUTME: Tabled evaluation of logic goals: answers are cached per call and shared,
 // ABOUTME: which makes left-recursive and mutually recursive predicates terminate.
 
-import static com.tgac.functional.category.Nothing.nothing;
-import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.unification.LVal.lval;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
-import com.tgac.functional.fibers.primitives.Fixpoint;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
@@ -29,7 +26,6 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.List;
 import io.vavr.collection.Map;
 import java.util.ArrayList;
 import java.util.function.Function;
@@ -135,17 +131,17 @@ public class Tabling {
 					Reified<?> reifiedArgs = reified._1;
 					Projection projection = Projection.of(callerPkg, reified._2);
 					Call key = Call.of(relation, reifiedArgs, projection.getResidues());
-					Table table = callerPkg.getStore(Table.class);
+					Registration reader = Registration.reader(k, callerPkg, argsTerm);
+					Table table = reader.getTable();
 					// a weighted solve whose semiring cannot table (non-idempotent,
 					// non-closed) would silently drop weights here — refuse loudly
 					table.assertTablingAllowed();
 					// subsumptive reuse: a sealed general entry is a read-only relation
 					// containing every answer this instance call could produce (subset
 					// property) — read it through consume's unification filter
-					Registration reader = Registration.reader(k, callerPkg, argsTerm);
 					TableEntry<Object> subsumer = table.reusableSubsumer(key);
 					if (subsumer != null) {
-						return consume(subsumer, reader, table);
+						return consume(subsumer, reader, subsumer.answers());
 					}
 					TableEntry<Object> entry = table.getOrCreateEntry(key);
 					if (entry.tryBecomeMaster()) {
@@ -173,10 +169,10 @@ public class Tabling {
 						// the seal fires EMIT: the drained subscribers are its targets
 						entry.getFixpoint().onSealed(drained -> table.sealed(entry, drained));
 						return entry.getFixpoint().master(
-											produce(entry, seeded, bodyPkg, argsTerm, table))
-								.flatMap(__ -> consume(entry, reader, table));
+										produce(entry, seeded, bodyPkg, argsTerm, table))
+								.flatMap(__ -> consume(entry, reader, entry.answers()));
 					}
-					return consume(entry, reader, table);
+					return consume(entry, reader, entry.answers());
 				}));
 	}
 
@@ -385,15 +381,13 @@ public class Tabling {
 	 * cache the consumer parks itself in the entry and terminates — growth
 	 * FEEDS it again ({@link TableEntry}'s feed re-enters here), and the
 	 * fixpoint abandons it otherwise.
+	 *
+	 * @param answers the snapshot the reader's cursor indexes into — a
+	 * 		subscription starts from the answers as of the call; every later
+	 * 		value arrives pushed by the feed or handed back by a refused park,
+	 * 		never polled
 	 */
-	static Fiber<Nothing> consume(TableEntry<Object> entry, Registration reader, Table table) {
-		// a subscription starts from the answers as of now; every later value
-		// arrives pushed by the feed or handed back by a refused park
-		return consume(entry, reader, table, entry.answers());
-	}
-
-	static Fiber<Nothing> consume(TableEntry<Object> entry, Registration reader, Table table,
-			JoinMap<AnswerKey, Object> answers) {
+	static Fiber<Nothing> consume(TableEntry<Object> entry, Registration reader, JoinMap<AnswerKey, Object> answers) {
 		Fiber.Fn<Package, Nothing> k = reader.getContinuation();
 		Package callerPkg = reader.getPkg();
 		Unifiable<?> argsTerm = reader.getArgsTerm();
@@ -415,13 +409,13 @@ public class Tabling {
 									restateAll(key, inst._2))
 							.apply(callerPkg)
 							// streaming ⊗s the cell value in; closed records the loop
-							.apply(constrainedPkg -> k.apply(table.absorb(constrainedPkg,
+							.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,
 									entry, key.getTerm(), cellValue, EnclosingCall.entryOf(callerPkg))))
 							.flatMap(__ -> Fiber.defer(() ->
-									consume(entry, reader.advanced(), table, answers))));
+									consume(entry, reader.advanced(), answers))));
 		}
 
-		return parkWhenCaughtUp(entry, reader, table);
+		return parkWhenCaughtUp(entry, reader);
 	}
 
 	/**
@@ -431,7 +425,7 @@ public class Tabling {
 	 * keeps consuming instead of sleeping past data. This is the sleeper-edge
 	 * bookkeeping completion detection reads (docs/design/table-completion.md).
 	 */
-	private static Fiber<Nothing> parkWhenCaughtUp(TableEntry<Object> entry, Registration reader, Table table) {
+	private static Fiber<Nothing> parkWhenCaughtUp(TableEntry<Object> entry, Registration reader) {
 		if (entry.isComplete()) {
 			// sealed ⇒ the answer count is FINAL. The caught-up check that led
 			// here and this seal read are not atomic — an answer AND the seal can
@@ -440,24 +434,25 @@ public class Tabling {
 			// lose them (the reader's owner then seals without them)
 			JoinMap<AnswerKey, Object> finalAnswers = entry.answers();
 			if (reader.getNextIndex() < finalAnswers.size()) {
-				return Fiber.defer(() -> consume(entry, reader, table, finalAnswers));
+				return Fiber.defer(() -> consume(entry, reader, finalAnswers));
 			}
 			// truly caught up at a sealed entry: the chain ends here, and the
 			// mode decides what that means (a finished branch; or closed's
 			// value replay). Racy read is safe: a stale false parks a dead
 			// registration, which ledgers accept as sealed-parked
-			return table.caughtUp(entry, reader);
+			return reader.getTable().caughtUp(entry, reader);
 		}
 		// where it parks says what it WAITS FOR; its enclosing fixpoint —
-		// resolved once at the call site — says whose ledger its work bills to.
+		// carried by the reader, resolved once at the call site — says whose
+		// ledger its work bills to.
 		// DEFERRED: parking is effectful, so it runs when this branch is
 		// STEPPED, never on the stack of whoever composed the fiber — which is
 		// what lets the feed hand consume around without wrapping it.
 		// right: parked — the owner's seal attempt (closed tabling's emit)
 		// rides as this branch's tail. left: answers arrived while
 		// registering — keep consuming the fresh snapshot, never poll
-		return Fiber.defer(() -> entry.parkFrom(reader.getEnclosing(), reader)
-				.fold(fresh -> Fiber.defer(() -> consume(entry, reader, table, fresh)),
+		return Fiber.defer(() -> entry.parkFrom(reader)
+				.fold(fresh -> Fiber.defer(() -> consume(entry, reader, fresh)),
 						tail -> tail));
 	}
 

@@ -1,8 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.lattice.Verdict;
-
 // ABOUTME: Pins the FD store's single-sorted boundary algebra: named value-equal
 // ABOUTME: propagators, lossless split, renaming across namespaces, absorbed replay.
 
@@ -17,6 +14,8 @@ import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.lattice.Propagator;
+import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Substitutions;

@@ -1,8 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.lattice.Verdict;
-
 // ABOUTME: Lattice laws for the FD store: pointwise domain meet × propagator-set
 // ABOUTME: intersection with a canonical bottom — claimed for the coverage gate.
 
@@ -13,6 +10,8 @@ import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.lattice.Propagator;
+import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
 import java.util.Arrays;
 import java.util.Collections;

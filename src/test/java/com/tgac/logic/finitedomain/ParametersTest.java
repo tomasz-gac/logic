@@ -1,8 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.lattice.Verdict;
-
 import static com.tgac.logic.unification.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,6 +8,8 @@ import com.tgac.logic.Utils;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.lattice.Propagator;
+import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.TestAccess;

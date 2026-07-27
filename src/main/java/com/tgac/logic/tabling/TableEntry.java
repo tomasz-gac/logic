@@ -6,14 +6,12 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Fixpoint;
+import com.tgac.functional.fibers.primitives.JoinMap;
+import io.vavr.Function3;
 import io.vavr.Tuple2;
 import io.vavr.control.Either;
-import io.vavr.collection.List;
-import io.vavr.control.Option;
 import java.util.concurrent.atomic.AtomicBoolean;
-import io.vavr.Function3;
 import lombok.Getter;
 
 /**
@@ -21,14 +19,13 @@ import lombok.Getter;
  *
  * The first invocation becomes the MASTER and executes the body, growing the
  * answer cell; later invocations are CONSUMERS reading it by index, parking
- * in it when they catch up. The ledger tracks everything working FOR this
- * entry — running fibers and sleeping consumers — so
- * {@link #completeIfQuiescent()} can decide that no new answer can ever
- * arrive. The entry IS a {@link Fixpoint} with this call's domain plugged in:
- * the fixpoint's value is a {@link JoinMap} of reified answer terms
- * (alpha-equivalence rides their equality), the caught-up check is the
- * consumer's resume index, "cannot wake" means parked home or at a sealed
- * entry, and the seal is the keys-final flag.
+ * in it when they catch up. The entry IS a {@link Fixpoint} with this call's
+ * domain plugged in: the value is a {@link JoinMap} of reified answer terms
+ * (alpha-equivalence rides their equality), a subscriber is a
+ * {@link Registration} — its cursor is the caught-up check, its enclosing
+ * fixpoint is its owner — the feed re-enters consumption from the cursor,
+ * and the seal is the keys-final flag, fired when the fixpoint's ledger
+ * proves that nothing working for this entry can ever grow it again.
  */
 public class TableEntry<V> {
 	/** The call being tabled */
@@ -50,7 +47,7 @@ public class TableEntry<V> {
 	public TableEntry(Call call, IdempotentSemiring<V> semiring,
 			Function3<TableEntry<V>, Registration, JoinMap<AnswerKey, V>, Fiber<Nothing>> feed) {
 		this.call = call;
-		this.fixpoint = new Fixpoint<JoinMap<AnswerKey, V>, Registration>(
+		this.fixpoint = new Fixpoint<>(
 				JoinMap.empty(semiring),
 				Registration::getEnclosing,
 				// the FEED: growth pushes the grown answers into the parked
@@ -75,11 +72,12 @@ public class TableEntry<V> {
 	}
 
 	/**
-	 * @return the drained subscribers to respawn, or none if the answer is a
-	 * 		duplicate — exact (the cell's fold refused) or ENTAILED: a same-term
-	 * 		answer whose residues cover the new one's makes it redundant (its
-	 * 		replay contributes a subset fixpoint). Append-only: a wider newcomer
-	 * 		never retracts a narrower veteran — delivered answers stand.
+	 * Join the answer in as a singleton delta. Growth FEEDS every parked
+	 * consumer the grown answers, billed-before-awoken, as the returned tail;
+	 * a duplicate is inert — exact (the join absorbed it) or ENTAILED: a
+	 * same-term answer whose residues cover the new one's makes it redundant
+	 * (its replay contributes a subset fixpoint). Append-only: a wider
+	 * newcomer never retracts a narrower veteran — delivered answers stand.
 	 */
 	public Fiber<Nothing> addAnswer(AnswerKey key, V value) {
 		if (!key.getResidues().isEmpty()) {
@@ -94,14 +92,15 @@ public class TableEntry<V> {
 	}
 
 	/**
-	 * Park with the owner's ledger kept honest — sleeping-before-park,
-	 * un-record on refusal ({@link Fixpoint#parkFrom}).
+	 * Park a consumer that caught up with the cache, its owner's ledger kept
+	 * honest — sleeping-before-park, un-record on refusal, ownership derived
+	 * from the registration's enclosing fixpoint ({@link Fixpoint#parkFrom}).
 	 *
 	 * @return right(seal attempt) when parked; left(the fresh answers) when
 	 * 		answers arrived past the consumer's index — keep reading them
 	 */
-	public Either<JoinMap<AnswerKey, V>, Fiber<Nothing>> parkFrom(Fixpoint<?, Registration> owner, Registration registration) {
-		return fixpoint.parkFrom(owner, registration,
+	public Either<JoinMap<AnswerKey, V>, Fiber<Nothing>> parkFrom(Registration registration) {
+		return fixpoint.parkFrom(registration,
 				v -> registration.getNextIndex() >= v.size());
 	}
 

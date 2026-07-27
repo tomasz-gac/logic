@@ -6,15 +6,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
-import java.util.ArrayList;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
-import io.vavr.collection.List;
-import io.vavr.control.Option;
+import java.util.ArrayList;
 import org.junit.Test;
 
 public class TableEntryTest {
@@ -102,7 +100,7 @@ public class TableEntryTest {
 	public void testRegistrationParksAtCacheEnd() {
 		TableEntry<Boolean> entry = entry();
 
-		assertThat(entry.parkFrom(null, registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.parkFrom(registrationAt(0)).isRight()).isTrue();
 		assertThat(entry.parkedCount()).isEqualTo(1);
 	}
 
@@ -113,7 +111,7 @@ public class TableEntryTest {
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
 		// The consumer has not seen answer 0 yet — it must keep consuming
-		assertThat(entry.parkFrom(null, registrationAt(0)).isLeft()).isTrue();
+		assertThat(entry.parkFrom(registrationAt(0)).isLeft()).isTrue();
 		assertThat(entry.parkedCount()).isEqualTo(0);
 	}
 
@@ -122,9 +120,9 @@ public class TableEntryTest {
 		java.util.List<Registration> fed = new ArrayList<>();
 		TableEntry<Boolean> entry = entry(fed);
 
-		assertThat(entry.parkFrom(null, registrationAt(0)).isRight()).isTrue();
-		assertThat(entry.parkFrom(null, registrationAt(0)).isRight()).isTrue();
-		assertThat(entry.parkFrom(null, registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.parkFrom(registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.parkFrom(registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.parkFrom(registrationAt(0)).isRight()).isTrue();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 
@@ -138,7 +136,7 @@ public class TableEntryTest {
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
-		assertThat(entry.parkFrom(null, registrationAt(1)).isRight()).isTrue();
+		assertThat(entry.parkFrom(registrationAt(1)).isRight()).isTrue();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 		assertThat(entry.parkedCount()).isEqualTo(1);
