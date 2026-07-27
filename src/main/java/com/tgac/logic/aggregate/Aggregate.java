@@ -55,7 +55,7 @@ public class Aggregate {
 	 * into {@code result}, in the order the scheduler produces them.
 	 */
 	public static <T> Goal findall(Unifiable<T> template, Goal goal, Unifiable<LList<T>> result) {
-		return Barrier.of((Goal) pkg -> k -> {
+		return Barrier.of(pkg -> k -> {
 			Collection<Reified<T>> collected = new ConcurrentLinkedQueue<>();
 			return goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, template).apply(reified -> {
@@ -71,7 +71,7 @@ public class Aggregate {
 	 * Count the solutions of {@code goal}.
 	 */
 	public static Goal count(Goal goal, Unifiable<Integer> result) {
-		return Barrier.of((Goal) pkg -> k -> {
+		return Barrier.of(pkg -> k -> {
 			AtomicInteger n = new AtomicInteger(0);
 			return goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, lvar()).apply(reified -> {
