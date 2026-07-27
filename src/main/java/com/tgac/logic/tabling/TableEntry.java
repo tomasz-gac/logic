@@ -60,7 +60,7 @@ public class TableEntry<V> {
 
 	/**
 	 * Try to become the master for this table entry. The master's work unit
-	 * is counted by {@link Fixpoint#track} at produce time.
+	 * runs ambiently owned via {@code Fiber.detachTo} at produce time.
 	 */
 	public boolean tryBecomeMaster() {
 		return masterActive.compareAndSet(false, true);

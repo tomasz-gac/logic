@@ -171,8 +171,8 @@ public class Tabling {
 						Goal seeded = projection.seed(body.get());
 						// the seal fires EMIT: the drained subscribers are its targets
 						entry.getFixpoint().onSealed(drained -> table.sealed(entry, drained));
-						return Fiber.detach(Fixpoint.track(entry.getFixpoint(),
-										produce(entry, seeded, bodyPkg, argsTerm, table)))
+						return Fiber.detachTo(entry.getFixpoint().scope(),
+										produce(entry, seeded, bodyPkg, argsTerm, table))
 								.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
 					}
 					return consume(entry, k, callerPkg, argsTerm, 0, table);
@@ -398,6 +398,9 @@ public class Tabling {
 			// schedulers) reads the owner as quiescent and seals it out from under
 			// this consumer, losing the answers it would derive. Over-counting for
 			// the instant between only delays a seal, which is always sound.
+			// This is the one site that stays on MANUAL billing: track ticks
+			// eagerly here, before awake below, while ambient detachTo would
+			// tick at frame creation — after awake, reopening the window.
 			Fiber<Nothing> tracked = Fixpoint.track(fixpointOf(enclosingCall), consumer);
 			if (enclosingCall != null) {
 				enclosingCall.getFixpoint().awake(r);
