@@ -24,4 +24,14 @@ public class Registration {
 	Unifiable<?> argsTerm;
 	int nextIndex;
 	TableEntry enclosingCall;
+
+	/** The reader at the call site: cursor at the start of the cache. */
+	static Registration reader(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
+		return new Registration(continuation, pkg, argsTerm, 0, EnclosingCall.entryOf(pkg));
+	}
+
+	/** The same reader, one answer further along. */
+	Registration advanced() {
+		return new Registration(continuation, pkg, argsTerm, nextIndex + 1, enclosingCall);
+	}
 }
