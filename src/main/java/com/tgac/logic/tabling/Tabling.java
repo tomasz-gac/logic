@@ -385,7 +385,6 @@ public class Tabling {
 	 * FEEDS it again ({@link TableEntry}'s feed re-enters here), and the
 	 * fixpoint abandons it otherwise.
 	 */
-	@SuppressWarnings("unchecked")
 	static Fiber<Nothing> consume(
 			TableEntry<Object> entry,
 			Fiber.Fn<Package, Nothing> k,
@@ -393,9 +392,23 @@ public class Tabling {
 			Unifiable<?> argsTerm,
 			int index,
 			Table table) {
+		// a subscription starts from the answers as of now; every later value
+		// arrives pushed by the feed or handed back by a refused park
+		return consume(entry, k, callerPkg, argsTerm, index, table, entry.answers());
+	}
 
-		if (index < entry.getAnswerCount()) {
-			Tuple2<AnswerKey, Object> answer = entry.getAnswerAt(index);
+	@SuppressWarnings("unchecked")
+	static Fiber<Nothing> consume(
+			TableEntry<Object> entry,
+			Fiber.Fn<Package, Nothing> k,
+			Package callerPkg,
+			Unifiable<?> argsTerm,
+			int index,
+			Table table,
+			JoinMap<AnswerKey, Object> answers) {
+
+		if (index < answers.size()) {
+			Tuple2<AnswerKey, Object> answer = answers.get(index);
 			AnswerKey key = answer._1;
 			Object cellValue = answer._2;
 			// Fresh variables per consumption, so separate consumptions of the
@@ -414,7 +427,7 @@ public class Tabling {
 							.apply(constrainedPkg -> k.apply(table.absorb(constrainedPkg,
 									entry, key.getTerm(), cellValue, EnclosingCall.entryOf(callerPkg))))
 							.flatMap(__ -> Fiber.defer(() ->
-									consume(entry, k, callerPkg, argsTerm, index + 1, table))));
+									consume(entry, k, callerPkg, argsTerm, index + 1, table, answers))));
 		}
 
 		return parkWhenCaughtUp(entry, k, callerPkg, argsTerm, index, table);
@@ -437,11 +450,12 @@ public class Tabling {
 		if (entry.isComplete()) {
 			// sealed ⇒ the answer count is FINAL. The caught-up check that led
 			// here and this seal read are not atomic — an answer AND the seal can
-			// both land between them — so re-check against the now-final count
-			// and read any answers that slipped in; dying here one short would
-			// silently lose them (the reader's owner then seals without them)
-			if (index < entry.getAnswerCount()) {
-				return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
+			// both land between them — so re-read the now-final answers and
+			// consume any that slipped in; dying here one short would silently
+			// lose them (the reader's owner then seals without them)
+			JoinMap<AnswerKey, Object> finalAnswers = entry.answers();
+			if (index < finalAnswers.size()) {
+				return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table, finalAnswers));
 			}
 			// truly caught up at a sealed entry: the chain ends here, and the
 			// mode decides what that means (a finished branch; or closed's
@@ -455,12 +469,13 @@ public class Tabling {
 		// {@code entry}, the call it waits for
 		TableEntry<Object> enclosingCall = EnclosingCall.entryOf(callerPkg);
 		Registration registration = new Registration(k, callerPkg, argsTerm, index, enclosingCall);
-		// a park that completes the owner's region seals it; the seal's emit
-		// fiber (closed tabling) rides on as this branch's tail
+		// right: parked — the owner's seal attempt (closed tabling's emit)
+		// rides as this branch's tail. left: answers arrived while
+		// registering — keep consuming the fresh snapshot, never poll
 		return entry.parkFrom(enclosingCall == null ? null : enclosingCall.getFixpoint(), registration)
-				// an answer arrived while registering — keep consuming
-				.getOrElse(() -> Fiber.defer(() ->
-						consume(entry, k, callerPkg, argsTerm, index, table)));
+				.fold(fresh -> Fiber.defer(() ->
+								consume(entry, k, callerPkg, argsTerm, index, table, fresh)),
+						tail -> tail);
 	}
 
 }

@@ -28,7 +28,7 @@ public class TableEntryTest {
 		return new TableEntry<>(
 				Call.of(relation, (Reified<?>) lval(Tuple.of("alice", "bob"))),
 				Semirings.BOOLEAN,
-				(e, r) -> {
+				(e, r, answers) -> {
 					fed.add(r);
 					return Fiber.done(Nothing.nothing());
 				});
@@ -102,7 +102,7 @@ public class TableEntryTest {
 	public void testRegistrationParksAtCacheEnd() {
 		TableEntry<Boolean> entry = entry();
 
-		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0)).isRight()).isTrue();
 		assertThat(entry.parkedCount()).isEqualTo(1);
 	}
 
@@ -113,7 +113,7 @@ public class TableEntryTest {
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
 		// The consumer has not seen answer 0 yet — it must keep consuming
-		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isFalse();
+		assertThat(entry.parkFrom(null, registrationAt(0)).isLeft()).isTrue();
 		assertThat(entry.parkedCount()).isEqualTo(0);
 	}
 
@@ -122,9 +122,9 @@ public class TableEntryTest {
 		java.util.List<Registration> fed = new ArrayList<>();
 		TableEntry<Boolean> entry = entry(fed);
 
-		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isTrue();
-		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isTrue();
-		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0)).isRight()).isTrue();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 
@@ -138,7 +138,7 @@ public class TableEntryTest {
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
-		assertThat(entry.parkFrom(null, registrationAt(1)).isDefined()).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(1)).isRight()).isTrue();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 		assertThat(entry.parkedCount()).isEqualTo(1);

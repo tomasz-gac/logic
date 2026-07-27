@@ -9,10 +9,11 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Fixpoint;
 import io.vavr.Tuple2;
+import io.vavr.control.Either;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
+import io.vavr.Function3;
 import lombok.Getter;
 
 /**
@@ -47,14 +48,14 @@ public class TableEntry<V> {
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
 	public TableEntry(Call call, IdempotentSemiring<V> semiring,
-			BiFunction<TableEntry<V>, Registration, Fiber<Nothing>> feed) {
+			Function3<TableEntry<V>, Registration, JoinMap<AnswerKey, V>, Fiber<Nothing>> feed) {
 		this.call = call;
 		this.fixpoint = new Fixpoint<JoinMap<AnswerKey, V>, Registration>(
 				JoinMap.empty(semiring),
 				r -> r.getEnclosingCall() == null ? null : r.getEnclosingCall().getFixpoint(),
-				// the FEED: growth pushes the parked consumer's continuation
-				// back into the search from its cursor
-				r -> feed.apply(this, r));
+				// the FEED: growth pushes the grown answers into the parked
+				// consumer's continuation from its cursor - no polling back
+				(r, answers) -> feed.apply(this, r, answers));
 	}
 
 	public void markComplete() {
@@ -96,15 +97,21 @@ public class TableEntry<V> {
 	 * Park with the owner's ledger kept honest — sleeping-before-park,
 	 * un-record on refusal ({@link Fixpoint#parkFrom}).
 	 *
-	 * @return false if answers arrived past the consumer's index — keep reading
+	 * @return right(seal attempt) when parked; left(the fresh answers) when
+	 * 		answers arrived past the consumer's index — keep reading them
 	 */
-	public Option<Fiber<Nothing>> parkFrom(Fixpoint<?, Registration> owner, Registration registration) {
+	public Either<JoinMap<AnswerKey, V>, Fiber<Nothing>> parkFrom(Fixpoint<?, Registration> owner, Registration registration) {
 		return fixpoint.parkFrom(owner, registration,
 				v -> registration.getNextIndex() >= v.size());
 	}
 
 	public Tuple2<AnswerKey, V> getAnswerAt(int index) {
 		return fixpoint.read().get(index);
+	}
+
+	/** The answers as of now - the initial snapshot a subscription starts from. */
+	public JoinMap<AnswerKey, V> answers() {
+		return fixpoint.read();
 	}
 
 	public int getAnswerCount() {
