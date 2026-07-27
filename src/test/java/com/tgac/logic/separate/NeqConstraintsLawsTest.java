@@ -38,6 +38,6 @@ public class NeqConstraintsLawsTest {
 				NeqConstraints.of(LinkedHashSet.of(X_IS_NOT_1)),
 				NeqConstraints.of(LinkedHashSet.of(Y_IS_NOT_2, X_Y_DIFFER)),
 				NeqConstraints.of(LinkedHashSet.of(X_IS_NOT_1, X_Y_DIFFER)));
-		SemilatticeLaws.checkMeet(samples);
+		SemilatticeLaws.checkLeqReversesAccumulation(samples);
 	}
 }

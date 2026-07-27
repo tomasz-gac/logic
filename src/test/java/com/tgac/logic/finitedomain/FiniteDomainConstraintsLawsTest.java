@@ -8,7 +8,7 @@ import com.tgac.logic.lattice.Verdict;
 
 import static com.tgac.logic.unification.LVar.lvar;
 
-import com.tgac.functional.algebra.laws.BottomedLaws;
+import com.tgac.functional.algebra.laws.AbsorbingLaws;
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
@@ -45,7 +45,7 @@ public class FiniteDomainConstraintsLawsTest {
 				((FiniteDomainConstraints) FiniteDomainConstraints.empty().prepend(KEEP))
 						.withDomain(Y, Interval.of(5L, 15L)),
 				FiniteDomainConstraints.bottom());
-		SemilatticeLaws.checkMeet(samples);
-		BottomedLaws.check(samples);
+		SemilatticeLaws.checkLeqReversesAccumulation(samples);
+		AbsorbingLaws.check(samples);
 	}
 }

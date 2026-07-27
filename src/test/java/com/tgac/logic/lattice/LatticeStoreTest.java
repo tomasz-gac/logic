@@ -52,7 +52,7 @@ public class LatticeStoreTest {
 		}
 
 		@Override
-		public boolean isBottom() {
+		public boolean isAbsorbing() {
 			return values.isEmpty();
 		}
 

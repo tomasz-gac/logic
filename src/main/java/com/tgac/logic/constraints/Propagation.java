@@ -4,7 +4,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: worklist that makes the fixpoint explicit, and verdict administration.
 
 import com.tgac.functional.Exceptions;
-import com.tgac.functional.algebra.MeetSemilattice;
+import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.MFiber;
@@ -104,7 +104,7 @@ public final class Propagation {
 			ConstraintStore resident = (ConstraintStore) p.getStores()
 					.get(factor.getClass()).getOrNull();
 			ConstraintStore met = resident == null ? factor
-					: (ConstraintStore) ((MeetSemilattice) resident).meet((MeetSemilattice) factor);
+					: (ConstraintStore) ((Semilattice) resident).combine((Semilattice) factor);
 			return enqueue(p.putStore(met), new Agenda.Absorbed(factor));
 		};
 	}

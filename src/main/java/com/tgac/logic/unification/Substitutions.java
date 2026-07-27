@@ -3,7 +3,7 @@ package com.tgac.logic.unification;
 // ABOUTME: The substitution factor as a first-class read-only view — what code scoped
 // ABOUTME: to shared knowledge (suspension conditions) may see: bindings, nothing else.
 
-import com.tgac.functional.algebra.JoinSemilattice;
+import com.tgac.functional.algebra.Semilattice;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
@@ -17,12 +17,12 @@ import java.util.ArrayDeque;
  * sketch, finally realized where it has a job).
  *
  * <p>Ordered by information (more bindings = more specific), substitutions form
- * a bounded {@link JoinSemilattice join-semilattice}: ⊥ is empty, and the JOIN
+ * a bounded semilattice (combine = join): ⊥ is empty, and the JOIN
  * is UNIFICATION — the least substitution more specific than both. There is no
- * ⊤ value; a clash is failure-as-absence elsewhere (see {@code Bottomed}), so
+ * ⊤ value; a clash is failure-as-absence elsewhere (see {@code Absorbing}), so
  * {@link #join} is defined on compatible substitutions and throws otherwise.
  */
-public final class Substitutions implements JoinSemilattice<Substitutions> {
+public final class Substitutions implements Semilattice<Substitutions> {
 
 	private final HashMap<LVar<?>, Term<?>> bindings;
 
@@ -46,11 +46,15 @@ public final class Substitutions implements JoinSemilattice<Substitutions> {
 
 	/**
 	 * Unification as the lattice join: the least substitution more specific than
-	 * both. Throws when they clash — the {@link JoinSemilattice} view is total,
+	 * both. Throws when they clash — the join view is total,
 	 * but a clash has no ⊤ VALUE here (see {@link #tryJoin}), so this partial
 	 * function is defined only on compatible substitutions.
 	 */
 	@Override
+	public Substitutions combine(Substitutions other) {
+		return join(other);
+	}
+
 	public Substitutions join(Substitutions other) {
 		return tryJoin(other).getOrElseThrow(() -> new IllegalStateException(
 				"join of incompatible substitutions"));

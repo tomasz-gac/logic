@@ -52,7 +52,7 @@ public class SubstitutionLatticeLawsTest {
 				Substitutions.empty().extend(c, a),                       // c → unbound a
 				Substitutions.empty().extend(a, lval(1)).extend(b, lval(2)));
 
-		SemilatticeLaws.checkJoin(samples, BY_SOLVED_FORM);
+		SemilatticeLaws.check(samples, BY_SOLVED_FORM);
 	}
 
 	@Test

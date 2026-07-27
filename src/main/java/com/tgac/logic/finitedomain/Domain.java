@@ -63,7 +63,7 @@ public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<
 	}
 
 	@Override
-	public boolean isBottom() {
+	public boolean isAbsorbing() {
 		return isEmpty();
 	}
 

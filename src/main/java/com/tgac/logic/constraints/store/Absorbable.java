@@ -3,14 +3,15 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: The arrival capability: a store whose knowledge can be met in bulk and
 // ABOUTME: re-normalized — bulk-loadable without being table-compatible.
 
-import com.tgac.functional.algebra.MeetSemilattice;
+import com.tgac.functional.algebra.PartialOrder;
+import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
 
 /**
  * A store that can receive a whole FACTOR of knowledge at once:
  * {@code Propagation.absorb} meets the factor into the resident store over
- * the store's own {@link MeetSemilattice} and queues {@link #normalize} —
+ * the store's own {@link Semilattice} and queues {@link #normalize} —
  * the trigger family's third row, after bindings ({@code revise}) and
  * single items ({@code stated}). This is the capability alone — bulk
  * loading a fact table, delivering an external result batch, joining a
@@ -18,7 +19,20 @@ import com.tgac.logic.goals.Package;
  * DEPARTURE half (split, rename): a store must cross packages both ways to
  * participate in tabling, but bulk-loadable does not imply table-compatible.
  */
-public interface Absorbable<S extends Absorbable<S>> extends ConstraintStore, MeetSemilattice<S> {
+public interface Absorbable<S extends Absorbable<S>> extends ConstraintStore, Semilattice<S>, PartialOrder<S> {
+
+	/** The store meet: the factor product. Accumulation descends the extension. */
+	S meet(S other);
+
+	@Override
+	default S combine(S other) {
+		return meet(other);
+	}
+
+	@Override
+	default boolean leq(S other) {
+		return meet(other).equals(this);
+	}
 
 	/**
 	 * Re-establish normal form against {@code state} after a meet brought in

@@ -3,7 +3,7 @@ package com.tgac.logic.algebra;
 // ABOUTME: Lattice laws for every Domain implementation, each featured by its
 // ABOUTME: own samples — claimed via @LawsFor for the coverage gate.
 
-import com.tgac.functional.algebra.laws.BottomedLaws;
+import com.tgac.functional.algebra.laws.AbsorbingLaws;
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
@@ -29,8 +29,8 @@ public class DomainLawsTest {
 	}
 
 	private static void laws(List<Domain<Long>> featured) {
-		SemilatticeLaws.checkMeet(featured);
-		BottomedLaws.check(featured);
+		SemilatticeLaws.checkLeqReversesAccumulation(featured);
+		AbsorbingLaws.check(featured);
 	}
 
 	@Test

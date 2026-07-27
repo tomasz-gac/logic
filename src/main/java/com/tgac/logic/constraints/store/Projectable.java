@@ -3,7 +3,7 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: A store whose knowledge can change variable namespaces: a semilattice
 // ABOUTME: with rename and split — keys, seeding and answer replay are compositions.
 
-import com.tgac.functional.algebra.MeetSemilattice;
+import com.tgac.functional.algebra.Semilattice;
 import com.tgac.logic.unification.LVar;
 import io.vavr.Tuple2;
 import java.util.List;
@@ -12,7 +12,7 @@ import java.util.List;
  * The boundary capability, single-sorted: a store IS a residue over its own
  * names — live {@link LVar}s or canonical {@link com.tgac.logic.unification.Hole}s
  * alike — and every boundary operation is a composition of three primitives
- * over the store's own {@link MeetSemilattice}:
+ * over the store's own {@link Semilattice}:
  *
  * <pre>
  * key projection   = split(callVars)._1.rename(canonical)        — {@link #project}

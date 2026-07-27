@@ -5,7 +5,7 @@ package com.tgac.logic.lattice;
 
 import static com.tgac.logic.unification.LVal.lval;
 
-import com.tgac.functional.algebra.Bottomed;
+import com.tgac.functional.algebra.Absorbing;
 import com.tgac.functional.algebra.MonotoneDrain;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -52,7 +52,7 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L, S>>
-		implements Projectable<S>, Bottomed {
+		implements Projectable<S>, Absorbing {
 
 	// entries keyed by NAME: a live LVar or a canonical Hole
 	protected final LinkedHashMap<Term<?>, L> values;
@@ -91,14 +91,14 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	 */
 	@Override
 	public S meet(S other) {
-		if (isBottom() || other.isBottom()) {
+		if (isAbsorbing() || other.isAbsorbing()) {
 			return bottomStore();
 		}
 		LinkedHashMap<Term<?>, L> met = values;
 		for (Tuple2<Term<?>, L> entry : other.values) {
 			L mine = met.get(entry._1).getOrNull();
 			L narrowed = mine == null ? entry._2 : mine.meet(entry._2);
-			if (narrowed.isBottom()) {
+			if (narrowed.isAbsorbing()) {
 				return bottomStore();
 			}
 			met = met.put(entry._1, narrowed);
@@ -115,10 +115,10 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	 */
 	@Override
 	public boolean leq(S other) {
-		if (isBottom()) {
+		if (isAbsorbing()) {
 			return true;
 		}
-		if (other.isBottom()) {
+		if (other.isAbsorbing()) {
 			return false;
 		}
 		return other.values.forAll(entry -> values.get(entry._1)
@@ -127,13 +127,13 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	}
 
 	@Override
-	public boolean isBottom() {
+	public boolean isAbsorbing() {
 		return this == bottomStore();
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return !isBottom() && values.isEmpty() && propagators.isEmpty();
+		return !isAbsorbing() && values.isEmpty() && propagators.isEmpty();
 	}
 
 	@Override
@@ -175,7 +175,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 		L effective;
 		if (previous != null) {
 			effective = previous.meet(value);
-			if (effective.isBottom()) {
+			if (effective.isAbsorbing()) {
 				return Update.fail();
 			}
 			if (effective.stabilized(previous)) {
@@ -285,7 +285,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	 */
 	@Override
 	public Fiber<Revision> normalize(Package state) {
-		if (isBottom()) {
+		if (isAbsorbing()) {
 			return Fiber.done(Revision.fail());
 		}
 		S factor = self();
@@ -366,7 +366,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 			}
 			return MonotoneDrain.Step.proceed(stepped, discovered);
 		});
-		if (factor.isBottom()) {
+		if (factor.isAbsorbing()) {
 			return Fiber.done(Revision.fail());
 		}
 		if (factor == this && inferred.isEmpty() && runs.isEmpty()) {
@@ -492,7 +492,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 			return false;
 		}
 		LatticeStore<?, ?> that = (LatticeStore<?, ?>) o;
-		if (isBottom() || that.isBottom()) {
+		if (isAbsorbing() || that.isAbsorbing()) {
 			// ⊥ has exactly one representative per kind — identity, never structure,
 			// so an empty live store can never compare equal to the dead one
 			return false;
