@@ -10,7 +10,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
-import com.tgac.functional.fibers.primitives.Region;
+import com.tgac.functional.fibers.primitives.Fixpoint;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
@@ -170,8 +170,8 @@ public class Tabling {
 								.putStore(new EnclosingCall(entry));
 						Goal seeded = projection.seed(body.get());
 						// the seal fires EMIT: the drained subscribers are its targets
-						entry.getRegion().onSealed(drained -> table.sealed(entry, drained));
-						return Fiber.detach(Region.track(entry.getRegion(),
+						entry.getFixpoint().onSealed(drained -> table.sealed(entry, drained));
+						return Fiber.detach(Fixpoint.track(entry.getFixpoint(),
 										produce(entry, seeded, bodyPkg, argsTerm, table)))
 								.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
 					}
@@ -203,8 +203,8 @@ public class Tabling {
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	private static Region<JoinMap<Reified<?>, Object>, Registration> regionOf(TableEntry entry) {
-		return entry == null ? null : entry.getRegion();
+	private static Fixpoint<JoinMap<Reified<?>, Object>, Registration> fixpointOf(TableEntry entry) {
+		return entry == null ? null : entry.getFixpoint();
 	}
 
 	/**
@@ -398,9 +398,9 @@ public class Tabling {
 			// schedulers) reads the owner as quiescent and seals it out from under
 			// this consumer, losing the answers it would derive. Over-counting for
 			// the instant between only delays a seal, which is always sound.
-			Fiber<Nothing> tracked = Region.track(regionOf(enclosingCall), consumer);
+			Fiber<Nothing> tracked = Fixpoint.track(fixpointOf(enclosingCall), consumer);
 			if (enclosingCall != null) {
-				enclosingCall.getRegion().awake(r);
+				enclosingCall.getFixpoint().awake(r);
 			}
 			result = result.flatMap(__ -> Fiber.detach(tracked));
 		}
@@ -487,17 +487,17 @@ public class Tabling {
 		if (enclosingCall != null) {
 			// ledger first, then park: a respawn can only drain a parked
 			// registration, so the sleeping record is always there to remove
-			enclosingCall.getRegion().sleeping(registration, entry.getRegion());
+			enclosingCall.getFixpoint().sleeping(registration, entry.getFixpoint());
 		}
 		if (entry.park(registration)) {
 			// a park that completes the region seals it; the seal's emit fiber
 			// (closed tabling) rides on as this branch's tail
 			return enclosingCall != null
-					? enclosingCall.getRegion().sealCascade()
+					? enclosingCall.getFixpoint().sealCascade()
 					: done(nothing());
 		}
 		if (enclosingCall != null) {
-			enclosingCall.getRegion().awake(registration);
+			enclosingCall.getFixpoint().awake(registration);
 		}
 		// An answer arrived while registering — keep consuming
 		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));

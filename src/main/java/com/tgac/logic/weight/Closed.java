@@ -194,8 +194,8 @@ final class Closed implements TablingMode {
 				for (TableEntry<Object> member : closure) {
 					if (!member.isComplete()) {
 						// the mark is the only finality evidence that crosses the
-						// Region boundary, and a group seal marks every member
-						// before announcing any (RegionTest pins it) — an unmarked
+						// Fixpoint boundary, and a group seal marks every member
+						// before announcing any (MonotoneGrowthTest pins it) — an unmarked
 						// closure member here means that invariant broke. Solving
 						// would read a possibly-unfinal system, staying silent
 						// would strand the stash — refuse loudly instead
