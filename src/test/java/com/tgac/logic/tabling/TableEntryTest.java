@@ -93,7 +93,7 @@ public class TableEntryTest {
 	public void testRegistrationParksAtCacheEnd() {
 		TableEntry<Boolean> entry = entry();
 
-		assertThat(entry.park(registrationAt(0))).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0))).isTrue();
 		assertThat(entry.registrationCount()).isEqualTo(1);
 	}
 
@@ -104,7 +104,7 @@ public class TableEntryTest {
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
 		// The consumer has not seen answer 0 yet — it must keep consuming
-		assertThat(entry.park(registrationAt(0))).isFalse();
+		assertThat(entry.parkFrom(null, registrationAt(0))).isFalse();
 		assertThat(entry.registrationCount()).isEqualTo(0);
 	}
 
@@ -112,9 +112,9 @@ public class TableEntryTest {
 	public void testAddAnswerDrainsRegistrations() {
 		TableEntry<Boolean> entry = entry();
 
-		assertThat(entry.park(registrationAt(0))).isTrue();
-		assertThat(entry.park(registrationAt(0))).isTrue();
-		assertThat(entry.park(registrationAt(0))).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0))).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0))).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0))).isTrue();
 
 		Option<List<Registration>> drained = entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
@@ -129,7 +129,7 @@ public class TableEntryTest {
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
-		assertThat(entry.park(registrationAt(1))).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(1))).isTrue();
 
 		assertThat(entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).isDefined()).isFalse();
 		assertThat(entry.registrationCount()).isEqualTo(1);

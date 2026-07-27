@@ -202,11 +202,6 @@ public class Tabling {
 				.getOrElse(Long.MAX_VALUE);
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	private static Fixpoint<JoinMap<Reified<?>, Object>, Registration> fixpointOf(TableEntry entry) {
-		return entry == null ? null : entry.getFixpoint();
-	}
-
 	/**
 	 * The caller's constraint knowledge about the call vars, projected per
 	 * store: the canonical (hole-named) key citizens that join the
@@ -392,20 +387,12 @@ public class Tabling {
 			TableEntry<?> enclosingCall = r.getEnclosingCall();
 			Fiber<Nothing> consumer = Fiber.defer(() ->
 					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex(), table));
-			// count the respawned consumer as RUNNING before removing its SLEEPING
-			// record — the transition must never leave a window where the sleeper is
-			// gone but the running count has not risen, or a racing seal (parallel
-			// schedulers) reads the owner as quiescent and seals it out from under
-			// this consumer, losing the answers it would derive. Over-counting for
-			// the instant between only delays a seal, which is always sound.
-			// This is the one site that stays on MANUAL billing: track ticks
-			// eagerly here, before awake below, while ambient detachTo would
-			// tick at frame creation — after awake, reopening the window.
-			Fiber<Nothing> tracked = Fixpoint.track(fixpointOf(enclosingCall), consumer);
-			if (enclosingCall != null) {
-				enclosingCall.getFixpoint().awake(r);
-			}
-			result = result.flatMap(__ -> Fiber.detach(tracked));
+			// billed-before-awoken: the primitive owns the ordering that keeps a
+			// racing parallel seal from reading the owner as quiescent in the gap
+			Fiber<Nothing> respawned = enclosingCall == null
+					? Fiber.detach(consumer)
+					: enclosingCall.getFixpoint().respawn(r, consumer);
+			result = result.flatMap(__ -> respawned);
 		}
 		return result;
 	}
@@ -487,20 +474,12 @@ public class Tabling {
 		// {@code entry}, the call it waits for
 		TableEntry<Object> enclosingCall = EnclosingCall.entryOf(callerPkg);
 		Registration registration = new Registration(k, callerPkg, argsTerm, index, enclosingCall);
-		if (enclosingCall != null) {
-			// ledger first, then park: a respawn can only drain a parked
-			// registration, so the sleeping record is always there to remove
-			enclosingCall.getFixpoint().sleeping(registration, entry.getFixpoint());
-		}
-		if (entry.park(registration)) {
+		if (entry.parkFrom(enclosingCall == null ? null : enclosingCall.getFixpoint(), registration)) {
 			// a park that completes the region seals it; the seal's emit fiber
 			// (closed tabling) rides on as this branch's tail
 			return enclosingCall != null
 					? enclosingCall.getFixpoint().sealCascade()
 					: done(nothing());
-		}
-		if (enclosingCall != null) {
-			enclosingCall.getFixpoint().awake(registration);
 		}
 		// An answer arrived while registering — keep consuming
 		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));

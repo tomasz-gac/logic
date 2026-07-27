@@ -85,9 +85,14 @@ public class TableEntry<V> {
 		return fixpoint.grow(JoinMap.<AnswerKey, V> empty(fixpoint.read().semiring).append(key, value).get());
 	}
 
-	/** @return false if answers arrived past the consumer's index — keep reading */
-	public boolean park(Registration registration) {
-		return fixpoint.park(registration,
+	/**
+	 * Park with the owner's ledger kept honest — sleeping-before-park,
+	 * un-record on refusal ({@link Fixpoint#parkFrom}).
+	 *
+	 * @return false if answers arrived past the consumer's index — keep reading
+	 */
+	public boolean parkFrom(Fixpoint<?, Registration> owner, Registration registration) {
+		return fixpoint.parkFrom(owner, registration,
 				v -> registration.getNextIndex() >= v.size());
 	}
 
