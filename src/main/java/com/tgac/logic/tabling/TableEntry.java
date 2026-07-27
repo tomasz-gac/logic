@@ -4,12 +4,15 @@ package com.tgac.logic.tabling;
 // ABOUTME: production ledger (what is still working for it), behind one facade.
 
 import com.tgac.functional.algebra.IdempotentSemiring;
+import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.primitives.Fixpoint;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import lombok.Getter;
 
 /**
@@ -43,11 +46,15 @@ public class TableEntry<V> {
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
-	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
+	public TableEntry(Call call, IdempotentSemiring<V> semiring,
+			BiFunction<TableEntry<V>, Registration, Fiber<Nothing>> feed) {
 		this.call = call;
 		this.fixpoint = new Fixpoint<JoinMap<AnswerKey, V>, Registration>(
 				JoinMap.empty(semiring),
-				r -> r.getEnclosingCall() == null ? null : r.getEnclosingCall().getFixpoint());
+				r -> r.getEnclosingCall() == null ? null : r.getEnclosingCall().getFixpoint(),
+				// the FEED: growth pushes the parked consumer's continuation
+				// back into the search from its cursor
+				r -> feed.apply(this, r));
 	}
 
 	public void markComplete() {
@@ -73,12 +80,12 @@ public class TableEntry<V> {
 	 * 		replay contributes a subset fixpoint). Append-only: a wider newcomer
 	 * 		never retracts a narrower veteran — delivered answers stand.
 	 */
-	public Option<List<Registration>> addAnswer(AnswerKey key, V value) {
+	public Fiber<Nothing> addAnswer(AnswerKey key, V value) {
 		if (!key.getResidues().isEmpty()) {
 			for (AnswerKey existing : fixpoint.read().order) {
 				if (existing.getTerm().equals(key.getTerm())
 						&& AnswerKey.residuesLeq(key.getResidues(), existing.getResidues())) {
-					return Option.none();
+					return Fiber.done(Nothing.nothing());
 				}
 			}
 		}
@@ -91,7 +98,7 @@ public class TableEntry<V> {
 	 *
 	 * @return false if answers arrived past the consumer's index — keep reading
 	 */
-	public boolean parkFrom(Fixpoint<?, Registration> owner, Registration registration) {
+	public Option<Fiber<Nothing>> parkFrom(Fixpoint<?, Registration> owner, Registration registration) {
 		return fixpoint.parkFrom(owner, registration,
 				v -> registration.getNextIndex() >= v.size());
 	}
@@ -104,7 +111,7 @@ public class TableEntry<V> {
 		return fixpoint.read().size();
 	}
 
-	public int registrationCount() {
+	public int parkedCount() {
 		return fixpoint.parkedCount();
 	}
 
@@ -113,7 +120,7 @@ public class TableEntry<V> {
 		return "TableEntry{" +
 				"call=" + call +
 				", answers=" + getAnswerCount() +
-				", registrations=" + registrationCount() +
+				", parked=" + parkedCount() +
 				'}';
 	}
 }

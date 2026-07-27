@@ -64,7 +64,7 @@ public class DeepParallelStressTest {
 					sb.append("  ").append(e.getCall())
 							.append(" sealed=").append(e.isComplete())
 							.append(" answers=").append(e.getAnswerCount())
-							.append(" parked=").append(e.registrationCount())
+							.append(" parked=").append(e.parkedCount())
 							.append('\n');
 				}
 				fail(sb.toString());

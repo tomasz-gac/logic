@@ -171,8 +171,8 @@ public class Tabling {
 						Goal seeded = projection.seed(body.get());
 						// the seal fires EMIT: the drained subscribers are its targets
 						entry.getFixpoint().onSealed(drained -> table.sealed(entry, drained));
-						return Fiber.detachTo(entry.getFixpoint().scope(),
-										produce(entry, seeded, bodyPkg, argsTerm, table))
+						return entry.getFixpoint().master(
+											produce(entry, seeded, bodyPkg, argsTerm, table))
 								.flatMap(__ -> consume(entry, k, callerPkg, argsTerm, 0, table));
 					}
 					return consume(entry, k, callerPkg, argsTerm, 0, table);
@@ -370,42 +370,23 @@ public class Tabling {
 						// what the cell caches: the term and the value this derivation
 						// carries — caller-agnostic, since the body ran from ONE
 						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1);
-						return entry.addAnswer(AnswerKey.of(cached._1, reified._2, residues), cached._2)
-								.map(parked -> respawn(entry, parked, table))
-								.getOrElse(() -> done(nothing()));
+						// growth FEEDS the parked consumers - billed-before-awoken,
+						// detached - as this producer's tail; an absorbed (duplicate)
+						// answer is inert
+						return entry.addAnswer(AnswerKey.of(cached._1, reified._2, residues), cached._2);
 					});
 		});
 	}
 
 	/**
-	 * Respawn parked consumers as detached fibers so they pick up the answers
-	 * cached since they parked. Whoever derives an answer drives its consequences.
-	 */
-	private static Fiber<Nothing> respawn(TableEntry<Object> entry, List<Registration> parked, Table table) {
-		Fiber<Nothing> result = done(nothing());
-		for (Registration r : parked) {
-			TableEntry<?> enclosingCall = r.getEnclosingCall();
-			Fiber<Nothing> consumer = Fiber.defer(() ->
-					consume(entry, r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex(), table));
-			// billed-before-awoken: the primitive owns the ordering that keeps a
-			// racing parallel seal from reading the owner as quiescent in the gap
-			Fiber<Nothing> respawned = enclosingCall == null
-					? Fiber.detach(consumer)
-					: enclosingCall.getFixpoint().respawn(r, consumer);
-			result = result.flatMap(__ -> respawned);
-		}
-		return result;
-	}
-
-	/**
 	 * Consumer: unify instantiated cached answers with the argument tuple,
 	 * yielding each success to the continuation. On catching up with the
-	 * cache the consumer parks itself in the entry and terminates —
-	 * {@link #respawn} continues it when new answers arrive, and the
+	 * cache the consumer parks itself in the entry and terminates — growth
+	 * FEEDS it again ({@link TableEntry}'s feed re-enters here), and the
 	 * fixpoint abandons it otherwise.
 	 */
 	@SuppressWarnings("unchecked")
-	private static Fiber<Nothing> consume(
+	static Fiber<Nothing> consume(
 			TableEntry<Object> entry,
 			Fiber.Fn<Package, Nothing> k,
 			Package callerPkg,
@@ -474,15 +455,12 @@ public class Tabling {
 		// {@code entry}, the call it waits for
 		TableEntry<Object> enclosingCall = EnclosingCall.entryOf(callerPkg);
 		Registration registration = new Registration(k, callerPkg, argsTerm, index, enclosingCall);
-		if (entry.parkFrom(enclosingCall == null ? null : enclosingCall.getFixpoint(), registration)) {
-			// a park that completes the region seals it; the seal's emit fiber
-			// (closed tabling) rides on as this branch's tail
-			return enclosingCall != null
-					? enclosingCall.getFixpoint().sealCascade()
-					: done(nothing());
-		}
-		// An answer arrived while registering — keep consuming
-		return Fiber.defer(() -> consume(entry, k, callerPkg, argsTerm, index, table));
+		// a park that completes the owner's region seals it; the seal's emit
+		// fiber (closed tabling) rides on as this branch's tail
+		return entry.parkFrom(enclosingCall == null ? null : enclosingCall.getFixpoint(), registration)
+				// an answer arrived while registering — keep consuming
+				.getOrElse(() -> Fiber.defer(() ->
+						consume(entry, k, callerPkg, argsTerm, index, table)));
 	}
 
 }

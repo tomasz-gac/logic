@@ -140,7 +140,9 @@ public class Table implements Packaged {
 	 */
 	public TableEntry<Object> getOrCreateEntry(Call call) {
 		return entries.computeIfAbsent(call, c -> {
-			TableEntry<Object> entry = new TableEntry<>(c, mode.cellSemiring());
+			TableEntry<Object> entry = new TableEntry<>(c, mode.cellSemiring(),
+					(e, r) -> Fiber.defer(() -> Tabling.consume(e,
+							r.getContinuation(), r.getPkg(), r.getArgsTerm(), r.getNextIndex(), this)));
 			subsumption.computeIfAbsent(c.getRelation(), relation -> new SubsumptionMap<>())
 					.put(c.getArguments(), entry);
 			return entry;

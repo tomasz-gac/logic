@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
+import java.util.ArrayList;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -19,10 +20,18 @@ import org.junit.Test;
 public class TableEntryTest {
 
 	private static TableEntry<Boolean> entry() {
+		return entry(new ArrayList<>());
+	}
+
+	private static TableEntry<Boolean> entry(java.util.List<Registration> fed) {
 		Tabled<Object> relation = Tabling.define(args -> Goal.success());
 		return new TableEntry<>(
 				Call.of(relation, (Reified<?>) lval(Tuple.of("alice", "bob"))),
-				Semirings.BOOLEAN);
+				Semirings.BOOLEAN,
+				(e, r) -> {
+					fed.add(r);
+					return Fiber.done(Nothing.nothing());
+				});
 	}
 
 	private static AnswerKey answer(Object value) {
@@ -58,8 +67,8 @@ public class TableEntryTest {
 		AnswerKey ans1 = answer(Tuple.of("alice", "bob"));
 		AnswerKey ans2 = answer(Tuple.of("charlie", "dave"));
 
-		assertThat(entry.addAnswer(ans1, true).isDefined()).isTrue();
-		assertThat(entry.addAnswer(ans2, true).isDefined()).isTrue();
+		entry.addAnswer(ans1, true).get();
+		entry.addAnswer(ans2, true).get();
 
 		assertThat(entry.getAnswerCount()).isEqualTo(2);
 		assertThat(entry.getAnswerAt(0)._1).isEqualTo(ans1);
@@ -71,8 +80,8 @@ public class TableEntryTest {
 	public void testDuplicateAnswerIsRejected() {
 		TableEntry<Boolean> entry = entry();
 
-		assertThat(entry.addAnswer(answer(Tuple.of("alice", "bob")), true).isDefined()).isTrue();
-		assertThat(entry.addAnswer(answer(Tuple.of("alice", "bob")), true).isDefined()).isFalse();
+		entry.addAnswer(answer(Tuple.of("alice", "bob")), true).get();
+		entry.addAnswer(answer(Tuple.of("alice", "bob")), true).get();
 
 		assertThat(entry.getAnswerCount()).isEqualTo(1);
 	}
@@ -83,8 +92,8 @@ public class TableEntryTest {
 
 		// Reified answers carry canonical hole names, so terms that
 		// differ only in token objects are the same answer
-		assertThat(entry.addAnswer(answer(Tuple.of(Hole.of(0), lval("bob"))), true).isDefined()).isTrue();
-		assertThat(entry.addAnswer(answer(Tuple.of(Hole.of(0), lval("bob"))), true).isDefined()).isFalse();
+		entry.addAnswer(answer(Tuple.of(Hole.of(0), lval("bob"))), true).get();
+		entry.addAnswer(answer(Tuple.of(Hole.of(0), lval("bob"))), true).get();
 
 		assertThat(entry.getAnswerCount()).isEqualTo(1);
 	}
@@ -93,8 +102,8 @@ public class TableEntryTest {
 	public void testRegistrationParksAtCacheEnd() {
 		TableEntry<Boolean> entry = entry();
 
-		assertThat(entry.parkFrom(null, registrationAt(0))).isTrue();
-		assertThat(entry.registrationCount()).isEqualTo(1);
+		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isTrue();
+		assertThat(entry.parkedCount()).isEqualTo(1);
 	}
 
 	@Test
@@ -104,23 +113,23 @@ public class TableEntryTest {
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
 		// The consumer has not seen answer 0 yet — it must keep consuming
-		assertThat(entry.parkFrom(null, registrationAt(0))).isFalse();
-		assertThat(entry.registrationCount()).isEqualTo(0);
+		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isFalse();
+		assertThat(entry.parkedCount()).isEqualTo(0);
 	}
 
 	@Test
-	public void testAddAnswerDrainsRegistrations() {
-		TableEntry<Boolean> entry = entry();
+	public void testGrowthFeedsEveryParkedRegistration() {
+		java.util.List<Registration> fed = new ArrayList<>();
+		TableEntry<Boolean> entry = entry(fed);
 
-		assertThat(entry.parkFrom(null, registrationAt(0))).isTrue();
-		assertThat(entry.parkFrom(null, registrationAt(0))).isTrue();
-		assertThat(entry.parkFrom(null, registrationAt(0))).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(0)).isDefined()).isTrue();
 
-		Option<List<Registration>> drained = entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
+		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 
-		assertThat(drained.isDefined()).isTrue();
-		assertThat(drained.get()).hasSize(3);
-		assertThat(entry.registrationCount()).isEqualTo(0);
+		assertThat(fed).hasSize(3);
+		assertThat(entry.parkedCount()).isEqualTo(0);
 	}
 
 	@Test
@@ -129,9 +138,9 @@ public class TableEntryTest {
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
-		assertThat(entry.parkFrom(null, registrationAt(1))).isTrue();
+		assertThat(entry.parkFrom(null, registrationAt(1)).isDefined()).isTrue();
 
-		assertThat(entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).isDefined()).isFalse();
-		assertThat(entry.registrationCount()).isEqualTo(1);
+		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
+		assertThat(entry.parkedCount()).isEqualTo(1);
 	}
 }
