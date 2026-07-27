@@ -451,7 +451,7 @@ public class Tabling {
 		// right: parked — the owner's seal attempt (closed tabling's emit)
 		// rides as this branch's tail. left: answers arrived while
 		// registering — keep consuming the fresh snapshot, never poll
-		return Fiber.defer(() -> entry.parkFrom(reader)
+		return Fiber.defer(() -> entry.park(reader)
 				.fold(fresh -> Fiber.defer(() -> consume(entry, reader, fresh)),
 						tail -> tail));
 	}

@@ -94,13 +94,13 @@ public class TableEntry<V> {
 	/**
 	 * Park a consumer that caught up with the cache, its owner's ledger kept
 	 * honest — sleeping-before-park, un-record on refusal, ownership derived
-	 * from the registration's enclosing fixpoint ({@link Fixpoint#parkFrom}).
+	 * from the registration's enclosing fixpoint ({@link Fixpoint#park}).
 	 *
 	 * @return right(seal attempt) when parked; left(the fresh answers) when
 	 * 		answers arrived past the consumer's index — keep reading them
 	 */
-	public Either<JoinMap<AnswerKey, V>, Fiber<Nothing>> parkFrom(Registration registration) {
-		return fixpoint.parkFrom(registration,
+	public Either<JoinMap<AnswerKey, V>, Fiber<Nothing>> park(Registration registration) {
+		return fixpoint.park(registration,
 				v -> registration.getNextIndex() >= v.size());
 	}
 

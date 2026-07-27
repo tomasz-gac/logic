@@ -100,7 +100,7 @@ public class TableEntryTest {
 	public void testRegistrationParksAtCacheEnd() {
 		TableEntry<Boolean> entry = entry();
 
-		assertThat(entry.parkFrom(registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.park(registrationAt(0)).isRight()).isTrue();
 		assertThat(entry.parkedCount()).isEqualTo(1);
 	}
 
@@ -111,7 +111,7 @@ public class TableEntryTest {
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
 		// The consumer has not seen answer 0 yet — it must keep consuming
-		assertThat(entry.parkFrom(registrationAt(0)).isLeft()).isTrue();
+		assertThat(entry.park(registrationAt(0)).isLeft()).isTrue();
 		assertThat(entry.parkedCount()).isEqualTo(0);
 	}
 
@@ -120,9 +120,9 @@ public class TableEntryTest {
 		java.util.List<Registration> fed = new ArrayList<>();
 		TableEntry<Boolean> entry = entry(fed);
 
-		assertThat(entry.parkFrom(registrationAt(0)).isRight()).isTrue();
-		assertThat(entry.parkFrom(registrationAt(0)).isRight()).isTrue();
-		assertThat(entry.parkFrom(registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.park(registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.park(registrationAt(0)).isRight()).isTrue();
+		assertThat(entry.park(registrationAt(0)).isRight()).isTrue();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 
@@ -136,7 +136,7 @@ public class TableEntryTest {
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
-		assertThat(entry.parkFrom(registrationAt(1)).isRight()).isTrue();
+		assertThat(entry.park(registrationAt(1)).isRight()).isTrue();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 		assertThat(entry.parkedCount()).isEqualTo(1);
