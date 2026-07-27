@@ -52,7 +52,7 @@ public class TableEntry<V> {
 		this.call = call;
 		this.fixpoint = new Fixpoint<JoinMap<AnswerKey, V>, Registration>(
 				JoinMap.empty(semiring),
-				r -> r.getEnclosingCall() == null ? null : r.getEnclosingCall().getFixpoint(),
+				Registration::getEnclosing,
 				// the FEED: growth pushes the grown answers into the parked
 				// consumer's continuation from its cursor - no polling back
 				(r, answers) -> feed.apply(this, r, answers));

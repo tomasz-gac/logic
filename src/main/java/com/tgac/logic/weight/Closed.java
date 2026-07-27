@@ -182,7 +182,7 @@ final class Closed implements TablingMode {
 		Fiber<Nothing> sealed(List<Registration> drained) {
 			synchronized (Closed.this) {
 				for (Registration reader : drained) {
-					if (reader.getEnclosingCall() == null && !isFragment(reader.getPkg())) {
+					if (reader.getEnclosing() == null && !isFragment(reader.getPkg())) {
 						stash.add(reader);
 					}
 				}
@@ -210,7 +210,7 @@ final class Closed implements TablingMode {
 		}
 
 		Fiber<Nothing> caughtUp(Registration reader) {
-			if (reader.getEnclosingCall() != null || isFragment(reader.getPkg())) {
+			if (reader.getEnclosing() != null || isFragment(reader.getPkg())) {
 				// a coated reader's contribution rides its captured edges; a fragment
 				// chain's answers come from its valued twin
 				return done(nothing());

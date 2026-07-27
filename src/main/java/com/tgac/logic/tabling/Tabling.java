@@ -448,16 +448,17 @@ public class Tabling {
 			// registration, which ledgers accept as sealed-parked
 			return table.caughtUp(entry, reader);
 		}
-		// where it parks says what it WAITS FOR; its enclosingCall — resolved
-		// once at the call site — says which call's execution it belongs to.
+		// where it parks says what it WAITS FOR; its enclosing fixpoint —
+		// resolved once at the call site — says whose ledger its work bills to.
+		// DEFERRED: parking is effectful, so it runs when this branch is
+		// STEPPED, never on the stack of whoever composed the fiber — which is
+		// what lets the feed hand consume around without wrapping it.
 		// right: parked — the owner's seal attempt (closed tabling's emit)
 		// rides as this branch's tail. left: answers arrived while
 		// registering — keep consuming the fresh snapshot, never poll
-		@SuppressWarnings("unchecked")
-		TableEntry<Object> enclosingCall = reader.getEnclosingCall();
-		return entry.parkFrom(enclosingCall == null ? null : enclosingCall.getFixpoint(), reader)
+		return Fiber.defer(() -> entry.parkFrom(reader.getEnclosing(), reader)
 				.fold(fresh -> Fiber.defer(() -> consume(entry, reader, table, fresh)),
-						tail -> tail);
+						tail -> tail));
 	}
 
 }
