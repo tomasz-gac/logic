@@ -116,8 +116,8 @@ public class Table implements Packaged {
 	}
 
 	Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, TableEntry<Object> enclosingCall) {
-		return mode.absorb(unifiedPkg, entry, consumedAnswer, cellValue, enclosingCall);
+			Object cellValue, boolean coated) {
+		return mode.absorb(unifiedPkg, entry, consumedAnswer, cellValue, coated);
 	}
 
 	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {

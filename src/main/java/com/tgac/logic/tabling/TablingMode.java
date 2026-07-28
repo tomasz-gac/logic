@@ -67,7 +67,7 @@ public interface TablingMode {
 	 * chain's end delivers).
 	 */
 	Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, TableEntry<Object> enclosingCall);
+			Object cellValue, boolean coated);
 
 	/**
 	 * The body derived an answer: its contribution, captured as what the cell

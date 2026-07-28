@@ -97,9 +97,8 @@ final class Closed implements TablingMode {
 
 	@Override
 	public Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, TableEntry<Object> enclosingCall) {
+			Object cellValue, boolean coated) {
 		Map<Reified<?>, SemiringStore> solved = lifeOf(entry).values;
-		boolean coated = enclosingCall != null;
 		if (solved == null) {
 			// open (or sealed mid-solve): record the loop, tag the fragment
 			Recurrent prev = unifiedPkg.getStores().get(Recurrent.class)

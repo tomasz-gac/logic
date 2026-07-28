@@ -408,7 +408,7 @@ public class Tabling {
 							.apply(callerPkg)
 							// streaming ⊗s the cell value in; closed records the loop
 							.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,
-									entry, key.getTerm(), cellValue, EnclosingCall.entryOf(callerPkg))))
+									entry, key.getTerm(), cellValue, reader.isCoated())))
 							.flatMap(__ -> Fiber.defer(() ->
 									consume(entry, reader.advanced(), answers))));
 		}
