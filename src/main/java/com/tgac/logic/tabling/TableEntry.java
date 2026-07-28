@@ -33,7 +33,7 @@ public class TableEntry<V> {
 	 * The answer cell: KEYS-FINAL is its seal (docs/design/table-completion.md
 	 * §5 — upward-closed, racy reads sound: a stale false prices ∞).
 	 */
-	private final MonotoneCell<JoinMap<AnswerKey, V>, Registration> cell;
+	private final MonotoneCell<JoinMap<AnswerKey, V>> cell;
 
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
@@ -46,7 +46,7 @@ public class TableEntry<V> {
 	}
 
 	/** The answer cell, as the Source consumers await. */
-	public MonotoneCell<JoinMap<AnswerKey, V>, Registration> source() {
+	public MonotoneCell<JoinMap<AnswerKey, V>> source() {
 		return cell;
 	}
 
@@ -100,16 +100,11 @@ public class TableEntry<V> {
 		return cell.read().size();
 	}
 
-	public int parkedCount() {
-		return cell.parkedCount();
-	}
-
 	@Override
 	public String toString() {
 		return "TableEntry{" +
 				"call=" + call +
 				", answers=" + getAnswerCount() +
-				", parked=" + parkedCount() +
 				'}';
 	}
 }

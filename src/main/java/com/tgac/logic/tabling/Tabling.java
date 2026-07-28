@@ -422,9 +422,19 @@ public class Tabling {
 		// frame's ambient scope records the wait — the sleeper-edge
 		// bookkeeping completion detection reads (docs/design/table-completion.md)
 		return Fiber.await(entry.source(), v -> v.size() > reader.getNextIndex())
-				.flatMap(r -> r.getValue().size() > reader.getNextIndex()
-						? Fiber.defer(() -> consume(entry, reader, r.getValue()))
-						: reader.getTable().caughtUp(entry, reader));
+				.flatMap(r -> {
+					if (r.getValue().size() > reader.getNextIndex()) {
+						return Fiber.defer(() -> consume(entry, reader, r.getValue()));
+					}
+					// progress-free completions can only be seals: a more() is
+					// only ever completed past the predicate. The mode's caught-up
+					// work (closed's SOLVE) requires the seal - enforce, loudly
+					if (!r.isSealed()) {
+						throw new IllegalStateException(
+								"await completed without progress on an unsealed entry: " + entry);
+					}
+					return reader.getTable().caughtUp(entry, reader);
+				});
 	}
 
 }

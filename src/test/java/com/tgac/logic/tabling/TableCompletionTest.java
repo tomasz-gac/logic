@@ -223,6 +223,6 @@ public class TableCompletionTest {
 		path.apply(Tuple.of(lval(1), y)).solveFrom(p, y, BreadthFirstScheduler::new).count();
 
 		assertThat(p.getStore(Table.class).entries())
-				.allMatch(e -> e.parkedCount() == 0);
+				.allMatch(TableEntry::isComplete);
 	}
 }
