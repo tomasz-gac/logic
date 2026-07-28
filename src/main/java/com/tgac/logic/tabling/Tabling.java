@@ -166,8 +166,6 @@ public class Tabling {
 						Package bodyPkg = stripConstraints(table.bodyState(callerPkg))
 								.putStore(new EnclosingCall(entry));
 						Goal seeded = projection.seed(body.get());
-						// the seal fires EMIT: the drained subscribers are its targets
-						entry.getFixpoint().onSealed(drained -> table.sealed(entry, drained));
 						return entry.getFixpoint().master(
 										produce(entry, seeded, bodyPkg, argsTerm, table))
 								.flatMap(__ -> consume(entry, reader, entry.answers()));

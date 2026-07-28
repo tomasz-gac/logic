@@ -70,12 +70,6 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
-	public Fiber<Nothing> sealed(TableEntry<Object> entry, List<Registration> drained) {
-		// answers streamed as they were found — the drained consumers are dead branches
-		return done(nothing());
-	}
-
-	@Override
 	public Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader) {
 		// the answers already flowed inline — a finished branch
 		return done(nothing());

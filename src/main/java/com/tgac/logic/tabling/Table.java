@@ -124,10 +124,6 @@ public class Table implements Packaged {
 		return mode.capture(entry, answerPkg, answerTerm);
 	}
 
-	Fiber<Nothing> sealed(TableEntry<Object> entry, List<Registration> drained) {
-		return mode.sealed(entry, drained);
-	}
-
 	Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader) {
 		return mode.caughtUp(entry, reader);
 	}

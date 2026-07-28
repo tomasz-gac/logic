@@ -78,14 +78,6 @@ public interface TablingMode {
 	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm);
 
 	/**
-	 * The entry sealed: its answers are final and {@code drained} are the
-	 * consumers parked on it — dead branches for streaming, emission targets
-	 * for closed tabling (whose first-announced entry of a fully marked group
-	 * solves the dependency closure for the whole group).
-	 */
-	Fiber<Nothing> sealed(TableEntry<Object> entry, List<Registration> drained);
-
-	/**
 	 * A consumer caught up with the already-sealed entry — the end of its
 	 * chain, arriving after the seal's drain. A finished branch for
 	 * streaming; closed tabling replays it with the solved values, now or

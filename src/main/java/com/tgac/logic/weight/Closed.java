@@ -137,11 +137,6 @@ final class Closed implements TablingMode {
 	}
 
 	@Override
-	public Fiber<Nothing> sealed(TableEntry<Object> entry, List<Registration> drained) {
-		return lifeOf(entry).sealed(drained);
-	}
-
-	@Override
 	public Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader) {
 		return lifeOf(entry).caughtUp(reader);
 	}
@@ -179,36 +174,6 @@ final class Closed implements TablingMode {
 			this.entry = entry;
 		}
 
-		Fiber<Nothing> sealed(List<Registration> drained) {
-			synchronized (Closed.this) {
-				for (Registration reader : drained) {
-					if (reader.getEnclosing() == null && !isFragment(reader.getPkg())) {
-						stash.add(reader);
-					}
-				}
-				if (values != null) {
-					// a racing cascade's leader already solved this entry
-					return releaseStash();
-				}
-				Set<TableEntry<Object>> closure = graph.dependencyClosure(entry);
-				for (TableEntry<Object> member : closure) {
-					if (!member.isComplete()) {
-						// the mark is the only finality evidence that crosses the
-						// Fixpoint boundary, and a group seal marks every member
-						// before announcing any (MonotoneGrowthTest pins it) — an unmarked
-						// closure member here means that invariant broke. Solving
-						// would read a possibly-unfinal system, staying silent
-						// would strand the stash — refuse loudly instead
-						throw new IllegalStateException(
-								"sealed " + entry.getCall() + " announced while closure member "
-										+ member.getCall() + " is unsealed: group marking must "
-										+ "complete before any announcement");
-					}
-				}
-				return solveClosure(closure);
-			}
-		}
-
 		Fiber<Nothing> caughtUp(Registration reader) {
 			if (reader.getEnclosing() != null || isFragment(reader.getPkg())) {
 				// a coated reader's contribution rides its captured edges; a fragment
@@ -217,9 +182,25 @@ final class Closed implements TablingMode {
 			}
 			synchronized (Closed.this) {
 				if (values == null) {
-					// sealed but the closure's solve has not landed — it will release
-					stash.add(reader);
-					return done(nothing());
+					// the first sealed-woken reader solves the closure: SEALED ⟹
+					// SOLVABLE, because a group seal marks every member before
+					// completing any waiter - an unmarked member here means that
+					// invariant broke; refuse loudly rather than read an unfinal
+					// system
+					Set<TableEntry<Object>> closure = graph.dependencyClosure(entry);
+					for (TableEntry<Object> member : closure) {
+						if (!member.isComplete()) {
+							throw new IllegalStateException(
+									"caught up at " + entry.getCall() + " while closure member "
+											+ member.getCall() + " is unsealed: group marking must "
+											+ "complete before any completion");
+						}
+					}
+					Fiber<Nothing> emissions = solveClosure(closure);
+					// values landed synchronously in solved(); this reader replays
+					// after the closure's own stash releases
+					Fiber<Nothing> mine = replay(reader);
+					return emissions.flatMap(__ -> mine);
 				}
 				return replay(reader);
 			}
