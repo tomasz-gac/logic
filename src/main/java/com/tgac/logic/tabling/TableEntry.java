@@ -6,7 +6,7 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.primitives.Fixpoint;
+import com.tgac.functional.fibers.schedulers.Fixpoint;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import io.vavr.Function3;
 import io.vavr.Tuple2;
