@@ -19,6 +19,7 @@ import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.val;
@@ -372,12 +373,12 @@ public class MiniKanrenTest {
 						.or(unify(x, y), unify(x, 3))
 						.or(unify(x, y), unify(x, 3), unify(y, 3)))
 				.collect(Collectors.toList());
-		Assertions.assertThat(result.get(0).get())
-				.isEqualTo(Tuple.of(lval(2), lval(2)));
-		Assertions.assertThat(result.get(1).get())
-				.isEqualTo(Tuple.of(lval(3), lval(3)));
-		Assertions.assertThat(result.get(2).get())
-				.isEqualTo(Tuple.of(lval(3), lval(3)));
+		// disjunct order is scheduler policy, not semantics: pin the multiset
+		Assertions.assertThat(result.stream().map(r -> r.get()).collect(Collectors.toList()))
+				.containsExactlyInAnyOrder(
+						Tuple.of(lval(2), lval(2)),
+						Tuple.of(lval(3), lval(3)),
+						Tuple.of(lval(3), lval(3)));
 	}
 
 	@Test
