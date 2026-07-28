@@ -8,9 +8,8 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.Fixpoint;
 import com.tgac.functional.fibers.primitives.JoinMap;
-import io.vavr.Function3;
+import com.tgac.functional.fibers.schedulers.MonotoneCell;
 import io.vavr.Tuple2;
-import io.vavr.control.Either;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 
@@ -44,15 +43,19 @@ public class TableEntry<V> {
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
 
-	public TableEntry(Call call, IdempotentSemiring<V> semiring,
-			Function3<TableEntry<V>, Registration, JoinMap<AnswerKey, V>, Fiber<Nothing>> feed) {
+	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
+		// consumers are frames awaiting the cell - growth and the seal wake
+		// them through the runtime, no feed re-enters domain code
 		this.fixpoint = new Fixpoint<>(
 				JoinMap.empty(semiring),
 				Registration::getEnclosing,
-				// the FEED: growth pushes the grown answers into the parked
-				// consumer's continuation from its cursor - no polling back
-				(r, answers) -> feed.apply(this, r, answers));
+				(r, answers) -> Fiber.done(Nothing.nothing()));
+	}
+
+	/** The answer cell, as the Source consumers await. */
+	public MonotoneCell<JoinMap<AnswerKey, V>, Registration> source() {
+		return fixpoint.source();
 	}
 
 	public void markComplete() {
@@ -89,19 +92,6 @@ public class TableEntry<V> {
 			}
 		}
 		return fixpoint.grow(JoinMap.<AnswerKey, V> empty(fixpoint.read().semiring).append(key, value).get());
-	}
-
-	/**
-	 * Park a consumer that caught up with the cache, its owner's ledger kept
-	 * honest — sleeping-before-park, un-record on refusal, ownership derived
-	 * from the registration's enclosing fixpoint ({@link Fixpoint#park}).
-	 *
-	 * @return right(seal attempt) when parked; left(the fresh answers) when
-	 * 		answers arrived past the consumer's index — keep reading them
-	 */
-	public Either<JoinMap<AnswerKey, V>, Fiber<Nothing>> park(Registration registration) {
-		return fixpoint.park(registration,
-				v -> registration.getNextIndex() >= v.size());
 	}
 
 	public Tuple2<AnswerKey, V> getAnswerAt(int index) {

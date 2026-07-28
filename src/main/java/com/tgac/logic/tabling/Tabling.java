@@ -415,45 +415,18 @@ public class Tabling {
 									consume(entry, reader.advanced(), answers))));
 		}
 
-		return parkWhenCaughtUp(entry, reader);
-	}
-
-	/**
-	 * Caught up with the cache: a sealed entry makes this reader a finished
-	 * branch; otherwise it registers as a sleeper of {@code entry} — billed to
-	 * its own coat's region — and parks, and a park that races a fresh answer
-	 * keeps consuming instead of sleeping past data. This is the sleeper-edge
-	 * bookkeeping completion detection reads (docs/design/table-completion.md).
-	 */
-	private static Fiber<Nothing> parkWhenCaughtUp(TableEntry<Object> entry, Registration reader) {
-		if (entry.isComplete()) {
-			// sealed ⇒ the answer count is FINAL. The caught-up check that led
-			// here and this seal read are not atomic — an answer AND the seal can
-			// both land between them — so re-read the now-final answers and
-			// consume any that slipped in; dying here one short would silently
-			// lose them (the reader's owner then seals without them)
-			JoinMap<AnswerKey, Object> finalAnswers = entry.answers();
-			if (reader.getNextIndex() < finalAnswers.size()) {
-				return Fiber.defer(() -> consume(entry, reader, finalAnswers));
-			}
-			// truly caught up at a sealed entry: the chain ends here, and the
-			// mode decides what that means (a finished branch; or closed's
-			// value replay). Racy read is safe: a stale false parks a dead
-			// registration, which ledgers accept as sealed-parked
-			return reader.getTable().caughtUp(entry, reader);
-		}
-		// where it parks says what it WAITS FOR; its enclosing fixpoint —
-		// carried by the reader, resolved once at the call site — says whose
-		// ledger its work bills to.
-		// DEFERRED: parking is effectful, so it runs when this branch is
-		// STEPPED, never on the stack of whoever composed the fiber — which is
-		// what lets the feed hand consume around without wrapping it.
-		// right: parked — the owner's seal attempt (closed tabling's emit)
-		// rides as this branch's tail. left: answers arrived while
-		// registering — keep consuming the fresh snapshot, never poll
-		return Fiber.defer(() -> entry.park(reader)
-				.fold(fresh -> Fiber.defer(() -> consume(entry, reader, fresh)),
-						tail -> tail));
+		// caught up: await the cell. The suspend is atomic with growth and
+		// seal, so every race lands in one of the two arms: more — answers
+		// grew past the cursor, keep consuming the handed value (a sealed
+		// result past the cursor is the final tail — same arm); sealed at
+		// the cursor — the chain honestly ends, and the mode decides what
+		// that means (a finished branch; or closed's value replay). The
+		// frame's ambient scope records the wait — the sleeper-edge
+		// bookkeeping completion detection reads (docs/design/table-completion.md)
+		return Fiber.await(entry.source(), v -> v.size() > reader.getNextIndex())
+				.flatMap(r -> r.getValue().size() > reader.getNextIndex()
+						? Fiber.defer(() -> consume(entry, reader, r.getValue()))
+						: reader.getTable().caughtUp(entry, reader));
 	}
 
 }

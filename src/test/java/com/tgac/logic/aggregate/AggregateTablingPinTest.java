@@ -1,7 +1,7 @@
 package com.tgac.logic.aggregate;
 
-// ABOUTME: Pins aggregation over tabling: findall folds on fiber-tree completion,
-// ABOUTME: which a parking consumer satisfies before the table is exhausted.
+// ABOUTME: Pins aggregation over tabling: a consumer of a tabled entry suspends as
+// ABOUTME: a frame, so findall folds only when the sub-tree is honestly exhausted.
 
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.unification.LVal.lval;
@@ -21,11 +21,12 @@ import java.util.stream.Collectors;
 import org.junit.Test;
 
 /**
- * The completion caveat the {@link Aggregate} javadoc confesses, measured: a
- * consumer of a tabled entry completes its FIBER by parking, so findall's
- * exhaustion criterion (fiber-tree completion) can fire while the master still
- * owes answers — the fold reads a partial set. The fix (Scope: fold on seal)
- * flips these pins to the true counts.
+ * Aggregation over tabling, correct by construction: a consumer of a tabled
+ * entry suspends as a live frame, so a sub-tree containing awaits does not
+ * complete until its awaits do — findall's fold (ordinary sequencing after
+ * the sub-goal) fires exactly when the collection is complete. These pins
+ * asserted the observed 0s while parking read as completion; the await
+ * migration flipped them to the true counts.
  */
 public class AggregateTablingPinTest {
 
@@ -60,11 +61,9 @@ public class AggregateTablingPinTest {
 				.map(l -> (int) l.toValueStream().count())
 				.collect(Collectors.toList());
 
-		// DEFECT PINNED: the true answer is 2. The consumer parks before the
-		// detached master produces anything, findall's fiber tree completes,
-		// and the fold fires on the empty set — deterministically. Flips to 2
-		// when aggregation folds on the scope seal.
-		assertThat(sizes).containsExactly(0);
+		// the true answer: bob's descendants are charlie and david — the
+		// consumer suspends instead of parking, so the fold waits for them
+		assertThat(sizes).containsExactly(2);
 	}
 
 	@Test
@@ -79,10 +78,9 @@ public class AggregateTablingPinTest {
 				.map(l -> (int) l.toValueStream().count())
 				.collect(Collectors.toList());
 
-		// DEFECT PINNED: alice's descendants are bob, charlie, david — the
-		// true answer is 3. Same parking mechanics as the simple case. Flips
-		// to 3 when aggregation folds on the scope seal.
-		assertThat(sizes).containsExactly(0);
+		// the true answer: alice's descendants are bob, charlie, david — the
+		// recursive table exhausts before the fold fires
+		assertThat(sizes).containsExactly(3);
 	}
 
 	@Test
@@ -95,10 +93,8 @@ public class AggregateTablingPinTest {
 				.map(Term::get)
 				.collect(Collectors.toList());
 
-		// DEFECT PINNED: the true count is 3; count() shares findall's
-		// exhaustion criterion and reads 0. The dangerous face of the same
-		// bug: 0 is negation's answer ("no ancestors"), silently wrong.
-		// Flips to 3 when aggregation folds on the scope seal.
-		assertThat(counts).containsExactly(0);
+		// the true count: the sub-tree completes only when the table is
+		// exhausted, so count over a tabled goal is negation-safe
+		assertThat(counts).containsExactly(3);
 	}
 }

@@ -1,48 +1,36 @@
 package com.tgac.logic.tabling;
 
 import static com.tgac.logic.unification.LVal.lval;
-import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.Semirings;
-import com.tgac.functional.category.Nothing;
-import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.Await;
+import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
 import java.util.ArrayList;
+import java.util.List;
 import org.junit.Test;
 
 public class TableEntryTest {
 
 	private static TableEntry<Boolean> entry() {
-		return entry(new ArrayList<>());
-	}
-
-	private static TableEntry<Boolean> entry(java.util.List<Registration> fed) {
 		Tabled<Object> relation = Tabling.define(args -> Goal.success());
 		return new TableEntry<>(
 				Call.of(relation, (Reified<?>) lval(Tuple.of("alice", "bob"))),
-				Semirings.BOOLEAN,
-				(e, r, answers) -> {
-					fed.add(r);
-					return Fiber.done(Nothing.nothing());
-				});
+				Semirings.BOOLEAN);
 	}
 
 	private static AnswerKey answer(Object value) {
 		return AnswerKey.of((Reified<?>) lval(value));
 	}
 
-	private static Registration registrationAt(int index) {
-		return new Registration(
-				p -> Fiber.done(Nothing.nothing()),
-				Package.empty(),
-				lvar().getObjectUnifiable(),
-				index,
-				null);
+	/** A consumer's waiter, recording the answers each completion hands it. */
+	private static Await.Waiter<JoinMap<AnswerKey, Boolean>> recording(
+			List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions) {
+		return completions::add;
 	}
 
 	@Test
@@ -97,48 +85,56 @@ public class TableEntryTest {
 	}
 
 	@Test
-	public void testRegistrationParksAtCacheEnd() {
+	public void testConsumerIsHeldAtCacheEnd() {
 		TableEntry<Boolean> entry = entry();
+		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 
-		assertThat(entry.park(registrationAt(0)).isRight()).isTrue();
-		assertThat(entry.parkedCount()).isEqualTo(1);
+		// no answers past the cursor: the suspend holds the waiter
+		assertThat(entry.source().suspend(v -> v.size() > 0, recording(completions))).isNull();
+		assertThat(completions).isEmpty();
 	}
 
 	@Test
-	public void testRegistrationRefusedWhenAnswersAvailable() {
-		TableEntry<Boolean> entry = entry();
-
-		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
-
-		// The consumer has not seen answer 0 yet — it must keep consuming
-		assertThat(entry.park(registrationAt(0)).isLeft()).isTrue();
-		assertThat(entry.parkedCount()).isEqualTo(0);
-	}
-
-	@Test
-	public void testGrowthFeedsEveryParkedRegistration() {
-		java.util.List<Registration> fed = new ArrayList<>();
-		TableEntry<Boolean> entry = entry(fed);
-
-		assertThat(entry.park(registrationAt(0)).isRight()).isTrue();
-		assertThat(entry.park(registrationAt(0)).isRight()).isTrue();
-		assertThat(entry.park(registrationAt(0)).isRight()).isTrue();
-
-		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
-
-		assertThat(fed).hasSize(3);
-		assertThat(entry.parkedCount()).isEqualTo(0);
-	}
-
-	@Test
-	public void testDuplicateAnswerDoesNotDrainRegistrations() {
+	public void testConsumerIsAnsweredWhenAnswersAvailable() {
 		TableEntry<Boolean> entry = entry();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
-		assertThat(entry.park(registrationAt(1)).isRight()).isTrue();
+		// the consumer has not seen answer 0 yet — the suspend answers
+		// immediately, and the consumer keeps reading
+		Await.Result<JoinMap<AnswerKey, Boolean>> immediate =
+				entry.source().suspend(v -> v.size() > 0, recording(new ArrayList<>()));
+		assertThat(immediate).isNotNull();
+		assertThat(immediate.getValue().size()).isEqualTo(1);
+		assertThat(immediate.isSealed()).isFalse();
+	}
+
+	@Test
+	public void testGrowthWakesEveryHeldConsumer() {
+		TableEntry<Boolean> entry = entry();
+		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+
+		assertThat(entry.source().suspend(v -> v.size() > 0, recording(completions))).isNull();
+		assertThat(entry.source().suspend(v -> v.size() > 0, recording(completions))).isNull();
+		assertThat(entry.source().suspend(v -> v.size() > 0, recording(completions))).isNull();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
-		assertThat(entry.parkedCount()).isEqualTo(1);
+
+		assertThat(completions).hasSize(3);
+		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
+	}
+
+	@Test
+	public void testDuplicateAnswerDoesNotWake() {
+		TableEntry<Boolean> entry = entry();
+		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+
+		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
+
+		// a consumer past the cache end waits for a SECOND answer
+		assertThat(entry.source().suspend(v -> v.size() > 1, recording(completions))).isNull();
+
+		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
+		assertThat(completions).isEmpty();
 	}
 }
