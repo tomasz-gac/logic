@@ -175,7 +175,7 @@ final class Closed implements TablingMode {
 		}
 
 		Fiber<Nothing> caughtUp(Registration reader) {
-			if (reader.getEnclosing() != null || isFragment(reader.getPkg())) {
+			if (reader.isCoated() || isFragment(reader.getPkg())) {
 				// a coated reader's contribution rides its captured edges; a fragment
 				// chain's answers come from its valued twin
 				return done(nothing());

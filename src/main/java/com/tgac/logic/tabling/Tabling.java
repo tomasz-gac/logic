@@ -166,7 +166,7 @@ public class Tabling {
 						Package bodyPkg = stripConstraints(table.bodyState(callerPkg))
 								.putStore(new EnclosingCall(entry));
 						Goal seeded = projection.seed(body.get());
-						return entry.getFixpoint().master(
+						return Fiber.detachTo(entry.source(),
 										produce(entry, seeded, bodyPkg, argsTerm, table))
 								.flatMap(__ -> consume(entry, reader, entry.answers()));
 					}

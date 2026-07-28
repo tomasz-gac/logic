@@ -5,7 +5,6 @@ package com.tgac.logic.tabling;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.schedulers.Fixpoint;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Unifiable;
 import lombok.Value;
@@ -26,10 +25,11 @@ public class Registration {
 	int nextIndex;
 
 	/**
-	 * The fixpoint of the call whose execution this reader is a line of - whose
-	 * ledger its work bills to - or null at top level.
+	 * Whether this reader runs inside some tabled call's body (the
+	 * EnclosingCall coat was present at the call site). A coated reader's
+	 * contribution rides its captured edges; only top-level readers replay.
 	 */
-	Fixpoint<?, Registration> enclosing;
+	boolean coated;
 
 	/**
 	 * The solve's table, reached through the caller's package — the shared
@@ -41,13 +41,12 @@ public class Registration {
 
 	/** The reader at the call site: cursor at the start of the cache. */
 	static Registration reader(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
-		TableEntry<?> coat = EnclosingCall.entryOf(pkg);
 		return new Registration(continuation, pkg, argsTerm, 0,
-				coat == null ? null : coat.getFixpoint());
+				EnclosingCall.entryOf(pkg) != null);
 	}
 
 	/** The same reader, one answer further along. */
 	Registration advanced() {
-		return new Registration(continuation, pkg, argsTerm, nextIndex + 1, enclosing);
+		return new Registration(continuation, pkg, argsTerm, nextIndex + 1, coated);
 	}
 }

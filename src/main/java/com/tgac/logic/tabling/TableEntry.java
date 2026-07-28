@@ -6,7 +6,6 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.schedulers.Fixpoint;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.schedulers.MonotoneCell;
 import io.vavr.Tuple2;
@@ -18,13 +17,12 @@ import lombok.Getter;
  *
  * The first invocation becomes the MASTER and executes the body, growing the
  * answer cell; later invocations are CONSUMERS reading it by index, parking
- * in it when they catch up. The entry IS a {@link Fixpoint} with this call's
- * domain plugged in: the value is a {@link JoinMap} of reified answer terms
- * (alpha-equivalence rides their equality), a subscriber is a
- * {@link Registration} — its cursor is the caught-up check, its enclosing
- * fixpoint is its owner — the feed re-enters consumption from the cursor,
- * and the seal is the keys-final flag, fired when the fixpoint's ledger
- * proves that nothing working for this entry can ever grow it again.
+ * in it when they catch up. The entry IS a {@link MonotoneCell} with this
+ * call's domain plugged in: the value is a {@link JoinMap} of reified
+ * answer terms (alpha-equivalence rides their equality), a consumer is a
+ * frame awaiting the cell with its cursor as the readiness predicate, and
+ * the seal is the keys-final flag, fired when the cell's workforce proves
+ * that nothing working for this entry can ever grow it again.
  */
 public class TableEntry<V> {
 	/** The call being tabled */
@@ -32,13 +30,10 @@ public class TableEntry<V> {
 	private final Call call;
 
 	/**
-	 * The fixpoint: KEYS-FINAL is its seal (docs/design/table-completion.md §5
-	 * — upward-closed, racy reads sound: a stale false prices ∞). The one
-	 * domain input is ownership: a sleeper belongs to the fixpoint of the
-	 * call whose body it is a line of — its coat.
+	 * The answer cell: KEYS-FINAL is its seal (docs/design/table-completion.md
+	 * §5 — upward-closed, racy reads sound: a stale false prices ∞).
 	 */
-	@Getter
-	private final Fixpoint<JoinMap<AnswerKey, V>, Registration> fixpoint;
+	private final MonotoneCell<JoinMap<AnswerKey, V>, Registration> cell;
 
 	/** Whether a master has claimed this call */
 	private final AtomicBoolean masterActive = new AtomicBoolean(false);
@@ -46,24 +41,21 @@ public class TableEntry<V> {
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		// consumers are frames awaiting the cell - growth and the seal wake
-		// them through the runtime, no feed re-enters domain code
-		this.fixpoint = new Fixpoint<>(
-				JoinMap.empty(semiring),
-				Registration::getEnclosing,
-				(r, answers) -> Fiber.done(Nothing.nothing()));
+		// them through the runtime
+		this.cell = new MonotoneCell<>(JoinMap.empty(semiring));
 	}
 
 	/** The answer cell, as the Source consumers await. */
 	public MonotoneCell<JoinMap<AnswerKey, V>, Registration> source() {
-		return fixpoint.source();
+		return cell;
 	}
 
 	public void markComplete() {
-		fixpoint.seal();
+		cell.seal();
 	}
 
 	public boolean isComplete() {
-		return fixpoint.isSealed();
+		return cell.isSealed();
 	}
 
 	/**
@@ -84,31 +76,32 @@ public class TableEntry<V> {
 	 */
 	public Fiber<Nothing> addAnswer(AnswerKey key, V value) {
 		if (!key.getResidues().isEmpty()) {
-			for (AnswerKey existing : fixpoint.read().order) {
+			for (AnswerKey existing : cell.read().order) {
 				if (existing.getTerm().equals(key.getTerm())
 						&& AnswerKey.residuesLeq(key.getResidues(), existing.getResidues())) {
 					return Fiber.done(Nothing.nothing());
 				}
 			}
 		}
-		return fixpoint.grow(JoinMap.<AnswerKey, V> empty(fixpoint.read().semiring).append(key, value).get());
+		cell.grow(JoinMap.<AnswerKey, V> empty(cell.read().semiring).append(key, value).get());
+		return Fiber.done(Nothing.nothing());
 	}
 
 	public Tuple2<AnswerKey, V> getAnswerAt(int index) {
-		return fixpoint.read().get(index);
+		return cell.read().get(index);
 	}
 
 	/** The answers as of now - the initial snapshot a subscription starts from. */
 	public JoinMap<AnswerKey, V> answers() {
-		return fixpoint.read();
+		return cell.read();
 	}
 
 	public int getAnswerCount() {
-		return fixpoint.read().size();
+		return cell.read().size();
 	}
 
 	public int parkedCount() {
-		return fixpoint.parkedCount();
+		return cell.parkedCount();
 	}
 
 	@Override
