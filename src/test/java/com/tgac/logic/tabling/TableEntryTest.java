@@ -56,12 +56,20 @@ public class TableEntryTest {
 	@Test
 	public void testMasterSelectionIsThePlantCas() {
 		TableEntry<Boolean> entry = entry();
+		List<String> ran = new ArrayList<>();
 
-		// First caller wins the plant; later callers consume
-		assertThat(Fiber.tryProduceTo(entry.source(), emit -> Fiber.done(Nothing.nothing()))
-				.isDefined()).isTrue();
-		assertThat(Fiber.tryProduceTo(entry.source(), emit -> Fiber.done(Nothing.nothing()))
-				.isDefined()).isFalse();
+		// racing planters are welcome: the CAS runs at the step, the first
+		// spawn wins, and the loser's body is never built
+		Fiber.produceTo(entry.source(), emit -> {
+			ran.add("first");
+			return Fiber.done(Nothing.nothing());
+		}).get();
+		Fiber.produceTo(entry.source(), emit -> {
+			ran.add("second");
+			return Fiber.done(Nothing.nothing());
+		}).get();
+
+		assertThat(ran).containsExactly("first");
 	}
 
 	@Test

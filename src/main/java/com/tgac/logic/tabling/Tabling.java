@@ -157,7 +157,7 @@ public class Tabling {
 					// and the key's residues restated, so the cache holds
 					// exactly the region the key names — every caller filters
 					// at consumption by its own state
-					return Fiber.tryProduceTo(entry.source(), emit -> {
+					return Fiber.produceTo(entry.source(), emit -> {
 								// the key cannot represent a parked suspension and the
 								// caller-agnostic body must not inherit one — refuse loudly;
 								// consuming an existing entry under one stays legal (the
@@ -172,8 +172,7 @@ public class Tabling {
 								Goal seeded = projection.seed(body.get());
 								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
 							})
-							.map(planted -> planted.flatMap(__ -> consume(entry, reader, entry.answers())))
-							.getOrElse(() -> consume(entry, reader, entry.answers()));
+							.flatMap(__ -> consume(entry, reader, entry.answers()));
 				}));
 	}
 
