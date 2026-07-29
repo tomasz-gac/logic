@@ -23,6 +23,6 @@ public final class Exhaustion {
 	public static Fiber<Nothing> exhausted(Fiber<Nothing> exploration) {
 		Scope sub = Scope.scope();
 		return Fiber.plant(sub, exploration)
-				.flatMap(__ -> Fiber.drained(sub));
+				.flatMap(__ -> Fiber.sealed(sub));
 	}
 }
