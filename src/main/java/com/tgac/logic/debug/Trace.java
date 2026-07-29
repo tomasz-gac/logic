@@ -6,7 +6,6 @@ package com.tgac.logic.debug;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -104,6 +103,15 @@ public final class Trace {
 		return k -> {
 			tracer.onCall(label.apply(entered), entered);
 			AtomicInteger exits = new AtomicInteger(0);
+			// TRACING IS OBSERVATION, NOT AGGREGATION: the box delivers
+			// INLINE - a planted delimiter here would batch deliveries until
+			// the box's seal, and a box wrapping a recursive tabled consumer
+			// would then withhold the very answers its entry needs to
+			// complete (the incremental feedback loop of tabling). The cost
+			// is the Fail port's precision: it rides control-drain, exact
+			// for suspension-free goals, early for suspended ones - a
+			// cosmetic trade a debugger accepts to avoid perturbing the
+			// computation it observes.
 			Fiber<Nothing> exploration = goal.apply(entered).apply(answer -> {
 				if (exits.getAndIncrement() > 0) {
 					tracer.onRedo(label.apply(answer), answer);
@@ -111,7 +119,7 @@ public final class Trace {
 				tracer.onExit(label.apply(answer), answer);
 				return k.apply(restore.apply(answer));
 			});
-			return Exhaustion.exhausted(exploration).flatMap(done -> {
+			return exploration.flatMap(done -> {
 				if (exits.get() == 0) {
 					tracer.onFail(label.apply(entered), entered);
 				}

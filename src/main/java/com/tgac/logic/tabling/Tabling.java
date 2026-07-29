@@ -6,6 +6,7 @@ package com.tgac.logic.tabling;
 import static com.tgac.logic.unification.LVal.lval;
 
 import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Emitter;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.logic.constraints.Constraints;
@@ -144,33 +145,35 @@ public class Tabling {
 						return consume(subsumer, reader, subsumer.answers());
 					}
 					TableEntry<Object> entry = table.getOrCreateEntry(key);
-					if (entry.tryBecomeMaster()) {
-						// the key cannot represent a parked suspension and the
-						// caller-agnostic body must not inherit one — refuse loudly;
-						// consuming an existing entry under one stays legal (the
-						// caller's copy ripens through its own chokepoint)
-						if (Propagation.suspensionsPending(callerPkg)) {
-							throw new IllegalStateException(
-									"a tabled call cannot become master under parked suspensions: "
-											+ "the call key cannot see them and the body must not inherit them");
-						}
-						// the ANONYMOUS MASTER: the body runs as detached work billed
-						// to this entry — it belongs to no caller. Every caller, the
-						// first included, reads the cell as a consumer; the sleeper it
-						// parks is the dependency edge completion detection needs, so
-						// a caller can never seal ahead of a call it depends on. The
-						// body runs FROM THE KEY: the first caller's constraint stores
-						// are stripped and the key's residues restated, so the cache
-						// holds exactly the region the key names — every caller
-						// (the first included) filters at consumption by its own state
-						Package bodyPkg = stripConstraints(table.bodyState(callerPkg))
-								.putStore(new EnclosingCall(entry));
-						Goal seeded = projection.seed(body.get());
-						return Fiber.detachTo(entry.source(),
-										produce(entry, seeded, bodyPkg, argsTerm, table))
-								.flatMap(__ -> consume(entry, reader, entry.answers()));
-					}
-					return consume(entry, reader, entry.answers());
+					// the ANONYMOUS MASTER, selected by the plant-once CAS
+					// (Fiber.tryProduceTo): the body runs as this entry's
+					// workforce and belongs to no caller; production is the
+					// emitter, so billing and production cannot disagree.
+					// Every caller, the first included, reads the cell as a
+					// consumer; the sleeper it parks is the dependency edge
+					// completion detection needs, so a caller can never seal
+					// ahead of a call it depends on. The body runs FROM THE
+					// KEY: the first caller's constraint stores are stripped
+					// and the key's residues restated, so the cache holds
+					// exactly the region the key names — every caller filters
+					// at consumption by its own state
+					return Fiber.tryProduceTo(entry.source(), emit -> {
+								// the key cannot represent a parked suspension and the
+								// caller-agnostic body must not inherit one — refuse loudly;
+								// consuming an existing entry under one stays legal (the
+								// caller's copy ripens through its own chokepoint)
+								if (Propagation.suspensionsPending(callerPkg)) {
+									throw new IllegalStateException(
+											"a tabled call cannot become master under parked suspensions: "
+													+ "the call key cannot see them and the body must not inherit them");
+								}
+								Package bodyPkg = stripConstraints(table.bodyState(callerPkg))
+										.putStore(new EnclosingCall(entry));
+								Goal seeded = projection.seed(body.get());
+								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
+							})
+							.map(planted -> planted.flatMap(__ -> consume(entry, reader, entry.answers())))
+							.getOrElse(() -> consume(entry, reader, entry.answers()));
 				}));
 	}
 
@@ -339,7 +342,8 @@ public class Tabling {
 			Goal goal,
 			Package bodyPkg,
 			Unifiable<?> argsTerm,
-			Table table) {
+			Table table,
+			Emitter<JoinMap<AnswerKey, Object>> emit) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			// the coat is the canary: a goal that returned a fresh package instead
 			// of deriving from its input shed every store — the damage downstream
@@ -365,10 +369,13 @@ public class Tabling {
 						// what the cell caches: the term and the value this derivation
 						// carries — caller-agnostic, since the body ran from ONE
 						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1);
-						// growth FEEDS the parked consumers - billed-before-awoken,
-						// detached - as this producer's tail; an absorbed (duplicate)
-						// answer is inert
-						return entry.addAnswer(AnswerKey.of(cached._1, reified._2, residues), cached._2);
+						// production is the emit: the fold FEEDS the parked
+						// consumers as this producer's tail; an absorbed
+						// (duplicate) answer is an inert join, an entailed one
+						// has no delta at all
+						return entry.answerDelta(AnswerKey.of(cached._1, reified._2, residues), cached._2)
+								.map(emit::emit)
+								.getOrElse(Fiber.done(Nothing.nothing()));
 					});
 		});
 	}

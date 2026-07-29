@@ -1,10 +1,15 @@
 package com.tgac.logic.tabling;
 
+// ABOUTME: One entry's cache semantics under produceTo/emit: master selection is
+// ABOUTME: the plant CAS, deltas dedup by entailment, the fold absorbs duplicates.
+
 import static com.tgac.logic.unification.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.Semirings;
+import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Await;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Hole;
@@ -27,6 +32,21 @@ public class TableEntryTest {
 		return AnswerKey.of((Reified<?>) lval(value));
 	}
 
+	/** Run the entry's whole production as one planted workforce. */
+	@SafeVarargs
+	private static void produced(TableEntry<Boolean> entry, AnswerKey... answers) {
+		Fiber.produceTo(entry.source(), emit -> {
+			Fiber<Nothing> tree = Fiber.done(Nothing.nothing());
+			for (AnswerKey key : answers) {
+				Fiber<Nothing> emitted = entry.answerDelta(key, true)
+						.map(emit::emit)
+						.getOrElse(Fiber.done(Nothing.nothing()));
+				tree = tree.flatMap(__ -> emitted);
+			}
+			return tree;
+		}).get();
+	}
+
 	/** A consumer's waiter, recording the answers each completion hands it. */
 	private static Await.Waiter<JoinMap<AnswerKey, Boolean>> recording(
 			List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions) {
@@ -34,14 +54,14 @@ public class TableEntryTest {
 	}
 
 	@Test
-	public void testMasterSelection() {
+	public void testMasterSelectionIsThePlantCas() {
 		TableEntry<Boolean> entry = entry();
 
-		// First caller becomes master
-		assertThat(entry.tryBecomeMaster()).isTrue();
-
-		// Subsequent callers cannot become master
-		assertThat(entry.tryBecomeMaster()).isFalse();
+		// First caller wins the plant; later callers consume
+		assertThat(Fiber.tryProduceTo(entry.source(), emit -> Fiber.done(Nothing.nothing()))
+				.isDefined()).isTrue();
+		assertThat(Fiber.tryProduceTo(entry.source(), emit -> Fiber.done(Nothing.nothing()))
+				.isDefined()).isFalse();
 	}
 
 	@Test
@@ -52,9 +72,7 @@ public class TableEntryTest {
 
 		AnswerKey ans1 = answer(Tuple.of("alice", "bob"));
 		AnswerKey ans2 = answer(Tuple.of("charlie", "dave"));
-
-		entry.addAnswer(ans1, true).get();
-		entry.addAnswer(ans2, true).get();
+		produced(entry, ans1, ans2);
 
 		assertThat(entry.getAnswerCount()).isEqualTo(2);
 		assertThat(entry.getAnswerAt(0)._1).isEqualTo(ans1);
@@ -63,23 +81,25 @@ public class TableEntryTest {
 	}
 
 	@Test
-	public void testDuplicateAnswerIsRejected() {
+	public void testDuplicateAnswerIsAnInertJoin() {
 		TableEntry<Boolean> entry = entry();
 
-		entry.addAnswer(answer(Tuple.of("alice", "bob")), true).get();
-		entry.addAnswer(answer(Tuple.of("alice", "bob")), true).get();
+		produced(entry,
+				answer(Tuple.of("alice", "bob")),
+				answer(Tuple.of("alice", "bob")));
 
 		assertThat(entry.getAnswerCount()).isEqualTo(1);
 	}
 
 	@Test
-	public void testAlphaEquivalentAnswerIsRejected() {
+	public void testAlphaEquivalentAnswerIsAnInertJoin() {
 		TableEntry<Boolean> entry = entry();
 
 		// Reified answers carry canonical hole names, so terms that
 		// differ only in token objects are the same answer
-		entry.addAnswer(answer(Tuple.of(Hole.of(0), lval("bob"))), true).get();
-		entry.addAnswer(answer(Tuple.of(Hole.of(0), lval("bob"))), true).get();
+		produced(entry,
+				answer(Tuple.of(Hole.of(0), lval("bob"))),
+				answer(Tuple.of(Hole.of(0), lval("bob"))));
 
 		assertThat(entry.getAnswerCount()).isEqualTo(1);
 	}
@@ -89,24 +109,25 @@ public class TableEntryTest {
 		TableEntry<Boolean> entry = entry();
 		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 
-		// no answers past the cursor: the suspend holds the waiter
+		// no answers past the cursor, no seal: the suspend holds the waiter
 		entry.source().suspend(v -> v.size() > 0, recording(completions));
 		assertThat(completions).isEmpty();
 	}
 
 	@Test
-	public void testConsumerIsAnsweredWhenAnswersAvailable() {
+	public void testACompletedEntryAnswersWithEof() {
 		TableEntry<Boolean> entry = entry();
 
-		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
+		produced(entry, answer(Tuple.of("charlie", "dave")));
 
-		// the consumer has not seen answer 0 yet — the completion arrives at
-		// once, possibly synchronously: an await always yields
+		// the workforce drained, so the entry is complete: a late consumer
+		// gets the terminal EOF with the final fold - nothing is lost
 		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 		entry.source().suspend(v -> v.size() > 0, recording(completions));
 		assertThat(completions).hasSize(1);
 		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
-		assertThat(completions.get(0).isSealed()).isFalse();
+		assertThat(completions.get(0).isSealed()).isTrue();
+		assertThat(entry.isComplete()).isTrue();
 	}
 
 	@Test
@@ -119,23 +140,27 @@ public class TableEntryTest {
 		entry.source().suspend(v -> v.size() > 0, recording(completions));
 		assertThat(completions).isEmpty();
 
-		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
+		produced(entry, answer(Tuple.of("charlie", "dave")));
 
 		assertThat(completions).hasSize(3);
 		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
 	}
 
 	@Test
-	public void testDuplicateAnswerDoesNotWake() {
+	public void testDuplicateAnswerDoesNotWakeAsGrowth() {
 		TableEntry<Boolean> entry = entry();
 		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 
-		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
-
-		// a consumer past the cache end waits for a SECOND answer
+		// a consumer past the cache end waits for a SECOND answer; the
+		// duplicate is an inert join, so only the seal ever completes it
 		entry.source().suspend(v -> v.size() > 1, recording(completions));
 
-		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
-		assertThat(completions).isEmpty();
+		produced(entry,
+				answer(Tuple.of("charlie", "dave")),
+				answer(Tuple.of("charlie", "dave")));
+
+		assertThat(completions).hasSize(1);
+		assertThat(completions.get(0).isSealed()).isTrue();
+		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
 	}
 }

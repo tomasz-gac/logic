@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -39,13 +40,20 @@ public class Conda implements Goal {
 					.reduce(
 							Fiber.<Nothing> done(Nothing.nothing()),
 							(acc, g) -> acc.flatMap(_0 -> {
+								// DELIVERIES CROSS THE DELIMITER: collect the committed
+								// solution inside the planted exploration, hand it to the
+								// continuation only after the seal - running k inside
+								// would bill downstream work to the clause's workforce
+								AtomicReference<Package> won = new AtomicReference<>();
 								Fiber<Nothing> collected = Exhaustion.exhausted(g.apply(s).runRec(s1 -> {
 									if (committed.compareAndSet(false, true)) {
-										return exit.<Package> with(s1).runRec(k);
+										won.set(s1);
 									}
 									return Fiber.done(Nothing.nothing()); // ignore subsequent solutions
 								}));
-								return collected.map(_1 -> Nothing.nothing()); // don’t emit past this point
+								return collected.flatMap(_1 -> won.get() != null
+										? exit.<Package> with(won.get()).runRec(k)
+										: Fiber.done(Nothing.nothing()));
 							}),
 							Exceptions.throwingBiOp(UnsupportedOperationException::new)
 					);

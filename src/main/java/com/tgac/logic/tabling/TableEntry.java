@@ -4,12 +4,10 @@ package com.tgac.logic.tabling;
 // ABOUTME: production ledger (what is still working for it), behind one facade.
 
 import com.tgac.functional.algebra.IdempotentSemiring;
-import com.tgac.functional.category.Nothing;
-import com.tgac.functional.fibers.Fiber;
+import io.vavr.control.Option;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.interpreter.MonotoneCell;
 import io.vavr.Tuple2;
-import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
 
 /**
@@ -35,9 +33,6 @@ public class TableEntry<V> {
 	 */
 	private final MonotoneCell<JoinMap<AnswerKey, V>> cell;
 
-	/** Whether a master has claimed this call */
-	private final AtomicBoolean masterActive = new AtomicBoolean(false);
-
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		// consumers are frames awaiting the cell - growth and the seal wake
@@ -59,32 +54,23 @@ public class TableEntry<V> {
 	}
 
 	/**
-	 * Try to become the master for this table entry. The master's work unit
-	 * runs ambiently owned via {@code Fiber.detachTo} at produce time.
+	 * The answer as a singleton delta for the master's emit, or none when it
+	 * is ENTAILED: a same-term answer whose residues cover the new one's
+	 * makes it redundant (its replay contributes a subset fixpoint). An
+	 * EXACT duplicate keeps its delta — the fold absorbs it as an inert
+	 * join. Append-only: a wider newcomer never retracts a narrower veteran
+	 * — delivered answers stand.
 	 */
-	public boolean tryBecomeMaster() {
-		return masterActive.compareAndSet(false, true);
-	}
-
-	/**
-	 * Join the answer in as a singleton delta. Growth FEEDS every parked
-	 * consumer the grown answers, billed-before-awoken, as the returned tail;
-	 * a duplicate is inert — exact (the join absorbed it) or ENTAILED: a
-	 * same-term answer whose residues cover the new one's makes it redundant
-	 * (its replay contributes a subset fixpoint). Append-only: a wider
-	 * newcomer never retracts a narrower veteran — delivered answers stand.
-	 */
-	public Fiber<Nothing> addAnswer(AnswerKey key, V value) {
+	public Option<JoinMap<AnswerKey, V>> answerDelta(AnswerKey key, V value) {
 		if (!key.getResidues().isEmpty()) {
 			for (AnswerKey existing : cell.read().order) {
 				if (existing.getTerm().equals(key.getTerm())
 						&& AnswerKey.residuesLeq(key.getResidues(), existing.getResidues())) {
-					return Fiber.done(Nothing.nothing());
+					return Option.none();
 				}
 			}
 		}
-		cell.grow(JoinMap.<AnswerKey, V> empty(cell.read().semiring).append(key, value).get());
-		return Fiber.done(Nothing.nothing());
+		return Option.of(JoinMap.<AnswerKey, V> empty(cell.read().semiring).append(key, value).get());
 	}
 
 	public Tuple2<AnswerKey, V> getAnswerAt(int index) {
