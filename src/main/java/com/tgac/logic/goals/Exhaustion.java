@@ -5,7 +5,7 @@ package com.tgac.logic.goals;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.schedulers.Scope;
+import com.tgac.functional.fibers.interpreter.Scope;
 
 /**
  * The honest "this sub-search is exhausted": plant the exploration as a fresh

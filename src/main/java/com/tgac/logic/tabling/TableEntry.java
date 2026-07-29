@@ -7,7 +7,7 @@ import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
-import com.tgac.functional.fibers.schedulers.MonotoneCell;
+import com.tgac.functional.fibers.interpreter.MonotoneCell;
 import io.vavr.Tuple2;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.Getter;
