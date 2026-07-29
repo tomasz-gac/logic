@@ -12,6 +12,7 @@ import com.tgac.functional.algebra.Monoid;
 import com.tgac.functional.algebra.Monoids;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.optimizer.Barrier;
 import com.tgac.logic.unification.LList;
@@ -57,11 +58,11 @@ public class Aggregate {
 	public static <T> Goal findall(Unifiable<T> template, Goal goal, Unifiable<LList<T>> result) {
 		return Barrier.of(pkg -> k -> {
 			Collection<Reified<T>> collected = new ConcurrentLinkedQueue<>();
-			return goal.apply(pkg).apply(answerPkg ->
+			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, template).apply(reified -> {
 								collected.add(reified);
 								return done(nothing());
-							}))
+							})))
 					.flatMap(exhausted -> buildList(collected).flatMap(list ->
 							Constraints.unify(result, list).apply(pkg).apply(k)));
 		});
@@ -73,11 +74,11 @@ public class Aggregate {
 	public static Goal count(Goal goal, Unifiable<Integer> result) {
 		return Barrier.of(pkg -> k -> {
 			AtomicInteger n = new AtomicInteger(0);
-			return goal.apply(pkg).apply(answerPkg ->
+			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, lvar()).apply(reified -> {
 								n.incrementAndGet();
 								return done(nothing());
-							}))
+							})))
 					.flatMap(exhausted -> Constraints.unify(result, lval(n.get())).apply(pkg).apply(k));
 		});
 	}
@@ -118,13 +119,13 @@ public class Aggregate {
 		return Barrier.of((Goal) pkg -> k -> {
 			AtomicReference<Integer> acc = new AtomicReference<>(monoid.empty());
 			AtomicBoolean seen = new AtomicBoolean(false);
-			return goal.apply(pkg).apply(answerPkg ->
+			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, expr).apply(reified -> {
 								int v = requireInt(reified);
 								seen.set(true);
 								acc.updateAndGet(cur -> monoid.combine(cur, v));
 								return done(nothing());
-							}))
+							})))
 					.flatMap(exhausted -> {
 						if (!seen.get() && failWhenEmpty) {
 							return done(nothing());

@@ -39,12 +39,12 @@ public class Conda implements Goal {
 					.reduce(
 							Fiber.<Nothing> done(Nothing.nothing()),
 							(acc, g) -> acc.flatMap(_0 -> {
-								Fiber<Nothing> collected = g.apply(s).runRec(s1 -> {
+								Fiber<Nothing> collected = Exhaustion.exhausted(g.apply(s).runRec(s1 -> {
 									if (committed.compareAndSet(false, true)) {
 										return exit.<Package> with(s1).runRec(k);
 									}
 									return Fiber.done(Nothing.nothing()); // ignore subsequent solutions
-								});
+								}));
 								return collected.map(_1 -> Nothing.nothing()); // don’t emit past this point
 							}),
 							Exceptions.throwingBiOp(UnsupportedOperationException::new)

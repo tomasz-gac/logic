@@ -42,10 +42,10 @@ public class Condu implements Goal {
 			return clauses.stream()
 					.reduce(Fiber.done(nothing()),
 							(acc, g) -> acc.flatMap(_0 ->
-									g.apply(s).run(s1 -> {
+									Exhaustion.exhausted(g.apply(s).run(s1 -> {
 										results.add(s1);
 										return nothing();
-									}).flatMap(_1 -> {
+									})).flatMap(_1 -> {
 										if (committed.get() || results.isEmpty()) {
 											return done(nothing());
 										}

@@ -6,6 +6,7 @@ package com.tgac.logic.debug;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -110,7 +111,7 @@ public final class Trace {
 				tracer.onExit(label.apply(answer), answer);
 				return k.apply(restore.apply(answer));
 			});
-			return exploration.flatMap(done -> {
+			return Exhaustion.exhausted(exploration).flatMap(done -> {
 				if (exits.get() == 0) {
 					tracer.onFail(label.apply(entered), entered);
 				}

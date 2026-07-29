@@ -42,9 +42,7 @@ public class Conde implements Goal {
 		return k -> Fiber.fork(
 				clauses.stream()
 						.map(g -> g.apply(s).apply(k))
-						.collect(Collectors.toList()),
-				_0 -> {
-				});
+						.collect(Collectors.toList()));
 	}
 
 	@Override

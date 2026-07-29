@@ -90,7 +90,7 @@ public class TableEntryTest {
 		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 
 		// no answers past the cursor: the suspend holds the waiter
-		assertThat(entry.source().suspend(v -> v.size() > 0, recording(completions))).isNull();
+		entry.source().suspend(v -> v.size() > 0, recording(completions));
 		assertThat(completions).isEmpty();
 	}
 
@@ -100,13 +100,13 @@ public class TableEntryTest {
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
-		// the consumer has not seen answer 0 yet — the suspend answers
-		// immediately, and the consumer keeps reading
-		Await.Result<JoinMap<AnswerKey, Boolean>> immediate =
-				entry.source().suspend(v -> v.size() > 0, recording(new ArrayList<>()));
-		assertThat(immediate).isNotNull();
-		assertThat(immediate.getValue().size()).isEqualTo(1);
-		assertThat(immediate.isSealed()).isFalse();
+		// the consumer has not seen answer 0 yet — the completion arrives at
+		// once, possibly synchronously: an await always yields
+		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		entry.source().suspend(v -> v.size() > 0, recording(completions));
+		assertThat(completions).hasSize(1);
+		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
+		assertThat(completions.get(0).isSealed()).isFalse();
 	}
 
 	@Test
@@ -114,9 +114,10 @@ public class TableEntryTest {
 		TableEntry<Boolean> entry = entry();
 		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 
-		assertThat(entry.source().suspend(v -> v.size() > 0, recording(completions))).isNull();
-		assertThat(entry.source().suspend(v -> v.size() > 0, recording(completions))).isNull();
-		assertThat(entry.source().suspend(v -> v.size() > 0, recording(completions))).isNull();
+		entry.source().suspend(v -> v.size() > 0, recording(completions));
+		entry.source().suspend(v -> v.size() > 0, recording(completions));
+		entry.source().suspend(v -> v.size() > 0, recording(completions));
+		assertThat(completions).isEmpty();
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 
@@ -132,7 +133,7 @@ public class TableEntryTest {
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true);
 
 		// a consumer past the cache end waits for a SECOND answer
-		assertThat(entry.source().suspend(v -> v.size() > 1, recording(completions))).isNull();
+		entry.source().suspend(v -> v.size() > 1, recording(completions));
 
 		entry.addAnswer(answer(Tuple.of("charlie", "dave")), true).get();
 		assertThat(completions).isEmpty();
