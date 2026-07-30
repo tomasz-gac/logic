@@ -508,9 +508,9 @@ values — `loop(x) ∧ loop(x)` comes out `x ⊗ x` by construction.
 Reused, unchanged: the structural key search, completion detection (both tiers),
 the group seal and its virtual merge, the cascade order. NEW: the mode seam
 (`TablingMode` — the derivation algebra `bodyState`/`absorb`/`capture` plus the
-EMIT events `sealed`/`caughtUp`, with `Streaming` and `Closed` as its two
-implementations; `Closed` keeps each entry's emission state in a per-entry
-`Life`), base + coefficient recording plus the nonlinearity guard
+`caughtUp` door, with `Streaming` and `Closed` as its two
+implementations; `Closed` keeps each solved entry's values in one
+entry-keyed map), base + coefficient recording plus the nonlinearity guard
 (explore), the closure walk and the ~20-line Kleene solver
 (solve), and the reader-chain replay (emit) — all of the closed logic in the
 weight package. The tabling core's own contributions are the anonymous master
