@@ -15,7 +15,7 @@ import lombok.Getter;
  *
  * The first invocation becomes the MASTER and executes the body, growing the
  * answer cell; later invocations are CONSUMERS reading it by index, parking
- * in it when they catch up. The entry IS a {@link Channel} with this
+ * at its channel when they catch up. The entry IS a {@link Channel} with this
  * call's domain plugged in: the value is a {@link JoinMap} of reified
  * answer terms (alpha-equivalence rides their equality), a consumer is a
  * frame awaiting the cell with its cursor as the readiness predicate, and

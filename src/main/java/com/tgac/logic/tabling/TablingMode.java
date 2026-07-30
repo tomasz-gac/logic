@@ -83,5 +83,5 @@ public interface TablingMode {
 	 * streaming; closed tabling replays it with the solved values, now or
 	 * when the solve lands.
 	 */
-	Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader);
+	Fiber<Nothing> caughtUp(TableEntry<Object> entry, Reader reader);
 }

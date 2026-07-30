@@ -211,7 +211,7 @@ public class TableCompletionTest {
 	}
 
 	@Test
-	public void completedEntriesDiscardTheirDeadRegistrations() {
+	public void completedEntriesDiscardTheirDeadReaders() {
 		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> path =
 				Tabling.defineRecursive(self -> args -> args.apply((x, y) ->
 						edge(x, y).or(Goal.defer(() -> {

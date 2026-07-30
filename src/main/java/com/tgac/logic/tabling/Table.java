@@ -124,7 +124,7 @@ public class Table implements Packaged {
 		return mode.capture(entry, answerPkg, answerTerm);
 	}
 
-	Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader) {
+	Fiber<Nothing> caughtUp(TableEntry<Object> entry, Reader reader) {
 		return mode.caughtUp(entry, reader);
 	}
 

@@ -70,7 +70,7 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
-	public Fiber<Nothing> caughtUp(TableEntry<Object> entry, Registration reader) {
+	public Fiber<Nothing> caughtUp(TableEntry<Object> entry, Reader reader) {
 		// the answers already flowed inline — a finished branch
 		return done(nothing());
 	}

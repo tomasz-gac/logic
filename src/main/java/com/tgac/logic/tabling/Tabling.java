@@ -42,11 +42,10 @@ import lombok.Value;
  * The first application of a call becomes the master and executes the body
  * with a caching hook threaded through its continuation: every derived
  * answer is reified, deduplicated and cached before it flows on. Later
- * applications consume the cache. Nothing ever blocks — a consumer that
- * exhausts the cache parks its continuation in the table entry as data and
- * terminates, and whoever derives a new answer respawns the parked consumers
- * as detached fibers. The search reaches its fixpoint when the scheduler
- * runs out of work; parked consumers left at that point are failed branches.
+ * applications consume the cache. A consumer that exhausts the cache awaits
+ * the entry's channel — the live frame parks, growth wakes it with the grown
+ * log, and the entry's seal completes it with the final one. A consumer
+ * completed at its cursor is a finished branch.
  *
  * Committed choice (conda/condu/orElse) over tabled goals is undefined
  * behavior: commitment depends on table state, incomplete tables never
@@ -109,9 +108,9 @@ public class Tabling {
 	 *               answer cell. Answers reach callers only through their
 	 *               consumers, each running under its own caller's coat.
 	 *
-	 * Forks inherit the coat, parked registrations freeze it, wakes resume
-	 * it. A registration's coat is how billing works: the entry it parks IN
-	 * is what it waits for; the coat says which call's execution it belongs
+	 * Forks inherit the coat; a parked reader's frame keeps it across the
+	 * wait. The coat is how billing works: the channel a reader parks AT is
+	 * what it waits for; the coat says which call's execution it belongs
 	 * to, and so whose ledger pays for its work.
 	 */
 	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
@@ -132,7 +131,7 @@ public class Tabling {
 					Reified<?> reifiedArgs = reified._1;
 					Projection projection = Projection.of(callerPkg, reified._2);
 					Call key = Call.of(relation, reifiedArgs, projection.getResidues());
-					Registration reader = Registration.reader(k, callerPkg, argsTerm);
+					Reader reader = Reader.of(k, callerPkg, argsTerm);
 					Table table = reader.getTable();
 					// a weighted solve whose semiring cannot table (non-idempotent,
 					// non-closed) would silently drop weights here — refuse loudly
@@ -331,10 +330,10 @@ public class Tabling {
 
 	/**
 	 * The anonymous master: execute the body as a pure producer. Each new
-	 * answer is cached and the consumers parked on the entry are respawned —
-	 * the answer reaches callers only through their consumers, so this
-	 * fiber's completion means BODY EXHAUSTED, the event the counters need.
-	 * Duplicate answers fail their branch.
+	 * answer is cached and emitted — growth wakes the consumers parked at
+	 * the entry's channel — and the answer reaches callers only through
+	 * their consumers, so this fiber's completion means BODY EXHAUSTED, the
+	 * event the counters need. Duplicate answers fail their branch.
 	 */
 	private static Fiber<Nothing> produce(
 			TableEntry<Object> entry,
@@ -382,16 +381,15 @@ public class Tabling {
 	/**
 	 * Consumer: unify instantiated cached answers with the argument tuple,
 	 * yielding each success to the continuation. On catching up with the
-	 * cache the consumer parks itself in the entry and terminates — growth
-	 * FEEDS it again ({@link TableEntry}'s feed re-enters here), and the
-	 * fixpoint abandons it otherwise.
+	 * cache the consumer awaits the entry's channel: growth wakes the live
+	 * frame with the grown log, and the seal completes it at its cursor —
+	 * the mode decides what that honest end means.
 	 *
 	 * @param answers the snapshot the reader's cursor indexes into — a
-	 * 		subscription starts from the answers as of the call; every later
-	 * 		value arrives pushed by the feed or handed back by a refused park,
-	 * 		never polled
+	 * 		consumption starts from the answers as of the call; every later
+	 * 		value arrives with the wake, never polled
 	 */
-	static Fiber<Nothing> consume(TableEntry<Object> entry, Registration reader, JoinMap<AnswerKey, Object> answers) {
+	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, JoinMap<AnswerKey, Object> answers) {
 		Fiber.Fn<Package, Nothing> k = reader.getContinuation();
 		Package callerPkg = reader.getPkg();
 		Unifiable<?> argsTerm = reader.getArgsTerm();

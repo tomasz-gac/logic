@@ -1,7 +1,7 @@
 package com.tgac.logic.tabling;
 
-// ABOUTME: A consumer parked as data — the subscriber of the answer log,
-// ABOUTME: carrying both what it waits for (implicit) and who it works for.
+// ABOUTME: One consumer's reading state: continuation, call-site package, args
+// ABOUTME: and cursor - carried by the live consuming frame, never stored.
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -10,15 +10,16 @@ import com.tgac.logic.unification.Unifiable;
 import lombok.Value;
 
 /**
- * The parked subscriber: its continuation, the state it was consuming in,
- * the arguments it unifies answers against, the cache index it will resume
- * from, and THE FIXPOINT IT WORKS FOR (null at top level). Where it parks
- * says what it WAITS FOR; {@code enclosing} says whose ledger its work is
- * billed to — resolved once from the parked package's {@link EnclosingCall}
- * coat.
+ * A reader: the consumer's continuation, the state it consumes in, the
+ * arguments it unifies answers against, and the cache index it reads next.
+ * A parameter bundle for the LIVE consuming frame — when the reader catches
+ * up, the frame itself parks at the entry's channel (Fiber.await) and this
+ * object simply rides its captured state; nothing stores it. The channel it
+ * parks at says what it WAITS FOR; the coat says whose call's execution it
+ * belongs to.
  */
 @Value
-public class Registration {
+public class Reader {
 	Fiber.Fn<Package, Nothing> continuation;
 	Package pkg;
 	Unifiable<?> argsTerm;
@@ -40,13 +41,13 @@ public class Registration {
 	}
 
 	/** The reader at the call site: cursor at the start of the cache. */
-	static Registration reader(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
-		return new Registration(continuation, pkg, argsTerm, 0,
+	static Reader of(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
+		return new Reader(continuation, pkg, argsTerm, 0,
 				EnclosingCall.entryOf(pkg) != null);
 	}
 
 	/** The same reader, one answer further along. */
-	Registration advanced() {
-		return new Registration(continuation, pkg, argsTerm, nextIndex + 1, coated);
+	Reader advanced() {
+		return new Reader(continuation, pkg, argsTerm, nextIndex + 1, coated);
 	}
 }
