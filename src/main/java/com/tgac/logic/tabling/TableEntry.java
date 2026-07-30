@@ -6,7 +6,7 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import io.vavr.control.Option;
 import com.tgac.functional.fibers.primitives.JoinMap;
-import com.tgac.functional.fibers.interpreter.MonotoneCell;
+import com.tgac.functional.fibers.interpreter.Channel;
 import io.vavr.Tuple2;
 import lombok.Getter;
 
@@ -15,7 +15,7 @@ import lombok.Getter;
  *
  * The first invocation becomes the MASTER and executes the body, growing the
  * answer cell; later invocations are CONSUMERS reading it by index, parking
- * in it when they catch up. The entry IS a {@link MonotoneCell} with this
+ * in it when they catch up. The entry IS a {@link Channel} with this
  * call's domain plugged in: the value is a {@link JoinMap} of reified
  * answer terms (alpha-equivalence rides their equality), a consumer is a
  * frame awaiting the cell with its cursor as the readiness predicate, and
@@ -31,17 +31,17 @@ public class TableEntry<V> {
 	 * The answer cell: KEYS-FINAL is its seal (docs/design/table-completion.md
 	 * §5 — upward-closed, racy reads sound: a stale false prices ∞).
 	 */
-	private final MonotoneCell<JoinMap<AnswerKey, V>> cell;
+	private final Channel<JoinMap<AnswerKey, V>> cell;
 
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		// consumers are frames awaiting the cell - growth and the seal wake
 		// them through the runtime
-		this.cell = new MonotoneCell<>(JoinMap.empty(semiring));
+		this.cell = new Channel<>(JoinMap.empty(semiring));
 	}
 
-	/** The answer cell, as the Source consumers await. */
-	public MonotoneCell<JoinMap<AnswerKey, V>> source() {
+	/** The answer cell, as the channel consumers await. */
+	public Channel<JoinMap<AnswerKey, V>> channel() {
 		return cell;
 	}
 

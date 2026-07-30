@@ -41,7 +41,7 @@ public class Conda implements Goal {
 							Fiber.<Nothing> done(Nothing.nothing()),
 							(acc, g) -> acc.flatMap(_0 -> {
 								// DELIVERIES CROSS THE DELIMITER: collect the committed
-								// solution inside the planted exploration, hand it to the
+								// solution inside the claimed exploration, hand it to the
 								// continuation only after the seal - running k inside
 								// would bill downstream work to the clause's workforce
 								AtomicReference<Package> won = new AtomicReference<>();

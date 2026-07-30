@@ -145,7 +145,7 @@ public class Tabling {
 						return consume(subsumer, reader, subsumer.answers());
 					}
 					TableEntry<Object> entry = table.getOrCreateEntry(key);
-					// the ANONYMOUS MASTER, selected by the plant-once CAS
+					// the ANONYMOUS MASTER, selected by the claim-once CAS
 					// (Fiber.tryProduceTo): the body runs as this entry's
 					// workforce and belongs to no caller; production is the
 					// emitter, so billing and production cannot disagree.
@@ -157,7 +157,7 @@ public class Tabling {
 					// and the key's residues restated, so the cache holds
 					// exactly the region the key names — every caller filters
 					// at consumption by its own state
-					return Fiber.produceTo(entry.source(), emit -> {
+					return Fiber.produce(entry.channel(), emit -> {
 								// the key cannot represent a parked suspension and the
 								// caller-agnostic body must not inherit one — refuse loudly;
 								// consuming an existing entry under one stays legal (the
@@ -427,7 +427,7 @@ public class Tabling {
 		// that means (a finished branch; or closed's value replay). The
 		// frame's ambient scope records the wait — the sleeper-edge
 		// bookkeeping completion detection reads (docs/design/table-completion.md)
-		return Fiber.await(entry.source(), v -> v.size() > reader.getNextIndex())
+		return Fiber.await(entry.channel(), v -> v.size() > reader.getNextIndex())
 				.flatMap(r -> {
 					if (r.getValue().size() > reader.getNextIndex()) {
 						return Fiber.defer(() -> consume(entry, reader, r.getValue()));

@@ -8,7 +8,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.interpreter.Scope;
 
 /**
- * The honest "this sub-search is exhausted": plant the exploration as a fresh
+ * The honest "this sub-search is exhausted": claim the exploration as a fresh
  * workforce and await its seal. Sound under suspension — a sub-search that
  * parks at a tabled entry keeps the workforce open until the entry seals, so
  * the continuation reads a complete answer set, never a partial one. (Fork
@@ -22,7 +22,7 @@ public final class Exhaustion {
 
 	public static Fiber<Nothing> exhausted(Fiber<Nothing> exploration) {
 		Scope sub = Scope.scope();
-		return Fiber.plant(sub, exploration)
+		return Fiber.claim(sub, exploration)
 				.flatMap(__ -> Fiber.sealed(sub));
 	}
 }
