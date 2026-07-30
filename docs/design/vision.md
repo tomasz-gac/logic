@@ -261,7 +261,8 @@ module; capability types `IdempotentSemiring`/`ClosedSemiring`/
 witnesses; the optimizer on `Semirings.SATURATING`; the `answers(Package)`
 widening with store-sighted post pricing and completed-entry pricing.
 LANDED BEYOND PLAN, same period: the full TABLE COMPLETION arc —
-`table-completion.md` and `group-seal.md`: the EnclosingCall coat, detach-k
+`table-completion.md` and `group-seal.md`: the EnclosingCall coat (since
+deleted — the frame's ambient scope took the role), detach-k
 (since superseded by the anonymous master),
 the Scope/WorkLedger/Channel/JoinSet primitives, the two-edge graph
 and its seal criterion, SUBSUMPTIVE REUSE (sealed entries serve instance
@@ -342,7 +343,7 @@ instructiveness)**
     it tests every claim at near-zero ops cost, and it is the only pending
     item that can DISPROVE rather than extend. The standing obligation this
     phase creates today: Phases 1–4 built distribution-ready primitives
-    without knowing it (Scope, Channel, JoinSet, the coat); future
+    without knowing it (Scope, Channel, JoinSet); future
     designs should preserve that property deliberately.
 
 **Adoption track (parallel, independent of the above)**

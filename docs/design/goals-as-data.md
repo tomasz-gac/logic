@@ -7,7 +7,7 @@ comes from its algebra (ACI merges, upward-closed flags, monotone counters
 — the CALM story), and any distributed version must REUSE that machinery,
 not rebuild it. Prerequisites for the vocabulary: lattice.md §5a (the
 quotient tower, the license table), table-completion.md and group-seal.md
-(coats, ledgers, seals).
+(scopes, ledgers, seals).
 
 ## 0. The one wall, and where not to cut
 
@@ -67,8 +67,10 @@ What changes in the machinery, and what does not:
   with two implementations: monitor-backed (today) and shard-backed
   (parked subscribers are remote registrations).
 - **Regions distribute to quiesce**: ledger events (started/finished/
-  sleeping/awake) become messages to the region's home shard, the coat
-  as metadata (region identity = the (name, pattern) key). The singleton
+  sleeping/awake) become messages to the region's home shard, with region
+  identity as message metadata (the (name, pattern) key; in-engine this is
+  the frame's ambient scope — distribution reintroduces a data-level tag
+  because frames do not serialize). The singleton
   rule evaluates at home — D–S un-miniaturized. The group seal ports by
   construction: stale monotone reads undercount and undercounting
   refuses; the only ordering requirement is completing all phase-one
@@ -152,7 +154,7 @@ The machinery-reuse requirement is met by NOT distributing goals at all.
   `JoinSet`'s ACI join makes replica merge and at-least-once delivery
   lawful (the CRDT reading, load-bearing); the seal's upward-closedness
   makes it cacheable network-wide (a stale "unsealed" only defers —
-  the sound failure mode is retry, never wrong); the coat becomes
+  the sound failure mode is retry, never wrong); region identity becomes
   message metadata and Dijkstra–Scholten billing returns to its native
   habitat — it was a distributed algorithm before we miniaturized it;
   the group seal's two-phase monotone read survives staleness (stale

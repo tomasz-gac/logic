@@ -70,14 +70,14 @@ template declarations.
   turn, so wait-until-seal is fine (the master alone drives the seal); one
   effective callsite, so no correspondence problem. Diff at seal, project
   against liveness-from-`out`, cache. Recursion detection is free and loud: a
-  coated re-entry of the same goal during its own explore throws "recursive
+  re-entry of the same goal during its own explore throws "recursive
   goals need declared args". The findall/aggregate-style sub-search is the
   customer.
 - **Diff as VERIFIER, not deducer.** Keep declared args; diff at produce and
   assert `footprint ⊆ declared args ∪ locals`. An over-binding body (touching
   an undeclared outside var) is today a silent answer-generalization hazard;
-  the diff makes it a loud one — the coat-canary pattern, nearly free since
-  produce holds both packages already.
+  the diff makes it a loud one — the produce-canary pattern, nearly free
+  since produce holds both packages already.
 - **Assembler relief, not replacement**: the template still declares the
   interface (wall 4), but observed footprint could spare declaring FORMALS
   separately from the constructor; actuals at each `apply` give per-call

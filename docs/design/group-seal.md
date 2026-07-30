@@ -5,7 +5,7 @@ completion detection: with it, sealing is TOTAL for finite solves — every
 semantically keys-final call event seals as early as its dependency
 closure finishes, which is full SLG completion. Companion to
 `table-completion.md` (the scheme this extends); read that first for the
-vocabulary: call events, coats, cells, ledgers, sleeper edges, the
+vocabulary: call events, cells, ledgers, sleeper edges, the
 singleton seal rule.
 
 ## 1. The situation, domain-free
@@ -71,9 +71,10 @@ sealed. Tier 2 = Tier 1 ∘ merge.
 The soundness argument transfers with the merge: a wake inside S needs a
 new item in S, which needs running work in S — the merged drained ledger
 rules it out; nothing OUTSIDE injects items, because publishing is billed
-to the publisher's own feed (in tabling: the coat rule — an answer lands
-in the cell of the call whose body derived it; a master's body is its own
-region; each reader's work bills its own caller). Tier 1 is
+to the publisher's own feed (in tabling: an answer lands in the cell of
+the call whose body derived it — the emit membership check makes any other
+target unrepresentable; a master's body is its own region; each reader's
+work bills its own caller, via the frame's ambient scope). Tier 1 is
 |S| = 1; the two-feed ring is |S| = 2; SLG calls the general case
 completing an SCC.
 
@@ -178,8 +179,9 @@ hardest part of the SLG-WAM. Here it is a static method on a generic
 primitive, and the reason is lineage, not luck: park-as-data removed stack
 freezing before this design began; detach-k — since superseded by the
 anonymous master — made fiber-completion mean
-body-exhausted; the coat (EnclosingCall) made billing state-carried and
-thread-agnostic; the Region fusion made "drained", "sleeper edges" and
+body-exhausted; the coat (EnclosingCall, since deleted — the frame's
+ambient scope took the role) made billing thread-agnostic; the Region
+fusion made "drained", "sleeper edges" and
 "seal" first-class on one value; and the two-edge graph made the criterion
 STATABLE — at which point Tier 2 is the singleton rule quantified over a
 closure, with monotone counters standing in for a global lock. The same

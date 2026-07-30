@@ -40,10 +40,11 @@ dependency graph.
 - **Failure is silence.** CPS success calls the continuation; failure
   doesn't. A dead branch notifies nobody. The saving fact: FIBER completion
   is observable even though branch death isn't — the master's produce fiber
-  completing means its subtree is explored (minus what parked), and
-  respawned consumers are detached fibers whose completion can be wrapped.
-- **No ancestry.** A Registration records (k, pkg, argsTerm, index) but not
-  whose production it serves; respawn detaches, erasing lineage.
+  completing means its subtree is explored (minus what parked), and a
+  parked consumer is a live frame whose wait is a record the ledger sees.
+- **No ancestry in the data.** A reader records (k, pkg, argsTerm, cursor)
+  but not whose production it serves; lineage rides the consuming frame's
+  ambient scope.
 - **The only free signal is global.** Scheduler-dry completes everything at
   once, at end of search — useless for mid-solve pricing.
 
@@ -51,8 +52,8 @@ dependency graph.
 completion wants is a DELIMITED drain — "run this production as its own
 little search, tell me when IT reaches quiescence" — and a private
 scheduler would give it free: its empty queue IS the region's fixpoint.
-All frames share one queue, so the EnclosingCall coat re-attaches the region
-identity the shared queue erases, and the counters reconstruct the
+All frames share one queue, so the frame's ambient scope re-attaches the
+region identity the shared queue erases, and the counters reconstruct the
 emptiness event: counting is how you virtualize a delimited scheduler
 inside a global one, and it is the PRICE OF FAIRNESS — an actual nested
 drain (SLG's local evaluation) detects trivially but lets the region
@@ -83,16 +84,15 @@ entry-completion.
 complete. End-of-search only.
 
 **Tier 1 (as built):**
-- **The coat (`EnclosingCall`)**: a plain transport Store riding the
-  Package, naming the innermost enclosing tabled CALL — the event whose
-  ledger pays for this work (goals are text, calls are events; one goal
-  object under two bindings is two calls, two ledgers, two seals). THE ONE
-  RULE: state follows the data, the coat follows the CODE — it changes
-  exactly where control crosses a call boundary (stamped on the body at
-  call entry; an answer ends at the cell wearing it, and each reader runs
-  under its own caller's coat) and is carried untouched everywhere else:
-  forks inherit it, parked Registrations freeze it, wakes resume it.
-  Branch-local by construction — no trail, no unwind, no thread-locals.
+- **Region identity**: the frame's AMBIENT SCOPE names the innermost
+  enclosing tabled CALL — the event whose ledger pays for this work (goals
+  are text, calls are events; one goal object under two bindings is two
+  calls, two ledgers, two seals). THE ONE RULE: execution follows the
+  frame — the body runs as the entry's workforce, forks inherit the scope,
+  and an inner consumer's park leaves its blocked record there. No trail,
+  no unwind, no thread-locals. (Historically a package store carried this
+  — EnclosingCall, "the coat"; billing moved into the fiber substrate and
+  the coat was deleted, July 2026.)
 - **The primitives** (`functional`'s `fibers/primitives` — lifted July 2026;
   logic-free, generic): a
   `Channel<V>` holds each entry's answers — a persistent
@@ -104,11 +104,11 @@ complete. End-of-search only.
   discipline every unit of work passes through (start ticks at wrap time —
   no gap for a racing seal — finish at fiber end).
 - **the anonymous master**: the body runs as DETACHED work billed to its
-  own entry — a pure producer: cache each answer, respawn the parked
-  readers, end. Its fiber completion means BODY EXHAUSTED, the event the
-  counters need. Every caller — the first included — reads the cell
-  through a consumer billed to its own coat, and that consumer's parked
-  registration is the DEPENDENCY EDGE: a caller cannot seal ahead of a
+  own entry — a pure producer: cache each answer, emit (growth wakes the
+  parked readers), end. Its fiber completion means BODY EXHAUSTED, the
+  event the counters need. Every caller — the first included — reads the
+  cell through a consumer billed to its caller's scope, and that
+  consumer's parked frame is the DEPENDENCY EDGE: a caller cannot seal ahead of a
   call it depends on. (The predecessor, detach-k, kept the first caller
   inline in the body and detached each answer's downstream instead; it
   produced the same fiber-end event but recorded no dependency edge for
@@ -118,8 +118,8 @@ complete. End-of-search only.
   region — the predicate is the theorem, not domain input) → flag CAS →
   drain the parked subscribers (provably dead). The cascade rechecks each
   dead sleeper's owner — seals propagate backwards along sleeper edges,
-  leaves first. The ONE domain input is `ownerOf`: a sleeper belongs to
-  the region of the call whose body it is a line of — its coat.
+  leaves first. There is no domain input left: a sleeper belongs to its
+  frame's ambient scope, and the substrate already knows it.
 
 **Tier 2 (SHIPPED July 2026, `Region.groupSeal` — full story:
 group-seal.md):** when the singleton
@@ -230,7 +230,7 @@ ever run again" is reachability over sleeper edges, not counting — which
 is exactly what the shipped group seal computes: the closure walk over
 sleeper edges, verified by the two-phase monotone-counter read. Billing
 note: an event's BODY is billed to its own ledger; a caller pays for its
-READER (each respawned consumer is billed to the reader's coat). "Does
+READER (each consumer is billed to its caller's scope). "Does
 the existing entry contain what I need" is
 answered today by PATTERN EQUALITY only — upgrading that check to
 entailment against a SEALED general entry is subsumptive reuse (§8a).
@@ -250,8 +250,8 @@ is not finished.
 
 - **Immutability kills the classically-hardest layer.** SLG-WAM's most
   intricate machinery is stack freezing — preserving a suspended consumer's
-  environment across backtracking. Our Registrations park a package VALUE:
-  no freeze/melt protocol, and the EnclosingCall coat is branch-local with zero
+  environment across backtracking. Our readers carry a package VALUE:
+  no freeze/melt protocol, and region identity is the frame's — zero
   maintenance.
 - **The flag is an upward-closed fact** (direction principle): once
   complete, forever complete. Racy reads are sound in one direction — a
@@ -290,10 +290,11 @@ predicate reads the seal ATOMIC, not a monitor; counted's on-finish
 cascade runs after taskFinished releases; grow/park take pure functions).
 The cascade and the group walk take one monitor AT A TIME — deliberately
 never two ledgers at once. The only nesting anywhere is one-directional:
-the closed mode's seal hook (mode monitor held) reads cell counts. One
+the closed mode's caughtUp (mode monitor held) reads cell counts. One
 direction + leaf monitors = no cycle = no deadlock; and no monitor is
-ever held across user goal code or a scheduler step (fibers never block —
-park-as-data), so there is no hold-while-blocked hazard either. CAVEAT:
+ever held across user goal code or a scheduler step (fibers never block a
+thread — parked frames are held, not running), so there is no
+hold-while-blocked hazard either. CAVEAT:
 this is a discipline, not a type — a future call-out under a ledger
 monitor could break it. Check this section before adding one.
 

@@ -10,7 +10,7 @@ master-continuation emit with reader-chain replay). The BOUNDED weighted path is
 (the Kleene sweep). Companions: `table-completion.md` and `group-seal.md` (the
 completion machinery this reuses wholesale), `semiring-inference.md` (the
 weighted-inference frame and the bounded path), `lattice.md` (the two
-algebras). Read those for the vocabulary: cells, coats, ledgers, sleeper edges,
+algebras). Read those for the vocabulary: cells, scopes, ledgers, sleeper edges,
 the seal, the group seal's virtual merge.**
 
 ---
@@ -18,8 +18,8 @@ the seal, the group seal's virtual merge.**
 ## 1. The spine
 
 Tabling catches recursion and parks it. A tabled call memoizes its answers; a
-consumer that catches up on the cache parks its continuation *as data* (a
-`Registration`) and terminates. While the call's body executes, the work is
+consumer that catches up on the cache parks — the live frame awaits the
+entry's channel, its wait a blocked record. While the call's body executes, the work is
 COUNTED — two monotone counters, Dijkstra–Scholten style: `started` bumped when
 a unit of work is wrapped (before its parent can finish), `finished` bumped at
 fiber end. When `started == finished` and every sleeper is parked home or at a
@@ -124,8 +124,8 @@ solves, and runs in three phases:
   a matrix computation over recorded coefficients, touching no continuation.
 - **Emit.** The producer ended at the seal, so nothing produces anymore. Replay
   each finished TOP-LEVEL reader chain once from the start with the
-  star-computed values injected; coated readers are never replayed — their
-  contribution already rides the edges they captured (§4.5).
+  star-computed values injected; inside-a-body readers are never replayed —
+  their contribution already rides the edges they captured (§4.5).
 
 The through-line: exploration's continuations carry the STRUCTURE (a normal run
 under the presence semiring), star computes the VALUE as data, and emission
@@ -143,9 +143,9 @@ PARKED CONTINUATIONS. Turning them into a linear system is mechanical, and the
 one trap is doing too much.
 
 A sleeper is one directed edge, and it already carries both indices it needs.
-Its COAT names the call whose body is suspended (`i`); the ENTRY it parked in
-names the call it waits for (`j`). So the sleeper IS the edge `i→j`, with no
-reconstruction — read the two indices straight off it. Feeding it a `j`-answer
+Its HOME SCOPE names the call whose body is suspended (`i`); the CHANNEL it
+parked at names the call it waits for (`j`). So the sleeper IS the edge `i→j`,
+with no reconstruction — read the two indices straight off it. Feeding it a `j`-answer
 whose value is `one()` and reading the weight at its next produce yields `A_ij`
 — the ONE-STEP weight, `j`'s own value stripped out. (§4.3: the presence cell
 already strips `j`'s value, so in practice `A_ij` is just the recursive produce's
@@ -355,23 +355,23 @@ polynomial; recursive provenance is a rational expression (polynomial + star).
 it. Two facts of the tabling core make the phases line up. First, the ANONYMOUS
 MASTER (table-completion.md): a tabled body runs as detached work billed to its
 own entry, and every caller — the first included — reads the cell through a
-consumer whose parked registration is a dependency edge, so entries SEAL IN
+consumer whose parked reader is a dependency edge, so entries SEAL IN
 DEPENDENCY ORDER. Second, and following from the first: SEALED ⟹ SOLVABLE. A
 seal freezes one entry's slice of the equation graph, and an entry is solvable
 only with its whole dependency closure over that graph — the equation system's
 coupling; dependency-ordered sealing guarantees that at any entry's seal the
 whole closure has sealed too, earlier (a constant by then) or atomically with it
 (a sleeper ring group-seals, and the group is fully MARKED before any member is
-announced). So the closed mode solves at the closure's FIRST announcement —
-later members' hooks find the values and release their own stashed readers, an
-unmarked closure member at a hook is an invariant breach and throws — nothing
-ever waits across cascades — and inner SCCs solve first,
+announced). So the closed mode solves at the closure's FIRST-woken reader —
+later readers wake by themselves (the group seal completes every member's
+waiters) and find the recorded values, an unmarked closure member at a wake is
+an invariant breach and throws — nothing ever waits across cascades — and inner SCCs solve first,
 becoming constants for the outer ones, bottom-up without imposing an order. At
 each solve it reads the captured `A`/`b` off the `DependencyGraph` (§4.1–4.2),
 runs the star as pure arithmetic
-(§4.4), and EMITS — the only fiber work: the seal hook returns the replay fiber
-onto the SAME scheduler, interleaving with the ongoing search and finishing
-inside the single lazy drive. (Two earlier designs died here: a fiber pass that
+(§4.4), and EMITS — the only fiber work: each sealed-woken reader replays as
+its own continuation on the SAME scheduler, interleaving with the ongoing
+search and finishing inside the single lazy drive. (Two earlier designs died here: a fiber pass that
 PROBED coefficients at seal — §4.3 explains why record-at-produce makes it
 unnecessary — and an emit that replayed the MASTER's own continuation, which
 under sequential singleton seals re-entered the co-recursive caller's body and
@@ -487,10 +487,11 @@ makes chains that cross the seal mid-read safe: they just end a little later
 and are replayed then. Replayed deliveries carry no tag, so they clear the
 collector's filter.
 
-Two kinds of chain are never replayed. A COATED reader (a line of some entry's
-body) already delivered its contribution structurally — its consume recorded
-what its produce captured as an edge, and the star folds that edge; replaying
-it would run the body suffix a second time and double-count. When a coated
+Two kinds of chain are never replayed. An INSIDE-A-BODY reader (a line of some
+entry's body — its package carries the mode's Recurrent store) already
+delivered its contribution structurally — its consume recorded what its produce
+captured as an edge, and the star folds that edge; replaying it would run the
+body suffix a second time and double-count. When such a
 reader consumes an already-SOLVED entry, the value is instead ⊗'d INLINE at the
 consume so its produce captures the constant — and the two paths agree, because
 an edge to a solved entry folds to exactly the inline value. And a FRAGMENT
@@ -513,21 +514,23 @@ implementations; `Closed` keeps each entry's emission state in a per-entry
 (explore), the closure walk and the ~20-line Kleene solver
 (solve), and the reader-chain replay (emit) — all of the closed logic in the
 weight package. The tabling core's own contributions are the anonymous master
-and the sealed hook handing each entry's drained subscribers to the mode. The part that
+and the caughtUp door handing each sealed-woken reader to the mode. The part that
 is usually hardest — knowing WHEN an SCC is complete and WHICH calls it
 contains — is exactly what the completion machinery already provides.
 
 ## 5. Optional (unbuilt): pruning doomed stragglers
 
 Under a parallel scheduler, a partial (pre-star) package can be in flight when
-its coat's region seals concurrently. Since a sealed region's exploration is
+its home region seals concurrently. Since a sealed region's exploration is
 complete and its answers will be emitted, such a Fragment-tagged package (a
-doomed straggler) is redundant and can be killed early
-(`coat.region.isSealed()` → fail the branch) instead of running to the collector
-to be dropped there. It is SAFE because the billing discipline keeps a region
-unsealed while any straggler that could still trigger work is alive (a body is
-billed to its own entry, a reader to its caller — `table-completion.md` §4) —
-so a sealed coat provably has nothing left to do; and it is a NO-OP under
+doomed straggler) is redundant and can be killed early (the region's seal read
+→ fail the branch; with EnclosingCall deleted, the handle is the frame's
+ambient scope — an interpreter-side check, not a package read) instead of
+running to the collector to be dropped there. It is SAFE because the billing
+discipline keeps a region unsealed while any straggler that could still
+trigger work is alive (a body is billed to its own entry, a reader to its
+caller — the frame's ambient scope) — so a sealed home provably has nothing
+left to do; and it is a NO-OP under
 sequential schedulers (the seal and the straggler's finish coincide), so it is
 scheduler-level, benchmark-gated, and falls back to the existing late death
 (`addAnswer` returning none on a sealed cell) with no behavior change. It needs
