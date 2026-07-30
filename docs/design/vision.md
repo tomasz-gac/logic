@@ -127,7 +127,7 @@ what the adoption audience owns. Caveats, revised (July 2026 — the algebras di
 - The TABLE is already a CRDT except at completion: entries are G-Sets
   (answer-appends commute, idempotence eats duplicates, stale slaves wake
   again). Racing masters are SOUND under idempotent plugs —
-  tryBecomeMaster's CAS (already CAS-shaped) is an optimization there and
+  the master-claim CAS (already CAS-shaped) is an optimization there and
   an exactly-once REQUIREMENT under non-idempotent plugs (counting
   double-counts). Only sync point: completion detection over the SCC
   graph (the parallel-tabling literature's known hard part).
@@ -263,7 +263,7 @@ widening with store-sighted post pricing and completed-entry pricing.
 LANDED BEYOND PLAN, same period: the full TABLE COMPLETION arc —
 `table-completion.md` and `group-seal.md`: the EnclosingCall coat, detach-k
 (since superseded by the anonymous master),
-the Region/WorkLedger/MonotoneCell/JoinSet primitives, the two-edge graph
+the Scope/WorkLedger/Channel/JoinSet primitives, the two-edge graph
 and its seal criterion, SUBSUMPTIVE REUSE (sealed entries serve instance
 calls; completed entries genuinely mobile), and the TIER-2 GROUP SEAL
 (detection total for finite solves — full SLG completion as ~60 lines on a
@@ -308,7 +308,7 @@ generic primitive). Plus the distribution design corpus, goals-as-data.md.)**
 **Phase 3 — weighted inference (GATED on Phase 1)**
 8. Weighted goals + value-riding-the-package store (`semiring-inference.md`
    §4); counting and (min,+) end-to-end.
-9. Semiring tabling: `Map<AnswerTerm, V>` cells behind the MonotoneCell
+9. Semiring tabling: `Map<AnswerTerm, V>` cells behind the Channel
    seam, ⊕ at arrival (the cell demands `IdempotentSemiring<V>` for
    streaming), ⊗ at consumption, the call-boundary cut enforced (§7a).
    Acyclic first; closed-semiring star for cycles after (the group seal's
@@ -342,7 +342,7 @@ instructiveness)**
     it tests every claim at near-zero ops cost, and it is the only pending
     item that can DISPROVE rather than extend. The standing obligation this
     phase creates today: Phases 1–4 built distribution-ready primitives
-    without knowing it (Region, MonotoneCell, JoinSet, the coat); future
+    without knowing it (Scope, Channel, JoinSet, the coat); future
     designs should preserve that property deliberately.
 
 **Adoption track (parallel, independent of the above)**

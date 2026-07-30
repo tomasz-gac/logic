@@ -95,7 +95,7 @@ complete. End-of-search only.
   Branch-local by construction — no trail, no unwind, no thread-locals.
 - **The primitives** (`functional`'s `fibers/primitives` — lifted July 2026;
   logic-free, generic): a
-  `MonotoneCell<V,S>` holds each entry's answers — a persistent
+  `Channel<V>` holds each entry's answers — a persistent
   `JoinSet<A>` value (join-semilattice; join-idempotence IS the dedup
   discipline, gate-checked) plus parked subscribers, grow-wakes,
   park-races-grow; a `WorkLedger<S,P>` holds each entry's work — the
@@ -277,7 +277,7 @@ is not finished.
 ## 6a. The concurrency contract (as built, July 2026)
 
 The design is fine-grained monitors plus atomics, not "lock-free" in the
-literature sense: per-entry CELL monitor (MonotoneCell), per-entry LEDGER
+literature sense: per-entry CELL monitor (Channel), per-entry LEDGER
 monitor (WorkLedger), a per-solve mode monitor (the weight package's
 Closed), and the seal as an AtomicBoolean. What makes it safe is a LOCK
 GRAPH and three INVARIANTS, each purchased by a parallel race found on a

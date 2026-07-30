@@ -30,10 +30,23 @@ move earns a place here after it has fired at least twice.
    ripeness author; next propagator author; a third toolkit user or a
    profile showing Neq; TCLP). A shelf without a trigger is a graveyard.
 7. **Record the reasoning where the next reader will look** — the relevant
-   design doc's lineage/shelved section, not a commit message.
+   design doc's lineage/shelved section, not a commit message. A revert
+   records the refuted theory alongside its refutation (the seal-walk
+   retry), not just the removal — the next person to have the same wrong
+   idea should find the counterargument waiting.
 
 ## The moves
 
+- **The comprehension veto.** "If I don't get it, it's not designed
+  properly. We will try to make me understand it and if we can't then
+  we'll be changing the code." Explaining to the human is a proof
+  obligation, not a courtesy: an explanation that cannot be given plainly
+  indicts the design, and the code changes until it can. Kill list since
+  adoption: the resume referee (→ always-park suspension), the sealOnly
+  flag (→ the Sealed node), the seal walk's edge taxonomy (→ "the ledger
+  is the work"), the walk retry (→ reverted with its refutation). Distinct
+  from adversarial deflation: deflation attacks necessity, the veto
+  attacks intelligibility; a proposal ships only after surviving both.
 - **Adversarial deflation.** Every proposal is attacked before it ships —
   by the other party, as a step, not a courtesy. Downgrades are wins of the
   method: normalize-at-meet died under "doesn't verifyAndSimplify already
@@ -57,6 +70,29 @@ move earns a place here after it has fired at least twice.
   contract climbs: prose plea (Suspension's monotonicity javadoc) →
   runtime check (MonotoneDrain) → unrepresentability (threshold vocabulary,
   `Verdict.keep`). Climb when a customer justifies the rung, not before.
+- **Instrument, don't derive.** When armchair analysis of concurrent
+  behavior spirals past two rounds without converging, stop and make the
+  system answer: build the reproduction ladder up from primitives
+  (substrate test → minimal composed case → shrink → bisect), then move
+  the question into the code as throwaway probes. Fired: the condu
+  premature-drain hunt (test ladder plus scope prints found the group-seal
+  bug); the ForkJoin loss (frame lifecycle events, then the tagged pending
+  audit, whose one full capture named a lost fork after days of derivation
+  could not).
+- **The conditional-guarantee trap.** A contract that holds only while a
+  global non-property holds breaks a stranger's code the day the condition
+  first fails, silently. Name the condition; then make it structural or
+  refuse loudly. Fired: fork completion as sub-search exhaustion (true
+  only while nothing in the subtree suspends → Exhaustion over the seal);
+  fire-and-forget `fork()` (eventual execution is backstopped by joins
+  nobody performs → `pool.execute`).
+- **Instruments are scaffolding; refusals are product.** Hunt diagnostics
+  — lifecycle traces, tagged audits, state dumps in messages — are torn
+  out with the hunt; "keep it, zero cost when off" was overruled twice
+  and stays overruled. What ships is the refusal path: an exceptional
+  completion is never swallowed into a clean result, and a detector that
+  can misfire under concurrency is stabilized (two observations over a
+  quiet epoch) or removed.
 
 ## The razors
 

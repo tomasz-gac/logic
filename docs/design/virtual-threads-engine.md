@@ -10,7 +10,7 @@ change to the current engine. The current engine is Java 8, trampolined, and wor
 ## 1. The idea
 
 The current engine is CPS + a trampolined free structure: `Goal = Package -> Cont<Package,
-Nothing>`, driven by schedulers over `FiberStep`. The trampoline exists to get **stack safety**
+Nothing>`, driven by schedulers over `Frame`. The trampoline exists to get **stack safety**
 (deep recursion without `StackOverflowError`) and **suspension** (parking) without threads.
 
 Java 21 virtual threads give both of those *natively*: their stacks are growable/heap-allocated

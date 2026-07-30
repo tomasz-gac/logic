@@ -59,7 +59,7 @@ inferred".
 
 What changes in the machinery, and what does not:
 
-- **`MonotoneCell` is already the transport seam**: grow =
+- **`Channel` is already the transport seam**: grow =
   publish-with-dedup (the home shard's JoinSet join eats redeliveries —
   at-least-once safe by law), park = subscribe-from-offset with the race
   resolved toward reading, replay-from-index = consumer offsets. A
