@@ -14,11 +14,16 @@ import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.finitedomain.domains.Arithmetic;
+import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.FiniteDomain;
+import io.vavr.collection.Array;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
+import io.vavr.Tuple1;
 import io.vavr.Tuple2;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,6 +37,26 @@ public class WeightedTablingTest {
 				.or(unify(x, lval("b")).and(unify(y, lval("d"))).and(Weights.factor(Semirings.MIN_PLUS, 5L)))
 				.or(unify(x, lval("a")).and(unify(y, lval("c"))).and(Weights.factor(Semirings.MIN_PLUS, 2L)))
 				.or(unify(x, lval("c")).and(unify(y, lval("d"))).and(Weights.factor(Semirings.MIN_PLUS, 2L)));
+	}
+
+	@Test
+	public void boundedWeightedTablingRefusesConstrainedAnswers() {
+		// weighted answer values and answer residues were never designed
+		// together (an entailed-but-cheaper answer would silently lose its
+		// value on the overlap) - the combination refuses loudly
+		Tabled<Tuple1<Unifiable<Integer>>> constrained =
+				Tabling.define(args -> args.apply(x ->
+						FiniteDomain.dom(x, EnumeratedDomain.of(Array.ofAll(java.util.stream.IntStream.of(1, 2, 3).boxed()).map(Arithmetic::ofCasted)))
+								.and(Weights.factor(Semirings.MIN_PLUS, 1L))));
+		Unifiable<Integer> out = lvar();
+		BoundedSemiring<SemiringStore> product = SemiringStore.boundedProduct(Semirings.MIN_PLUS);
+
+		assertThatThrownBy(() ->
+				Weights.solveBounded(constrained.apply(Tuple.of(out)), out, product,
+								BreadthFirstScheduler::new)
+						.collect(Collectors.toList()))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("constrained answers");
 	}
 
 	@Test

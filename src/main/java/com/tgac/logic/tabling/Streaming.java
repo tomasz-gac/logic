@@ -34,13 +34,17 @@ final class Streaming implements TablingMode {
 	private final BoundedSemiring<Object> semiring;
 	private final Function<Package, Object> weightReader;
 	private final BiFunction<Package, Object, Package> weightWriter;
+	/** The presence instance (plain set tabling) — the only one residues may ride. */
+	private final boolean presence;
 
 	Streaming(BoundedSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
-			BiFunction<Package, Object, Package> weightWriter) {
+			BiFunction<Package, Object, Package> weightWriter,
+			boolean presence) {
 		this.semiring = semiring;
 		this.weightReader = weightReader;
 		this.weightWriter = weightWriter;
+		this.presence = presence;
 	}
 
 	@Override
@@ -50,7 +54,10 @@ final class Streaming implements TablingMode {
 
 	@Override
 	public boolean supportsConstrainedAnswers() {
-		return true;
+		// an entailed-but-cheaper answer would silently lose its value on
+		// the overlap: weighted answer values and answer residues were
+		// never designed together, so only the presence instance admits them
+		return presence;
 	}
 
 	@Override

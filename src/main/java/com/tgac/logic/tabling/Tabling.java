@@ -317,7 +317,7 @@ public class Tabling {
 		}
 		if (!residues.isEmpty() && !table.supportsConstrainedAnswers()) {
 			throw new IllegalStateException(
-					"constrained answers under closed/star tabling are not designed: "
+					"constrained answers are supported only under plain (presence) tabling: "
 							+ "weights over conditional answers is an orthogonal, open concern");
 		}
 		return residues;
@@ -384,31 +384,20 @@ public class Tabling {
 	 * 		value arrives with the wake, never polled
 	 */
 	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, JoinMap<AnswerKey, Object> answers) {
-		Fiber.Fn<Package, Nothing> k = reader.getContinuation();
-		Package callerPkg = reader.getPkg();
-		Unifiable<?> argsTerm = reader.getArgsTerm();
-
 		if (reader.getNextIndex() < answers.size()) {
 			Tuple2<AnswerKey, Object> answer = answers.get(reader.getNextIndex());
 			AnswerKey key = answer._1;
-			Object cellValue = answer._2;
-			// Fresh variables per consumption, so separate consumptions of the
-			// same answer don't alias each other's free variables. Delivery is
-			// a goal: unify the caller's args with the instantiation — through
-			// the public entry, so the caller's stores revise — then RESTATE
-			// the residues onto the fresh holes. The meet-at-consumption: a
-			// failed unification, a violated store or a violated residue all
-			// silently fail the delivery and consumption moves on
-			return MiniKanren.instantiateWithHoles(key.getTerm()).flatMap(inst ->
-					Conjunction.of(
-									unifyArgs(argsTerm.getObjectUnifiable(), inst._1.getObjectUnifiable()),
-									restateAll(key, inst._2))
-							.apply(callerPkg)
-							// streaming ⊗s the cell value in; closed records the loop
-							.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,
-									entry, key.getTerm(), cellValue)))
-							.flatMap(__ -> Fiber.defer(() ->
-									consume(entry, reader.advanced(), answers))));
+			// a constrained answer reaches an OUTSIDE reader only at the
+			// seal, as part of the final antichain (deliverMaximalConstrained)
+			// - its arrival order must not shape the output. Inside a body it
+			// streams: it is the fixpoint's fuel, and the widening derivation
+			// that produces its dominator may need it first
+			if (!key.getResidues().isEmpty() && !InBody.on(reader.getPkg())) {
+				return Fiber.defer(() -> consume(entry, reader.advanced(), answers));
+			}
+			return deliver(entry, reader, key, answer._2)
+					.flatMap(__ -> Fiber.defer(() ->
+							consume(entry, reader.advanced(), answers)));
 		}
 
 		// caught up: await the cell. The suspend is atomic with growth and
@@ -431,8 +420,53 @@ public class Tabling {
 						throw new IllegalStateException(
 								"await completed without progress on an unsealed entry: " + entry);
 					}
-					return reader.getTable().caughtUp(entry, reader);
+					return deliverMaximalConstrained(entry, reader)
+							.flatMap(__ -> reader.getTable().caughtUp(entry, reader));
 				});
+	}
+
+	/**
+	 * One answer's delivery. Fresh variables per consumption, so separate
+	 * consumptions of the same answer don't alias each other's free
+	 * variables. Delivery is a goal: unify the caller's args with the
+	 * instantiation — through the public entry, so the caller's stores
+	 * revise — then RESTATE the residues onto the fresh holes. The
+	 * meet-at-consumption: a failed unification, a violated store or a
+	 * violated residue all silently fail the delivery and consumption moves
+	 * on.
+	 */
+	private static Fiber<Nothing> deliver(TableEntry<Object> entry, Reader reader,
+			AnswerKey key, Object cellValue) {
+		Fiber.Fn<Package, Nothing> k = reader.getContinuation();
+		Package callerPkg = reader.getPkg();
+		Unifiable<?> argsTerm = reader.getArgsTerm();
+		return MiniKanren.instantiateWithHoles(key.getTerm()).flatMap(inst ->
+				Conjunction.of(
+								unifyArgs(argsTerm.getObjectUnifiable(), inst._1.getObjectUnifiable()),
+								restateAll(key, inst._2))
+						.apply(callerPkg)
+						// streaming ⊗s the cell value in; closed records the loop
+						.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,
+								entry, key.getTerm(), cellValue))));
+	}
+
+	/**
+	 * The seal's delivery to an OUTSIDE reader: the maximal antichain of the
+	 * entry's constrained answers, skipped during the log walk. Maximality
+	 * is order-invariant even though the log is not, so the output no longer
+	 * depends on derivation order. Inside-a-body readers already streamed
+	 * everything; unconstrained entries have nothing gated.
+	 */
+	private static Fiber<Nothing> deliverMaximalConstrained(TableEntry<Object> entry, Reader reader) {
+		if (!entry.isConstrained() || InBody.on(reader.getPkg())) {
+			return Fiber.done(Nothing.nothing());
+		}
+		Fiber<Nothing> result = Fiber.done(Nothing.nothing());
+		for (Tuple2<AnswerKey, Object> answer : entry.maximalConstrained()) {
+			Fiber<Nothing> delivery = deliver(entry, reader, answer._1, answer._2);
+			result = result.flatMap(__ -> delivery);
+		}
+		return result;
 	}
 
 }

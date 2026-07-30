@@ -68,7 +68,7 @@ public class Table implements Packaged {
 
 	/** Plain tabling: a presence cell and no running value to thread. */
 	public static Table empty() {
-		return new Table(new Streaming(PRESENCE, p -> Boolean.TRUE, (p, v) -> p), null);
+		return new Table(new Streaming(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, true), null);
 	}
 
 	/**
@@ -80,7 +80,7 @@ public class Table implements Packaged {
 	public static Table weighted(BoundedSemiring<Object> semiring,
 			Function<Package, Object> weightReader,
 			BiFunction<Package, Object, Package> weightWriter) {
-		return new Table(new Streaming(semiring, weightReader, weightWriter), null);
+		return new Table(new Streaming(semiring, weightReader, weightWriter, false), null);
 	}
 
 	/** A table running the given mode — the door for modes defined outside this package. */
@@ -95,7 +95,7 @@ public class Table implements Packaged {
 	 * call, so dropped weights fail loudly instead of silently miscomputing.
 	 */
 	public static Table refusingTabling(String reason) {
-		return new Table(new Streaming(PRESENCE, p -> Boolean.TRUE, (p, v) -> p), reason);
+		return new Table(new Streaming(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, true), reason);
 	}
 
 	/** Loud failure when a tabled call runs under a table that cannot support it. */
@@ -108,7 +108,8 @@ public class Table implements Packaged {
 	// ---- the mode's per-step hooks (see TablingMode) ----
 
 	Package bodyState(Package callerPkg) {
-		return mode.bodyState(callerPkg);
+		// the delivery-boundary bit: every body package says so (InBody)
+		return mode.bodyState(callerPkg).putStore(InBody.MARKER);
 	}
 
 	boolean supportsConstrainedAnswers() {

@@ -33,6 +33,13 @@ public class TableEntry<V> {
 	 */
 	private final Channel<JoinMap<AnswerKey, V>> cell;
 
+	/**
+	 * Armed by the first residue-carrying answer — the delivery gate reads
+	 * it. Upward-closed; a racy stale false only means an outside reader
+	 * takes the streaming branch on an entry that is not yet constrained.
+	 */
+	private volatile boolean constrained;
+
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		// consumers are frames awaiting the cell - growth and the seal wake
@@ -64,6 +71,7 @@ public class TableEntry<V> {
 	 */
 	public Option<JoinMap<AnswerKey, V>> answerDelta(AnswerKey key, V value) {
 		if (!key.getResidues().isEmpty()) {
+			constrained = true;
 			for (AnswerKey existing : cell.read().order) {
 				if (existing.getTerm().equals(key.getTerm())
 						&& AnswerKey.residuesLeq(key.getResidues(), existing.getResidues())) {
@@ -72,6 +80,47 @@ public class TableEntry<V> {
 			}
 		}
 		return Option.of(JoinMap.<AnswerKey, V> empty(cell.read().semiring).append(key, value).get());
+	}
+
+	boolean isConstrained() {
+		return constrained;
+	}
+
+	/**
+	 * The residue-carrying answers no other answer dominates — the antichain
+	 * outside readers receive at the seal. ORDER-INVARIANT even though the
+	 * log is not: domination, not arrival, decides membership (the log may
+	 * hold a narrower answer that arrived before its wider dominator — no
+	 * arrival-time check can drop what is already cached). Equivalent
+	 * residues keep their first-arrived representative.
+	 */
+	java.util.List<Tuple2<AnswerKey, V>> maximalConstrained() {
+		JoinMap<AnswerKey, V> answers = cell.read();
+		java.util.List<Tuple2<AnswerKey, V>> result = new java.util.ArrayList<>();
+		for (int i = 0; i < answers.size(); i++) {
+			Tuple2<AnswerKey, V> candidate = answers.get(i);
+			AnswerKey key = candidate._1;
+			if (key.getResidues().isEmpty()) {
+				continue;
+			}
+			boolean dominated = false;
+			for (int j = 0; j < answers.size() && !dominated; j++) {
+				if (j == i) {
+					continue;
+				}
+				AnswerKey other = answers.get(j)._1;
+				if (other.getResidues().isEmpty() || !other.getTerm().equals(key.getTerm())) {
+					continue;
+				}
+				boolean below = AnswerKey.residuesLeq(key.getResidues(), other.getResidues());
+				boolean above = AnswerKey.residuesLeq(other.getResidues(), key.getResidues());
+				dominated = below && (!above || j < i);
+			}
+			if (!dominated) {
+				result.add(candidate);
+			}
+		}
+		return result;
 	}
 
 	public Tuple2<AnswerKey, V> getAnswerAt(int index) {

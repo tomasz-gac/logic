@@ -190,6 +190,48 @@ public class TabledUnderDomainsTest {
 	}
 
 	@Test
+	public void narrowerFirstDeliversTheSameAnswerSetAsWiderFirst() {
+		// the same region pair as narrowerRedundantAnswersDedupByEntailment,
+		// derived in the OPPOSITE order: the narrower answer lands in the
+		// cache before the wider one exists, so no arrival-time check can
+		// drop it. Arrival order must not shape the output - the outside
+		// reader receives the maximal antichain at the seal
+		Tabled<Tuple1<Unifiable<Integer>>> gen =
+				Tabling.define(args -> args.apply(x ->
+						FiniteDomain.dom(x, dom(1, 2))
+								.or(FiniteDomain.dom(x, dom(1, 2, 3)))));
+		Unifiable<Integer> x = lvar();
+
+		List<Integer> values = gen.apply(Tuple.of(x))
+				.solve(x)
+				.map(Term::<Integer>get)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(values).containsExactly(1, 2, 3);
+	}
+
+	@Test
+	public void insideABodyConstrainedAnswersStillStream() {
+		// an outer body consumes an inner entry's constrained answer during
+		// its own explore: inside the boundary the answer flows eagerly -
+		// it is the fixpoint's fuel - and rides out on the outer answer
+		Tabled<Tuple1<Unifiable<Integer>>> inner =
+				Tabling.define(args -> args.apply(x ->
+						FiniteDomain.dom(x, dom(1, 2))));
+		Tabled<Tuple1<Unifiable<Integer>>> outer =
+				Tabling.define(args -> args.apply(x ->
+						inner.apply(Tuple.of(x))));
+		Unifiable<Integer> x = lvar();
+
+		List<Integer> values = outer.apply(Tuple.of(x))
+				.solve(x)
+				.map(Term::<Integer>get)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(values).containsExactly(1, 2);
+	}
+
+	@Test
 	public void narrowerRedundantAnswersDedupByEntailment() {
 		// two derivations of the SAME hole-term: the narrower residue is
 		// entailed by the wider and must not replay a second time
