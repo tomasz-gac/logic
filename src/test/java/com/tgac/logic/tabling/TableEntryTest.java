@@ -132,7 +132,9 @@ public class TableEntryTest {
 		// and a drive out of work refuses to end with it stranded
 		assertThatThrownBy(() -> consuming(entry, 0, completions).get())
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("blocked");
+				.hasMessageContaining("blocked")
+				// the entry's channel is named by its call, so the strand names it
+				.hasMessageContaining("alice");
 		assertThat(completions).isEmpty();
 	}
 

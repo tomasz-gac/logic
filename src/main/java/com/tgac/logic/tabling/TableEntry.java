@@ -36,8 +36,9 @@ public class TableEntry<V> {
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		// consumers are frames awaiting the cell - growth and the seal wake
-		// them through the runtime
-		this.cell = new Channel<>(JoinMap.empty(semiring));
+		// them through the runtime; the call names the channel, so a strand
+		// refusal names the entry it starved at
+		this.cell = new Channel<>(JoinMap.empty(semiring), call.toString());
 	}
 
 	/** The answer cell, as the channel consumers await. */
