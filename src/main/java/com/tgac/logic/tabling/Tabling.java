@@ -19,6 +19,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.optimizer.Barrier;
+import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
@@ -264,10 +265,12 @@ public class Tabling {
 		if (key.getResidues().isEmpty()) {
 			return Goal.success();
 		}
-		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
-		java.util.List<LVar<?>> holeVars = key.getHoleVars();
-		for (int i = 0; i < holeVars.size(); i++) {
-			seed.put(holeVars.get(i), freshHoles.get(i));
+		// residues are slot-canonical: seed each slot hole onto the term
+		// instantiation's fresh var for that slot; unseeded locals mint - the
+		// existential
+		java.util.Map<Term<?>, Term<?>> seed = new java.util.HashMap<>();
+		for (int i = 0; i < freshHoles.size(); i++) {
+			seed.put(Hole.of(i), freshHoles.get(i));
 		}
 		Renaming mint = Renaming.into(seed);
 		Goal seeded = Goal.success();
@@ -298,9 +301,15 @@ public class Tabling {
 	 * live knowledge refuses, and constrained answers under a mode that
 	 * cannot replay them (closed) refuse before caching.
 	 */
-	private static Map<Class<?>, Projectable<?>> answerResidues(Package answerPkg, Table table) {
+	private static Map<Class<?>, Projectable<?>> answerResidues(Package answerPkg,
+			java.util.List<LVar<?>> holeVars, Table table) {
 		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
 		Renaming normalization = Renaming.walking(answerPkg.substitution());
+		// live hole vars go to their slot holes, so residues from SEPARATE
+		// derivations compare in ONE basis (residuesLeq, key equality); body
+		// locals keep their names - the existential witnesses still ride
+		// whole, conservatively incomparable across answers
+		Renaming canonicalization = Renaming.canonical(holeVars);
 		for (Packaged store : answerPkg.getStores().values()) {
 			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
 				continue;
@@ -312,7 +321,7 @@ public class Tabling {
 			}
 			Projectable<?> normalized = ((Projectable<?>) store).rename(normalization);
 			if (!normalized.isEmpty()) {
-				residues = residues.put(store.getClass(), normalized);
+				residues = residues.put(store.getClass(), normalized.rename(canonicalization));
 			}
 		}
 		if (!residues.isEmpty() && !table.supportsConstrainedAnswers()) {
@@ -357,7 +366,7 @@ public class Tabling {
 			}
 			return MiniKanren.reifyWithHoles(answerPkg.substitution(), argsTerm.getObjectTerm())
 					.flatMap(reified -> {
-						Map<Class<?>, Projectable<?>> residues = answerResidues(answerPkg, table);
+						Map<Class<?>, Projectable<?>> residues = answerResidues(answerPkg, reified._2, table);
 						// what the cell caches: the term and the value this derivation
 						// carries — caller-agnostic, since the body ran from ONE
 						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1);
@@ -365,7 +374,7 @@ public class Tabling {
 						// consumers as this producer's tail; an absorbed
 						// (duplicate) answer is an inert join, an entailed one
 						// has no delta at all
-						return entry.answerDelta(AnswerKey.of(cached._1, reified._2, residues), cached._2)
+						return entry.answerDelta(AnswerKey.of(cached._1, residues), cached._2)
 								.map(emit::emit)
 								.getOrElse(Fiber.done(Nothing.nothing()));
 					});

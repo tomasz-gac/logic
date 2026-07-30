@@ -232,6 +232,30 @@ public class TabledUnderDomainsTest {
 	}
 
 	@Test
+	public void insideReadersReceiveTheSubsumingAnswer() {
+		// the inner entry derives narrow BEFORE wide; the outer body consumes
+		// inner during its own explore. The wide answer is the outer
+		// fixpoint's fuel - however the carrier represents subsumption, the
+		// inside reader must receive the subsuming answer, and the outer
+		// entry's own delivery must stay duplicate-free
+		Tabled<Tuple1<Unifiable<Integer>>> inner =
+				Tabling.define(args -> args.apply(x ->
+						FiniteDomain.dom(x, dom(1, 2))
+								.or(FiniteDomain.dom(x, dom(1, 2, 3)))));
+		Tabled<Tuple1<Unifiable<Integer>>> outer =
+				Tabling.define(args -> args.apply(x ->
+						inner.apply(Tuple.of(x))));
+		Unifiable<Integer> x = lvar();
+
+		List<Integer> values = outer.apply(Tuple.of(x))
+				.solve(x)
+				.map(Term::<Integer>get)
+				.sorted()
+				.collect(Collectors.toList());
+		assertThat(values).containsExactly(1, 2, 3);
+	}
+
+	@Test
 	public void narrowerRedundantAnswersDedupByEntailment() {
 		// two derivations of the SAME hole-term: the narrower residue is
 		// entailed by the wider and must not replay a second time

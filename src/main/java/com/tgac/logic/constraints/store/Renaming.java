@@ -48,8 +48,8 @@ public final class Renaming {
 		return new Renaming(home, new java.util.HashMap<>(), false);
 	}
 
-	/** Retargeting: {@code seed} maps vars to targets; misses mint fresh vars. */
-	public static Renaming into(Map<LVar<?>, Term<?>> seed) {
+	/** Retargeting: {@code seed} maps names (live vars or slot holes) to targets; misses mint fresh vars. */
+	public static Renaming into(Map<? extends Term<?>, Term<?>> seed) {
 		return new Renaming(null, new java.util.HashMap<>(seed), true);
 	}
 

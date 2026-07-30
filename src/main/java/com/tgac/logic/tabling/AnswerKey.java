@@ -33,15 +33,14 @@ import lombok.Value;
 @EqualsAndHashCode(of = {"term", "residues"})
 public class AnswerKey {
 	Reified<?> term;
-	List<LVar<?>> holeVars;
 	Map<Class<?>, Projectable<?>> residues;
 
 	public static AnswerKey of(Reified<?> term) {
-		return new AnswerKey(term, Collections.emptyList(), HashMap.empty());
+		return new AnswerKey(term, HashMap.empty());
 	}
 
-	public static AnswerKey of(Reified<?> term, List<LVar<?>> holeVars, Map<Class<?>, Projectable<?>> residues) {
-		return new AnswerKey(term, holeVars, residues);
+	public static AnswerKey of(Reified<?> term, Map<Class<?>, Projectable<?>> residues) {
+		return new AnswerKey(term, residues);
 	}
 
 	/**
