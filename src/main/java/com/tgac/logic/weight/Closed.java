@@ -2,7 +2,7 @@ package com.tgac.logic.weight;
 
 // ABOUTME: Closed (star) tabling mode: explore for structure (presence cell + base/
 // ABOUTME: edge capture into the DependencyGraph), solve each sealed closure jointly,
-// ABOUTME: emit by replaying each entry's reader chains from its Life.
+// ABOUTME: emit by replaying each entry's reader chains against its solved values.
 
 import static com.tgac.functional.category.Nothing.nothing;
 import static com.tgac.functional.fibers.Fiber.done;
@@ -41,10 +41,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * caller's seal until the callee's, so at any entry's seal its whole dependency
  * closure over the graph — the equation system's coupling — has sealed too,
  * earlier or atomically with it (a sleeper ring group-seals, and the group is
- * fully MARKED before any member is announced). The group's FIRST-announced
- * {@link Life} therefore solves the closure ({@link StarTabling#solveGroup})
- * and hands each member its values; later members' lives just release their
- * own readers.
+ * fully MARKED before any member is announced). The group's first
+ * sealed-woken reader therefore solves the closure
+ * ({@link StarTabling#solveGroup}) and records each member's values; every
+ * later reader wakes by itself and replays against them.
  *
  * <p>EMIT replays reader chains. During explore every consumer delivery is a
  * fragment (dropped at the collector); a chain ends at a sealed entry — drained
@@ -66,8 +66,14 @@ final class Closed implements TablingMode {
 	private final ClosedSemiring<SemiringStore> ring;
 	/** The equation system built during explore, read at each seal. */
 	private final DependencyGraph graph;
-	/** Each entry's {@link Life}, minted on first touch — identity plumbing; the state lives on the Life. */
-	private final ConcurrentHashMap<TableEntry<Object>, Life> lives = new ConcurrentHashMap<>();
+	/**
+	 * Each entry's solved answer values — absent until its closure's joint
+	 * solve, the lifecycle phase. ConcurrentHashMap publication lets
+	 * {@link #absorb} read the phase lock-free; writes happen under the
+	 * Closed monitor.
+	 */
+	private final ConcurrentHashMap<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solvedValues =
+			new ConcurrentHashMap<>();
 
 	Closed(ClosedSemiring<SemiringStore> ring) {
 		this.ring = ring;
@@ -99,7 +105,7 @@ final class Closed implements TablingMode {
 	@Override
 	public Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
 			Object cellValue) {
-		Map<Reified<?>, SemiringStore> solved = lifeOf(entry).values;
+		Map<Reified<?>, SemiringStore> solved = solvedValues.get(entry);
 		if (solved == null) {
 			// open (or sealed mid-solve): record the loop, tag the fragment
 			Recurrent prev = unifiedPkg.getStores().get(Recurrent.class)
@@ -139,11 +145,64 @@ final class Closed implements TablingMode {
 
 	@Override
 	public Fiber<Nothing> caughtUp(TableEntry<Object> entry, Reader reader) {
-		return lifeOf(entry).caughtUp(reader);
+		if (insideBody(reader.getPkg()) || isFragment(reader.getPkg())) {
+			// an inside-a-body reader's contribution rides its captured edges;
+			// a fragment chain's answers come from its valued twin
+			return done(nothing());
+		}
+		synchronized (this) {
+			if (!solvedValues.containsKey(entry)) {
+				// the first sealed-woken reader solves the closure: SEALED ⟹
+				// SOLVABLE, because a group seal marks every member before
+				// completing any waiter - an unmarked member here means that
+				// invariant broke; refuse loudly rather than read an unfinal
+				// system
+				Set<TableEntry<Object>> closure = graph.dependencyClosure(entry);
+				for (TableEntry<Object> member : closure) {
+					if (!member.isComplete()) {
+						throw new IllegalStateException(
+								"caught up at " + entry.getCall() + " while closure member "
+										+ member.getCall() + " is unsealed: group marking must "
+										+ "complete before any completion");
+					}
+				}
+				solveClosure(closure);
+			}
+			return replay(entry, reader);
+		}
 	}
 
-	private Life lifeOf(TableEntry<Object> entry) {
-		return lives.computeIfAbsent(entry, Life::new);
+	/**
+	 * The first sealed-woken reader is the leader: one joint solve for the
+	 * closure, then every member's values are recorded (already-solved
+	 * members keep their frozen values — same by determinism). Each member's
+	 * readers deliver themselves as they wake and find the values.
+	 */
+	private void solveClosure(Set<TableEntry<Object>> closure) {
+		Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solved =
+				StarTabling.solveGroup(closure, graph, ring);
+		for (TableEntry<Object> member : closure) {
+			solvedValues.putIfAbsent(member,
+					solved.getOrDefault(member, new LinkedHashMap<Reified<?>, SemiringStore>()));
+		}
+	}
+
+	/** Replay one ended top-level chain from index 0 with the solved values. */
+	private Fiber<Nothing> replay(TableEntry<Object> entry, Reader reader) {
+		Map<Reified<?>, SemiringStore> values = solvedValues.get(entry);
+		SemiringStore readerValue = storeOf(reader.getPkg());
+		Fiber<Nothing> result = done(nothing());
+		for (int i = 0; i < entry.getAnswerCount(); i++) {
+			Reified<?> answerTerm = entry.getAnswerAt(i)._1.getTerm();
+			SemiringStore x = values.get(answerTerm);
+			if (x == null) {
+				continue;
+			}
+			SemiringStore value = ring.times(readerValue, x);
+			result = result.flatMap(__ -> emitAnswer(reader.getContinuation(), reader.getPkg(),
+					reader.getArgsTerm(), answerTerm, value));
+		}
+		return result;
 	}
 
 	/**
@@ -162,96 +221,6 @@ final class Closed implements TablingMode {
 	 */
 	private static boolean insideBody(Package pkg) {
 		return pkg.getStores().get(Recurrent.class).isDefined();
-	}
-
-	/**
-	 * One entry's life after explore: SEALED — the first-announced life of a
-	 * fully marked group solves the closure jointly and records every
-	 * member's values; SOLVED — later readers find the values and replay.
-	 * Every reader arrives BY ITSELF: the group seal completes every
-	 * member's waiters, so each reader is a live frame entering
-	 * {@link #caughtUp} under the one Closed monitor — nothing is stashed.
-	 * {@link #values} is volatile so {@link #absorb} reads the phase
-	 * lock-free.
-	 */
-	private final class Life {
-
-		private final TableEntry<Object> entry;
-		/** This entry's solved answer values — null until SOLVED, the lifecycle phase. */
-		private volatile Map<Reified<?>, SemiringStore> values;
-
-		Life(TableEntry<Object> entry) {
-			this.entry = entry;
-		}
-
-		Fiber<Nothing> caughtUp(Reader reader) {
-			if (insideBody(reader.getPkg()) || isFragment(reader.getPkg())) {
-				// an inside-a-body reader's contribution rides its captured edges;
-				// a fragment chain's answers come from its valued twin
-				return done(nothing());
-			}
-			synchronized (Closed.this) {
-				if (values == null) {
-					// the first sealed-woken reader solves the closure: SEALED ⟹
-					// SOLVABLE, because a group seal marks every member before
-					// completing any waiter - an unmarked member here means that
-					// invariant broke; refuse loudly rather than read an unfinal
-					// system
-					Set<TableEntry<Object>> closure = graph.dependencyClosure(entry);
-					for (TableEntry<Object> member : closure) {
-						if (!member.isComplete()) {
-							throw new IllegalStateException(
-									"caught up at " + entry.getCall() + " while closure member "
-											+ member.getCall() + " is unsealed: group marking must "
-											+ "complete before any completion");
-						}
-					}
-					// values land synchronously in solved(); this reader then
-					// replays against them like any later arrival
-					solveClosure(closure);
-				}
-				return replay(reader);
-			}
-		}
-
-		/**
-		 * The group's first-announced life is the leader: one joint solve for the
-		 * closure, then every member records its values (already-solved members
-		 * keep their frozen values — same by determinism). Each member's readers
-		 * deliver themselves as they wake.
-		 */
-		private void solveClosure(Set<TableEntry<Object>> closure) {
-			Map<TableEntry<Object>, Map<Reified<?>, SemiringStore>> solved =
-					StarTabling.solveGroup(closure, graph, ring);
-			for (TableEntry<Object> member : closure) {
-				lifeOf(member).solved(
-						solved.getOrDefault(member, new LinkedHashMap<Reified<?>, SemiringStore>()));
-			}
-		}
-
-		/** SOLVED: record the values once. */
-		private void solved(Map<Reified<?>, SemiringStore> answerValues) {
-			if (values == null) {
-				values = answerValues;
-			}
-		}
-
-		/** Replay one ended top-level chain from index 0 with the solved values. */
-		private Fiber<Nothing> replay(Reader reader) {
-			SemiringStore readerValue = storeOf(reader.getPkg());
-			Fiber<Nothing> result = done(nothing());
-			for (int i = 0; i < entry.getAnswerCount(); i++) {
-				Reified<?> answerTerm = entry.getAnswerAt(i)._1.getTerm();
-				SemiringStore x = values.get(answerTerm);
-				if (x == null) {
-					continue;
-				}
-				SemiringStore value = ring.times(readerValue, x);
-				result = result.flatMap(__ -> emitAnswer(reader.getContinuation(), reader.getPkg(),
-						reader.getArgsTerm(), answerTerm, value));
-			}
-			return result;
-		}
 	}
 
 	/**
