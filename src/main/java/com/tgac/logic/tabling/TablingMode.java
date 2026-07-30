@@ -62,12 +62,12 @@ public interface TablingMode {
 	 * consumer runs inside (null at the top level). Streaming ⊗s the cached
 	 * cell value into the running value. Closed: reading an OPEN entry records
 	 * the loop and tags the delivery a pre-star fragment; reading a SOLVED
-	 * entry ⊗s the solved value inline for a coated reader (its capture folds
+	 * entry ⊗s the solved value inline for a reader inside a body (its capture folds
 	 * it in) and stays a fragment for a top-level one (the replay at its
 	 * chain's end delivers).
 	 */
 	Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, boolean coated);
+			Object cellValue);
 
 	/**
 	 * The body derived an answer: its contribution, captured as what the cell

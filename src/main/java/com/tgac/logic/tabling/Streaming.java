@@ -60,7 +60,7 @@ final class Streaming implements TablingMode {
 
 	@Override
 	public Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, boolean coated) {
+			Object cellValue) {
 		return weightWriter.apply(unifiedPkg, semiring.times(weightReader.apply(unifiedPkg), cellValue));
 	}
 

@@ -95,23 +95,19 @@ public class Tabling {
 	 * </pre>
 	 */
 	/*
-	 * THE ONE RULE: state follows the data, the coat follows the CODE. A
-	 * package's EnclosingCall coat names the innermost tabled call whose
-	 * execution this code is part of, and it changes exactly where control
-	 * crosses a call boundary — nowhere else:
+	 * STATE FOLLOWS THE DATA, EXECUTION FOLLOWS THE FRAME:
 	 *
-	 *   callerPkg   the state at this call site, wearing the coat of
-	 *               whatever call the site is executing inside (top: none).
-	 *   bodyPkg     callerPkg re-coated with THIS entry on call ENTRY — the
-	 *               coat is mail for the calls written inside the body.
-	 *   answerPkg   a body success, wearing this call's coat; it ENDS at the
-	 *               answer cell. Answers reach callers only through their
-	 *               consumers, each running under its own caller's coat.
+	 *   callerPkg   the state at this call site.
+	 *   bodyPkg     callerPkg re-based for the body on call ENTRY (stores
+	 *               stripped to the key, mode state reset).
+	 *   answerPkg   a body success; it ENDS at the answer cell. Answers
+	 *               reach callers only through their consumers, each
+	 *               running under its own caller's state.
 	 *
-	 * Forks inherit the coat; a parked reader's frame keeps it across the
-	 * wait. The coat is how billing works: the channel a reader parks AT is
-	 * what it waits for; the coat says which call's execution it belongs
-	 * to, and so whose ledger pays for its work.
+	 * Billing needs no package-level tracking: the body runs as the entry's
+	 * workforce (the frame's ambient scope), an inner call's consumer runs
+	 * inside the body's frames and inherits it, and its park leaves the
+	 * blocked record completion detection reads.
 	 */
 	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
 		// a bare Unifiable is an equality ATOM to decompose (no wrapped-Term
@@ -166,8 +162,7 @@ public class Tabling {
 											"a tabled call cannot become master under parked suspensions: "
 													+ "the call key cannot see them and the body must not inherit them");
 								}
-								Package bodyPkg = stripConstraints(table.bodyState(callerPkg))
-										.putStore(new EnclosingCall(entry));
+								Package bodyPkg = stripConstraints(table.bodyState(callerPkg));
 								Goal seeded = projection.seed(body.get());
 								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
 							})
@@ -343,16 +338,15 @@ public class Tabling {
 			Table table,
 			Emitter<JoinMap<AnswerKey, Object>> emit) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
-			// the coat is the canary: a goal that returned a fresh package instead
-			// of deriving from its input shed every store — the damage downstream
-			// is SILENT (answers reified over fresh substitutions cache
-			// over-general; readers spawned uncoated go unbilled, so this entry
-			// could seal under them and lose answers) — so refuse loudly here
-			if (EnclosingCall.entryOf(answerPkg) != entry) {
+			// the Table transport is the canary: a goal that returned a fresh
+			// package instead of deriving from its input shed every store — the
+			// damage downstream is SILENT (answers reified over fresh
+			// substitutions cache over-general) — so refuse loudly here
+			if (answerPkg.getStores().get(Table.class).getOrElse((Packaged) null) != table) {
 				throw new IllegalStateException(
 						"a goal inside a tabled body dropped its stores: packages must be "
 								+ "derived from the incoming one, never minted fresh "
-								+ "(the body's EnclosingCall coat is missing or foreign)");
+								+ "(the body's Table transport is missing or foreign)");
 			}
 			// a parked suspension is a condition the answer still owes; the
 			// AnswerKey cannot carry it, so caching now would drop the debt
@@ -412,7 +406,7 @@ public class Tabling {
 							.apply(callerPkg)
 							// streaming ⊗s the cell value in; closed records the loop
 							.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,
-									entry, key.getTerm(), cellValue, reader.isCoated())))
+									entry, key.getTerm(), cellValue)))
 							.flatMap(__ -> Fiber.defer(() ->
 									consume(entry, reader.advanced(), answers))));
 		}

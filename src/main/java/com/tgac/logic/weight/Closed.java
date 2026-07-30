@@ -49,11 +49,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>EMIT replays reader chains. During explore every consumer delivery is a
  * fragment (dropped at the collector); a chain ends at a sealed entry — drained
  * by the seal or caught up after it — and a TOP-LEVEL chain is then replayed
- * once from index 0 with {@code x = A* ⊗ b}. A COATED reader is never replayed:
- * its contribution rides the edges it captured, and when it consumes an
- * already-SOLVED entry the value is ⊗'d inline ({@link #absorb}) so its
- * capture folds in the constant — the two paths agree, because an edge to a
- * solved entry folds to exactly the inline value.
+ * once from index 0 with {@code x = A* ⊗ b}. A reader INSIDE A BODY (its
+ * package carries {@link Recurrent}) is never replayed: its contribution
+ * rides the edges it captured, and when it consumes an already-SOLVED entry
+ * the value is ⊗'d inline ({@link #absorb}) so its capture folds in the
+ * constant — the two paths agree, because an edge to a solved entry folds
+ * to exactly the inline value.
  */
 final class Closed implements TablingMode {
 
@@ -97,7 +98,7 @@ final class Closed implements TablingMode {
 
 	@Override
 	public Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
-			Object cellValue, boolean coated) {
+			Object cellValue) {
 		Map<Reified<?>, SemiringStore> solved = lifeOf(entry).values;
 		if (solved == null) {
 			// open (or sealed mid-solve): record the loop, tag the fragment
@@ -106,9 +107,10 @@ final class Closed implements TablingMode {
 			return unifiedPkg.putStore(prev.and(new Node(entry, consumedAnswer))).putStore(Fragment.MARKER);
 		}
 		SemiringStore x = solved.get(consumedAnswer);
-		if (coated && x != null) {
-			// a coated reader consumes a SOLVED entry: the value is a constant
-			// its capture folds in (a base — or an edge that folds to the same)
+		if (insideBody(unifiedPkg) && x != null) {
+			// a reader inside a body consumes a SOLVED entry: the value is a
+			// constant its capture folds in (a base — or an edge that folds to
+			// the same)
 			return unifiedPkg.putStore(ring.times(storeOf(unifiedPkg), x));
 		}
 		// top-level: still a fragment — the replay at the chain's end delivers
@@ -154,6 +156,15 @@ final class Closed implements TablingMode {
 	}
 
 	/**
+	 * A call site inside some tabled body: {@link #bodyState} stamps
+	 * {@code Recurrent.NONE} on every body package, so the store's presence
+	 * IS the inside-a-body fact — no separate tracking.
+	 */
+	private static boolean insideBody(Package pkg) {
+		return pkg.getStores().get(Recurrent.class).isDefined();
+	}
+
+	/**
 	 * One entry's life after explore: SEALED — the first-announced life of a
 	 * fully marked group solves the closure jointly and records every
 	 * member's values; SOLVED — later readers find the values and replay.
@@ -174,9 +185,9 @@ final class Closed implements TablingMode {
 		}
 
 		Fiber<Nothing> caughtUp(Reader reader) {
-			if (reader.isCoated() || isFragment(reader.getPkg())) {
-				// a coated reader's contribution rides its captured edges; a fragment
-				// chain's answers come from its valued twin
+			if (insideBody(reader.getPkg()) || isFragment(reader.getPkg())) {
+				// an inside-a-body reader's contribution rides its captured edges;
+				// a fragment chain's answers come from its valued twin
 				return done(nothing());
 			}
 			synchronized (Closed.this) {
@@ -246,7 +257,7 @@ final class Closed implements TablingMode {
 	/**
 	 * Publish one sealed answer: instantiate it, unify it against the call pattern
 	 * to bind the reader's variables, set the folded value on the SemiringStore,
-	 * then hand it to {@code k}. The reader package already wears its own coat.
+	 * then hand it to {@code k} under the reader's own call-site package.
 	 */
 	private static Fiber<Nothing> emitAnswer(Fiber.Fn<Package, Nothing> k, Package callerPkg,
 			Unifiable<?> argsTerm, Reified<?> answerTerm, SemiringStore value) {
