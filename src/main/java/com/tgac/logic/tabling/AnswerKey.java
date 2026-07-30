@@ -4,6 +4,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: name, and the per-store factors it holds under — term GIVEN delta.
 
 import com.tgac.functional.algebra.PartialOrder;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple2;
@@ -33,13 +34,13 @@ import lombok.Value;
 public class AnswerKey {
 	Reified<?> term;
 	List<LVar<?>> holeVars;
-	Map<Class<?>, Object> residues;
+	Map<Class<?>, Projectable<?>> residues;
 
 	public static AnswerKey of(Reified<?> term) {
 		return new AnswerKey(term, Collections.emptyList(), HashMap.empty());
 	}
 
-	public static AnswerKey of(Reified<?> term, List<LVar<?>> holeVars, Map<Class<?>, Object> residues) {
+	public static AnswerKey of(Reified<?> term, List<LVar<?>> holeVars, Map<Class<?>, Projectable<?>> residues) {
 		return new AnswerKey(term, holeVars, residues);
 	}
 
@@ -50,10 +51,10 @@ public class AnswerKey {
 	 * own) and answer dedup (a narrower answer is redundant under a wider).
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	static boolean residuesLeq(Map<Class<?>, Object> a, Map<Class<?>, Object> b) {
-		for (Tuple2<Class<?>, Object> knowledge : b) {
-			Object mine = a.getOrElse(knowledge._1, null);
-			if (mine == null || !((PartialOrder) mine).leq((PartialOrder) knowledge._2)) {
+	static boolean residuesLeq(Map<Class<?>, Projectable<?>> a, Map<Class<?>, Projectable<?>> b) {
+		for (Tuple2<Class<?>, Projectable<?>> knowledge : b) {
+			Projectable<?> mine = a.getOrElse(knowledge._1, null);
+			if (mine == null || !((PartialOrder) mine).leq(knowledge._2)) {
 				return false;
 			}
 		}

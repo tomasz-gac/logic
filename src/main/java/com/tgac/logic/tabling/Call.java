@@ -3,6 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: The cache key of a tabled call: relation identity, reified arguments,
 // ABOUTME: and per-store residues — the call's REGION, not just its pattern.
 
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.tabling.subsumption.Subsumption;
 import com.tgac.logic.unification.Reified;
 import io.vavr.collection.HashMap;
@@ -24,13 +25,13 @@ import lombok.Value;
 public class Call {
 	Tabled<?> relation;
 	Reified<?> arguments;
-	Map<Class<?>, Object> residues;
+	Map<Class<?>, Projectable<?>> residues;
 
 	public static Call of(Tabled<?> relation, Reified<?> arguments) {
 		return new Call(relation, arguments, HashMap.empty());
 	}
 
-	public static Call of(Tabled<?> relation, Reified<?> arguments, Map<Class<?>, Object> residues) {
+	public static Call of(Tabled<?> relation, Reified<?> arguments, Map<Class<?>, Projectable<?>> residues) {
 		return new Call(relation, arguments, residues);
 	}
 

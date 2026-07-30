@@ -141,7 +141,7 @@ public class Tabling {
 					}
 					TableEntry<Object> entry = table.getOrCreateEntry(key);
 					// the ANONYMOUS MASTER, selected by the claim-once CAS
-					// (Fiber.tryProduceTo): the body runs as this entry's
+					// (Fiber.produce): the body runs as this entry's
 					// workforce and belongs to no caller; production is the
 					// emitter, so billing and production cannot disagree.
 					// Every caller, the first included, reads the cell as a
@@ -207,11 +207,11 @@ public class Tabling {
 	 */
 	@Value
 	private static class Projection {
-		Map<Class<?>, Object> residues;
+		Map<Class<?>, Projectable<?>> residues;
 		java.util.List<Goal> restates;
 
 		static Projection of(Package callerPkg, java.util.List<LVar<?>> callVars) {
-			Map<Class<?>, Object> residues = HashMap.empty();
+			Map<Class<?>, Projectable<?>> residues = HashMap.empty();
 			java.util.List<Goal> restates = new ArrayList<>();
 			java.util.List<Unifiable<?>> targets = new ArrayList<>(callVars);
 			for (Packaged store : callerPkg.getStores().values()) {
@@ -271,9 +271,9 @@ public class Tabling {
 		}
 		Renaming mint = Renaming.into(seed);
 		Goal seeded = Goal.success();
-		for (Tuple2<Class<?>, Object> entry : key.getResidues()) {
+		for (Tuple2<Class<?>, Projectable<?>> entry : key.getResidues()) {
 			seeded = Conjunction.of(seeded,
-					Propagation.absorb(((Projectable<?>) entry._2).rename(mint)));
+					Propagation.absorb(entry._2.rename(mint)));
 		}
 		return seeded;
 	}
@@ -298,8 +298,8 @@ public class Tabling {
 	 * live knowledge refuses, and constrained answers under a mode that
 	 * cannot replay them (closed) refuse before caching.
 	 */
-	private static Map<Class<?>, Object> answerResidues(Package answerPkg, Table table) {
-		Map<Class<?>, Object> residues = HashMap.empty();
+	private static Map<Class<?>, Projectable<?>> answerResidues(Package answerPkg, Table table) {
+		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
 		Renaming normalization = Renaming.walking(answerPkg.substitution());
 		for (Packaged store : answerPkg.getStores().values()) {
 			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
@@ -357,7 +357,7 @@ public class Tabling {
 			}
 			return MiniKanren.reifyWithHoles(answerPkg.substitution(), argsTerm.getObjectTerm())
 					.flatMap(reified -> {
-						Map<Class<?>, Object> residues = answerResidues(answerPkg, table);
+						Map<Class<?>, Projectable<?>> residues = answerResidues(answerPkg, table);
 						// what the cell caches: the term and the value this derivation
 						// carries — caller-agnostic, since the body ran from ONE
 						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1);
