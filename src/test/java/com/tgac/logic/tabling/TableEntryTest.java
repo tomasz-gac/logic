@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
-import com.tgac.functional.fibers.Await;
+import com.tgac.functional.fibers.AwaitResult;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.logic.goals.Goal;
@@ -56,7 +56,7 @@ public class TableEntryTest {
 
 	/** A consumer past {@code cursor}, recording the completion it is handed. */
 	private static Fiber<Nothing> consuming(TableEntry<Boolean> entry, int cursor,
-			List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions) {
+			List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions) {
 		return Fiber.await(entry.channel(), v -> v.size() > cursor)
 				.flatMap(r -> {
 					completions.add(r);
@@ -126,7 +126,7 @@ public class TableEntryTest {
 	@Test
 	public void testConsumerIsHeldAtCacheEnd() {
 		TableEntry<Boolean> entry = entry();
-		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 
 		// no answers past the cursor, no master, no seal: the consumer parks,
 		// and a drive out of work refuses to end with it stranded
@@ -144,7 +144,7 @@ public class TableEntryTest {
 
 		// the workforce drained, so the entry is complete: a late consumer
 		// gets the terminal EOF with the final fold - nothing is lost
-		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 		consuming(entry, 0, completions).get();
 		assertThat(completions).hasSize(1);
 		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
@@ -155,7 +155,7 @@ public class TableEntryTest {
 	@Test
 	public void testGrowthWakesEveryHeldConsumer() {
 		TableEntry<Boolean> entry = entry();
-		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 
 		Fiber.fork(Arrays.asList(
 						consuming(entry, 0, completions),
@@ -171,7 +171,7 @@ public class TableEntryTest {
 	@Test
 	public void testDuplicateAnswerDoesNotWakeAsGrowth() {
 		TableEntry<Boolean> entry = entry();
-		List<Await.Result<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
 
 		// a consumer past the cache end waits for a SECOND answer; the
 		// duplicate is an inert join, so only the seal ever completes it
