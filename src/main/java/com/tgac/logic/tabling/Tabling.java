@@ -33,7 +33,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.Value;
 
 /**
  * Provides tabling (memoization) for logic goals to prevent infinite loops
@@ -125,8 +124,8 @@ public class Tabling {
 					// hole reify names _.i, by construction. Non-projectable knowledge
 					// cannot enter the key, and unkeyed knowledge means wrong reuse.
 					Reified<?> reifiedArgs = reified._1;
-					Projection projection = Projection.of(callerPkg, reified._2);
-					Call key = Call.of(relation, reifiedArgs, projection.getResidues());
+					Map<Class<?>, Projectable<?>> keyResidues = Condition.project(callerPkg, reified._2);
+					Call key = Call.of(relation, reifiedArgs, keyResidues);
 					Reader reader = Reader.of(k, callerPkg, argsTerm);
 					Table table = reader.getTable();
 					// a weighted solve whose semiring cannot table (non-idempotent,
@@ -163,7 +162,14 @@ public class Tabling {
 													+ "the call key cannot see them and the body must not inherit them");
 								}
 								Package bodyPkg = stripConstraints(table.bodyState(callerPkg));
-								Goal seeded = projection.seed(body.get());
+								// the master's goal: the key's knowledge re-imposed
+								// onto the live call vars, then the body
+								java.util.List<Unifiable<?>> targets = new ArrayList<>(reified._2);
+								Goal seeded = keyResidues.isEmpty()
+										? body.get()
+										: Conjunction.of(
+												Condition.restate(keyResidues, Renaming.ofSlots(targets)),
+												body.get());
 								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
 							})
 							.flatMap(__ -> consume(entry, reader, entry.answers()));
@@ -194,58 +200,6 @@ public class Tabling {
 	}
 
 	/**
-	 * The caller's constraint knowledge about the call vars, projected per
-	 * store: the canonical (hole-named) key citizens that join the
-	 * {@link Call}, and the restate goals that seed the master's body with
-	 * exactly that knowledge — the key renamed back onto the call vars and
-	 * stated. A store that cannot project cannot enter the key, and unkeyed
-	 * knowledge means silently wrong reuse — refused loudly. An EMPTY
-	 * projection (nothing known about the call vars) stays out of the key,
-	 * so calls under irrelevant knowledge stay constraint-free variants;
-	 * caller-private knowledge is split away — sound by containment,
-	 * filtered at consumption.
-	 */
-	@Value
-	private static class Projection {
-		Map<Class<?>, Projectable<?>> residues;
-		java.util.List<Goal> restates;
-
-		static Projection of(Package callerPkg, java.util.List<LVar<?>> callVars) {
-			Map<Class<?>, Projectable<?>> residues = HashMap.empty();
-			java.util.List<Goal> restates = new ArrayList<>();
-			java.util.List<Unifiable<?>> targets = new ArrayList<>(callVars);
-			for (Packaged store : callerPkg.getStores().values()) {
-				if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
-					continue;
-				}
-				if (!(store instanceof Projectable)) {
-					throw new IllegalStateException(
-							"Tabling cannot key constraints it cannot project: non-empty "
-									+ store.getClass().getSimpleName() + " at a tabled call");
-				}
-				Projectable<?> keyed = ((Projectable<?>) store).project(callVars);
-				if (!keyed.isEmpty()) {
-					residues = residues.put(store.getClass(), keyed);
-					restates.add(Propagation.absorb(keyed.rename(Renaming.ofSlots(targets))));
-				}
-			}
-			return new Projection(residues, restates);
-		}
-
-		/** The master's goal: the key's knowledge re-imposed, then the body. */
-		Goal seed(Goal body) {
-			if (restates.isEmpty()) {
-				return body;
-			}
-			Goal seeded = body;
-			for (int i = restates.size() - 1; i >= 0; i--) {
-				seeded = Conjunction.of(restates.get(i), seeded);
-			}
-			return seeded;
-		}
-	}
-
-	/**
 	 * The delivery unification through the public entry — a helper so the
 	 * two-Unifiable overload resolves (with {@code T = Object} the
 	 * {@code (Unifiable<T>, T)} overload would be applicable too).
@@ -255,29 +209,16 @@ public class Tabling {
 	}
 
 	/**
-	 * Every answer factor renamed through ONE shared mint and re-stated —
-	 * seeded holes go to the instantiation's fresh vars, everything else
-	 * (body locals) mints fresh per delivery: the existential. Ground answers
-	 * have no factors and the goal is success.
+	 * The delivery's mint: residues are slot-canonical, so each slot hole
+	 * seeds onto the term instantiation's fresh var for that slot; unseeded
+	 * locals mint fresh per delivery — the existential.
 	 */
-	private static Goal restateAll(Map<Class<?>, Projectable<?>> residues, java.util.List<LVar<?>> freshHoles) {
-		if (residues.isEmpty()) {
-			return Goal.success();
-		}
-		// residues are slot-canonical: seed each slot hole onto the term
-		// instantiation's fresh var for that slot; unseeded locals mint - the
-		// existential
+	private static Renaming replayMint(java.util.List<LVar<?>> freshHoles) {
 		java.util.Map<Term<?>, Term<?>> seed = new java.util.HashMap<>();
 		for (int i = 0; i < freshHoles.size(); i++) {
 			seed.put(Hole.of(i), freshHoles.get(i));
 		}
-		Renaming mint = Renaming.into(seed);
-		Goal seeded = Goal.success();
-		for (Tuple2<Class<?>, Projectable<?>> entry : residues) {
-			seeded = Conjunction.of(seeded,
-					Propagation.absorb(entry._2.rename(mint)));
-		}
-		return seeded;
+		return Renaming.into(seed);
 	}
 
 	/** Remove every constraint-store factor: absence is ⊤, posting re-registers. */
@@ -289,41 +230,6 @@ public class Tabling {
 			}
 		}
 		return result;
-	}
-
-	/**
-	 * An answer's residues: each store's factor normalized against the
-	 * answer's substitutions (spent entries drop — the ground-answer fast
-	 * path is a factor that normalizes to empty). The WHOLE delta rides —
-	 * body locals and their couplings included, replayed as existentials at
-	 * consumption and verified by the consumer's labelling. Non-projectable
-	 * live knowledge refuses; whether residues may ride at all is the
-	 * mode's capture call.
-	 */
-	private static Map<Class<?>, Projectable<?>> answerResidues(Package answerPkg,
-			java.util.List<LVar<?>> holeVars) {
-		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
-		Renaming normalization = Renaming.walking(answerPkg.substitution());
-		// live hole vars go to their slot holes, so residues from SEPARATE
-		// derivations compare in ONE basis (residuesLeq, key equality); body
-		// locals keep their names - the existential witnesses still ride
-		// whole, conservatively incomparable across answers
-		Renaming canonicalization = Renaming.canonical(holeVars);
-		for (Packaged store : answerPkg.getStores().values()) {
-			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
-				continue;
-			}
-			if (!(store instanceof Projectable)) {
-				throw new IllegalStateException(
-						"Tabling does not support non-projectable store: non-empty "
-								+ store.getClass().getSimpleName() + " on a tabled answer");
-			}
-			Projectable<?> normalized = ((Projectable<?>) store).rename(normalization);
-			if (!normalized.isEmpty()) {
-				residues = residues.put(store.getClass(), normalized.rename(canonicalization));
-			}
-		}
-		return residues;
 	}
 
 	/**
@@ -360,7 +266,11 @@ public class Tabling {
 			}
 			return MiniKanren.reifyWithHoles(answerPkg.substitution(), argsTerm.getObjectTerm())
 					.flatMap(reified -> {
-						Map<Class<?>, Projectable<?>> residues = answerResidues(answerPkg, reified._2);
+						// the WHOLE delta rides — body locals and their couplings
+						// included, replayed as existentials at consumption and
+						// verified by the consumer's labelling; whether residues
+						// may ride at all is the mode's capture call
+						Map<Class<?>, Projectable<?>> residues = Condition.normalize(answerPkg, reified._2);
 						// what the cell caches: the term and the value this derivation
 						// carries — caller-agnostic, since the body ran from ONE
 						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1, residues);
@@ -453,7 +363,8 @@ public class Tabling {
 		return MiniKanren.instantiateWithHoles(term).flatMap(inst ->
 				Conjunction.of(
 								unifyArgs(argsTerm.getObjectUnifiable(), inst._1.getObjectUnifiable()),
-								restateAll(residues, inst._2))
+								residues.isEmpty() ? Goal.success()
+										: Condition.restate(residues, replayMint(inst._2)))
 						.apply(callerPkg)
 						// streaming ⊗s the cell value in; closed records the loop
 						.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,

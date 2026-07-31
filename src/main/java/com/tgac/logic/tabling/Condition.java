@@ -4,16 +4,24 @@ package com.tgac.logic.tabling;
 // ABOUTME: DNF of residue conjuncts kept maximal by absorption; ground truth is 1.
 
 import com.tgac.functional.algebra.BoundedSemiring;
-import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.functional.algebra.Semilattice;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Absorbable;
+import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.goals.Conjunction;
+import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Packaged;
+import com.tgac.logic.unification.LVar;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Map;
 import io.vavr.collection.Vector;
+import java.util.List;
 
 /**
  * How much of a term's space an entry has PROVEN, as a value: a disjunction
@@ -32,6 +40,12 @@ import io.vavr.collection.Vector;
  * order. The operational ⊗ rides the package (restate + propagation);
  * {@link #and} is that same conjunction as a value, for the algebra and
  * its laws.
+ *
+ * <p>The NAMESPACE CROSSINGS live here too, beside the algebra: a conjunct
+ * enters from a package by {@link #project} (call side, the key citizen)
+ * or {@link #normalize} (answer side, walking + slot canonicalization),
+ * and leaves by {@link #restate} — the one replay primitive both master
+ * seeding and answer delivery run, differing only in the renaming.
  */
 public final class Condition implements Semilattice<Condition> {
 
@@ -136,6 +150,83 @@ public final class Condition implements Semilattice<Condition> {
 			}
 		}
 		return true;
+	}
+
+	/**
+	 * The call-side crossing: the caller's constraint knowledge about
+	 * {@code callVars}, projected per store into one canonical conjunct —
+	 * the key citizen that joins the {@link Call}. A store that cannot
+	 * project cannot enter the key, and unkeyed knowledge means silently
+	 * wrong reuse — refused loudly. An EMPTY projection (nothing known
+	 * about the call vars) stays out of the conjunct, so calls under
+	 * irrelevant knowledge stay constraint-free variants; caller-private
+	 * knowledge is split away — sound by containment, filtered at
+	 * consumption.
+	 */
+	public static Map<Class<?>, Projectable<?>> project(Package callerPkg, List<LVar<?>> callVars) {
+		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
+		for (Packaged store : callerPkg.getStores().values()) {
+			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
+				continue;
+			}
+			if (!(store instanceof Projectable)) {
+				throw new IllegalStateException(
+						"Tabling cannot key constraints it cannot project: non-empty "
+								+ store.getClass().getSimpleName() + " at a tabled call");
+			}
+			Projectable<?> keyed = ((Projectable<?>) store).project(callVars);
+			if (!keyed.isEmpty()) {
+				residues = residues.put(store.getClass(), keyed);
+			}
+		}
+		return residues;
+	}
+
+	/**
+	 * The answer-side crossing: each store's factor normalized against the
+	 * answer's substitutions (spent entries drop — the ground-answer fast
+	 * path is a factor that normalizes to empty), then slot-canonicalized:
+	 * live hole vars go to their slot holes, so residues from SEPARATE
+	 * derivations compare in ONE basis (dedup, key equality); body locals
+	 * keep their names — the existential witnesses ride whole,
+	 * conservatively incomparable across answers. Non-projectable live
+	 * knowledge refuses loudly.
+	 */
+	public static Map<Class<?>, Projectable<?>> normalize(Package answerPkg, List<LVar<?>> holeVars) {
+		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
+		Renaming normalization = Renaming.walking(answerPkg.substitution());
+		Renaming canonicalization = Renaming.canonical(holeVars);
+		for (Packaged store : answerPkg.getStores().values()) {
+			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
+				continue;
+			}
+			if (!(store instanceof Projectable)) {
+				throw new IllegalStateException(
+						"Tabling does not support non-projectable store: non-empty "
+								+ store.getClass().getSimpleName() + " on a tabled answer");
+			}
+			Projectable<?> normalized = ((Projectable<?>) store).rename(normalization);
+			if (!normalized.isEmpty()) {
+				residues = residues.put(store.getClass(), normalized.rename(canonicalization));
+			}
+		}
+		return residues;
+	}
+
+	/**
+	 * A conjunct imposing itself under {@code renaming} — the ONE replay
+	 * primitive: master seeding renames the key's conjunct back onto the
+	 * live call vars ({@code Renaming.ofSlots}); answer delivery renames an
+	 * answer's conjunct onto the instantiation's fresh holes
+	 * ({@code Renaming.into}, unseeded locals minting — the existential).
+	 * Statement stays the driver's: each factor rides {@code Propagation.absorb}.
+	 */
+	public static Goal restate(Map<Class<?>, Projectable<?>> residues, Renaming renaming) {
+		Goal restated = Goal.success();
+		for (Tuple2<Class<?>, Projectable<?>> factor : residues) {
+			restated = Conjunction.of(restated, Propagation.absorb(factor._2.rename(renaming)));
+		}
+		return restated;
 	}
 
 	@Override
