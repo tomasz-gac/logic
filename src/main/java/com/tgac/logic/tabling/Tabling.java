@@ -177,7 +177,7 @@ public class Tabling {
 	}
 
 	/**
-	 * The ∞→exact transition (docs/design/optimizer.md): an incomplete entry
+	 * The ∞→exact transition (docs/reference/optimizer.md): an incomplete entry
 	 * prices MAX — a barrier — because its answer count is still growing; a
 	 * completed entry prices its exact count. Sound under reordering:
 	 * execution is always at-or-more-bound than pricing, and a more-bound

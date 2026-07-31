@@ -11,7 +11,7 @@ import io.vavr.collection.List;
  * (wait) mode. {@code absorb} extends it; {@code capture} reads the count:
  * 0 consumed → the derivation is a BASE, 1 → an EDGE coefficient to that node,
  * ≥2 → NONLINEAR recursion (outside star's reach). It rides the IMMUTABLE
- * package, so it is per-derivation and order-proof (docs/design/star-tabling.md §4).
+ * package, so it is per-derivation and order-proof (docs/reference/star-tabling.md §4).
  */
 public final class Recurrent implements Packaged {
 	public static final Recurrent NONE = new Recurrent(List.empty());

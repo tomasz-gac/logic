@@ -1,7 +1,10 @@
 # Semiring-weighted logic programming — design sketch
 
-**Status:** design sketch, NOT implemented. Nothing here is needed for the library to work
-today. It describes how to generalize the engine from "find solutions" to "compute a
+**Status:** Phases 1–3 SHIPPED (July–August 2026: the `weight` package —
+`factor`, `SemiringStore`, `solve`/`solveEach`, bounded streaming and
+closed/star tabling; see `star-tabling.md` and `condition.md` for the
+as-built forms, which unified the weighted cell with TCLP's answer
+carrier). The later phases (MAP, gradient learning) remain design. It describes how to generalize the engine from "find solutions" to "compute a
 weighted value over all proofs" — which yields counting, probability (Bayesian inference),
 shortest-path, most-probable-proof (MAP), provenance, and gradient-based learning, all as
 instances of one small abstraction. Read this top to bottom before starting; do the phases
@@ -354,7 +357,7 @@ as `P`); needs log-space care for underflow. Advanced/research — do §2–§5 
 
 ## 11. Relationship to constraint propagation (do NOT over-unify)
 
-Both this and `docs/design/constraint-kernel.md` are "iterate a monotone operator on a
+Both this and `docs/reference/constraint-kernel.md` are "iterate a monotone operator on a
 lattice to a fixpoint." That kinship is a useful *mental model* but they are **duals** and
 should stay separate code:
 - semiring-tabling **grows** answers (least fixpoint, ⊕ accumulates);

@@ -1,4 +1,6 @@
-# The lattice store — DESIGN (July 2026, nothing built)
+# The lattice store — DESIGN (July 2026; Phases 1–2 SHIPPED — `LatticeStore<L>`
+extracted from FD and pldb migrated onto it; the co-store, speculation tier
+and later phases remain design)
 
 The generalization the single-sorted refactor already performed without
 saying so: `FiniteDomainConstraints` is "a lattice store" — a map from

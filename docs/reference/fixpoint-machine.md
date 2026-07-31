@@ -11,10 +11,10 @@ scheduler over both fixpoints — and the recommendation held a third time, now 
 structural reason visible.**
 
 Companion docs (the concrete instances):
-- `docs/design/constraint-kernel.md` — the *narrowing* instance, the shape it
+- `docs/reference/constraint-kernel.md` — the *narrowing* instance, the shape it
   actually shipped in.
 - `docs/design/semiring-inference.md` — the *accumulating* instance (still planned).
-- `docs/design/tabled-constraints.md` — the two instances MEETING (design sketch): what it
+- `docs/reference/tabled-constraints.md` — the two instances MEETING (design sketch): what it
   costs to let tabling and constraints cooperate.
 
 ---

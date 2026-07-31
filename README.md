@@ -37,6 +37,14 @@ The combination is the point — these rarely live in one system:
   no further answer can arrive (full SLG-style completion, including
   mutual-recursion rings), and completed calls become reusable data: a finished
   general call answers its instances without recomputation.
+- **Tabling under constraints (TCLP)** — a tabled call under constraint
+  knowledge is keyed by its REGION ("answers given `x ∈ {1..10}`"), and
+  answers carry the conditions they are proven under — conditional answers,
+  summed in a law-checked constraint ring where subsumption dedup is the
+  ring's own absorption law. A ground answer streams the moment it is
+  derived; a conditional one delivers final at completion. FD and
+  disequality knowledge ride keys and answers alike, and a wider cached
+  call serves narrower ones through the same ring.
 - **Weighted inference** — attach a weight to any branch (`factor`) and the
   same program answers quantitative questions: how many solutions (counting),
   how likely (probability), cheapest path (min-plus), best derivation
@@ -71,6 +79,12 @@ The engine's core claims are algebraic, and the code enforces them mechanically:
   declared **lattice instances**; goal pricing runs through a law-checked
   **semiring**; aggregation folds through **monoid witnesses**. The sibling
   `functional` library ships the interfaces and the law kits.
+- The most legible instance: tabling's answer cell is a **constraint ring**
+  (`Residues`/`Condition` — the c-table algebra). Its laws ARE the
+  mechanics: subsumption dedup is the ring's absorption law
+  (`a ∨ (a ∧ b) = a`), and "stream now vs deliver at completion" is
+  boundedness (`1 ⊕ a = 1`: a value at the top can never change, so it is
+  final on arrival). `docs/reference/condition.md` tells the story.
 - A coverage gate fails the build if any algebraic implementor lacks a law
   test — claims are audited, not aspirational. Writing these laws found real
   bugs in mature code (an `X∩∅=X` in interval intersection among them).
@@ -87,9 +101,9 @@ The engine's core claims are algebraic, and the code enforces them mechanically:
   as a parameter rather than pretending structural equality.
 - Tabling's completion detection is Dijkstra–Scholten termination detection
   built from the same discipline: monotone counters, an upward-closed seal flag
-  readable without locks, and a generic `Region` primitive whose group-seal
-  rule is one lattice fixpoint. `docs/design/table-completion.md` and
-  `docs/design/group-seal.md` tell that story end to end.
+  readable without locks, and a group-seal rule that is one lattice
+  fixpoint. `docs/reference/table-completion.md` and
+  `docs/reference/group-seal.md` tell that story end to end.
 
 ## Building
 
@@ -288,13 +302,17 @@ solver (no global constraints yet; the extension point below is where they'd go)
   re-park a constraint) are unrepresentable by type. New constraint domains
   implement one interface; the propagator toolkit is `finitedomain`'s private
   machinery.
-- **Tabling** is built on three generic, logic-free primitives
-  (`tabling/primitives`): a `JoinMap` (answers as a join-semilattice value),
-  a `MonotoneCell` (grow-and-wake with parked subscribers), and a `WorkLedger`
-  (who still works for a call, running or asleep) — composed into a `Region`
-  whose seal rule is the completion theorem. A tabled body runs as an
-  **anonymous master** (detached work billed to its own call) and every
-  caller reads through a consumer, so entries seal in dependency order.
+- **Tabling** rides the fiber substrate's two primitives (in `functional`):
+  a `Scope`, whose monotone counters detect quiescence — the seal — and a
+  `Channel`, a monotone value that grows and wakes parked consumers. The
+  answer cell is one `JoinMap` from reified answer terms to values in the
+  mode's semiring — a `Condition` (the region an answer is proven on) for
+  plain and TCLP tabling, the weight ring for weighted — with an ascent log
+  both reader kinds cursor. Delivery timing is the values' own finality: a
+  value at ⊕'s top streams on arrival, anything below waits for the seal.
+  A tabled body runs as an **anonymous master** (detached work billed to
+  its own call) and every caller reads through a consumer, so entries seal
+  in dependency order.
   The concurrency contract — the lock graph and the three invariants that
   keep completion sound under the fork/join scheduler — is written down in
   `table-completion.md` §6a and guarded by a dedicated parallel stress test.
@@ -305,13 +323,17 @@ solver (no global constraints yet; the extension point below is where they'd go)
   Floyd–Warshall/Kleene over the sealed closure and replays the reader
   chains with the solved values.
 
-The design record lives in `docs/design/` — start with `lattice.md` (the
-engine's one algebra and its quotient tower), `constraint-kernel.md` (the
+The design record lives in `docs/` — `vision.md` (the north star and
+roadmap) and `method.md` (how the design process works) at the top,
+`reference/` for the as-built theory, `design/` for approved-but-unbuilt
+work, `shelved/` for sketches waiting on their triggers. Start with
+`reference/lattice.md` (the
+engine's one algebra and its quotient tower), then `condition.md` (the
+constraint ring: answers as semiring values), `constraint-kernel.md` (the
 constraint engine as shipped), `table-completion.md` (tabling's completion
-machinery), `star-tabling.md` (closed-semiring tabling: why streaming
-diverges, how star closes it), `method.md` (how the design process itself
-works), and `vision.md` (the north star and roadmap). `CLAUDE.md` carries
-the working-on-this map: landmines, seams, backlog.
+machinery), and `star-tabling.md` (closed-semiring tabling: why streaming
+diverges, how star closes it). `CLAUDE.md` carries the working-on-this
+map: landmines, seams, backlog.
 
 ## Status
 
@@ -319,7 +341,7 @@ A research/learning project, built with viability as a constraint rather than a
 goal: the designs are the kind that could be real (honest concurrency, measured
 claims, no toy shortcuts), but there is no release, no client base, and APIs
 move freely. Java 8, no runtime dependencies beyond vavr and the sibling
-`functional` library. ~430 tests, including law suites for every declared
+`functional` library. ~540 tests, including law suites for every declared
 algebraic instance and a parallel stress test on tabling's completion
 machinery. If you're reading this as a source of ideas rather than a
-dependency, `docs/design/` is the interesting part.
+dependency, `docs/` is the interesting part.

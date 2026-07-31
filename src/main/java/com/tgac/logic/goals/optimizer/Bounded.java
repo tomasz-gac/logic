@@ -11,7 +11,7 @@ import java.util.function.ToLongFunction;
 /**
  * The capability interface of the narrowing/widening taxonomy: leaves declare
  * their own order — the maximum number of answers they may emit under the
- * given bindings (docs/design/optimizer.md §3-4). Combinators derive theirs
+ * given bindings (docs/reference/optimizer.md §3-4). Combinators derive theirs
  * (product over conjunction, sum over disjunction); {@code Long.MAX_VALUE}
  * means no bound is estimable.
  */
@@ -21,7 +21,7 @@ public interface Bounded {
 	/**
 	 * Package-sighted order: store knowledge (live domains, completed table
 	 * counts) is congealed speculation — exactly the estimator's diet
-	 * (docs/design/lattice.md §5a). Store-aware leaves override; the default
+	 * (docs/reference/lattice.md §5a). Store-aware leaves override; the default
 	 * delegates to the substitution-blind estimate.
 	 */
 	default long answers(Package p) {

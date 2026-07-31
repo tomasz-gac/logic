@@ -15,7 +15,7 @@ import java.util.Map;
 
 /**
  * Turns a sealed closure's slice of the {@link DependencyGraph} into the answer
- * values {@code x = A* ⊗ b} (docs/design/star-tabling.md §4.4). A closure is a
+ * values {@code x = A* ⊗ b} (docs/reference/star-tabling.md §4.4). A closure is a
  * whole SCC — one entry (self-loop, left recursion) or several (mutual recursion)
  * plus any already-solved entries it references as constants — that seal together.
  * Every member's answers share one global index, so a cross-entry edge places

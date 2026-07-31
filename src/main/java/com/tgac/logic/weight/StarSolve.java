@@ -7,7 +7,7 @@ import com.tgac.functional.algebra.ClosedSemiring;
 
 /**
  * Solves the linear recurrence {@code x_i = b_i ⊕ ⊕_j A_ij ⊗ x_j} over a
- * {@link ClosedSemiring} — the star-tabling closed form (docs/design/star-tabling.md
+ * {@link ClosedSemiring} — the star-tabling closed form (docs/reference/star-tabling.md
  * §3). The coefficient matrix {@code a} and base vector {@code b} are plain arrays,
  * consumed as given (the caller builds them once; {@code a} is read, never written).
  * The pivot loop is Floyd–Warshall/Kleene: after processing pivot {@code k},

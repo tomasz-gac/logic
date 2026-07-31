@@ -41,7 +41,7 @@ public class Barrier implements Goal, Bounded {
 	 * A barrier that can price itself against the live state — a tabled call
 	 * pricing its completed entry. MAX (the incomplete case) holds position
 	 * exactly as an unpriced barrier does; a finite price is the immovability
-	 * transition (docs/design/optimizer.md).
+	 * transition (docs/reference/optimizer.md).
 	 */
 	public static Barrier priced(ToLongFunction<Package> order, Goal goal) {
 		return new Barrier(goal, order);

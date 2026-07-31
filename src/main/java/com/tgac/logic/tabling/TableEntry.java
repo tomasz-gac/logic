@@ -28,7 +28,7 @@ public class TableEntry<V> {
 	private final Call call;
 
 	/**
-	 * The answer cell: KEYS-FINAL is its seal (docs/design/table-completion.md
+	 * The answer cell: KEYS-FINAL is its seal (docs/reference/table-completion.md
 	 * §5 — upward-closed, racy reads sound: a stale false prices ∞).
 	 */
 	private final Channel<JoinMap<Reified<?>, V>> cell;

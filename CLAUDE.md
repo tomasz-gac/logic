@@ -94,7 +94,7 @@ Key **seams** (the places behaviour is hooked):
   Disequality's trial unification. Use a plain `Store` for transport (Table pattern).
   Constraint bodies wake on narrowing too — they must tolerate any mix of wide/ground
   args (see the mulIntervals sign-guard lesson).
-  Details: `docs/design/constraint-kernel.md`.
+  Details: `docs/reference/constraint-kernel.md`.
 - **`Package.withSubstitutions` REPLACES the substitution map.** In constraint-aware code
   never touch it directly — obtain a `Prefix` and `resolve` it.
 - **Tracing runs depth-first.** `solve(out, tracer)` uses `DepthFirstScheduler` so the trace
@@ -143,26 +143,26 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 
 ## Where knowledge lives
 
-- `docs/design/constraint-kernel.md` — AUTHORITATIVE: the constraint kernel as
+- `docs/reference/constraint-kernel.md` — AUTHORITATIVE: the constraint kernel as
   shipped (package product, Propagation's three entries, the store protocol and
   2×2 vocabulary, FD's toolkit, structure's one owner, the contracts, the
   lineage). Read before touching the constraint core.
-- `docs/design/lattice.md` — the engine's one algebra: lattice/semiring theory,
+- `docs/reference/lattice.md` — the engine's one algebra: lattice/semiring theory,
   instance inventory, consumer map, capability ladder, the two freedoms. Read
   before the optimizer/TCLP docs — they lean on its vocabulary.
-- `docs/design/condition.md` — AS BUILT: the constraint ring — `Residues`
+- `docs/reference/condition.md` — AS BUILT: the constraint ring — `Residues`
   (⊗-monoid, the namespace crossings), `Condition` (region DNF, subsumption =
   ⊕'s absorption), the one `JoinMap` cell, finality = reaching 1 decides
   streaming vs seal; §8 holds the open questions with dependency chains
   (suspensions as factors, weight ⊗ Condition, imposition spectrum, negation,
   clause learning). Read before touching tabling delivery.
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
-- `docs/design/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
+- `docs/reference/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
   together, AND why NOT to merge them into one engine prematurely.
-- `docs/design/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
+- `docs/shelved/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
   (native debugging, simpler tabling, natural cut) as a separate experimental module; the
   completeness/fairness trap is the go/no-go gate. Not a change to the Java-8 engine.
-- `docs/design/tabled-constraints.md` — STAGES 1–3 SHIPPED (July 2026,
+- `docs/reference/tabled-constraints.md` — STAGES 1–3 SHIPPED (July 2026,
   final form single-sorted): region keys via
   `project = split._1.rename(canonical)`; answers carry their WHOLE
   normalized delta (body locals as existential witnesses, islands
@@ -180,34 +180,34 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   the instance catalogue, the licensing theorems, GAC vs cascade, the
   speculation tier, and the cross-store doctrine (the probe as the one
   sanctioned bridge; #63's proposed scope).
-- `docs/design/substitutions-migration.md` — MOSTLY SHIPPED (Steps A–C: the
+- `docs/reference/substitutions-migration.md` — MOSTLY SHIPPED (Steps A–C: the
   unifier typed over Substitutions, the kind-tagged decompose shared by unify
   and members); Step D (representation swaps) remains, benchmark-gated. Read
   before touching MiniKanren internals.
-- `docs/design/table-completion.md` — AS BUILT: per-call completion detection
+- `docs/reference/table-completion.md` — AS BUILT: per-call completion detection
   (the EnclosingCall coat, the anonymous master, the Region/ledger primitives —
   lifted to functional's `fibers/primitives`, July 2026 — the two-edge graph and
   its seal criterion). Read before touching tabling.
-- `docs/design/star-tabling.md` — AS BUILT: closed-semiring (star) tabling —
+- `docs/reference/star-tabling.md` — AS BUILT: closed-semiring (star) tabling —
   wait-mode explore with base/edge capture at produce, dependency-ordered
   sealing (SEALED ⟹ SOLVABLE; one joint solve per edge-graph closure),
   reader-chain replay emit; the linear-only limit and the
   bounded-vs-needs-star partition.
-- `docs/design/group-seal.md` — AS BUILT: Tier 2 — sealing sleeper rings via
+- `docs/reference/group-seal.md` — AS BUILT: Tier 2 — sealing sleeper rings via
   the closure walk and the two-phase monotone-counter snapshot; why full SLG
   completion came out to ~60 lines.
-- `docs/design/goals-as-data.md` — DESIGN SKETCH: the distribution story in
+- `docs/shelved/goals-as-data.md` — DESIGN SKETCH: the distribution story in
   three layers (Program front door, call-boundary runtime, fold-planner),
   none touching the engine.
-- `docs/design/assembler.md` — DESIGN, SHELVED: the closed GOAL semiring
+- `docs/shelved/assembler.md` — DESIGN, SHELVED: the closed GOAL semiring
   (weights that are programs) — the (actuals, template) call-value, the
   stationary-star theorem, emit-as-calls, the route-planner target example.
   Waits for the human's go; do not propose building it.
-- `docs/design/answers-as-diffs.md` — DESIGN SKETCH: answers as ∃-projected
+- `docs/shelved/answers-as-diffs.md` — DESIGN SKETCH: answers as ∃-projected
   package deltas (one operation behind reification, TCLP purification and
   footprint deduction); the four walls that kill auto-deduced call args; the
   `memo(goal)` subset and diff-as-verifier that survive.
-- `docs/design/method.md` — how this design process works: the loop, the
+- `docs/method.md` — how this design process works: the loop, the
   moves, the placement razors, shelving with triggers.
 - This file — architecture, landmines, workflow.
 - Commit history is descriptive; read it when a change looks surprising.

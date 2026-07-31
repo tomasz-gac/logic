@@ -14,7 +14,7 @@ import java.util.function.Supplier;
 
 /**
  * The closed set of store revisions — AC-3's REVISE, returned as a value
- * (docs/design/constraint-kernel.md). A revision may only replace
+ * (docs/reference/constraint-kernel.md). A revision may only replace
  * the store's OWN factor; everything that crosses store boundaries rides the
  * payloads, expressed in the driver's two-word vocabulary: {@link Prefix}
  * (bindings grow) and narrowed {@link Term}s (re-examine watchers), plus run goals

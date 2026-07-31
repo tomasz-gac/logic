@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 /**
  * Data and its only interpreter in one class: the {@link Agenda} worklist — what
  * the old recursion kept as suspended frames — and the engine that drains it
- * (docs/design/constraint-kernel.md, Steps 2.5 and 3.5).
+ * (docs/reference/constraint-kernel.md, Steps 2.5 and 3.5).
  */
 public final class Propagation {
 

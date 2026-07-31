@@ -16,7 +16,7 @@ import java.util.List;
 import lombok.Value;
 
 /**
- * The one rule of the narrowing/widening taxonomy (docs/design/optimizer.md
+ * The one rule of the narrowing/widening taxonomy (docs/reference/optimizer.md
  * §3): sort each segment by order, ascending; ∞ last; barriers hold position.
  * Leaves declare via {@link Bounded}; combinators derive (saturating × over
  * conjunction, + over disjunction); everything unrecognised is ∞ — a barrier.

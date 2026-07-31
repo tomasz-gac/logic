@@ -15,6 +15,6 @@
  * verification) is machinery the driver never sees, owned by each domain's
  * package. Concrete stores live with their domains ({@code finitedomain},
  * {@code separate}); {@code projection} is a facade over kernel suspensions.
- * Design: docs/design/constraint-kernel.md.
+ * Design: docs/reference/constraint-kernel.md.
  */
 package com.tgac.logic.constraints;

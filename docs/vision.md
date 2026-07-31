@@ -19,6 +19,7 @@ read "when X becomes the most instructive next build" mean exactly that;
 older client-fiction gates ("a paying use case") are retired.**
 
 Reading order for the theory: `lattice.md` first (the vocabulary), then
+`condition.md` (the two algebras meeting at the answer cell),
 `optimizer.md`, `fixpoint-machine.md` §10, `semiring-inference.md`,
 `tabled-constraints.md`, `ambient-optimizer.md`.
 
@@ -47,7 +48,15 @@ centralization points, TCLP residues need compacted-log transport. Read a
 plug's interfaces, know its infrastructure bill — statically. The severest
 test of the thesis so far: an entire distributed-system design
 (goals-as-data.md) needed ZERO new theory — every guarantee traced to an
-already-shipped, law-checked structure.
+already-shipped, law-checked structure. Its rival for the title arrived
+August 2026 from the opposite direction (condition.md): at the answer cell
+the two algebras MET — the constraint ring is a bounded distributive
+lattice, and TCLP was weighted inference over it all along — and the loop
+ran BACKWARDS (method.md step 8): one structure derived five capability
+designs in one arc (negation, clause learning, the disjunctive store, soft
+constraints, imposition planning), each priced with its dependency chain.
+Zero new theory needed for a design is one kind of evidence; five designs
+falling out of one structure is the other.
 
 ## 2. What a user could ask of one program text
 
@@ -66,9 +75,14 @@ already-shipped, law-checked structure.
   with ε-widening (branch-and-prune); Booleans, where propagate-then-split
   IS DPLL; temporal networks. Each store climbs the capability ladder as
   far as its lattice allows; Neq correctly stops at rung one and residuates.
+- **Under which conditions?** — conditional answers (c-tables): a tabled
+  answer carries the region it is proven on (`t GIVEN x ∈ {…}`), summed in
+  the constraint ring, streamed at 1 or delivered final at the seal
+  (condition.md).
 - **Why? Why not?** — provenance as a plug; failure explanations as the De
-  Morgan dual plug; both memoized (a completed empty entry is a cached "no"
-  with its reason).
+  Morgan dual plug — no longer a metaphor: Neq IS ¬Condition, and clause
+  learning is tabling the failures (condition.md §§8.5–8.6); both memoized
+  (a completed empty entry is a cached "no" with its reason).
 - **Learn the weights** — the gradient semiring: the same search,
   differentiable. Research-grade; still just a plug.
 
@@ -223,8 +237,12 @@ agendas without wrong answers — the rare knob that can corrupt, so it gets
 an interlock), **the provenance hierarchy** (coarsest-sufficient-plug
 downgrades; explain one answer without paying for all). Signposted and
 parked: **quantales** (resource-bounded memoization — the merge temptation
-with a theorem), **bilattices** (the negation door; do not bolt negation
-onto the single knowledge order).
+with a theorem), **bilattices** (RE-PARKED August 2026: the STRATIFIED
+negation door turned out to be ¬Condition — De Morgan over the constraint
+ring, constructive negation over seals, condition.md §8.5 — needing no
+second order; bilattices remain the door to the NON-STRATIFIED fragment,
+well-founded semantics, which §8.5 refuses loudly rather than stumbles
+into).
 
 ---
 
@@ -306,7 +324,10 @@ generic primitive). Plus the distribution design corpus, goals-as-data.md.)**
    adornment-memoized dynamic ordering XOR deferred lookups
    (substitutes — build at most one).
 
-**Phase 3 — weighted inference (GATED on Phase 1)**
+**Phase 3 — weighted inference (SHIPPED July–August 2026: weighted goals +
+the SemiringStore product, bounded streaming and closed/star tabling —
+star-tabling.md — and, unanticipated by this roadmap, the weighted cell and
+TCLP's answer carrier UNIFIED into one ring — condition.md)**
 8. Weighted goals + value-riding-the-package store (`semiring-inference.md`
    §4); counting and (min,+) end-to-end.
 9. Semiring tabling: `Map<AnswerTerm, V>` cells behind the Channel
@@ -321,10 +342,13 @@ generic primitive). Plus the distribution design corpus, goals-as-data.md.)**
    half of the taxonomy.
 10. Failure provenance (§7b): reason-collector store (tracer pattern),
     deepest-failure plug; cached "no"s. Doubles as the adoption
-    feature (§5).
+    feature (§5). (August 2026: clause-learning tier 1 — condition.md
+    §8.6, decision clauses over the shared co-store — is the new
+    cheapest on-ramp.)
 
-**Phase 4 — TCLP (GATED on 6; scheduled by instructiveness, per the
-project-nature note)**
+**Phase 4 — TCLP (SHIPPED July–August 2026 through stage 3 —
+tabled-constraints.md, condition.md; the widenings remain gated on a
+motivating user)**
 11. Stages per `tabled-constraints.md` §6: FD-only exact keys → constrained
     answers with `restate` → pointwise-⊑ subsumption → widenings (Neq
     collapse, real ε) only with a motivating user. `Lattice<L>` F-bounded
@@ -346,6 +370,14 @@ instructiveness)**
     without knowing it (Scope, Channel, JoinSet); future
     designs should preserve that property deliberately.
 
+**Phase 6 — the condition chain (QUEUED August 2026; ordered with
+dependency chains in condition.md §8)**: reify-over-project (the ring
+trio's first outside customer — triggers its package move) → suspensions
+as Residues factors → weight-capture normalize wiring → the disjunctive
+store (design pass: the excursion fold, the join rung) → then the gated
+research tier (the weight ⊗ Condition tensor, negation as a value, clause
+learning, the optimizer's imposition plan space).
+
 **Adoption track (parallel, independent of the above)**
 12. `functional` release-prep + de-SNAPSHOT both repos; the parked
     Apache 2.0 decision; public-API vocabulary pass (front door says
@@ -360,7 +392,10 @@ outer chain actively fights it, so the outer strategy must be chosen
 WITH the inner one. Revisit when a store forks its cascade; the
 primitives (forkAll, foldChained, Worklist monotone) are ready; cut/`once`/`ifte` (wants its own design
 conversation); domainify as a pass (manual idiom only); quantales;
-bilattices/negation; virtual-threads engine (separate module,
+bilattices/negation (re-parked per §6 — the stratified door is
+condition.md §8.5); virtual-threads engine (separate module,
 `virtual-threads-engine.md`); representation swaps (benchmark-gated,
-`substitutions-migration.md` §5); CDCL-class algorithms (hostable, not
+`substitutions-migration.md` §5); CDCL-class algorithms (tiered August
+2026, condition.md §8.6: tier-1 decision-clause learning is nearly free;
+full lazy clause generation remains specialist territory — hostable, not
 planned).

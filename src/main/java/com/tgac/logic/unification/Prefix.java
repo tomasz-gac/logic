@@ -8,7 +8,7 @@ import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 
 /**
- * A delta of variable bindings (docs/design/constraint-kernel.md).
+ * A delta of variable bindings (docs/reference/constraint-kernel.md).
  * Construction is package-private: prefixes come from {@link MiniKanren}'s
  * unification (which walks before extending, so no pair targets a bound variable)
  * or from {@link #binding}, which checks. Consumers revalidate against the live
