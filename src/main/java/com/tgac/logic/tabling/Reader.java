@@ -6,6 +6,7 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
+import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
 import com.tgac.logic.unification.Unifiable;
 import lombok.Value;
@@ -35,6 +36,14 @@ public class Reader {
 	HashSet<AnswerKey> delivered;
 
 	/**
+	 * The ground values as delivered — a ⊕-fold may improve a cached key
+	 * after this reader passed it (min-plus finding a cheaper cost), and
+	 * downstream ⊕ absorbs re-delivery, so the improved fold is handed on.
+	 * Presence values never move, so this map never disagrees there.
+	 */
+	HashMap<AnswerKey, Object> groundValues;
+
+	/**
 	 * The solve's table, reached through the caller's package — the shared
 	 * transport store every branch of one solve names identically.
 	 */
@@ -44,17 +53,29 @@ public class Reader {
 
 	/** The reader at the call site: cursor at the start of the cache. */
 	static Reader of(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
-		return new Reader(continuation, pkg, argsTerm, 0, HashSet.empty());
+		return new Reader(continuation, pkg, argsTerm, 0, HashSet.empty(), HashMap.empty());
 	}
 
-	/** The same reader, one atom further along. */
-	Reader advanced() {
-		return new Reader(continuation, pkg, argsTerm, nextIndex + 1, delivered);
+	/** The same reader, one atom further along, its delivered value recorded. */
+	Reader advanced(AnswerKey key, Object value) {
+		return new Reader(continuation, pkg, argsTerm, nextIndex + 1, delivered,
+				groundValues.put(key, value));
+	}
+
+	/** The same reader after re-delivering {@code key}'s improved fold. */
+	Reader redelivered(AnswerKey key, Object value) {
+		return new Reader(continuation, pkg, argsTerm, nextIndex, delivered,
+				groundValues.put(key, value));
+	}
+
+	/** The key's fold has moved past what this reader handed on. */
+	boolean groundValueImproved(AnswerKey key, Object value) {
+		return groundValues.get(key).map(seen -> !seen.equals(value)).getOrElse(false);
 	}
 
 	/** The same reader, one partial-region answer marked delivered. */
 	Reader delivered(AnswerKey key) {
-		return new Reader(continuation, pkg, argsTerm, nextIndex, delivered.add(key));
+		return new Reader(continuation, pkg, argsTerm, nextIndex, delivered.add(key), groundValues);
 	}
 
 	boolean hasDelivered(AnswerKey key) {

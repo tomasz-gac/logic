@@ -390,12 +390,24 @@ public class Tabling {
 	 * 		value arrives with the wake, never polled
 	 */
 	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, Answers<Object> answers) {
+		// a ⊕-fold may have improved a key this reader already passed
+		// (min-plus): downstream ⊕ absorbs re-delivery, so hand the improved
+		// fold on. Presence values never move - this loop no-ops there
+		for (int i = 0; i < reader.getNextIndex() && i < answers.ground().size(); i++) {
+			Tuple2<AnswerKey, Object> seen = answers.ground().get(i);
+			if (reader.groundValueImproved(seen._1, seen._2)) {
+				Reader updated = reader.redelivered(seen._1, seen._2);
+				return deliver(entry, updated, seen._1, seen._2)
+						.flatMap(__ -> Fiber.defer(() ->
+								consume(entry, updated, answers)));
+			}
+		}
 		if (reader.getNextIndex() < answers.ground().size()) {
 			// ground answers are atoms: the indexed, cursor-stable walk
 			Tuple2<AnswerKey, Object> answer = answers.ground().get(reader.getNextIndex());
 			return deliver(entry, reader, answer._1, answer._2)
 					.flatMap(__ -> Fiber.defer(() ->
-							consume(entry, reader.advanced(), answers)));
+							consume(entry, reader.advanced(answer._1, answer._2), answers)));
 		}
 		if (InBody.on(reader.getPkg())) {
 			// the partial region streams inside a body - the fixpoint's fuel.
@@ -423,9 +435,14 @@ public class Tabling {
 				.flatMap(r -> {
 					Answers<Object> current = r.getValue();
 					boolean groundRemaining = reader.getNextIndex() < current.ground().size();
+					boolean improved = current.ground().order
+							.zipWithIndex()
+							.exists(t -> t._2 < reader.getNextIndex()
+									&& reader.groundValueImproved(t._1,
+											current.ground().members.get(t._1).get()));
 					boolean fuelRemaining = InBody.on(reader.getPkg())
 							&& current.covered().elements().exists(t -> !reader.hasDelivered(t._1));
-					if (groundRemaining || fuelRemaining || !r.isSealed()) {
+					if (groundRemaining || improved || fuelRemaining || !r.isSealed()) {
 						return Fiber.defer(() -> consume(entry, reader, current));
 					}
 					// the seal: an outside reader now receives the partial

@@ -9,6 +9,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.schedulers.RandomizedScheduler;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.FiniteDomain;
@@ -16,6 +17,8 @@ import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.weight.SemiringStore;
+import com.tgac.logic.weight.Weights;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
@@ -84,6 +87,40 @@ public class SchedulingChaosTest {
 			Unifiable<Integer> x = lvar();
 			return Tuple.of(outer.apply(Tuple.of(x)), x);
 		});
+	}
+
+	/** The WeightedTablingTest graph: a→b(1), b→d(5), a→c(2), c→d(2). */
+	private static Goal edge(Unifiable<String> x, Unifiable<String> y) {
+		return unify(x, lval("a")).and(unify(y, lval("b"))).and(Weights.factor(Semirings.MIN_PLUS, 1L))
+				.or(unify(x, lval("b")).and(unify(y, lval("d"))).and(Weights.factor(Semirings.MIN_PLUS, 5L)))
+				.or(unify(x, lval("a")).and(unify(y, lval("c"))).and(Weights.factor(Semirings.MIN_PLUS, 2L)))
+				.or(unify(x, lval("c")).and(unify(y, lval("d"))).and(Weights.factor(Semirings.MIN_PLUS, 2L)));
+	}
+
+	@Test
+	public void minPlusFoldsAreOrderFree() {
+		// the historical order-luck bug: a cheaper cost derived AFTER a
+		// consumer passed the key was silently lost. Re-delivery of improved
+		// folds makes the shortest path 4 under every schedule
+		for (long seed = 0; seed < SEEDS; seed++) {
+			long s = seed;
+			Tabled<Tuple2<Unifiable<String>, Unifiable<String>>> path =
+					Tabling.defineRecursive(self -> args -> args.apply((x, y) ->
+							edge(x, y).or(Goal.defer(() -> {
+								Unifiable<String> z = lvar();
+								return edge(x, z).and(self.apply(Tuple.of(z, y)));
+							}))));
+			Unifiable<String> dest = lvar();
+			long shortest = Weights.solveBounded(
+							path.apply(Tuple.of(lval("a"), dest)), dest,
+							SemiringStore.boundedProduct(Semirings.MIN_PLUS),
+							f -> RandomizedScheduler.of(f, s))
+					.filter(answer -> answer._1.toString().contains("d"))
+					.map(answer -> answer._2.get(Semirings.MIN_PLUS))
+					.min(Long::compareTo)
+					.orElseThrow(() -> new AssertionError("no path to d under seed " + s));
+			assertThat(shortest).as("seed %d", s).isEqualTo(4L);
+		}
 	}
 
 	@Test
