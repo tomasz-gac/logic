@@ -11,7 +11,6 @@ import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.AwaitResult;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.Reified;
@@ -40,9 +39,7 @@ public class TableEntryTest {
 		return Fiber.produce(entry.channel(), emit -> {
 			Fiber<Nothing> tree = Fiber.done(Nothing.nothing());
 			for (AnswerKey key : answers) {
-				Fiber<Nothing> emitted = entry.answerDelta(key, true)
-						.map(emit::emit)
-						.getOrElse(Fiber.done(Nothing.nothing()));
+				Fiber<Nothing> emitted = emit.emit(entry.answerDelta(key, true));
 				tree = tree.flatMap(__ -> emitted);
 			}
 			return tree;

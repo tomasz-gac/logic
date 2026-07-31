@@ -6,6 +6,7 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Package;
+import io.vavr.collection.HashSet;
 import com.tgac.logic.unification.Unifiable;
 import lombok.Value;
 
@@ -26,6 +27,14 @@ public class Reader {
 	int nextIndex;
 
 	/**
+	 * The partial-region answers this reader has delivered — membership, not
+	 * an index, because an antichain ascent may evict what an index pointed
+	 * at. Ground answers keep the cursor: append-only enumerations make a
+	 * delivered-set redundant there.
+	 */
+	HashSet<AnswerKey> delivered;
+
+	/**
 	 * The solve's table, reached through the caller's package — the shared
 	 * transport store every branch of one solve names identically.
 	 */
@@ -35,11 +44,20 @@ public class Reader {
 
 	/** The reader at the call site: cursor at the start of the cache. */
 	static Reader of(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
-		return new Reader(continuation, pkg, argsTerm, 0);
+		return new Reader(continuation, pkg, argsTerm, 0, HashSet.empty());
 	}
 
-	/** The same reader, one answer further along. */
+	/** The same reader, one atom further along. */
 	Reader advanced() {
-		return new Reader(continuation, pkg, argsTerm, nextIndex + 1);
+		return new Reader(continuation, pkg, argsTerm, nextIndex + 1, delivered);
+	}
+
+	/** The same reader, one partial-region answer marked delivered. */
+	Reader delivered(AnswerKey key) {
+		return new Reader(continuation, pkg, argsTerm, nextIndex, delivered.add(key));
+	}
+
+	boolean hasDelivered(AnswerKey key) {
+		return delivered.contains(key);
 	}
 }

@@ -5,7 +5,6 @@ package com.tgac.logic.tabling;
 
 import com.tgac.functional.algebra.IdempotentSemiring;
 import io.vavr.control.Option;
-import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.functional.fibers.interpreter.Channel;
 import io.vavr.Tuple2;
 import lombok.Getter;
@@ -34,18 +33,31 @@ public class TableEntry<V> {
 	private final Channel<JoinMap<AnswerKey, V>> cell;
 
 	/**
-	 * Armed by the first residue-carrying answer — the delivery gate reads
-	 * it. Upward-closed; a racy stale false only means an outside reader
-	 * takes the streaming branch on an entry that is not yet constrained.
+	 * The answer poset: ground answers are atoms (indexed, streamed);
+	 * residue-carrying answers have comparable extent — a covers b when the
+	 * terms are equal and b's residues are pointwise below a's. The cell's
+	 * JoinMap keeps the covered region as its maximal antichain, so
+	 * subsumption is the join's own algebra, not a protocol.
 	 */
-	private volatile boolean constrained;
+	private static final JoinMap.Dominance<AnswerKey> COVERS = new JoinMap.Dominance<AnswerKey>() {
+		@Override
+		public boolean partial(AnswerKey key) {
+			return !key.getResidues().isEmpty();
+		}
+
+		@Override
+		public boolean dominates(AnswerKey a, AnswerKey b) {
+			return a.getTerm().equals(b.getTerm())
+					&& AnswerKey.residuesLeq(b.getResidues(), a.getResidues());
+		}
+	};
 
 	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		// consumers are frames awaiting the cell - growth and the seal wake
 		// them through the runtime; the call names the channel, so a strand
 		// refusal names the entry it starved at
-		this.cell = new Channel<>(JoinMap.empty(semiring), call.toString());
+		this.cell = new Channel<>(JoinMap.empty(semiring, COVERS), call.toString());
 	}
 
 	/** The answer cell, as the channel consumers await. */
@@ -62,65 +74,13 @@ public class TableEntry<V> {
 	}
 
 	/**
-	 * The answer as a singleton delta for the master's emit, or none when it
-	 * is ENTAILED: a same-term answer whose residues cover the new one's
-	 * makes it redundant (its replay contributes a subset fixpoint). An
-	 * EXACT duplicate keeps its delta — the fold absorbs it as an inert
-	 * join. Append-only: a wider newcomer never retracts a narrower veteran
-	 * — delivered answers stand.
+	 * The answer as a singleton delta for the master's emit. Dedup is the
+	 * cell join's own algebra: an exact duplicate and an entailed newcomer
+	 * are inert joins, a subsuming newcomer evicts what it covers — an
+	 * ascent in the downset order, and the wake that goes with it.
 	 */
-	public Option<JoinMap<AnswerKey, V>> answerDelta(AnswerKey key, V value) {
-		if (!key.getResidues().isEmpty()) {
-			constrained = true;
-			for (AnswerKey existing : cell.read().order) {
-				if (existing.getTerm().equals(key.getTerm())
-						&& AnswerKey.residuesLeq(key.getResidues(), existing.getResidues())) {
-					return Option.none();
-				}
-			}
-		}
-		return Option.of(JoinMap.<AnswerKey, V> empty(cell.read().semiring).append(key, value).get());
-	}
-
-	boolean isConstrained() {
-		return constrained;
-	}
-
-	/**
-	 * The residue-carrying answers no other answer dominates — the antichain
-	 * outside readers receive at the seal. ORDER-INVARIANT even though the
-	 * log is not: domination, not arrival, decides membership (the log may
-	 * hold a narrower answer that arrived before its wider dominator — no
-	 * arrival-time check can drop what is already cached). Equivalent
-	 * residues keep their first-arrived representative.
-	 */
-	java.util.List<Tuple2<AnswerKey, V>> maximalConstrained() {
-		JoinMap<AnswerKey, V> answers = cell.read();
-		java.util.List<Tuple2<AnswerKey, V>> result = new java.util.ArrayList<>();
-		for (int i = 0; i < answers.size(); i++) {
-			Tuple2<AnswerKey, V> candidate = answers.get(i);
-			AnswerKey key = candidate._1;
-			if (key.getResidues().isEmpty()) {
-				continue;
-			}
-			boolean dominated = false;
-			for (int j = 0; j < answers.size() && !dominated; j++) {
-				if (j == i) {
-					continue;
-				}
-				AnswerKey other = answers.get(j)._1;
-				if (other.getResidues().isEmpty() || !other.getTerm().equals(key.getTerm())) {
-					continue;
-				}
-				boolean below = AnswerKey.residuesLeq(key.getResidues(), other.getResidues());
-				boolean above = AnswerKey.residuesLeq(other.getResidues(), key.getResidues());
-				dominated = below && (!above || j < i);
-			}
-			if (!dominated) {
-				result.add(candidate);
-			}
-		}
-		return result;
+	public JoinMap<AnswerKey, V> answerDelta(AnswerKey key, V value) {
+		return JoinMap.<AnswerKey, V> empty(cell.read().semiring, COVERS).append(key, value).get();
 	}
 
 	public Tuple2<AnswerKey, V> getAnswerAt(int index) {
@@ -133,7 +93,8 @@ public class TableEntry<V> {
 	}
 
 	public int getAnswerCount() {
-		return cell.read().size();
+		JoinMap<AnswerKey, V> answers = cell.read();
+		return answers.size() + answers.partial().size();
 	}
 
 	@Override

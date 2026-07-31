@@ -8,7 +8,6 @@ import static com.tgac.logic.unification.LVal.lval;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Emitter;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.primitives.JoinMap;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
@@ -374,9 +373,7 @@ public class Tabling {
 						// consumers as this producer's tail; an absorbed
 						// (duplicate) answer is an inert join, an entailed one
 						// has no delta at all
-						return entry.answerDelta(AnswerKey.of(cached._1, residues), cached._2)
-								.map(emit::emit)
-								.getOrElse(Fiber.done(Nothing.nothing()));
+						return emit.emit(entry.answerDelta(AnswerKey.of(cached._1, residues), cached._2));
 					});
 		});
 	}
@@ -394,42 +391,47 @@ public class Tabling {
 	 */
 	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, JoinMap<AnswerKey, Object> answers) {
 		if (reader.getNextIndex() < answers.size()) {
+			// ground answers are atoms: the indexed, cursor-stable walk
 			Tuple2<AnswerKey, Object> answer = answers.get(reader.getNextIndex());
-			AnswerKey key = answer._1;
-			// a constrained answer reaches an OUTSIDE reader only at the
-			// seal, as part of the final antichain (deliverMaximalConstrained)
-			// - its arrival order must not shape the output. Inside a body it
-			// streams: it is the fixpoint's fuel, and the widening derivation
-			// that produces its dominator may need it first
-			if (!key.getResidues().isEmpty() && !InBody.on(reader.getPkg())) {
-				return Fiber.defer(() -> consume(entry, reader.advanced(), answers));
-			}
-			return deliver(entry, reader, key, answer._2)
+			return deliver(entry, reader, answer._1, answer._2)
 					.flatMap(__ -> Fiber.defer(() ->
 							consume(entry, reader.advanced(), answers)));
 		}
+		if (InBody.on(reader.getPkg())) {
+			// the partial region streams inside a body - the fixpoint's fuel.
+			// The reader tracks WHAT it delivered, not an index, so an
+			// eviction is invisible to it and a subsuming newcomer is simply
+			// undelivered
+			for (Tuple2<AnswerKey, Object> live : answers.partial()) {
+				if (!reader.hasDelivered(live._1)) {
+					Reader marked = reader.delivered(live._1);
+					return deliver(entry, marked, live._1, live._2)
+							.flatMap(__ -> Fiber.defer(() ->
+									consume(entry, marked, answers)));
+				}
+			}
+		}
 
-		// caught up: await the cell. The suspend is atomic with growth and
-		// seal, so every race lands in one of the two arms: more — answers
-		// grew past the cursor, keep consuming the handed value (a sealed
-		// result past the cursor is the final tail — same arm); sealed at
-		// the cursor — the chain honestly ends, and the mode decides what
-		// that means (a finished branch; or closed's value replay). The
-		// frame's ambient scope records the wait — the sleeper-edge
-		// bookkeeping completion detection reads (docs/design/table-completion.md)
-		return Fiber.await(entry.channel(), v -> v.size() > reader.getNextIndex())
+		// caught up: await ANY strict ascent. The channel swaps its value
+		// object only when knowledge grew, so identity is the predicate -
+		// upward-closed for free, and a wake that adds nothing for THIS
+		// reader (a value fold, an eviction it never delivered) legally
+		// re-arms on the fresh snapshot. The frame's ambient scope records
+		// the wait - the sleeper edge completion detection reads
+		JoinMap<AnswerKey, Object> snapshot = answers;
+		return Fiber.await(entry.channel(), v -> v != snapshot)
 				.flatMap(r -> {
-					if (r.getValue().size() > reader.getNextIndex()) {
-						return Fiber.defer(() -> consume(entry, reader, r.getValue()));
+					JoinMap<AnswerKey, Object> current = r.getValue();
+					boolean groundRemaining = reader.getNextIndex() < current.size();
+					boolean fuelRemaining = InBody.on(reader.getPkg())
+							&& current.partial().exists(t -> !reader.hasDelivered(t._1));
+					if (groundRemaining || fuelRemaining || !r.isSealed()) {
+						return Fiber.defer(() -> consume(entry, reader, current));
 					}
-					// progress-free completions can only be seals: a more() is
-					// only ever completed past the predicate. The mode's caught-up
-					// work (closed's SOLVE) requires the seal - enforce, loudly
-					if (!r.isSealed()) {
-						throw new IllegalStateException(
-								"await completed without progress on an unsealed entry: " + entry);
-					}
-					return deliverMaximalConstrained(entry, reader)
+					// the seal: an outside reader now receives the partial
+					// region's antichain - maximality is order-invariant, so
+					// the output cannot depend on derivation order
+					return deliverGatedConstrained(entry, reader, current)
 							.flatMap(__ -> reader.getTable().caughtUp(entry, reader));
 				});
 	}
@@ -460,18 +462,17 @@ public class Tabling {
 	}
 
 	/**
-	 * The seal's delivery to an OUTSIDE reader: the maximal antichain of the
-	 * entry's constrained answers, skipped during the log walk. Maximality
-	 * is order-invariant even though the log is not, so the output no longer
-	 * depends on derivation order. Inside-a-body readers already streamed
-	 * everything; unconstrained entries have nothing gated.
+	 * The seal's delivery to an OUTSIDE reader: the partial region's live
+	 * antichain, withheld during explore. Inside-a-body readers already
+	 * streamed everything; unconstrained entries have an empty region.
 	 */
-	private static Fiber<Nothing> deliverMaximalConstrained(TableEntry<Object> entry, Reader reader) {
-		if (!entry.isConstrained() || InBody.on(reader.getPkg())) {
+	private static Fiber<Nothing> deliverGatedConstrained(TableEntry<Object> entry, Reader reader,
+			JoinMap<AnswerKey, Object> answers) {
+		if (InBody.on(reader.getPkg())) {
 			return Fiber.done(Nothing.nothing());
 		}
 		Fiber<Nothing> result = Fiber.done(Nothing.nothing());
-		for (Tuple2<AnswerKey, Object> answer : entry.maximalConstrained()) {
+		for (Tuple2<AnswerKey, Object> answer : answers.partial()) {
 			Fiber<Nothing> delivery = deliver(entry, reader, answer._1, answer._2);
 			result = result.flatMap(__ -> delivery);
 		}
