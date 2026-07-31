@@ -1,10 +1,13 @@
 # Tabled constraints — the price list for merging the two fixpoint engines
 
-**Status: STAGE 1 SHIPPED (July 2026) — tabled calls under FD domains run,
-region-keyed; stages 2–4 remain design (AS-BUILT notes inline). This is the successor to `fixpoint-machine.md`'s
-"don't merge the engines prematurely" caveat: it prices the merge so the
-decision can be made deliberately when a use case pays for it. Until then, the
-wall stands (see §2).**
+**Status: STAGES 1–3 SHIPPED (July 2026; AS-BUILT notes inline). This is the
+successor to `fixpoint-machine.md`'s "don't merge the engines prematurely"
+caveat: it prices the merge so the decision can be made deliberately when a
+use case pays for it. AUGUST 2026: the answer-side mechanics below are
+superseded by `condition.md` — residues now live INSIDE the cell value as the
+constraint ring (`Residues` ⊗-monoid, `Condition` DNF, one `JoinMap` cell,
+finality = reaching 1). This doc remains the TCLP theory, pricing and staging
+history; read `condition.md` for the as-built carrier and delivery.**
 
 Prerequisite reading: `fixpoint-machine.md` (the two-fixpoint mental model),
 `constraint-kernel.md` (the store boundary this extends),
@@ -281,6 +284,9 @@ coupling's subset.
   own tighter state filters answers at consumption for free.
 - **Answers** = (reified term, map storeClass → residue); replay =
   instantiate + `restate` each residue. Dedup by pointwise entailment.
+  AS BUILT (August 2026): the residue map is the named `Residues` conjunct,
+  an answer's cell value is the `Condition` DNF over them, and dedup IS the
+  ring's ⊕-absorption — `condition.md` §§3–4.
 - AS BUILT (stage 1): `Call` carries `(relation, reified args, storeClass →
   residue)` with exact residue equality; subsumptive reuse is
   CONSTRAINT-FREE-ONLY — positional slot spaces do not align across
@@ -355,8 +361,9 @@ growth.)
    each store factor is normalized against the answer's substitutions
    (`rename(walking)` — spent entries drop; the ground-answer fast path
    is a factor that normalizes to empty) and cached AS-IS — body locals,
-   couplings through them, and islands all ride
-   (`AnswerKey = (term, holeVars, factors)`). Nothing is projected on the
+   couplings through them, and islands all ride (August 2026: as the term's
+   `Condition` value in the one `JoinMap` cell — `AnswerKey` dissolved,
+   `condition.md` §§4–5). Nothing is projected on the
    answer side, so nothing can escape and nothing refuses: a coupling
    through an unground local replays as an existential witness (fresh
    var per consumption via the shared Renaming) and the consumer's
@@ -365,10 +372,12 @@ growth.)
    is goal-shaped end to end: `Constraints.unify` on the args (the
    chokepoint — caller stores revise on delivery), then
    `Propagation.absorb(factor.rename(mint))` per factor. Answer DEDUP is
-   the leq insert-guard over the factors' own lattice order: append-only,
-   no retraction, one master's lineage making within-entry comparison
-   meaningful. Closed/star mode remains excluded — refused loudly until
-   designed.
+   the ring's own absorption (August 2026; formerly a leq insert-guard, then
+   a seal-gated antichain): a dominated region is an inert ⊕, a dominating
+   one evicts — and delivery timing is finality (ground = 1 streams,
+   conditional sums toward the seal), `condition.md` §6. Weighted modes
+   still refuse residues — now as the missing product instance
+   (`condition.md` §8.2), not a flag.
 2.5. **Stage 2.5 (locals-as-witnesses) — absorbed into stage 2's final
    form**: "carry the whole delta" subsumed the witness-slot and
    support-closure designs; the escape refusal and its remedy ("ground

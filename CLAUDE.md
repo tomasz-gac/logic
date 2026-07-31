@@ -150,6 +150,12 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/lattice.md` — the engine's one algebra: lattice/semiring theory,
   instance inventory, consumer map, capability ladder, the two freedoms. Read
   before the optimizer/TCLP docs — they lean on its vocabulary.
+- `docs/design/condition.md` — AS BUILT: the constraint ring — `Residues`
+  (⊗-monoid, the namespace crossings), `Condition` (region DNF, subsumption =
+  ⊕'s absorption), the one `JoinMap` cell, finality = reaching 1 decides
+  streaming vs seal; §8 holds the open questions with dependency chains
+  (suspensions as factors, weight ⊗ Condition, imposition spectrum, negation,
+  clause learning). Read before touching tabling delivery.
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
 - `docs/design/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
   together, AND why NOT to merge them into one engine prematurely.

@@ -62,9 +62,10 @@ per-factor; the product order under-approximates semantic entailment
 |---|---|---|---|
 | `Domain` (FD) | ⊆, meet = intersect | SHRINKS | the prototype: finite, measured (width), splittable (enumeration), restatable (`dom`) — every tier of the ladder |
 | `Substitutions` | extension, meet n/a (grows by extend) | GROWS | ripeness and the ground-cache are upward-closed sets over it |
-| Table entries | answer-set ⊆ | GROWS | completion = the ascent's fixpoint; completed entry = exact count; the answer set SHIPPED as `JoinSet` (tabling/primitives) — the growing half's first native instance, join-idempotence = the dedup discipline, gate-checked |
+| Table entries | answer-set ⊆ | GROWS | completion = the ascent's fixpoint; completed entry = exact count; the cell SHIPPED as `JoinMap` (tabling) — term → ⊕-folded ring value with an ascent log; join-idempotence = the dedup discipline, gate-checked |
 | Adornments | pointwise bound/free (Boolean lattice per arity) | static | the optimizer's plan-memo key space; subsumption lookup = "reuse the plan of a less-bound pattern" (sound: wrong-only-slow) |
-| Residues (TCLP) | per-store ⊑ | shrink | = `Domain` for FD, by construction (tabled-constraints.md §5.2) |
+| Residues (TCLP) | per-store ⊑ | shrink | SHIPPED as `Residues` — the conjunct as a meet-semilattice with top, leq = containment reversing accumulation (condition.md §3); = `Domain` for FD, by construction |
+| `Condition` | region-DNF, ⊕ = union in absorption normal form | GROWS | SHIPPED: the constraint ring — bounded (1 ⊕ a = 1 IS absorption), ⊗ = cross-meet; subsumption dedup and delivery finality are its laws (condition.md §§4, 6) |
 | `FiniteDomainConstraints` | pointwise domain meet × propagator-set ∩ | SHRINKS | SHIPPED: the store as a product order, canonical ⊥; the cascade's termination measure |
 | `Package` | product of the above | mixed | pointwise entailment; the accepted under-approximation |
 | Neq record sets | record implication (syntactic superset as the sound approximation) | GROWS | ordered ONLY — no useful measure, no split, infinite antichains: tier 1 of the ladder and correctly nothing more |

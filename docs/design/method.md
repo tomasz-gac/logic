@@ -34,6 +34,17 @@ move earns a place here after it has fired at least twice.
    records the refuted theory alongside its refutation (the seal-walk
    retry), not just the removal — the next person to have the same wrong
    idea should find the counterargument waiting.
+8. **Run the loop backwards once it closes.** When the found structure is
+   complete — laws green, both faces named — new capability is DERIVED,
+   not smelled: ask what the algebra's missing operation means
+   operationally and the design falls out priced. Fired across one arc
+   (condition.md §8): ¬ → constructive negation over seals; the store's
+   missing join face → lift; ⊥'s conditional answers → clause learning;
+   the tensor → piecewise weights. Steps 1–7 find structure in code;
+   this step finds code in structure. Questions asked against laws
+   resolve as instance, dual, or missing face — each answer cheaper than
+   the last, because the previous one strengthened what it is asked
+   against.
 
 ## The moves
 
@@ -44,7 +55,9 @@ move earns a place here after it has fired at least twice.
   indicts the design, and the code changes until it can. Kill list since
   adoption: the resume referee (→ always-park suspension), the sealOnly
   flag (→ the Sealed node), the seal walk's edge taxonomy (→ "the ledger
-  is the work"), the walk retry (→ reverted with its refutation). Distinct
+  is the work"), the walk retry (→ reverted with its refutation), the
+  split-brain answer cell — three delivery regimes the human refused to
+  accept as necessary (→ the constraint ring). Distinct
   from adversarial deflation: deflation attacks necessity, the veto
   attacks intelligibility; a proposal ships only after surviving both.
 - **Adversarial deflation.** Every proposal is attacked before it ships —
@@ -79,6 +92,32 @@ move earns a place here after it has fired at least twice.
   bug); the ForkJoin loss (frame lifecycle events, then the tagged pending
   audit, whose one full capture named a lost fork after days of derivation
   could not).
+- **The schedule as adversary.** Order-dependence is a broken law made
+  observable: a fold whose result varies under schedules is a ⊕ that is
+  not commutative-associative-idempotent — no further analysis needed.
+  Randomized-scheduler properties (the chaos harness) are law tests at
+  the SYSTEM level, the operational twin of "write the laws, let them
+  veto": value laws reject representations, the adversarial schedule
+  rejects delivery designs. Fired: the entailment dedup bug (rediscovered
+  at seed 1 on unfixed code), min-plus order-luck (4 vs 6 under a driver
+  reorder), provisional-value duplicates (seed 2).
+- **Fix bugs with laws, not memory.** A delivery bug that tempts
+  per-reader bookkeeping — a delivered-set, a seen-values map, a mode
+  flag — is a law's absence made manifest: ask which algebraic property
+  would make the bookkeeping unnecessary and strengthen the VALUE
+  instead. The answer cell's three memories each dissolved into a law:
+  the delivered-set into ⊕'s absorption, the re-delivery map into
+  distributivity over the ascent log, the finality flags into
+  1 ⊕ a = 1.
+- **A lawful seam is a demand letter.** A substrate whose types carry
+  laws (Channel demands Semilattice; the ambient scope bills by
+  construction) issues debt to every layer above: the layer must become
+  lawful too, and its order bugs are the unpaid installments — CALM in
+  the small, coordination-freedom purchasable only with monotone
+  structure. Budget the domain refactor when signing the seam; an
+  extraction is not done until the layers above stop special-casing.
+  Fired: Channel's Semilattice bound forcing the three-regime cell into
+  one ring; the ambient scope forcing the coat's deletion.
 - **The conditional-guarantee trap.** A contract that holds only while a
   global non-property holds breaks a stranger's code the day the condition
   first fails, silently. Name the condition; then make it structural or

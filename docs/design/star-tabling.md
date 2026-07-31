@@ -11,7 +11,10 @@ master-continuation emit with reader-chain replay). The BOUNDED weighted path is
 completion machinery this reuses wholesale), `semiring-inference.md` (the
 weighted-inference frame and the bounded path), `lattice.md` (the two
 algebras). Read those for the vocabulary: cells, scopes, ledgers, sleeper edges,
-the seal, the group seal's virtual merge.**
+the seal, the group seal's virtual merge. AUGUST 2026: the cell carrier is
+the one `JoinMap` of `condition.md` — the "presence cell" below is the
+constraint ring at 1 (`Condition.ONE`; every closed capture is 1, the role
+unchanged), and replay walks `entry.answerTerms()`.**
 
 ---
 
