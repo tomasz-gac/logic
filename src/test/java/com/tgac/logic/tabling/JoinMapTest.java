@@ -65,6 +65,17 @@ public class JoinMapTest {
 	}
 
 	@Test
+	public void absorbedByIsPointwiseValueAbsorption() {
+		// the cheaper fold already contains the dearer one; a missing key
+		// or a better value on my side refuses
+		assertThat(shortest("d", 6L).absorbedBy(shortest("d", 4L))).isTrue();
+		assertThat(shortest("d", 4L).absorbedBy(shortest("d", 6L))).isFalse();
+		assertThat(shortest("d", 4L).absorbedBy(shortest("e", 4L))).isFalse();
+		assertThat(shortest("d", 6L)
+				.absorbedBy(shortest("d", 4L).append("e", 1L).get())).isTrue();
+	}
+
+	@Test
 	public void conditionValuesFoldBySubsumption() {
 		JoinMap<String, Condition> map = regions("t", NARROW).append("t", WIDE).get();
 

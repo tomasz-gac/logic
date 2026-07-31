@@ -73,6 +73,19 @@ public class ConditionTest {
 	}
 
 	@Test
+	public void absorbedByIsDirectDominance() {
+		// a narrower region contributes nothing a wider one lacks
+		assertThat(NARROW.absorbedBy(WIDE)).isTrue();
+		assertThat(WIDE.absorbedBy(NARROW)).isFalse();
+		assertThat(NARROW.or(APART).absorbedBy(WIDE)).isFalse();
+		assertThat(NARROW.absorbedBy(NARROW.or(APART))).isTrue();
+		// 1 absorbs everything; nothing below absorbs 1; 0 is absorbed by all
+		assertThat(APART.absorbedBy(Condition.ONE)).isTrue();
+		assertThat(Condition.ONE.absorbedBy(APART)).isFalse();
+		assertThat(Condition.ZERO.absorbedBy(APART)).isTrue();
+	}
+
+	@Test
 	public void oneIsTheProductIdentityAndZeroAnnihilates() {
 		assertThat(NARROW.and(Condition.ONE)).isEqualTo(NARROW);
 		assertThat(Condition.ONE.and(NARROW)).isEqualTo(NARROW);

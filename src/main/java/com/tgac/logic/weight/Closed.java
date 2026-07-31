@@ -9,10 +9,11 @@ import static com.tgac.functional.fibers.Fiber.done;
 
 import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
-import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.tabling.Condition;
 import com.tgac.logic.tabling.Reader;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.TablingMode;
@@ -58,10 +59,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 final class Closed implements TablingMode {
 
-	/** Explore is set tabling — every answer carries the same presence marker. */
+	/** Explore is plain tabling — every capture is the constraint ring's 1. */
 	@SuppressWarnings("unchecked")
-	private static final IdempotentSemiring<Object> PRESENCE =
-			(IdempotentSemiring<Object>) (IdempotentSemiring<?>) Semirings.BOOLEAN;
+	private static final IdempotentSemiring<Object> CONDITIONS =
+			(IdempotentSemiring<Object>) (IdempotentSemiring<?>) Condition.RING;
 
 	private final ClosedSemiring<SemiringStore> ring;
 	/** The equation system built during explore, read at each seal. */
@@ -93,7 +94,7 @@ final class Closed implements TablingMode {
 
 	@Override
 	public IdempotentSemiring<Object> cellSemiring() {
-		return PRESENCE;
+		return CONDITIONS;
 	}
 
 	@Override
@@ -124,10 +125,18 @@ final class Closed implements TablingMode {
 	}
 
 	@Override
-	public Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
+	public Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg,
+			Reified<?> answerTerm, io.vavr.collection.Map<Class<?>, Projectable<?>> residues) {
+		// io.vavr Map qualified: this file's Map is java.util's (solved values)
+		if (!residues.isEmpty()) {
+			// replay-at-seal has no way to re-impose a region on a chain
+			throw new IllegalStateException(
+					"constrained answers are supported only under plain tabling: "
+							+ "weights over conditional answers is an orthogonal, open concern");
+		}
 		// 0 loops consumed → base seed, 1 → edge coefficient, ≥2 → nonlinear (outside
 		// the star). Captured before the dedup so multiplicity survives. The cell
-		// itself caches bare presence — the value lives in the DependencyGraph.
+		// itself caches 1 — the value lives in the DependencyGraph.
 		Recurrent rec = answerPkg.getStores().get(Recurrent.class)
 				.map(Recurrent.class::cast).getOrElse(Recurrent.NONE);
 		Node produced = new Node(entry, answerTerm);
@@ -140,7 +149,7 @@ final class Closed implements TablingMode {
 			throw new IllegalStateException("nonlinear recursion: a derivation consumed "
 					+ rec.consumed.size() + " looping calls; star handles only linear systems");
 		}
-		return Tuple.of(answerTerm, Boolean.TRUE);
+		return Tuple.of(answerTerm, Condition.ONE);
 	}
 
 	@Override
@@ -192,8 +201,7 @@ final class Closed implements TablingMode {
 		Map<Reified<?>, SemiringStore> values = solvedValues.get(entry);
 		SemiringStore readerValue = storeOf(reader.getPkg());
 		Fiber<Nothing> result = done(nothing());
-		for (int i = 0; i < entry.getAnswerCount(); i++) {
-			Reified<?> answerTerm = entry.getAnswerAt(i)._1.getTerm();
+		for (Reified<?> answerTerm : entry.answerTerms()) {
 			SemiringStore x = values.get(answerTerm);
 			if (x == null) {
 				continue;

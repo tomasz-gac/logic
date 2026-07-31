@@ -1,64 +1,44 @@
 package com.tgac.logic.tabling;
 
 // ABOUTME: The per-phase decisions that distinguish streaming tabling (fold and hand
-// ABOUTME: out now) from closed/star tabling (capture structure, solve at seal, emit).
+// ABOUTME: out by finality) from closed/star tabling (capture structure, solve at seal).
 
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple2;
-import io.vavr.collection.List;
+import io.vavr.collection.Map;
 
 /**
  * The algorithm plugged into the shared tabling skeleton — anonymous master /
  * consumers / park / completion, which every mode walks identically. Two
  * halves: the DERIVATION ALGEBRA (per-derivation value transitions the
- * skeleton continues with) and the EMIT events (per entry, both returning the
- * emission work that rides the delivering branch):
+ * skeleton continues with) and the EMIT events:
  *
  * <pre>
  * EXPLORE   bodyState             the anonymous master's starting package
  *           absorb / capture      a reader takes in an answer / a derivation's
  *                                 contribution is captured for the cell
- * EMIT      sealed / caughtUp     the entry's answers went final — emission for
- *                                 its drained readers / for a straggler
+ * EMIT      caughtUp              a straggler arrived after the seal
  * </pre>
  *
- * {@code Streaming} does all its work during explore (fold each answer's value
- * into the cell, hand it out through the consumers as found) and its EMIT
- * events are inert; the weight package's closed mode explores for structure
- * only, then solves the star and replays each entry's readers — organizing its
- * per-entry state in Life objects it manages internally. {@link Tabling} calls
- * these hooks and never branches on the mode, so each algorithm reads in one
- * place.
+ * The CELL is one {@link JoinMap} for every mode: term → value in the mode's
+ * {@link #cellSemiring}, and delivery timing is the VALUES' OWN FINALITY —
+ * a value at ⊕'s top ({@code 1 ⊕ a = 1}, bounded) is final on arrival and
+ * streams, anything below is provisional until the seal. {@code Streaming}
+ * folds real values during explore (conditions for plain tabling, the
+ * weight ring for bounded-weighted); the weight package's closed mode
+ * explores for structure only (every capture is 1), then solves the star
+ * and replays each entry's readers. {@link Tabling} calls these hooks and
+ * never branches on which mode it is.
  */
 public interface TablingMode {
 
-	/** The answer cell's ⊕ (fold on dedup): presence for set/closed, the real fold for weighted. */
+	/** The answer cell's ring: conditions for plain/closed, the weight ring for bounded-weighted. */
 	IdempotentSemiring<Object> cellSemiring();
-
-	/**
-	 * Whether answers may carry constraint residues. Streaming supports them
-	 * (replay restates at consumption); the closed/star mode does not — weights
-	 * over conditional answers is an undesigned, orthogonal interaction,
-	 * refused loudly at produce.
-	 */
-	/**
-	 * Whether a ground answer's value is FINAL when derived. Presence is
-	 * (an atom is a fact); a weighted fold ascends until the seal, so its
-	 * streamed snapshots are provisional and outside readers must not see
-	 * them — finality decides streaming, and the seal is where non-final
-	 * things become final.
-	 */
-	default boolean groundValuesFinal() {
-		return true;
-	}
-
-	default boolean supportsConstrainedAnswers() {
-		return false;
-	}
 
 	/**
 	 * The anonymous master's starting package: fresh, caller-agnostic body
@@ -69,24 +49,27 @@ public interface TablingMode {
 
 	/**
 	 * The reader's state after taking in a cached answer it just unified
-	 * against the call pattern; {@code enclosingCall} is the tabled call the
-	 * consumer runs inside (null at the top level). Streaming ⊗s the cached
-	 * cell value into the running value. Closed: reading an OPEN entry records
-	 * the loop and tags the delivery a pre-star fragment; reading a SOLVED
-	 * entry ⊗s the solved value inline for a reader inside a body (its capture folds
-	 * it in) and stays a fragment for a top-level one (the replay at its
-	 * chain's end delivers).
+	 * against the call pattern. Streaming ⊗s the cached cell value into the
+	 * running value (plain has nothing to thread — the condition was
+	 * imposed by the delivery's restate). Closed: reading an OPEN entry
+	 * records the loop and tags the delivery a pre-star fragment; reading a
+	 * SOLVED entry ⊗s the solved value inline for a reader inside a body
+	 * (its capture folds it in) and stays a fragment for a top-level one
+	 * (the replay at its chain's end delivers).
 	 */
 	Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
 			Object cellValue);
 
 	/**
-	 * The body derived an answer: its contribution, captured as what the cell
-	 * caches — the term and its value. The running weight for streaming; bare
-	 * presence for closed, which instead captures the derivation's base/edge
-	 * on the entry as a side effect.
+	 * The body derived an answer: the term and the VALUE the cell caches
+	 * for it. Plain tabling folds the residues into a {@link Condition}
+	 * (ground = 1); weighted reads the running value off the package and
+	 * refuses residues (weights over conditional answers is an undesigned,
+	 * orthogonal interaction); closed captures the derivation's base/edge
+	 * on the entry as a side effect and caches 1.
 	 */
-	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm);
+	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg,
+			Reified<?> answerTerm, Map<Class<?>, Projectable<?>> residues);
 
 	/**
 	 * A consumer caught up with the already-sealed entry — the end of its

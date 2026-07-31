@@ -4,9 +4,9 @@ package com.tgac.logic.tabling;
 // ABOUTME: Rides the package's store map and delegates per-step decisions to its mode.
 
 import com.tgac.functional.algebra.BoundedSemiring;
-import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
@@ -14,6 +14,7 @@ import com.tgac.logic.tabling.subsumption.SubsumptionMap;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
+import io.vavr.collection.Map;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -39,10 +40,10 @@ import java.util.function.Function;
  */
 public class Table implements Packaged {
 
-	/** Every answer carries the same presence marker — the set-tabling cell. */
+	/** The plain cell's ring: ground answers are 1, conditional answers sum regions. */
 	@SuppressWarnings("unchecked")
-	private static final BoundedSemiring<Object> PRESENCE =
-			(BoundedSemiring<Object>) (BoundedSemiring<?>) Semirings.BOOLEAN;
+	private static final BoundedSemiring<Object> CONDITIONS =
+			(BoundedSemiring<Object>) (BoundedSemiring<?>) Condition.RING;
 
 	/** Map from calls to their table entries */
 	private final ConcurrentHashMap<Call, TableEntry<Object>> entries = new ConcurrentHashMap<>();
@@ -66,9 +67,9 @@ public class Table implements Packaged {
 		this.tablingForbidden = tablingForbidden;
 	}
 
-	/** Plain tabling: a presence cell and no running value to thread. */
+	/** Plain tabling: a conditions cell and no running value to thread. */
 	public static Table empty() {
-		return new Table(new Streaming(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, true), null);
+		return new Table(new Streaming(CONDITIONS, p -> Condition.ONE, (p, v) -> p, true), null);
 	}
 
 	/**
@@ -95,7 +96,7 @@ public class Table implements Packaged {
 	 * call, so dropped weights fail loudly instead of silently miscomputing.
 	 */
 	public static Table refusingTabling(String reason) {
-		return new Table(new Streaming(PRESENCE, p -> Boolean.TRUE, (p, v) -> p, true), reason);
+		return new Table(new Streaming(CONDITIONS, p -> Condition.ONE, (p, v) -> p, true), reason);
 	}
 
 	/** Loud failure when a tabled call runs under a table that cannot support it. */
@@ -112,21 +113,14 @@ public class Table implements Packaged {
 		return mode.bodyState(callerPkg).putStore(InBody.MARKER);
 	}
 
-	boolean groundValuesFinal() {
-		return mode.groundValuesFinal();
-	}
-
-	boolean supportsConstrainedAnswers() {
-		return mode.supportsConstrainedAnswers();
-	}
-
 	Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
 			Object cellValue) {
 		return mode.absorb(unifiedPkg, entry, consumedAnswer, cellValue);
 	}
 
-	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm) {
-		return mode.capture(entry, answerPkg, answerTerm);
+	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm,
+			Map<Class<?>, Projectable<?>> residues) {
+		return mode.capture(entry, answerPkg, answerTerm, residues);
 	}
 
 	Fiber<Nothing> caughtUp(TableEntry<Object> entry, Reader reader) {

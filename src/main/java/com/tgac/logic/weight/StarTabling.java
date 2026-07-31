@@ -32,8 +32,8 @@ final class StarTabling {
 		Map<Node, Integer> index = new LinkedHashMap<>();
 		List<Node> nodes = new ArrayList<>();
 		for (TableEntry<Object> entry : entries) {
-			for (int i = 0; i < entry.getAnswerCount(); i++) {
-				Node node = new Node(entry, entry.getAnswerAt(i)._1.getTerm());
+			for (Reified<?> term : entry.answerTerms()) {
+				Node node = new Node(entry, term);
 				index.put(node, nodes.size());
 				nodes.add(node);
 			}

@@ -75,6 +75,18 @@ public class JoinMap<K, V> implements Semilattice<JoinMap<K, V>> {
 		return join(other);
 	}
 
+	/**
+	 * Direct absorption: every key present in {@code other} with my value
+	 * already inside its fold — the ⊕ order answered pointwise, without
+	 * replaying a join.
+	 */
+	@Override
+	public boolean absorbedBy(JoinMap<K, V> other) {
+		return members.forAll(entry -> other.members.get(entry._1)
+				.map(theirs -> semiring.plus(theirs, entry._2).equals(theirs))
+				.getOrElse(false));
+	}
+
 	/** Replay {@code other}'s arrivals; identity-preserving when all are inert. */
 	public JoinMap<K, V> join(JoinMap<K, V> other) {
 		JoinMap<K, V> result = this;

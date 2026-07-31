@@ -260,8 +260,8 @@ public class Tabling {
 	 * (body locals) mints fresh per delivery: the existential. Ground answers
 	 * have no factors and the goal is success.
 	 */
-	private static Goal restateAll(AnswerKey key, java.util.List<LVar<?>> freshHoles) {
-		if (key.getResidues().isEmpty()) {
+	private static Goal restateAll(Map<Class<?>, Projectable<?>> residues, java.util.List<LVar<?>> freshHoles) {
+		if (residues.isEmpty()) {
 			return Goal.success();
 		}
 		// residues are slot-canonical: seed each slot hole onto the term
@@ -273,7 +273,7 @@ public class Tabling {
 		}
 		Renaming mint = Renaming.into(seed);
 		Goal seeded = Goal.success();
-		for (Tuple2<Class<?>, Projectable<?>> entry : key.getResidues()) {
+		for (Tuple2<Class<?>, Projectable<?>> entry : residues) {
 			seeded = Conjunction.of(seeded,
 					Propagation.absorb(entry._2.rename(mint)));
 		}
@@ -297,11 +297,11 @@ public class Tabling {
 	 * path is a factor that normalizes to empty). The WHOLE delta rides —
 	 * body locals and their couplings included, replayed as existentials at
 	 * consumption and verified by the consumer's labelling. Non-projectable
-	 * live knowledge refuses, and constrained answers under a mode that
-	 * cannot replay them (closed) refuse before caching.
+	 * live knowledge refuses; whether residues may ride at all is the
+	 * mode's capture call.
 	 */
 	private static Map<Class<?>, Projectable<?>> answerResidues(Package answerPkg,
-			java.util.List<LVar<?>> holeVars, Table table) {
+			java.util.List<LVar<?>> holeVars) {
 		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
 		Renaming normalization = Renaming.walking(answerPkg.substitution());
 		// live hole vars go to their slot holes, so residues from SEPARATE
@@ -323,11 +323,6 @@ public class Tabling {
 				residues = residues.put(store.getClass(), normalized.rename(canonicalization));
 			}
 		}
-		if (!residues.isEmpty() && !table.supportsConstrainedAnswers()) {
-			throw new IllegalStateException(
-					"constrained answers are supported only under plain (presence) tabling: "
-							+ "weights over conditional answers is an orthogonal, open concern");
-		}
 		return residues;
 	}
 
@@ -344,7 +339,7 @@ public class Tabling {
 			Package bodyPkg,
 			Unifiable<?> argsTerm,
 			Table table,
-			Emitter<Answers<Object>> emit) {
+			Emitter<JoinMap<Reified<?>, Object>> emit) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			// the Table transport is the canary: a goal that returned a fresh
 			// package instead of deriving from its input shed every store — the
@@ -365,15 +360,15 @@ public class Tabling {
 			}
 			return MiniKanren.reifyWithHoles(answerPkg.substitution(), argsTerm.getObjectTerm())
 					.flatMap(reified -> {
-						Map<Class<?>, Projectable<?>> residues = answerResidues(answerPkg, reified._2, table);
+						Map<Class<?>, Projectable<?>> residues = answerResidues(answerPkg, reified._2);
 						// what the cell caches: the term and the value this derivation
 						// carries — caller-agnostic, since the body ran from ONE
-						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1);
+						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1, residues);
 						// production is the emit: the fold FEEDS the parked
-						// consumers as this producer's tail; an absorbed
-						// (duplicate) answer is an inert join, an entailed one
-						// has no delta at all
-						return emit.emit(entry.answerDelta(AnswerKey.of(cached._1, residues), cached._2));
+						// consumers as this producer's tail; a duplicate answer
+						// is an inert fold, an entailed region is absorbed —
+						// no delta, no wake
+						return emit.emit(entry.answerDelta(cached._1, cached._2));
 					});
 		});
 	}
@@ -389,78 +384,37 @@ public class Tabling {
 	 * 		consumption starts from the answers as of the call; every later
 	 * 		value arrives with the wake, never polled
 	 */
-	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, Answers<Object> answers) {
-		Table table = reader.getTable();
-		boolean inBody = InBody.on(reader.getPkg());
-		if (!table.groundValuesFinal() && inBody) {
-			// the semi-naive rule: the body must re-consume a fold that
-			// ascended past what it derived from, or onward derivations keep
-			// stale costs and the FINAL values come out wrong
-			for (int i = 0; i < reader.getNextIndex() && i < answers.ground().size(); i++) {
-				Tuple2<AnswerKey, Object> seen = answers.ground().get(i);
-				if (reader.groundValueImproved(seen._1, seen._2)) {
-					Reader updated = reader.redelivered(seen._1, seen._2);
-					return deliver(entry, updated, seen._1, seen._2)
-							.flatMap(__ -> Fiber.defer(() ->
-									consume(entry, updated, answers)));
-				}
+	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, JoinMap<Reified<?>, Object> answers) {
+		if (reader.getCursor() < answers.logSize()) {
+			// the log walk: every ascent is one event - a fresh term, a new
+			// region, an improved fold. Inside readers take them all (the
+			// fixpoint's fuel - distributivity makes delivering each arrival
+			// sound); outside readers take only values at ⊕'s top (1 ⊕ a = 1:
+			// final on arrival) and collect the rest finalized at the seal
+			Tuple2<Reified<?>, Object> arrival = answers.logAt(reader.getCursor());
+			Reader advanced = reader.advanced();
+			if (InBody.on(reader.getPkg()) || answers.isTop(arrival._2)) {
+				return deliver(entry, advanced, arrival._1, arrival._2)
+						.flatMap(__ -> Fiber.defer(() -> consume(entry, advanced, answers)));
 			}
-		}
-		if (reader.getNextIndex() < answers.ground().size()) {
-			// ground atoms stream when their values are FINAL at derivation
-			// (presence facts) or the reader is fixpoint fuel; a weighted
-			// fold is provisional until the seal, so an outside reader skips
-			// - the sealed arm hands it the completed values exactly once
-			Tuple2<AnswerKey, Object> answer = answers.ground().get(reader.getNextIndex());
-			if (!table.groundValuesFinal() && !inBody) {
-				return Fiber.defer(() -> consume(entry, reader.skipped(), answers));
-			}
-			return deliver(entry, reader, answer._1, answer._2)
-					.flatMap(__ -> Fiber.defer(() ->
-							consume(entry, reader.advanced(answer._1, answer._2), answers)));
-		}
-		if (InBody.on(reader.getPkg())) {
-			// the partial region streams inside a body - the fixpoint's fuel.
-			// The reader tracks WHAT it delivered, not an index, so an
-			// eviction is invisible to it and a subsuming newcomer is simply
-			// undelivered
-			for (Tuple2<AnswerKey, Object> live : answers.covered().elements()) {
-				if (!reader.hasDelivered(live._1)) {
-					Reader marked = reader.delivered(live._1);
-					return deliver(entry, marked, live._1, live._2)
-							.flatMap(__ -> Fiber.defer(() ->
-									consume(entry, marked, answers)));
-				}
-			}
+			return Fiber.defer(() -> consume(entry, advanced, answers));
 		}
 
 		// caught up: await ANY strict ascent. The channel swaps its value
 		// object only when knowledge grew, so identity is the predicate -
-		// upward-closed for free, and a wake that adds nothing for THIS
-		// reader (a value fold, an eviction it never delivered) legally
-		// re-arms on the fresh snapshot. The frame's ambient scope records
-		// the wait - the sleeper edge completion detection reads
-		Answers<Object> snapshot = answers;
+		// upward-closed for free. The frame's ambient scope records the
+		// wait - the sleeper edge completion detection reads
+		JoinMap<Reified<?>, Object> snapshot = answers;
 		return Fiber.await(entry.channel(), v -> v != snapshot)
 				.flatMap(r -> {
-					Answers<Object> current = r.getValue();
-					boolean groundRemaining = reader.getNextIndex() < current.ground().size();
-					boolean improved = !reader.getTable().groundValuesFinal()
-							&& InBody.on(reader.getPkg())
-							&& current.ground().order
-									.zipWithIndex()
-									.exists(t -> t._2 < reader.getNextIndex()
-											&& reader.groundValueImproved(t._1,
-													current.ground().members.get(t._1).get()));
-					boolean fuelRemaining = InBody.on(reader.getPkg())
-							&& current.covered().elements().exists(t -> !reader.hasDelivered(t._1));
-					if (groundRemaining || improved || fuelRemaining || !r.isSealed()) {
+					JoinMap<Reified<?>, Object> current = r.getValue();
+					if (reader.getCursor() < current.logSize() || !r.isSealed()) {
 						return Fiber.defer(() -> consume(entry, reader, current));
 					}
-					// the seal: an outside reader now receives the partial
-					// region's antichain - maximality is order-invariant, so
-					// the output cannot depend on derivation order
-					return deliverGatedFinal(entry, reader, current)
+					// the seal: an outside reader now receives each term's
+					// converged fold - folds and maximality are order-
+					// invariant, so the output cannot depend on the schedule
+					return deliverSealed(entry, reader, current)
 							.flatMap(__ -> reader.getTable().caughtUp(entry, reader));
 				});
 	}
@@ -476,41 +430,54 @@ public class Tabling {
 	 * on.
 	 */
 	private static Fiber<Nothing> deliver(TableEntry<Object> entry, Reader reader,
-			AnswerKey key, Object cellValue) {
+			Reified<?> term, Object value) {
+		if (value instanceof Condition) {
+			// a condition delivers per region: each conjunct is one branch,
+			// its residues restated onto that delivery's fresh holes
+			Fiber<Nothing> result = Fiber.done(Nothing.nothing());
+			for (Map<Class<?>, Projectable<?>> conjunct : ((Condition) value).conjuncts()) {
+				Map<Class<?>, Projectable<?>> residues = conjunct;
+				Fiber<Nothing> delivery = deliverAtom(entry, reader, term, residues, value);
+				result = result.flatMap(__ -> delivery);
+			}
+			return result;
+		}
+		return deliverAtom(entry, reader, term, HashMap.empty(), value);
+	}
+
+	private static Fiber<Nothing> deliverAtom(TableEntry<Object> entry, Reader reader,
+			Reified<?> term, Map<Class<?>, Projectable<?>> residues, Object cellValue) {
 		Fiber.Fn<Package, Nothing> k = reader.getContinuation();
 		Package callerPkg = reader.getPkg();
 		Unifiable<?> argsTerm = reader.getArgsTerm();
-		return MiniKanren.instantiateWithHoles(key.getTerm()).flatMap(inst ->
+		return MiniKanren.instantiateWithHoles(term).flatMap(inst ->
 				Conjunction.of(
 								unifyArgs(argsTerm.getObjectUnifiable(), inst._1.getObjectUnifiable()),
-								restateAll(key, inst._2))
+								restateAll(residues, inst._2))
 						.apply(callerPkg)
 						// streaming ⊗s the cell value in; closed records the loop
 						.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,
-								entry, key.getTerm(), cellValue))));
+								entry, term, cellValue))));
 	}
 
 	/**
 	 * The seal's delivery to an OUTSIDE reader: everything that only now
-	 * became FINAL. The partial region's live antichain (withheld during
-	 * explore), and — under a weighted mode — every ground answer's
-	 * completed fold, exactly once. Inside-a-body readers already streamed
-	 * everything as fuel.
+	 * became FINAL - each term's converged fold, its top-valued arrivals
+	 * excepted (those streamed the moment they logged, and 1 ⊕ a = 1 says
+	 * nothing could have moved them since). Inside-a-body readers already
+	 * streamed every ascent as fuel.
 	 */
-	private static Fiber<Nothing> deliverGatedFinal(TableEntry<Object> entry, Reader reader,
-			Answers<Object> answers) {
+	private static Fiber<Nothing> deliverSealed(TableEntry<Object> entry, Reader reader,
+			JoinMap<Reified<?>, Object> answers) {
 		if (InBody.on(reader.getPkg())) {
 			return Fiber.done(Nothing.nothing());
 		}
 		Fiber<Nothing> result = Fiber.done(Nothing.nothing());
-		if (!reader.getTable().groundValuesFinal()) {
-			for (int i = 0; i < answers.ground().size(); i++) {
-				Tuple2<AnswerKey, Object> answer = answers.ground().get(i);
-				Fiber<Nothing> delivery = deliver(entry, reader, answer._1, answer._2);
-				result = result.flatMap(__ -> delivery);
+		for (int i = 0; i < answers.size(); i++) {
+			Tuple2<Reified<?>, Object> answer = answers.get(i);
+			if (answers.isTop(answer._2)) {
+				continue;
 			}
-		}
-		for (Tuple2<AnswerKey, Object> answer : answers.covered().elements()) {
 			Fiber<Nothing> delivery = deliver(entry, reader, answer._1, answer._2);
 			result = result.flatMap(__ -> delivery);
 		}

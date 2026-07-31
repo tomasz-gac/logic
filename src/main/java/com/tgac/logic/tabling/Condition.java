@@ -143,6 +143,16 @@ public final class Condition implements Semilattice<Condition> {
 		return or(other);
 	}
 
+	/**
+	 * Direct absorption: every conjunct of mine dominated by one of
+	 * {@code other}'s — the ⊕ order answered without folding the join.
+	 */
+	@Override
+	public boolean absorbedBy(Condition other) {
+		return conjuncts.forAll(mine ->
+				other.conjuncts.exists(theirs -> residuesLeq(mine, theirs)));
+	}
+
 	/** The constraint ring; star is degenerate through {@link BoundedSemiring}. */
 	private static final class Ring implements BoundedSemiring<Condition> {
 		@Override

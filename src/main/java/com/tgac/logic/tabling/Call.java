@@ -51,7 +51,7 @@ public class Call {
 	public boolean subsumes(Call other) {
 		return relation == other.relation
 				&& Subsumption.subsumes(arguments, other.arguments)
-				&& AnswerKey.residuesLeq(other.residues, residues);
+				&& Condition.residuesLeq(other.residues, residues);
 	}
 
 	@Override

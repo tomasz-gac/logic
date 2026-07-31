@@ -1,25 +1,26 @@
 package com.tgac.logic.tabling;
 
-// ABOUTME: One tabled call's entry: its answer log (what it has found) and its
+// ABOUTME: One tabled call's entry: its answer cell (what it has found) and its
 // ABOUTME: production ledger (what is still working for it), behind one facade.
 
 import com.tgac.functional.algebra.IdempotentSemiring;
-import io.vavr.control.Option;
 import com.tgac.functional.fibers.interpreter.Channel;
-import io.vavr.Tuple2;
+import com.tgac.logic.unification.Reified;
+import io.vavr.collection.Vector;
 import lombok.Getter;
 
 /**
  * A table entry for a specific tabled goal call — the call's notebook.
  *
  * The first invocation becomes the MASTER and executes the body, growing the
- * answer cell; later invocations are CONSUMERS reading it by index, parking
- * at its channel when they catch up. The entry IS a {@link Channel} with this
- * call's domain plugged in: the value is the {@link Answers} product of reified
- * answer terms (alpha-equivalence rides their equality), a consumer is a
- * frame awaiting the cell with its cursor as the readiness predicate, and
- * the seal is the keys-final flag, fired when the cell's workforce proves
- * that nothing working for this entry can ever grow it again.
+ * answer cell; later invocations are CONSUMERS reading its ascent log by
+ * cursor, parking at its channel when they catch up. The entry IS a
+ * {@link Channel} with this call's domain plugged in: the value is the
+ * {@link JoinMap} from reified answer terms (alpha-equivalence rides their
+ * equality) to their ⊕-folded cell values, a consumer is a frame awaiting
+ * the cell with its log cursor as the readiness predicate, and the seal is
+ * the keys-final flag, fired when the cell's workforce proves that nothing
+ * working for this entry can ever grow it again.
  */
 public class TableEntry<V> {
 	/** The call being tabled */
@@ -30,7 +31,7 @@ public class TableEntry<V> {
 	 * The answer cell: KEYS-FINAL is its seal (docs/design/table-completion.md
 	 * §5 — upward-closed, racy reads sound: a stale false prices ∞).
 	 */
-	private final Channel<Answers<V>> cell;
+	private final Channel<JoinMap<Reified<?>, V>> cell;
 
 	private final IdempotentSemiring<V> semiring;
 
@@ -40,11 +41,11 @@ public class TableEntry<V> {
 		// consumers are frames awaiting the cell - growth and the seal wake
 		// them through the runtime; the call names the channel, so a strand
 		// refusal names the entry it starved at
-		this.cell = new Channel<>(Answers.empty(semiring), call.toString());
+		this.cell = new Channel<>(JoinMap.empty(semiring), call.toString());
 	}
 
 	/** The answer cell, as the channel consumers await. */
-	public Channel<Answers<V>> channel() {
+	public Channel<JoinMap<Reified<?>, V>> channel() {
 		return cell;
 	}
 
@@ -58,26 +59,33 @@ public class TableEntry<V> {
 
 	/**
 	 * The answer as a singleton delta for the master's emit. Dedup is the
-	 * cell join's own algebra: an exact duplicate and an entailed newcomer
-	 * are inert joins, a subsuming newcomer evicts what it covers — an
-	 * ascent in the downset order, and the wake that goes with it.
+	 * cell join's own algebra: a duplicate is an inert fold, an entailed
+	 * region is absorbed, a subsuming one evicts — an ascent, and the wake
+	 * that goes with it.
 	 */
-	public Answers<V> answerDelta(AnswerKey key, V value) {
-		return Answers.<V> empty(semiring).append(key, value).get();
+	public JoinMap<Reified<?>, V> answerDelta(Reified<?> term, V value) {
+		return JoinMap.<Reified<?>, V> empty(semiring).append(term, value).get();
 	}
 
-	public Tuple2<AnswerKey, V> getAnswerAt(int index) {
-		return cell.read().ground().get(index);
+	/** Answer terms in arrival order — the closed mode's replay walks these. */
+	public Vector<Reified<?>> answerTerms() {
+		return cell.read().order;
 	}
 
 	/** The answers as of now - the initial snapshot a subscription starts from. */
-	public Answers<V> answers() {
+	public JoinMap<Reified<?>, V> answers() {
 		return cell.read();
 	}
 
+	/** Deliverable atoms: a condition counts its regions, a weight counts one. */
 	public int getAnswerCount() {
-		Answers<V> answers = cell.read();
-		return answers.ground().size() + answers.covered().elements().size();
+		JoinMap<Reified<?>, V> answers = cell.read();
+		int count = 0;
+		for (Reified<?> term : answers.order) {
+			V value = answers.members.get(term).get();
+			count += value instanceof Condition ? ((Condition) value).conjuncts().size() : 1;
+		}
+		return count;
 	}
 
 	@Override

@@ -1,13 +1,12 @@
 package com.tgac.logic.tabling;
 
 // ABOUTME: One entry's cache semantics under produce/emit: master selection is
-// ABOUTME: the claim CAS, deltas dedup by entailment, the fold absorbs duplicates.
+// ABOUTME: the claim CAS, deltas dedup by the cell's fold, duplicates are inert.
 
 import static com.tgac.logic.unification.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.AwaitResult;
 import com.tgac.functional.fibers.Fiber;
@@ -22,39 +21,37 @@ import org.junit.Test;
 
 public class TableEntryTest {
 
-	private static TableEntry<Boolean> entry() {
+	private static TableEntry<Condition> entry() {
 		Tabled<Object> relation = Tabling.define(args -> Goal.success());
 		return new TableEntry<>(
 				Call.of(relation, (Reified<?>) lval(Tuple.of("alice", "bob"))),
-				Semirings.BOOLEAN);
+				Condition.RING);
 	}
 
-	private static AnswerKey answer(Object value) {
-		return AnswerKey.of((Reified<?>) lval(value));
+	private static Reified<?> answer(Object value) {
+		return (Reified<?>) lval(value);
 	}
 
 	/** The entry's whole production as one claimed workforce. */
-	@SafeVarargs
-	private static Fiber<Nothing> production(TableEntry<Boolean> entry, AnswerKey... answers) {
+	private static Fiber<Nothing> production(TableEntry<Condition> entry, Reified<?>... answers) {
 		return Fiber.produce(entry.channel(), emit -> {
 			Fiber<Nothing> tree = Fiber.done(Nothing.nothing());
-			for (AnswerKey key : answers) {
-				Fiber<Nothing> emitted = emit.emit(entry.answerDelta(key, true));
+			for (Reified<?> term : answers) {
+				Fiber<Nothing> emitted = emit.emit(entry.answerDelta(term, Condition.ONE));
 				tree = tree.flatMap(__ -> emitted);
 			}
 			return tree;
 		});
 	}
 
-	@SafeVarargs
-	private static void produced(TableEntry<Boolean> entry, AnswerKey... answers) {
+	private static void produced(TableEntry<Condition> entry, Reified<?>... answers) {
 		production(entry, answers).get();
 	}
 
 	/** A consumer past {@code cursor}, recording the completion it is handed. */
-	private static Fiber<Nothing> consuming(TableEntry<Boolean> entry, int cursor,
-			List<AwaitResult<Answers<Boolean>>> completions) {
-		return Fiber.await(entry.channel(), v -> v.ground().size() > cursor)
+	private static Fiber<Nothing> consuming(TableEntry<Condition> entry, int cursor,
+			List<AwaitResult<JoinMap<Reified<?>, Condition>>> completions) {
+		return Fiber.await(entry.channel(), v -> v.logSize() > cursor)
 				.flatMap(r -> {
 					completions.add(r);
 					return Fiber.done(Nothing.nothing());
@@ -63,7 +60,7 @@ public class TableEntryTest {
 
 	@Test
 	public void testMasterSelectionIsTheClaimCas() {
-		TableEntry<Boolean> entry = entry();
+		TableEntry<Condition> entry = entry();
 		List<String> ran = new ArrayList<>();
 
 		// racing claimants are welcome: the CAS runs at the step, the first
@@ -82,23 +79,21 @@ public class TableEntryTest {
 
 	@Test
 	public void testAnswerCache() {
-		TableEntry<Boolean> entry = entry();
+		TableEntry<Condition> entry = entry();
 
 		assertThat(entry.getAnswerCount()).isEqualTo(0);
 
-		AnswerKey ans1 = answer(Tuple.of("alice", "bob"));
-		AnswerKey ans2 = answer(Tuple.of("charlie", "dave"));
+		Reified<?> ans1 = answer(Tuple.of("alice", "bob"));
+		Reified<?> ans2 = answer(Tuple.of("charlie", "dave"));
 		produced(entry, ans1, ans2);
 
 		assertThat(entry.getAnswerCount()).isEqualTo(2);
-		assertThat(entry.getAnswerAt(0)._1).isEqualTo(ans1);
-		assertThat(entry.getAnswerAt(1)._1).isEqualTo(ans2);
-		assertThat(entry.getAnswerAt(2)).isNull();
+		assertThat(entry.answerTerms()).containsExactly(ans1, ans2);
 	}
 
 	@Test
 	public void testDuplicateAnswerIsAnInertJoin() {
-		TableEntry<Boolean> entry = entry();
+		TableEntry<Condition> entry = entry();
 
 		produced(entry,
 				answer(Tuple.of("alice", "bob")),
@@ -109,7 +104,7 @@ public class TableEntryTest {
 
 	@Test
 	public void testAlphaEquivalentAnswerIsAnInertJoin() {
-		TableEntry<Boolean> entry = entry();
+		TableEntry<Condition> entry = entry();
 
 		// Reified answers carry canonical hole names, so terms that
 		// differ only in token objects are the same answer
@@ -122,8 +117,8 @@ public class TableEntryTest {
 
 	@Test
 	public void testConsumerIsHeldAtCacheEnd() {
-		TableEntry<Boolean> entry = entry();
-		List<AwaitResult<Answers<Boolean>>> completions = new ArrayList<>();
+		TableEntry<Condition> entry = entry();
+		List<AwaitResult<JoinMap<Reified<?>, Condition>>> completions = new ArrayList<>();
 
 		// no answers past the cursor, no master, no seal: the consumer parks,
 		// and a drive out of work refuses to end with it stranded
@@ -137,24 +132,24 @@ public class TableEntryTest {
 
 	@Test
 	public void testACompletedEntryAnswersWithEof() {
-		TableEntry<Boolean> entry = entry();
+		TableEntry<Condition> entry = entry();
 
 		produced(entry, answer(Tuple.of("charlie", "dave")));
 
 		// the workforce drained, so the entry is complete: a late consumer
 		// gets the terminal EOF with the final fold - nothing is lost
-		List<AwaitResult<Answers<Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<JoinMap<Reified<?>, Condition>>> completions = new ArrayList<>();
 		consuming(entry, 0, completions).get();
 		assertThat(completions).hasSize(1);
-		assertThat(completions.get(0).getValue().ground().size()).isEqualTo(1);
+		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
 		assertThat(completions.get(0).isSealed()).isTrue();
 		assertThat(entry.isComplete()).isTrue();
 	}
 
 	@Test
 	public void testGrowthWakesEveryHeldConsumer() {
-		TableEntry<Boolean> entry = entry();
-		List<AwaitResult<Answers<Boolean>>> completions = new ArrayList<>();
+		TableEntry<Condition> entry = entry();
+		List<AwaitResult<JoinMap<Reified<?>, Condition>>> completions = new ArrayList<>();
 
 		Fiber.fork(Arrays.asList(
 						consuming(entry, 0, completions),
@@ -164,15 +159,15 @@ public class TableEntryTest {
 				.get();
 
 		assertThat(completions).hasSize(3);
-		assertThat(completions.get(0).getValue().ground().size()).isEqualTo(1);
+		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
 	}
 
 	@Test
 	public void testDuplicateAnswerDoesNotWakeAsGrowth() {
-		TableEntry<Boolean> entry = entry();
-		List<AwaitResult<Answers<Boolean>>> completions = new ArrayList<>();
+		TableEntry<Condition> entry = entry();
+		List<AwaitResult<JoinMap<Reified<?>, Condition>>> completions = new ArrayList<>();
 
-		// a consumer past the cache end waits for a SECOND answer; the
+		// a consumer past the cache end waits for a SECOND ascent; the
 		// duplicate is an inert join, so only the seal ever completes it
 		Fiber.detach(consuming(entry, 1, completions))
 				.flatMap(__ -> production(entry,
@@ -182,6 +177,6 @@ public class TableEntryTest {
 
 		assertThat(completions).hasSize(1);
 		assertThat(completions.get(0).isSealed()).isTrue();
-		assertThat(completions.get(0).getValue().ground().size()).isEqualTo(1);
+		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
 	}
 }
