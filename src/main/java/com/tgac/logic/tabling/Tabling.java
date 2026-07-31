@@ -390,21 +390,31 @@ public class Tabling {
 	 * 		value arrives with the wake, never polled
 	 */
 	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, Answers<Object> answers) {
-		// a ⊕-fold may have improved a key this reader already passed
-		// (min-plus): downstream ⊕ absorbs re-delivery, so hand the improved
-		// fold on. Presence values never move - this loop no-ops there
-		for (int i = 0; i < reader.getNextIndex() && i < answers.ground().size(); i++) {
-			Tuple2<AnswerKey, Object> seen = answers.ground().get(i);
-			if (reader.groundValueImproved(seen._1, seen._2)) {
-				Reader updated = reader.redelivered(seen._1, seen._2);
-				return deliver(entry, updated, seen._1, seen._2)
-						.flatMap(__ -> Fiber.defer(() ->
-								consume(entry, updated, answers)));
+		Table table = reader.getTable();
+		boolean inBody = InBody.on(reader.getPkg());
+		if (!table.groundValuesFinal() && inBody) {
+			// the semi-naive rule: the body must re-consume a fold that
+			// ascended past what it derived from, or onward derivations keep
+			// stale costs and the FINAL values come out wrong
+			for (int i = 0; i < reader.getNextIndex() && i < answers.ground().size(); i++) {
+				Tuple2<AnswerKey, Object> seen = answers.ground().get(i);
+				if (reader.groundValueImproved(seen._1, seen._2)) {
+					Reader updated = reader.redelivered(seen._1, seen._2);
+					return deliver(entry, updated, seen._1, seen._2)
+							.flatMap(__ -> Fiber.defer(() ->
+									consume(entry, updated, answers)));
+				}
 			}
 		}
 		if (reader.getNextIndex() < answers.ground().size()) {
-			// ground answers are atoms: the indexed, cursor-stable walk
+			// ground atoms stream when their values are FINAL at derivation
+			// (presence facts) or the reader is fixpoint fuel; a weighted
+			// fold is provisional until the seal, so an outside reader skips
+			// - the sealed arm hands it the completed values exactly once
 			Tuple2<AnswerKey, Object> answer = answers.ground().get(reader.getNextIndex());
+			if (!table.groundValuesFinal() && !inBody) {
+				return Fiber.defer(() -> consume(entry, reader.skipped(), answers));
+			}
 			return deliver(entry, reader, answer._1, answer._2)
 					.flatMap(__ -> Fiber.defer(() ->
 							consume(entry, reader.advanced(answer._1, answer._2), answers)));
@@ -435,11 +445,13 @@ public class Tabling {
 				.flatMap(r -> {
 					Answers<Object> current = r.getValue();
 					boolean groundRemaining = reader.getNextIndex() < current.ground().size();
-					boolean improved = current.ground().order
-							.zipWithIndex()
-							.exists(t -> t._2 < reader.getNextIndex()
-									&& reader.groundValueImproved(t._1,
-											current.ground().members.get(t._1).get()));
+					boolean improved = !reader.getTable().groundValuesFinal()
+							&& InBody.on(reader.getPkg())
+							&& current.ground().order
+									.zipWithIndex()
+									.exists(t -> t._2 < reader.getNextIndex()
+											&& reader.groundValueImproved(t._1,
+													current.ground().members.get(t._1).get()));
 					boolean fuelRemaining = InBody.on(reader.getPkg())
 							&& current.covered().elements().exists(t -> !reader.hasDelivered(t._1));
 					if (groundRemaining || improved || fuelRemaining || !r.isSealed()) {
@@ -448,7 +460,7 @@ public class Tabling {
 					// the seal: an outside reader now receives the partial
 					// region's antichain - maximality is order-invariant, so
 					// the output cannot depend on derivation order
-					return deliverGatedConstrained(entry, reader, current)
+					return deliverGatedFinal(entry, reader, current)
 							.flatMap(__ -> reader.getTable().caughtUp(entry, reader));
 				});
 	}
@@ -479,16 +491,25 @@ public class Tabling {
 	}
 
 	/**
-	 * The seal's delivery to an OUTSIDE reader: the partial region's live
-	 * antichain, withheld during explore. Inside-a-body readers already
-	 * streamed everything; unconstrained entries have an empty region.
+	 * The seal's delivery to an OUTSIDE reader: everything that only now
+	 * became FINAL. The partial region's live antichain (withheld during
+	 * explore), and — under a weighted mode — every ground answer's
+	 * completed fold, exactly once. Inside-a-body readers already streamed
+	 * everything as fuel.
 	 */
-	private static Fiber<Nothing> deliverGatedConstrained(TableEntry<Object> entry, Reader reader,
+	private static Fiber<Nothing> deliverGatedFinal(TableEntry<Object> entry, Reader reader,
 			Answers<Object> answers) {
 		if (InBody.on(reader.getPkg())) {
 			return Fiber.done(Nothing.nothing());
 		}
 		Fiber<Nothing> result = Fiber.done(Nothing.nothing());
+		if (!reader.getTable().groundValuesFinal()) {
+			for (int i = 0; i < answers.ground().size(); i++) {
+				Tuple2<AnswerKey, Object> answer = answers.ground().get(i);
+				Fiber<Nothing> delivery = deliver(entry, reader, answer._1, answer._2);
+				result = result.flatMap(__ -> delivery);
+			}
+		}
 		for (Tuple2<AnswerKey, Object> answer : answers.covered().elements()) {
 			Fiber<Nothing> delivery = deliver(entry, reader, answer._1, answer._2);
 			result = result.flatMap(__ -> delivery);

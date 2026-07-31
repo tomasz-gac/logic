@@ -36,10 +36,11 @@ public class Reader {
 	HashSet<AnswerKey> delivered;
 
 	/**
-	 * The ground values as delivered — a ⊕-fold may improve a cached key
-	 * after this reader passed it (min-plus finding a cheaper cost), and
-	 * downstream ⊕ absorbs re-delivery, so the improved fold is handed on.
-	 * Presence values never move, so this map never disagrees there.
+	 * The INSIDE reader's delta memory under a weighted mode: the body must
+	 * re-consume a fold that ascended past what it derived from (the
+	 * semi-naive rule), so the values handed on are remembered. Outside
+	 * readers of weighted entries never stream — they receive final folds
+	 * at the seal — and presence modes never move a value.
 	 */
 	HashMap<AnswerKey, Object> groundValues;
 
@@ -54,6 +55,11 @@ public class Reader {
 	/** The reader at the call site: cursor at the start of the cache. */
 	static Reader of(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
 		return new Reader(continuation, pkg, argsTerm, 0, HashSet.empty(), HashMap.empty());
+	}
+
+	/** The same reader, one atom further along, nothing delivered (the gate). */
+	Reader skipped() {
+		return new Reader(continuation, pkg, argsTerm, nextIndex + 1, delivered, groundValues);
 	}
 
 	/** The same reader, one atom further along, its delivered value recorded. */

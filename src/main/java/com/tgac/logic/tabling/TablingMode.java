@@ -45,6 +45,17 @@ public interface TablingMode {
 	 * over conditional answers is an undesigned, orthogonal interaction,
 	 * refused loudly at produce.
 	 */
+	/**
+	 * Whether a ground answer's value is FINAL when derived. Presence is
+	 * (an atom is a fact); a weighted fold ascends until the seal, so its
+	 * streamed snapshots are provisional and outside readers must not see
+	 * them — finality decides streaming, and the seal is where non-final
+	 * things become final.
+	 */
+	default boolean groundValuesFinal() {
+		return true;
+	}
+
 	default boolean supportsConstrainedAnswers() {
 		return false;
 	}

@@ -53,6 +53,11 @@ final class Streaming implements TablingMode {
 	}
 
 	@Override
+	public boolean groundValuesFinal() {
+		return presence;
+	}
+
+	@Override
 	public boolean supportsConstrainedAnswers() {
 		// an entailed-but-cheaper answer would silently lose its value on
 		// the overlap: weighted answer values and answer residues were

@@ -124,6 +124,32 @@ public class SchedulingChaosTest {
 	}
 
 	@Test
+	public void minPlusDeliversFinalValuesExactlyOnce() {
+		// an outside reader receives only FINAL facts: a weighted fold is
+		// final at the seal, so each term delivers exactly once, carrying
+		// the completed value - never a provisional cost, never a refinement
+		for (long seed = 0; seed < SEEDS; seed++) {
+			long s = seed;
+			Tabled<Tuple2<Unifiable<String>, Unifiable<String>>> path =
+					Tabling.defineRecursive(self -> args -> args.apply((x, y) ->
+							edge(x, y).or(Goal.defer(() -> {
+								Unifiable<String> z = lvar();
+								return edge(x, z).and(self.apply(Tuple.of(z, y)));
+							}))));
+			Unifiable<String> dest = lvar();
+			List<String> terms = Weights.solveBounded(
+							path.apply(Tuple.of(lval("a"), dest)), dest,
+							SemiringStore.boundedProduct(Semirings.MIN_PLUS),
+							f -> RandomizedScheduler.of(f, s))
+					.map(answer -> answer._1.toString())
+					.collect(Collectors.toList());
+			assertThat(terms)
+					.as("seed %d delivers each term exactly once", s)
+					.doesNotHaveDuplicates();
+		}
+	}
+
+	@Test
 	public void recursiveTablingIsOrderFree() {
 		// left recursion through the table: the classic termination shape,
 		// now also pinned order-free

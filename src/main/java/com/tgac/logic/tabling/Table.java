@@ -112,6 +112,10 @@ public class Table implements Packaged {
 		return mode.bodyState(callerPkg).putStore(InBody.MARKER);
 	}
 
+	boolean groundValuesFinal() {
+		return mode.groundValuesFinal();
+	}
+
 	boolean supportsConstrainedAnswers() {
 		return mode.supportsConstrainedAnswers();
 	}
