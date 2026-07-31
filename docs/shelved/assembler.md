@@ -11,7 +11,18 @@ worked example to grow toward. Companions: `star-tabling.md`
 its shelved side-note (goals as a semiring; tabled as its star — this doc is
 that note developed for the closed case), `semiring-inference.md` (the weighted
 frame), `goals-as-data.md` (the Program front door this deliberately does NOT
-require).**
+require).
+AUGUST 2026 UPDATE (the human's identification): the value carrier here IS
+`condition.md`'s ring with suspension factors — (actuals, template) is the
+suspension transcription (name + watched terms, body by contract; the
+hygiene caveat dissolves under the naming doctrine: value-equality excludes
+the closure), manifest union is `Residues.meet`, the joint hole space of
+Seam 1 is `Renaming.canonical`, and a Condition over pending calls is an
+SLG DELAY LIST. What remains this doc's own is the STAR — name-minting, the 
+free/closed reading (condition.md §8.1 records the two-rings-one-carrier
+picture). The shelf stands on the original grounds (practice first), but
+the two hard seams it priced — renaming across ownership and declaration
+discipline — shipped as the crossings and the naming doctrine.**
 
 ---
 

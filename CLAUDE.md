@@ -58,16 +58,20 @@ Small, local, well-tested changes elsewhere don't need to ask.
   `UnfairBreadthFirst`. All are drivers over `FiberStep`; they differ only in which frame
   they step next.
 - **Constraint stores** implement `ConstraintStore` (`constraints/store/`):
-  `FiniteDomainConstraints`, `NeqConstraints` (disequality), `ProjectionConstraints`.
-  The driver (`constraints/Propagation`) speaks to them through two triggers — `revise`
+  `FiniteDomainConstraints`, `NeqConstraints` (disequality), the `LatticeStore`
+  family. The driver (`constraints/Propagation`) speaks to them through two triggers — `revise`
   (bindings arrived; the store's COMPLETE reaction: custody, own watchers, own
   cascade) and `stated` (your item was stated) — each answered by a
   `Fiber<Revision>` (own factor + consequences; fiber so long cascades stay fairly
   stepped — see `functional`'s `Worklist`). How a store
   computes it is its own business: FD administers its own propagators (now
-  `finitedomain`-private: Propagator/Verdict/Update), Projection parks bare
-  (term, body) suspensions, Neq re-verifies its records wholesale;
-  `constraints/store/Watches` is the shared chain matcher.
+  `finitedomain`-private: Propagator/Verdict/Update), Neq re-verifies its
+  records wholesale; `constraints/store/Watches` is the shared chain matcher.
+  SUSPENSIONS are NOT a store: they are Propagation's own first-class
+  citizens — the driver parks them (its private `Suspensions` holder, an
+  inert transport), ripens them after bindings, and splices their bodies
+  into the run lane. `Projection`'s goals are a facade over
+  `Propagation.suspend`.
 
 Key **seams** (the places behaviour is hooked):
 - `goals/NamedGoal` — the tracing hook. A named goal reports box-model ports when a tracer

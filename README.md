@@ -253,7 +253,7 @@ calls price at their exact answer count.
 Aggregate.count(Logic.membero(x, lval(LList.ofAll(1, 2, 3))), n);   // n = 3
 
 // suspend until x is ground, then compute with the actual value
-ProjectionConstraints.project(x, v -> y.unifies(v * 2));
+Projection.project(x, v -> y.unifies(v * 2));
 ```
 
 ### Debugging

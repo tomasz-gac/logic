@@ -1,7 +1,7 @@
 package com.tgac.logic.projection;
 
-// ABOUTME: Projection as a facade: a kernel suspension that waits for deep-groundness
-// ABOUTME: and runs the projected goal with the walked value.
+// ABOUTME: Projection goals: park a kernel suspension until deep-groundness, then
+// ABOUTME: run the body with the walked value. Suspensions are Propagation's own.
 
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Goal;
@@ -17,7 +17,7 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class ProjectionConstraints {
+public class Projection {
 
 	/**
 	 * Parks a suspension: wait until {@code x} is deep-ground, then run

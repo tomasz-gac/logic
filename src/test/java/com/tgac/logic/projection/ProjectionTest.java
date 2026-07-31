@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
-public class ProjectionConstraintsTest {
+public class ProjectionTest {
 
 	@Test
 	public void shouldJustProjectImmediately() {
@@ -19,7 +19,7 @@ public class ProjectionConstraintsTest {
 		Unifiable<Integer> y = lvar();
 
 		List<Integer> results = x.unifies(3)
-				.and(ProjectionConstraints.project(x, v -> y.unifies(2 * v)))
+				.and(Projection.project(x, v -> y.unifies(2 * v)))
 				.solve(y)
 				.map(Term::get)
 				.collect(Collectors.toList());
@@ -34,7 +34,7 @@ public class ProjectionConstraintsTest {
 		Unifiable<Integer> y = lvar();
 
 		List<Integer> results =
-				ProjectionConstraints.project(x, v -> y.unifies(2 * v))
+				Projection.project(x, v -> y.unifies(2 * v))
 						.and(x.unifies(3))
 						.solve(y)
 						.map(Term::get)
@@ -51,7 +51,7 @@ public class ProjectionConstraintsTest {
 		Unifiable<Integer> z = lvar();
 
 		List<Integer> results =
-				ProjectionConstraints.project(y, v -> z.unifies(2 * v))
+				Projection.project(y, v -> z.unifies(2 * v))
 						.and(x.unifies(y))
 						.and(y.unifies(3))
 						.solve(z)
@@ -70,7 +70,7 @@ public class ProjectionConstraintsTest {
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> out = lvar();
 
-		List<Integer> results = ProjectionConstraints
+		List<Integer> results = Projection
 				.project(LVal.lval(Tuple.of(a, b)),
 						t -> out.unifies(t._1.get() + t._2.get()))
 				.and(a.unifies(1))
@@ -88,7 +88,7 @@ public class ProjectionConstraintsTest {
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> out = lvar();
 
-		List<Integer> results = ProjectionConstraints
+		List<Integer> results = Projection
 				.project(a, b, (x, y) -> out.unifies(x * y))
 				.and(a.unifies(3))
 				.and(b.unifies(4))

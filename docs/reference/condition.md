@@ -257,6 +257,97 @@ signs (finite ascent is the author's responsibility). This subsumes task
 #74's "suspensions as owed conditions in AnswerKey" — the AnswerKey is gone;
 the owed condition is a factor.
 
+**The transcription already has a design** (the human's identification,
+August 2026): the shelved assembler's `(actuals, template)` call-value
+(assembler.md §4) IS the suspension factor — watched terms + a body-maker
+whose closure is excluded from identity, manifests unioning by ACI, the
+answer term and the actuals canonicalized into ONE hole space (its Seam 1
+= `Renaming.canonical`). And the object has a literature name: a
+Condition whose factors are pending calls is an SLG DELAY LIST —
+conditional answers carrying delayed literals, simplified as they resolve
+(`1 ⊕ a = 1` is SLG's answer simplification). Delayed NEGATIVE calls as
+factors are the standard route into the non-stratified fragment §8.5
+refuses — still research, now with a named road.
+
+**Two rings, one value shape** (the human's question: does the suspension
+vocabulary make the ring CLOSED rather than bounded?). No flip — the same
+datum `(term, pending calls, factors)` serves two jobs with two algebras:
+
+- **"This is what I've PROVEN"** — the answer cell. Stays BOUNDED
+  regardless of factor vocabulary, and boundedness is one concrete
+  behavior: a ground answer swallows its conditional versions (the cell
+  holds `reach(a) GIVEN path(a,z)`; a derivation later proves `reach(a)`
+  outright; the conditional entry is absorbed — nobody needs the
+  condition anymore). Delivery restates the pending call into the
+  CONSUMER's package, where it re-parks and evaluates when bindings
+  arrive — answer mode, agenda-driven.
+- **"This is what to RUN"** — the assembler's fragment. Here ⊕ is `or`,
+  and `success().or(g)` is NOT the same program as `success()` — more
+  answers — so absorption fails: not bounded. Its star is the
+  interesting operation, and in engine vocabulary it is literally
+  `Tabling.defineRecursive(self -> args ->
+  success().or(g.and(self.apply(args))))` — STAR IS MINTING THE NAME.
+  That is why this ring is closed, and why it needs suspension-shaped
+  values: the value must be able to say "call `s` here, later" without
+  running it.
+
+The two jobs connect through `solve`: run the minted star to its seal
+and read the cell — `TRUE` per reachable term. The answer ring's
+"degenerate" star is just THE SEAL OF THE LOOP: the program-side
+recursion, completed, reads back as plain membership. Star-tabling's
+explore-under-presence has been computing exactly this all along. The
+two types stay SEPARATE AND NAMED even though structurally twins
+(the Semilattice doctrine: one carrier, two structures — never one type
+wearing both); "run" means restate-and-park for the answer ring,
+solve-to-seal for the program ring.
+
+**Suspensions vs stores, and the agenda** (the human's concern — and his
+correction of this doc's first draft): suspensions are NOT a store behind
+the `revise`/`stated` boundary. They are FIRST-CLASS DRIVER CITIZENS:
+`Propagation` parks them (its private `Suspensions` holder — an inert,
+branch-local transport), ripens them itself after bindings, and splices
+their bodies into the run lane; `Projection`'s goals are a facade over
+`Propagation.suspend`. DESIGNED SO for a direction reason (the human's):
+a store's `revise` signs the termination contract — updates may only
+SHRINK knowledge, the drain's fixpoint being finite descending chains —
+while a woken body GROWS the problem (new postings, new bindings,
+branches). The run lane quarantines growth BETWEEN drains: descend to
+quiescence, splice the grown work, descend again — fixpoint-machine.md's
+two-fixpoint split in miniature, inside one package. This is also why
+the FACTOR is safe where store residence never was: a Condition carrying
+the obligation is inert — direction problems belong to running, not to
+carrying. The consequence for excursions is CLEANER than
+the store story would have been: an excursion drives propagation, so it
+inherits the whole suspension lifecycle from the driver directly —
+parking, ripening, body-running all happen inside the speculative drain
+with zero store machinery, and quiescent-with-debt is literally the
+driver's own `suspensionsPending`. For the FACTOR, the driver ownership
+means #74's transcription is not "make an existing store Projectable" —
+there is no projection store; the transcription gives the driver-owned
+parking lane a knowledge shadow. The latent constraints a body will
+post are handled by the NAME AS A DEBT CERTIFICATE: restate re-imposes
+the obligation, not its consequences; the consumer pays when the body
+runs in its world; equal names + actuals owe equal debts. The price is precision (different-named suspensions are
+conservatively incomparable), never soundness. CONTRACT LINE the
+transcription must state: bodies are STATE-INDEPENDENT — meaning fixed
+by name + actuals, never by constraint state read at capture time (the
+assembler's hygiene caveat, generalized from variables to stores).
+Consequences for the disjunctive store (§8.3): excursions may RUN woken
+bodies, and bodies may branch — the excursion becomes a bounded
+sub-search (the findall/drained shape; prune fires iff all branches
+fail); a merely-parked suspension prunes nothing (sound); the item
+watches the conjunct's ACTUALS — the suspension's own wake surface, so
+no new wiring; lift over call factors is name+actuals intersection. The
+open edge for the design pass: EXCURSION RE-ENTRANCY — a speculative
+absorb grounding a var can wake a body that states another disjunctive
+item; nested speculation needs a decided discipline. Its principled
+shape follows from the direction split: an excursion is the ALTERNATION
+(drain → run-lane splice → drain…), so verdicts tier — at
+drain-quiescence, cheap and sound-but-incomplete (parked debt
+unexamined); at full alternation, complete but terminating only as the
+program does. The run lane IS the nesting frontier, and the
+run-nested-vs-defer decision sits exactly there.
+
 ### 8.2 What is weight ⊗ Condition?
 
 The refused combination (weighted answers with residues) is now a MISSING

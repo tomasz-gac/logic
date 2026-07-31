@@ -3,7 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: Parked suspensions at a tabled-call boundary refuse loudly: the call key
 // ABOUTME: cannot see them and an answer cannot carry them, so silence would be unsound.
 
-import static com.tgac.logic.projection.ProjectionConstraints.project;
+import static com.tgac.logic.projection.Projection.project;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;

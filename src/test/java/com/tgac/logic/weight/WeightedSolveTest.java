@@ -14,7 +14,7 @@ import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
-import com.tgac.logic.projection.ProjectionConstraints;
+import com.tgac.logic.projection.Projection;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
@@ -64,7 +64,7 @@ public class WeightedSolveTest {
 		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, PROB);
 
 		Goal query = die(a).and(die(b))
-				.and(ProjectionConstraints.project(a, b, (av, bv) -> Goal.successIf(av + bv == 7)));
+				.and(Projection.project(a, b, (av, bv) -> Goal.successIf(av + bv == 7)));
 
 		SemiringStore total = Weights.solve(query, product, BreadthFirstScheduler::new);
 
@@ -143,7 +143,7 @@ public class WeightedSolveTest {
 		Unifiable<Integer> a = lvar();
 		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, PROB);
 
-		Goal query = die(a).and(ProjectionConstraints.project(a, av -> Goal.successIf(av > 100)));
+		Goal query = die(a).and(Projection.project(a, av -> Goal.successIf(av > 100)));
 
 		SemiringStore total = Weights.solve(query, product, BreadthFirstScheduler::new);
 
