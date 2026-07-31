@@ -344,7 +344,7 @@ public class Tabling {
 			Package bodyPkg,
 			Unifiable<?> argsTerm,
 			Table table,
-			Emitter<JoinMap<AnswerKey, Object>> emit) {
+			Emitter<Answers<Object>> emit) {
 		return goal.apply(bodyPkg).apply(answerPkg -> {
 			// the Table transport is the canary: a goal that returned a fresh
 			// package instead of deriving from its input shed every store — the
@@ -389,10 +389,10 @@ public class Tabling {
 	 * 		consumption starts from the answers as of the call; every later
 	 * 		value arrives with the wake, never polled
 	 */
-	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, JoinMap<AnswerKey, Object> answers) {
-		if (reader.getNextIndex() < answers.size()) {
+	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, Answers<Object> answers) {
+		if (reader.getNextIndex() < answers.ground().size()) {
 			// ground answers are atoms: the indexed, cursor-stable walk
-			Tuple2<AnswerKey, Object> answer = answers.get(reader.getNextIndex());
+			Tuple2<AnswerKey, Object> answer = answers.ground().get(reader.getNextIndex());
 			return deliver(entry, reader, answer._1, answer._2)
 					.flatMap(__ -> Fiber.defer(() ->
 							consume(entry, reader.advanced(), answers)));
@@ -402,7 +402,7 @@ public class Tabling {
 			// The reader tracks WHAT it delivered, not an index, so an
 			// eviction is invisible to it and a subsuming newcomer is simply
 			// undelivered
-			for (Tuple2<AnswerKey, Object> live : answers.partial()) {
+			for (Tuple2<AnswerKey, Object> live : answers.covered().elements()) {
 				if (!reader.hasDelivered(live._1)) {
 					Reader marked = reader.delivered(live._1);
 					return deliver(entry, marked, live._1, live._2)
@@ -418,13 +418,13 @@ public class Tabling {
 		// reader (a value fold, an eviction it never delivered) legally
 		// re-arms on the fresh snapshot. The frame's ambient scope records
 		// the wait - the sleeper edge completion detection reads
-		JoinMap<AnswerKey, Object> snapshot = answers;
+		Answers<Object> snapshot = answers;
 		return Fiber.await(entry.channel(), v -> v != snapshot)
 				.flatMap(r -> {
-					JoinMap<AnswerKey, Object> current = r.getValue();
-					boolean groundRemaining = reader.getNextIndex() < current.size();
+					Answers<Object> current = r.getValue();
+					boolean groundRemaining = reader.getNextIndex() < current.ground().size();
 					boolean fuelRemaining = InBody.on(reader.getPkg())
-							&& current.partial().exists(t -> !reader.hasDelivered(t._1));
+							&& current.covered().elements().exists(t -> !reader.hasDelivered(t._1));
 					if (groundRemaining || fuelRemaining || !r.isSealed()) {
 						return Fiber.defer(() -> consume(entry, reader, current));
 					}
@@ -467,12 +467,12 @@ public class Tabling {
 	 * streamed everything; unconstrained entries have an empty region.
 	 */
 	private static Fiber<Nothing> deliverGatedConstrained(TableEntry<Object> entry, Reader reader,
-			JoinMap<AnswerKey, Object> answers) {
+			Answers<Object> answers) {
 		if (InBody.on(reader.getPkg())) {
 			return Fiber.done(Nothing.nothing());
 		}
 		Fiber<Nothing> result = Fiber.done(Nothing.nothing());
-		for (Tuple2<AnswerKey, Object> answer : answers.partial()) {
+		for (Tuple2<AnswerKey, Object> answer : answers.covered().elements()) {
 			Fiber<Nothing> delivery = deliver(entry, reader, answer._1, answer._2);
 			result = result.flatMap(__ -> delivery);
 		}

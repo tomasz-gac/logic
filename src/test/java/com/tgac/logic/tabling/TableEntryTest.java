@@ -53,8 +53,8 @@ public class TableEntryTest {
 
 	/** A consumer past {@code cursor}, recording the completion it is handed. */
 	private static Fiber<Nothing> consuming(TableEntry<Boolean> entry, int cursor,
-			List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions) {
-		return Fiber.await(entry.channel(), v -> v.size() > cursor)
+			List<AwaitResult<Answers<Boolean>>> completions) {
+		return Fiber.await(entry.channel(), v -> v.ground().size() > cursor)
 				.flatMap(r -> {
 					completions.add(r);
 					return Fiber.done(Nothing.nothing());
@@ -123,7 +123,7 @@ public class TableEntryTest {
 	@Test
 	public void testConsumerIsHeldAtCacheEnd() {
 		TableEntry<Boolean> entry = entry();
-		List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<Answers<Boolean>>> completions = new ArrayList<>();
 
 		// no answers past the cursor, no master, no seal: the consumer parks,
 		// and a drive out of work refuses to end with it stranded
@@ -143,10 +143,10 @@ public class TableEntryTest {
 
 		// the workforce drained, so the entry is complete: a late consumer
 		// gets the terminal EOF with the final fold - nothing is lost
-		List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<Answers<Boolean>>> completions = new ArrayList<>();
 		consuming(entry, 0, completions).get();
 		assertThat(completions).hasSize(1);
-		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
+		assertThat(completions.get(0).getValue().ground().size()).isEqualTo(1);
 		assertThat(completions.get(0).isSealed()).isTrue();
 		assertThat(entry.isComplete()).isTrue();
 	}
@@ -154,7 +154,7 @@ public class TableEntryTest {
 	@Test
 	public void testGrowthWakesEveryHeldConsumer() {
 		TableEntry<Boolean> entry = entry();
-		List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<Answers<Boolean>>> completions = new ArrayList<>();
 
 		Fiber.fork(Arrays.asList(
 						consuming(entry, 0, completions),
@@ -164,13 +164,13 @@ public class TableEntryTest {
 				.get();
 
 		assertThat(completions).hasSize(3);
-		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
+		assertThat(completions.get(0).getValue().ground().size()).isEqualTo(1);
 	}
 
 	@Test
 	public void testDuplicateAnswerDoesNotWakeAsGrowth() {
 		TableEntry<Boolean> entry = entry();
-		List<AwaitResult<JoinMap<AnswerKey, Boolean>>> completions = new ArrayList<>();
+		List<AwaitResult<Answers<Boolean>>> completions = new ArrayList<>();
 
 		// a consumer past the cache end waits for a SECOND answer; the
 		// duplicate is an inert join, so only the seal ever completes it
@@ -182,6 +182,6 @@ public class TableEntryTest {
 
 		assertThat(completions).hasSize(1);
 		assertThat(completions.get(0).isSealed()).isTrue();
-		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
+		assertThat(completions.get(0).getValue().ground().size()).isEqualTo(1);
 	}
 }
