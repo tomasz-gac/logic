@@ -11,10 +11,10 @@ import com.tgac.functional.algebra.ClosedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.tabling.Condition;
 import com.tgac.logic.tabling.Reader;
+import com.tgac.logic.tabling.Residues;
 import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.TablingMode;
 import com.tgac.logic.unification.MiniKanren;
@@ -126,9 +126,8 @@ final class Closed implements TablingMode {
 
 	@Override
 	public Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg,
-			Reified<?> answerTerm, io.vavr.collection.Map<Class<?>, Projectable<?>> residues) {
-		// io.vavr Map qualified: this file's Map is java.util's (solved values)
-		if (!residues.isEmpty()) {
+			Reified<?> answerTerm, Residues residues) {
+		if (!residues.isTrue()) {
 			// replay-at-seal has no way to re-impose a region on a chain
 			throw new IllegalStateException(
 					"constrained answers are supported only under plain tabling: "

@@ -6,7 +6,6 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
@@ -14,7 +13,6 @@ import com.tgac.logic.tabling.subsumption.SubsumptionMap;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
-import io.vavr.collection.Map;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -119,7 +117,7 @@ public class Table implements Packaged {
 	}
 
 	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm,
-			Map<Class<?>, Projectable<?>> residues) {
+			Residues residues) {
 		return mode.capture(entry, answerPkg, answerTerm, residues);
 	}
 

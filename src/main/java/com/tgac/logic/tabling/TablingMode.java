@@ -6,11 +6,9 @@ package com.tgac.logic.tabling;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple2;
-import io.vavr.collection.Map;
 
 /**
  * The algorithm plugged into the shared tabling skeleton — anonymous master /
@@ -69,7 +67,7 @@ public interface TablingMode {
 	 * on the entry as a side effect and caches 1.
 	 */
 	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg,
-			Reified<?> answerTerm, Map<Class<?>, Projectable<?>> residues);
+			Reified<?> answerTerm, Residues residues);
 
 	/**
 	 * A consumer caught up with the already-sealed entry — the end of its

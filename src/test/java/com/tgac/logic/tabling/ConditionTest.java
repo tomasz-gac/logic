@@ -5,7 +5,6 @@ package com.tgac.logic.tabling;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.vavr.collection.HashMap;
 import org.junit.Test;
 
 public class ConditionTest {
@@ -16,7 +15,7 @@ public class ConditionTest {
 
 	@Test
 	public void groundIsOne() {
-		assertThat(Condition.of(HashMap.empty())).isSameAs(Condition.ONE);
+		assertThat(Condition.of(Residues.TRUE)).isSameAs(Condition.ONE);
 		assertThat(Condition.ONE.isOne()).isTrue();
 		assertThat(WIDE.isOne()).isFalse();
 	}

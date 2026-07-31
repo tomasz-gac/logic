@@ -10,12 +10,10 @@ import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.IdempotentSemiring;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.Map;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -71,12 +69,12 @@ final class Streaming implements TablingMode {
 
 	@Override
 	public Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg,
-			Reified<?> answerTerm, Map<Class<?>, Projectable<?>> residues) {
+			Reified<?> answerTerm, Residues residues) {
 		if (plain) {
 			// the answer's value IS its condition: ground = 1, conditional = its region
 			return Tuple.of(answerTerm, Condition.of(residues));
 		}
-		if (!residues.isEmpty()) {
+		if (!residues.isTrue()) {
 			// an entailed-but-cheaper answer would silently lose its value on
 			// the overlap: weighted answer values and answer residues were
 			// never designed together, so only the plain instance admits them

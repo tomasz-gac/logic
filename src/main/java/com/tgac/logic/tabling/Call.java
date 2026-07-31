@@ -3,11 +3,8 @@ package com.tgac.logic.tabling;
 // ABOUTME: The cache key of a tabled call: relation identity, reified arguments,
 // ABOUTME: and per-store residues — the call's REGION, not just its pattern.
 
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.tabling.subsumption.Subsumption;
 import com.tgac.logic.unification.Reified;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.Map;
 import lombok.Value;
 
 /**
@@ -25,13 +22,13 @@ import lombok.Value;
 public class Call {
 	Tabled<?> relation;
 	Reified<?> arguments;
-	Map<Class<?>, Projectable<?>> residues;
+	Residues residues;
 
 	public static Call of(Tabled<?> relation, Reified<?> arguments) {
-		return new Call(relation, arguments, HashMap.empty());
+		return new Call(relation, arguments, Residues.TRUE);
 	}
 
-	public static Call of(Tabled<?> relation, Reified<?> arguments, Map<Class<?>, Projectable<?>> residues) {
+	public static Call of(Tabled<?> relation, Reified<?> arguments, Residues residues) {
 		return new Call(relation, arguments, residues);
 	}
 
@@ -51,11 +48,11 @@ public class Call {
 	public boolean subsumes(Call other) {
 		return relation == other.relation
 				&& Subsumption.subsumes(arguments, other.arguments)
-				&& Condition.residuesLeq(other.residues, residues);
+				&& other.residues.leq(residues);
 	}
 
 	@Override
 	public String toString() {
-		return relation + "" + arguments + (residues.isEmpty() ? "" : residues.toString());
+		return relation + "" + arguments + (residues.isTrue() ? "" : residues.toString());
 	}
 }

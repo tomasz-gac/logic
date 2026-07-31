@@ -124,7 +124,7 @@ public class Tabling {
 					// hole reify names _.i, by construction. Non-projectable knowledge
 					// cannot enter the key, and unkeyed knowledge means wrong reuse.
 					Reified<?> reifiedArgs = reified._1;
-					Map<Class<?>, Projectable<?>> keyResidues = Condition.project(callerPkg, reified._2);
+					Residues keyResidues = Residues.project(callerPkg, reified._2);
 					Call key = Call.of(relation, reifiedArgs, keyResidues);
 					Reader reader = Reader.of(k, callerPkg, argsTerm);
 					Table table = reader.getTable();
@@ -165,10 +165,10 @@ public class Tabling {
 								// the master's goal: the key's knowledge re-imposed
 								// onto the live call vars, then the body
 								java.util.List<Unifiable<?>> targets = new ArrayList<>(reified._2);
-								Goal seeded = keyResidues.isEmpty()
+								Goal seeded = keyResidues.isTrue()
 										? body.get()
 										: Conjunction.of(
-												Condition.restate(keyResidues, Renaming.ofSlots(targets)),
+												keyResidues.restate(Renaming.ofSlots(targets)),
 												body.get());
 								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
 							})
@@ -270,7 +270,7 @@ public class Tabling {
 						// included, replayed as existentials at consumption and
 						// verified by the consumer's labelling; whether residues
 						// may ride at all is the mode's capture call
-						Map<Class<?>, Projectable<?>> residues = Condition.normalize(answerPkg, reified._2);
+						Residues residues = Residues.normalize(answerPkg, reified._2);
 						// what the cell caches: the term and the value this derivation
 						// carries — caller-agnostic, since the body ran from ONE
 						Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1, residues);
@@ -345,26 +345,25 @@ public class Tabling {
 			// a condition delivers per region: each conjunct is one branch,
 			// its residues restated onto that delivery's fresh holes
 			Fiber<Nothing> result = Fiber.done(Nothing.nothing());
-			for (Map<Class<?>, Projectable<?>> conjunct : ((Condition) value).conjuncts()) {
-				Map<Class<?>, Projectable<?>> residues = conjunct;
-				Fiber<Nothing> delivery = deliverAtom(entry, reader, term, residues, value);
+			for (Residues conjunct : ((Condition) value).conjuncts()) {
+				Fiber<Nothing> delivery = deliverAtom(entry, reader, term, conjunct, value);
 				result = result.flatMap(__ -> delivery);
 			}
 			return result;
 		}
-		return deliverAtom(entry, reader, term, HashMap.empty(), value);
+		return deliverAtom(entry, reader, term, Residues.TRUE, value);
 	}
 
 	private static Fiber<Nothing> deliverAtom(TableEntry<Object> entry, Reader reader,
-			Reified<?> term, Map<Class<?>, Projectable<?>> residues, Object cellValue) {
+			Reified<?> term, Residues residues, Object cellValue) {
 		Fiber.Fn<Package, Nothing> k = reader.getContinuation();
 		Package callerPkg = reader.getPkg();
 		Unifiable<?> argsTerm = reader.getArgsTerm();
 		return MiniKanren.instantiateWithHoles(term).flatMap(inst ->
 				Conjunction.of(
 								unifyArgs(argsTerm.getObjectUnifiable(), inst._1.getObjectUnifiable()),
-								residues.isEmpty() ? Goal.success()
-										: Condition.restate(residues, replayMint(inst._2)))
+								residues.isTrue() ? Goal.success()
+										: residues.restate(replayMint(inst._2)))
 						.apply(callerPkg)
 						// streaming ⊗s the cell value in; closed records the loop
 						.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,

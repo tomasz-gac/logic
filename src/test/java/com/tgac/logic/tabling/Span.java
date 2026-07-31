@@ -37,8 +37,8 @@ class Span implements Projectable<Span> {
 	}
 
 	/** A one-factor conjunct holding this interval. */
-	static Map<Class<?>, Projectable<?>> factor(long lo, long hi) {
-		return HashMap.of(Span.class, of(lo, hi));
+	static Residues factor(long lo, long hi) {
+		return Residues.of(HashMap.of(Span.class, of(lo, hi)));
 	}
 
 	@Override
