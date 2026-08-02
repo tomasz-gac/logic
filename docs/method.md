@@ -84,8 +84,10 @@ move earns a place here after it has fired at least twice.
   showing a hypothesis earning its keep (⊕ = ⊗ = max: both idempotent,
   distributive, no absorption, no lattice). The algebra javadocs already
   carry half the form ("what it buys / what it does NOT buy"); the
-  receipt completes it. From the first external deflation (an outside
-  reviewer, August 2026).
+  receipt completes it. The failure mode it prevents now has a name —
+  EQUIVALENCE INFLATION: "can model" silently becoming "is" (the
+  domain-layer original was the specimen; its rewrite is the correction).
+  From the first external deflation (an outside reviewer, August 2026).
 - **Evidence has a type.** The honest ledger's tense discipline, applied
   to epistemics: algebra DERIVES inside a stated model; law kits FALSIFY
   over generated cases; stress tests EXPOSE schedule failures without

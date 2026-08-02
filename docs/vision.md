@@ -300,21 +300,60 @@ vocabulary, real data in, durable derived state out; ~28 points of the
 ~73 on the board. Everything else DEEPENS the vision rather than
 completes it.
 
-**The proposed order (August 2026)** — five waves and a gated tail; each
-step lands a user-visible feature on a green suite:
+**The proposed order (August 2026)** — a repair wave, five feature waves
+and a gated tail; each step lands on a green suite:
 
+- **Wave R — boundary repairs (~12; cut the line, August 2026)**: the
+  external code reviews' verified findings, all living where the method
+  had least coverage — the boundary between the engine's laws and
+  Java's. None touches the ring, the crossings, the cell or the seal
+  discipline. Red test first for every item. In logic: the solve
+  spliterator delivers ONE element per tryAdvance (the current
+  completion-drain silently LOSES answers through iterator adapters —
+  the worst finding at the smallest fix); the occurs check made
+  recursive (x = [x] currently builds a cyclic substitution every
+  walker downstream assumes cannot exist); the Revision boundary
+  refuses cross-store replacement (the "unrepresentable by type" claim
+  was convention — the flag-vs-capability disease, third occurrence);
+  two small refusals (JoinMap ring identity on join; factor without a
+  weight store refuses instead of silently running unweighted). In
+  functional: BFS promotion polls its buckets instead of trusting
+  PriorityQueue iteration order; manual Channel.seal repaired or
+  removed (it strands held waiters; its one production caller is a
+  fossil); ResumeHandle gains the duplicate-completion CAS refusal;
+  ForkJoin structured failure + the run-API split — GATED on the
+  failure-policy ruling (recommended: fail-fast + cooperative cancel).
+  THE SUITE LEVER (the human's, August 2026): all test solves route
+  through one seam with the scheduler as a property — the whole suite
+  runs under the randomized scheduler at will (order-independence
+  enforced by every test, not one harness; seed-reproducible), and the
+  same seam times the suite per scheduler: performance regression at
+  will. ~197 of 262 call sites sweep; the ~59 explicit-factory sites
+  are the legitimate exemptions (trace semantics, step pins, scheduler
+  tests). A seed failure is a find, never an exemption.
+  STANDING GATE opened by the same reviews, scheduled before Wave 2
+  leans further on consume: the TABLE-REPLAY FAIRNESS design
+  conversation — deliver(answer) and consume(next) as sibling scoped
+  branches (today they sequence, so a non-forking divergent
+  continuation downstream of answer 0 starves answer 1: a
+  fair-completeness regression tabling introduces). Touches completion
+  accounting, billing, dedup, sealed and closed replay — a design
+  pass with the human, not a patch.
 - **Wave 0 — hygiene (2+3)**: one rendering path for conditional answers
   (triggers the ring trio's package move — persistence's marshal format
   gets its home early), then the weight-capture wiring. Small, and every
   later wave touches what these clean up.
-- **Wave 1 — the correctness debt (~3)**: the Aggregate reframe — the
-  closedness refusal on today's Aggregate (any pre-existing variable →
-  loud named error; the watermark's degenerate case), the
-  solve→fold→seed idiom documented with the row-set store as the table
-  carrier, sugar deferred. Recursive/monotone folds stay Weights' job
-  (condition.md §8.7's division); the branch-state residual moves to
-  the gated tail. The general watermark detector is still built here —
-  Wave 2's state-independent bodies reuse it.
+- **Wave 1 — the correctness debt (~3)**: the Aggregate reframe, now
+  fully dissolved (condition.md §8.7): every fold routes to existing
+  machinery — idempotent → Weights anywhere including recursion;
+  non-idempotent over proofs → Weights/closed (the types already refuse
+  the divergent cases); over answers → fold the finished solve's stream;
+  GROUP BY = table keys. What is BUILT: the closedness refusal on
+  today's Aggregate (any pre-existing variable → loud named error), the
+  routing docs (§8.7's worked pairs), the general watermark detector
+  (Wave 2's state-independent bodies reuse it); sugar-or-retire for the
+  Aggregate signatures is the human's call. The branch-state residual
+  stays in the gated tail.
 - **Wave 2 — the rule vocabulary (4+2+5+6)**: opens with the gated
   design conversation (the note-store pass + the naming session), then
   stage 1 (notin/exclude ships), stage 2 (notes ride tabling),
@@ -322,7 +361,9 @@ step lands a user-visible feature on a green suite:
   refuse-loudly wall; the aggregate rider lands here), stage 3 (`either`
   — or-without-forking, the scratch check, the agreement move).
 - **Wave 3 — real data (3+4+3)**: FactSource seam, SQL source, external
-  fibers. AFTER the vocabulary deliberately: when real data arrives, the
+  fibers (elaborated, with per-phase falsifiable proofs, as
+  domain-layer.md §12 Phases 1–3; the whole §12 sequence is Waves 3–4
+  and the tail expanded, Phase 0 being Wave R). AFTER the vocabulary deliberately: when real data arrives, the
   rules it meets are already correct and expressive — the first pldb
   demo gets to be a real one. Independent of Wave 2; parallelizable if
   focus allows.

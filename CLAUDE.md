@@ -173,11 +173,13 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   verified at labelling); entailment matching with named value-equal
   couplings (cross-lineage entry sharing); replay = rename ∘ absorb.
   Read before touching the tabling guard tests.
-- `docs/design/domain-layer.md` — APPROVED DESIGN: the engine as a domain
-  layer, the pldb phase's driving design — caveated authorization,
-  capture-solve, admission tickets, transactions-as-absorbs, FactSource
-  with pin(), epochs, cold execution and exactly-once, warm-start
-  ladders, stream–table duality. The pldb build list is its §8.
+- `docs/design/domain-layer.md` — NORTH STAR (rewritten Aug 2026 by the
+  external review): the engine at the data boundary — cold solves over
+  pinned sources, FactSource (enumerate/estimate/modes/pin), snapshot
+  vectors as per-source epoch factors, conditional answers as the domain
+  result, caveated authorization as the driving slice; §3 and §11 are the
+  claim boundaries (what the algebra buys and does NOT buy); the pldb
+  build phases are its §12 (Phase 0 = Wave R).
 - `docs/design/note-store.md` — DESIGN (Aug 2026, names placeholder): the
   note store — one mechanism for "not this" and "either-or": notes with
   escapes, four moves, parameterized by escape cargo (`Prefix` = Neq

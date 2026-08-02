@@ -720,6 +720,21 @@ The real cost is REASON TRACKING, and it tiers:
    pruning because those literals"). Invasive per-propagator work; where
    SAT-strength learning lives, if a workload ever demands it.
 
+THE ANNOTATION SEAM IS SHARED — PARKED, a research note (August 2026):
+tier 3's per-narrowing explanations, fine-grained source attribution
+(domain-layer.md §5.3 — which source-at-which-state fed each piece of
+knowledge), and fact-level PROVENANCE ("which facts, combined how") are
+one infrastructure: an annotation ring threaded through the kernel's
+meets (unification, store meets, propagation — annotations ⊗ where
+knowledge composes). Dependencies attach to more than variables —
+ground facts, relation calls, postings, propagated narrowings, table
+answers, ABSENCE/COMPLETION evidence — so the foundation is knowledge
+annotation with per-variable projections as one view over it. Expensive
+exactly once; three customers; whichever arrives first pays the seam
+and the others ride. Triggers: a workload demanding SAT-strength
+learning, measured over-refusal from answer-level footprints, or the
+adoption push needing explanations.
+
 The design is the finality theorem applied twice: positive conditional
 answers WAIT for seals because their regions grow; negative ones stream
 because they are born at 1. Failure is the easier half of knowledge.
@@ -790,6 +805,59 @@ IS the finality certificate. Three pieces:
    the fixpoint; non-monotone folds at boundaries. Point users at
    `Weights` for the former, the idiom for the latter.
 
+**The final simplification** (the human's question, August 2026: are all
+aggregations semiring solves?): every aggregation is a ⊕-fold, and ⊕'s
+IDEMPOTENCE decides where the fold may run — because a relational goal
+proves the same answer several ways, and the fork is whether ⊕ cares.
+
+- **⊕ idempotent** (min, max, exists): duplicate derivations fold to
+  nothing, so proof-folds and answer-folds agree — pure `Weights`, today,
+  including THROUGH recursion. These were never Aggregate's; they were
+  rings wearing its name.
+- **⊕ non-idempotent** (count, sum): the semantics forks, and the TYPE
+  SYSTEM already polices it — over PROOFS is the counting ring
+  (`solveBounded` refuses it: non-idempotent cannot stream a fixpoint;
+  `solveClosed`'s star handles the acyclic-recursive case and DIVERGES
+  HONESTLY on cycles, where the number genuinely does not exist); over
+  ANSWERS is a fold over the deduped stream a finished solve already
+  returns — the boundary idiom. SQL's COUNT(*) vs COUNT(DISTINCT), typed.
+- **GROUP BY is table keys**: a weighted tabled call keyed on the group
+  vars IS the grouped fold — `solveBounded` returns (term, fold) per
+  answer term, one min per key in one pass. Non-idempotent per-key folds
+  group at the boundary (`Collectors.groupingBy`).
+- **argmax** is a selective ring carrying (value, witness) — an instance,
+  not a feature. **findall** is an ordered (non-commutative) fold —
+  boundary by nature.
+
+The worked pairs (today's `Aggregate.count` counts DELIVERIES from the
+CURRENT package — the proofs-conflation and the staleness bug in one
+signature):
+
+    // membero over [1, 2, 2]:
+    Aggregate.count(g, n)                    // n = 3, and stale under late bindings
+    Weights.solve(g, product(COUNTING), …)
+            .get(COUNTING)                   // 3 — proofs, honestly named, whole-solve
+    g.solve(x).distinct().count()            // 2 — answers
+
+    // min over answers = min over proofs (idempotent), recursion-safe:
+    price(item, x).and(Projection.project(x, v -> factor(MIN_PLUS, v)))
+        → Weights.solve(…, product(MIN_PLUS), …)
+
+    // cheapest per destination — the group IS the table key:
+    Weights.solveBounded(route(a, dest), dest, boundedProduct(MIN_PLUS), …)
+
+    // cyclic graph: answer-count exists, proof-count does not —
+    reachable(1, y).solve(y).distinct().count()   // seals, then folds: correct
+    // solveBounded(COUNTING) refused; solveClosed star diverges loudly:
+    // the types refuse to invent the number Aggregate.count would have
+
+So the feature dissolves: NOTHING new is built for any fold; the
+closedness refusal survives (it guards the sub-solve's inputs, orthogonal
+to the ring); `Aggregate` becomes thin sugar over the routes — or
+retires — the keep-or-deprecate call is the human's. The routing rule is
+one sentence: DUPLICATE-INSENSITIVE → ring, anywhere; DUPLICATE-SENSITIVE
+→ proofs mean rings-with-star, answers mean fold the stream.
+
 **Expressivity check** (the human's deflation question — does the idiom
 lose real programs?). Worked example: "a client's risk score is the
 count of their late payments," correlated on the OPEN parameter
@@ -829,7 +897,16 @@ as an ordinary conjunct, memo validity becomes `leq` on the epoch
 factor (cache invalidation as region containment, the check
 `Call.subsumes` already runs), and cold execution's replay is `restate`
 re-imposing the epoch condition. Phase-4 persistence (#75) inherits
-this identification instead of rediscovering it.
+this identification instead of rediscovering it. The epoch
+representation is a HYPOTHESIS with a three-level carrier
+(EpochRequirement → Footprint → EpochCondition, mirroring factor →
+Residues → Condition — a lone footprint cannot carry ⊕, the same
+lesson §4 records for residue maps); its receipt is unwritten, and what
+it may buy is per-DERIVATION admissibility under another source world —
+never that a table sealed under an older world is complete under a
+newer one (cross-snapshot table reuse = recomputation or a delta
+protocol). The tiers and details live in domain-layer.md §5.3;
+fine-grained attribution is parked on §8.6's annotation seam.
 
 ## 9. Test map
 
