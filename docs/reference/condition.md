@@ -11,6 +11,60 @@ answer-side mechanics are superseded by this doc.**
 
 ---
 
+## 0. Orientation: one object, its homes, its crossings, its admissions
+
+Everything in this doc is organized by one sentence: **there is one object
+— a region of constraint knowledge — and everything built here is either
+a HOME for it, a CROSSING between homes, or an ADMISSION of a new kind of
+thing into it.** A region's algebra has two operations: ∧ (conjoin —
+narrower) and ∨ (alternatives — wider). The rest is bookkeeping about
+where a region lives while the search runs.
+
+Homes for ∧ (one world's knowledge):
+
+| home | who evaluates | character |
+|---|---|---|
+| the stores | the kernel, eagerly — revise, propagate, prune | knowledge WORKS here; branch-local, live names |
+| `Residues` (a carried conjunct) | nobody — inert | knowledge TRAVELS and COMPARES here; canonical names |
+
+Homes for ∨ (alternatives):
+
+| home | who evaluates | character |
+|---|---|---|
+| the search (fork) | the scheduler — a branch per disjunct | eager-est; pays a subtree per disjunct |
+| the disjunctive store (§8.3, designed) | the kernel — prune/unit/lift | ∨ RESIDENT in the ∧-world, propagating without forking |
+| `Condition` (⊕ of conjuncts) | nobody — inert | ∨ carried as a value; where the CELL keeps it |
+
+Why `Condition` is not redundant with the stores: the stores were never
+the whole algebra — they are the ∧-HALF (within one branch, knowledge
+only conjoins; a domain compresses ∨ over one variable's values, but ∨
+BETWEEN constraint conjunctions belonged to the search). `Condition` was
+forced by the CELL: tabling is where different derivations' knowledge
+must be summed, and that ⊕ needed a lawful carrier the ∧-only,
+live-named, branch-local stores could not be. Stores = the ⊗ fragment,
+Condition = the ⊕ fragment — halves of one lattice, never rivals (§4).
+
+The CROSSINGS — `project`/`normalize`/`restate` (§3) — are moves between
+homes of the same region, lossless on the roundtrip. Nothing is ever
+reinterpreted: the region means the same thing in every home, which is
+the entire optimizer story in one line — home-choice is PURE PRICING
+(eager: prune now, pay propagation; carried: inert now, pay at
+finality) — §8.3's plan space, nothing more mystical.
+
+The ADMISSIONS — suspensions (§8.1), aggregates (§8.7), epoch pins
+(§8.7), assembler fragments (§8.1) — add no machinery; they widen who
+may be a factor, each paying the same ticket: named, value-equal,
+state-independent, conservatively comparable.
+
+And the apparent circularity of a disjunctive store's factor being a
+`Condition` — a ∨ inside an ∧ — is DISTRIBUTIVITY, which the ring
+already owns: `(A ∨ B) ∧ C = (A∧C) ∨ (B∧C)` is what `and` computes. The
+"two ∨s" are one ⊕ in two homes, resident and carried; lifting the
+store in and out of `Condition` is choosing ∨'s home, exactly the
+choice ∧ already has. Being a ring means precisely that sums nest in
+products and normalize — the structure is not folding in on itself; it
+is big enough to hold its own operations.
+
 ## 1. The problem: three delivery regimes in one cell
 
 By July 2026 the tabling cell had grown three answer kinds, each with its own
@@ -395,7 +449,9 @@ machine for conditions without calling it that; the general machine can
 run the same ring directly.
 
 Between the two evaluators sits a third discipline, recorded here as a
-design direction: a DISJUNCTIVE STORE — a store holding a `Condition` as
+design direction (its full design, plain-vocabulary chassis, API
+sketches and build stages live in `note-store.md` — the ring-side story
+stays here): a DISJUNCTIVE STORE — a store holding a `Condition` as
 live constraint data ("the world is in one of these regions"), so a
 disjunction of constraints propagates instead of forking the search.
 Its three moves collapse into ONE operation at two grains (the human's
@@ -469,6 +525,40 @@ touched), so the lazy end is maximally reorderable. Dependency chain,
 honestly: live-name wiring for factor-conditions, then the disjunctive
 store, then width-selectivity hooks — the optimizer's decision layer is
 fourth, after each has a customer.
+
+**The license has a mechanism** (the human's observation, August 2026):
+implementing `Projectable` created an EQUIVALENCE between a constraint's
+two residences — resident-in-a-store (runnable: the drain evaluates it)
+and riding-as-a-value (semiring: ⊗ composes it, ⊕ sums it). Not an
+analogy: the roundtrip is lawful — `split` is lossless
+(`_1 ∧ _2 = this`), `restate = rename ∘ absorb`, `absorb = meet +
+normalize` — extract-then-reimpose is identity up to normalization. So
+the crossings ARE the plan space's conversion operators, per store,
+callable today: DEFER = don't post, carry the factor; IMPOSE = restate
+it. One qualification: NO RETRACTION — a resident factor cannot lift out
+mid-drain (that would grow the region; the direction rule). But
+persistence + confluence make relocating the IMPOSITION POINT equivalent
+to lifting over any interval, and the roundtrip is exercised at scale
+already: every tabled call performs strip → project → restate — the
+master-from-key discipline is lift-out-and-selective-relift, load-bearing
+since TCLP stage 1.
+
+**The toll gate** (the human's, August 2026): the Barrier forbids moving
+GOALS across a tabled call — control. But a LIFTED goal is a factor, and
+factors do not move across the barrier; they flow THROUGH THE CROSSINGS,
+which were sanctioned all along: touching call vars → `project` takes it
+into the key (the region honestly narrows — nothing snuck past, the key
+SAW it); caller-private → `split`'s remainder stays caller-side and
+consumption filters. The illegal control-move becomes a legal data-flow,
+and the thing the barrier protects — key integrity — is preserved by
+construction. What passes: FILTERS defer through cleanly (run after
+consumption when answer bindings ripen them — predicate migration
+through tabling, priced); BINDERS deferring through mean the key
+genuinely WIDENS (a more general entry, answers a superset filtered at
+consumption — sound by the subset property, potentially explosive). The
+barrier rightly remains the DEFAULT contract; lifted movement is the
+deliberate, priced override, and the price is region width — the same
+selectivity number the plan space runs on.
 
 What the lazy end unlocks:
 
@@ -633,6 +723,113 @@ The real cost is REASON TRACKING, and it tiers:
 The design is the finality theorem applied twice: positive conditional
 answers WAIT for seals because their regions grow; negative ones stream
 because they are born at 1. Failure is the easier half of knowledge.
+
+### 8.7 Aggregation as an owed condition
+
+Aggregates are the engine's standing non-monotonicity debt (the human's
+long-running worry): `Aggregate(x, g(x,y), z)` runs a sub-search whose
+extension depends on knowledge that may still grow — evaluated eagerly
+at its conjunct position, it reads a world that is not final, and a
+stale aggregate is WRONG, not weak. Negation (§8.5) is its boolean case
+(`not(g)` = "count(g) = 0"), so the non-stratified boundary is shared.
+
+The design arrived by three rounds of deflation — each shape recorded
+with what killed it:
+
+- *seal-orchestrated finality* (hang every aggregate on entry seals)
+  died on "where is the finality condition on y? I don't see any scope"
+  — a bare sub-goal has no entry and needs none: THE BRANCH IS THE
+  SCOPE. Along one branch the package grows monotonically and is final
+  when the branch delivers; the per-branch seal already ships as the
+  ENFORCE pipeline ("runs once per answer, at the end of the search").
+- *dependency-graph orchestration* (declared-surface edges, topological
+  firing) died on "I don't see how groundedness of y is not enough" —
+  it IS enough: with the sub-goal's COMPLETE free surface ground, the
+  extension is fixed (sub-search locals are fresh; knowledge about
+  ground terms is spent; the relation is immutable per solve). Ordering
+  then solves itself by DATAFLOW THROUGH RIPENESS: an aggregate whose
+  input is another's output is simply not ripe until that output is
+  bound; simultaneous fires commute (unification and meet are
+  commutative); a genuine cycle leaves both parked at branch end —
+  caught by enforce's existing "fail on anything still unrun", upgraded
+  to a loud non-stratified refusal.
+- *the in-solve suspension design itself* — the shape the two rounds
+  above deflated toward (declared surfaces, groundness-ripeness, the
+  enforce backstop) — was SUPERSEDED by the human's boundary reframe:
+  it deferred every aggregate to the branch's end anyway, and the
+  engine, being EMBEDDED, already has a sounder end to defer to — the
+  SOLVE BOUNDARY ("solve is giving us a result of running a relation
+  and we could always aggregate over it, safely; this could then seed
+  a next solve"). The suspension shape survives only as the gated
+  residual's design (below).
+
+**The primary design — aggregate at the solve boundary.** Every solve
+is surrounded by a host language that already has folds; the boundary
+IS the finality certificate. Three pieces:
+
+1. **The closedness refusal** — the correctness fix for today's
+   `Aggregate`, which runs mid-solve against current bindings. The
+   sound primary form is the CLOSED aggregate: the sub-goal mentions no
+   pre-existing variables (a self-contained program, branch-independent,
+   deterministic). The birth watermark (LVar's monotone counter)
+   enforces it, SIMPLIFIED — no declared surfaces, no ripeness: ANY
+   variable older than the aggregate → refuse loudly, naming it. (The
+   general watermark detector — declared surfaces and all — still
+   serves §8.1's state-independent bodies and the assembler's fragment
+   hygiene; aggregates just need its degenerate case.)
+2. **The idiom** — solve₁ → fold in the host language → seed solve₂
+   with the result as a fact table (the row-set store is the carrier).
+   Strata made explicit as solves; stratified aggregation and stratified
+   negation-as-failure (count = 0) both fall out; the old
+   findall-over-a-cold-table breakage disappears because a closed
+   aggregate's sub-solve OWNS its tables.
+3. **The division of labor** — recursive/monotone aggregation (shortest
+   path, path counting, most-probable) is NOT this feature and never
+   was: those are SEMIRING FOLDS and live inside the fixpoint as
+   weighted inference (`solveBounded`/`solveClosed`). Semiring folds in
+   the fixpoint; non-monotone folds at boundaries. Point users at
+   `Weights` for the former, the idiom for the latter.
+
+**Expressivity check** (the human's deflation question — does the idiom
+lose real programs?). Worked example: "a client's risk score is the
+count of their late payments," correlated on the OPEN parameter
+`client`:
+
+- clients enumerable from data → solve₁ emits (client, payment), the
+  host groups, the table seeds solve₂ — same answers, two solves;
+- specific ground clients → per-client CLOSED sub-solves at the
+  boundary (with `client` ground the aggregate has no open parameter);
+- a genuinely FREE correlate ("which clients have score 3?" without
+  enumerating clients from anywhere) was never computable in ANY
+  design — you cannot count per key over keys nobody can list.
+
+So nothing becomes unaskable; what changes is the SURFACE (one nested
+relation becomes strata or a mode-restricted call). The recoverable
+sugar, precisely: a relation form that REQUIRES its correlate ground
+(refuse loudly on a free call), runs the per-key closed count, and
+memoizes through tabling — nested syntax restored, zero new answers.
+
+**The gated residual** — aggregates over branch-local CONSTRAINT STATE
+(lookahead counting: "the value leaving the most feasible options";
+open-set capacity sums mid-search). Only sound at the branch's enforce;
+no current use needs it; the suspension design above is its dormant
+blueprint. Its likelier future homes are not user aggregation at all:
+search heuristics (the optimizer's accidental-complexity budget) and
+global-constraint propagators (the store family).
+
+**The pattern generalizes, and pldb got there first**: FactSource's
+`pin()` (domain-layer.md) is the same FREEZE-AND-CERTIFY move for
+substrates the engine does not own — a non-monotone read over a
+changing substrate is only well-defined against a frozen input surface.
+Three instances now: external epochs (`pin()`), internal branch
+knowledge (the aggregate's ground surface), tabled extensions (the
+seal). One carrier serves all their certificates: PIN STAMPS ARE EPOCH
+FACTORS — an answer from a pinned source carries `t GIVEN source@epoch`
+as an ordinary conjunct, memo validity becomes `leq` on the epoch
+factor (cache invalidation as region containment, the check
+`Call.subsumes` already runs), and cold execution's replay is `restate`
+re-imposing the epoch condition. Phase-4 persistence (#75) inherits
+this identification instead of rediscovering it.
 
 ## 9. Test map
 

@@ -74,6 +74,38 @@ move earns a place here after it has fired at least twice.
 - **Honest ledger.** Benefits are stated with their tense: banked now vs
   promissory-with-customer. "One bug-shaped fact plus eligibility" is a
   complete and acceptable answer; inflating it is not.
+- **The theorem import receipt.** A name does not import a result by
+  resemblance; the theorem arrives with hypotheses attached. Record: the
+  structure imported, the carrier, the operations, the EXACT hypotheses,
+  where each is enforced (type, law kit, convention), the operational
+  consequence claimed — and the NOT-PURCHASED list (termination, memory,
+  speedup: whatever the theorem does not give). A law kit can reject an
+  implementation; it cannot prove the import — so keep one counterexample
+  showing a hypothesis earning its keep (⊕ = ⊗ = max: both idempotent,
+  distributive, no absorption, no lattice). The algebra javadocs already
+  carry half the form ("what it buys / what it does NOT buy"); the
+  receipt completes it. From the first external deflation (an outside
+  reviewer, August 2026).
+- **Evidence has a type.** The honest ledger's tense discipline, applied
+  to epistemics: algebra DERIVES inside a stated model; law kits FALSIFY
+  over generated cases; stress tests EXPOSE schedule failures without
+  establishing their absence; benchmarks MEASURE one workload on one
+  box; a live consumer DEMONSTRATES one problem solved. Record the
+  strongest evidence actually held and never silently promote between
+  kinds. Speculation stays legal when labeled — vision.md's
+  "theoretical, no benchmarks yet" sections are the standing customers;
+  a "plausible win" written in the grammar of a conclusion is the
+  failure mode. (Same review.)
+- **Close the design when it lands.** An implementation is not complete
+  until its document graduates: status header replaced, principal code
+  and tests linked, deviations recorded, remainders re-shelved with
+  triggers, supersessions marked from both directions. A document saying
+  "nothing built" beside shipping code is an unfinished implementation
+  task. Fired: the semiring-inference and lattice-store headers (caught
+  stale after their phases shipped, August 2026); pldb's
+  table-constraints.md — the external review's catch — "Nothing built"
+  on the same master as `TableConstraints`, `Support` and the tests that
+  name the doc. (Same review.)
 - **Verify at the source, not per step.** When an invariant holds by
   construction, pin it where it is constructed (DomainUpdateContractTest)
   and run the machinery unchecked; keep the checked twin one word away for

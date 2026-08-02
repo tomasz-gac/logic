@@ -251,6 +251,100 @@ into).
 Ordered; each item lands green on the full suite; benchmarks gate the
 forks. Statuses: SHIPPED / NEXT / QUEUED / GATED / PARKED.
 
+### 7a. The ledger (August 2026) — pending work keyed to the Tar Pit pillars
+
+The founding text's "real system" needs four things: ESSENTIAL STATE as
+relations fed from the world, ESSENTIAL LOGIC as declarative rules with a
+complete vocabulary (negation and aggregation included), ACCIDENTAL
+COMPLEXITY pushed into planners users never touch, and honest INTERFACES.
+Every pending item slots under one. Costs 1–10, 10 expensive.
+
+**Essential state** — the FactSource seam + in-memory reference (3: external
+relations become goals); the SQL fact source (4: the first real feeder);
+persistence — capture-solve, marshal, memo store, pin stamps as epoch
+conditions (8: durable derived state, consistent reads, warm starts —
+de-risked by the epoch-factors identification, condition.md §8.7);
+external work as suspended fibers (3: cold execution, exactly-once).
+
+**Essential logic** — the Aggregate reframe (3: CORRECTNESS DEBT, NOT A
+FEATURE — today's aggregates run eagerly against worlds that keep
+changing; the fix is the boundary reframe, condition.md §8.7: a
+closedness refusal on today's Aggregate plus the solve→fold→seed idiom;
+recursive/monotone folds were always Weights' job; the branch-state
+residual is gated); negative
+constraints, note-store stage 1 (4: `x ∉ 1..3`, forbidden combinations —
+real rulebooks are half negatives, today inexpressible); negative
+knowledge through tabling, stage 2 (2); or-between-constraints, stage 3
+(6: brackets, tariffs, optionality, precedence pairs WITHOUT forking —
+the toy-vs-business divider); suspensions as conditions on answers (5:
+the last refuse-loudly wall); real negation (7: integrity constraints
+need it; storage cheap once the note store exists — the operator is the
+cost); TCLP key alignment (3: shelved on observed misses).
+
+**Accidental complexity** — clause learning, cheap tier (4: never repeat
+a proven-dead decision combo; zero semantic surface); the imposition
+planner (6: the thesis itself — "the naive program is the fast program"
+extended to constraint placement); weight-capture wiring (3: the chain's
+first link); piecewise weights (8: wanted, not needed on day one); the
+assembler (9: far horizon by its own doc's decree).
+
+**Interfaces** — one rendering path for conditional answers (2: also
+triggers the ring trio's package move); failure explanations (5: the
+adoption feature; shares reason-tracking with clause learning); release
+prep (3–4: the difference between a library and a repo).
+
+**The critical path to "you could build a real system on this"**:
+Aggregate redesign → negative constraints → or-between-constraints →
+FactSource + SQL → persistence — sound aggregates, a complete rule
+vocabulary, real data in, durable derived state out; ~28 points of the
+~73 on the board. Everything else DEEPENS the vision rather than
+completes it.
+
+**The proposed order (August 2026)** — five waves and a gated tail; each
+step lands a user-visible feature on a green suite:
+
+- **Wave 0 — hygiene (2+3)**: one rendering path for conditional answers
+  (triggers the ring trio's package move — persistence's marshal format
+  gets its home early), then the weight-capture wiring. Small, and every
+  later wave touches what these clean up.
+- **Wave 1 — the correctness debt (~3)**: the Aggregate reframe — the
+  closedness refusal on today's Aggregate (any pre-existing variable →
+  loud named error; the watermark's degenerate case), the
+  solve→fold→seed idiom documented with the row-set store as the table
+  carrier, sugar deferred. Recursive/monotone folds stay Weights' job
+  (condition.md §8.7's division); the branch-state residual moves to
+  the gated tail. The general watermark detector is still built here —
+  Wave 2's state-independent bodies reuse it.
+- **Wave 2 — the rule vocabulary (4+2+5+6)**: opens with the gated
+  design conversation (the note-store pass + the naming session), then
+  stage 1 (notin/exclude ships), stage 2 (notes ride tabling),
+  suspensions-as-conditions (reuses the watermark; closes the last
+  refuse-loudly wall; the aggregate rider lands here), stage 3 (`either`
+  — or-without-forking, the scratch check, the agreement move).
+- **Wave 3 — real data (3+4+3)**: FactSource seam, SQL source, external
+  fibers. AFTER the vocabulary deliberately: when real data arrives, the
+  rules it meets are already correct and expressive — the first pldb
+  demo gets to be a real one. Independent of Wave 2; parallelizable if
+  focus allows.
+- **Wave 4 — durability (8)**: persistence, consuming everything before
+  it; its hardest design question (what a pin stamp IS) already
+  answered. SPINE COMPLETE = the Tar Pit claim holds.
+- **Gated tail** (triggers, not schedules): clause learning's cheap tier
+  (a workload re-exploring dead decisions); real negation (the first
+  rulebook needing "unless"; also the sound ifte); the imposition
+  planner (measured mis-imposition pain, after width hooks); failure
+  explanations (the adoption push); branch-state aggregates (the
+  in-solve residual — lookahead counting, open-set capacity; likelier
+  homes: search heuristics, global-constraint propagators); Neq re-seat
+  (any quiet moment after stage 1); the research shelf unchanged.
+
+The one deliberate deviation from cost-ordering: Wave 3 is cheaper than
+Wave 2 and could run first — the vocabulary leads by the
+what-teaches-first scheduler: or-without-forking is the falsifiable,
+demonstrable build (does the bracket demo beat the forked encoding?),
+while FactSource is plumbing that teaches most AFTER there are
+interesting rules to feed.
+
 **Phase 0 — land the platform (SHIPPED July 2026)**
 1. Merge branch `optimizer` (12 commits: seam, ambient delivery, Barrier,
    ordering layer, UnifyGoal, spawn-count benchmark, design corpus).

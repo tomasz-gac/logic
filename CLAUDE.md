@@ -178,6 +178,12 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   capture-solve, admission tickets, transactions-as-absorbs, FactSource
   with pin(), epochs, cold execution and exactly-once, warm-start
   ladders, stream–table duality. The pldb build list is its §8.
+- `docs/design/note-store.md` — DESIGN (Aug 2026, names placeholder): the
+  note store — one mechanism for "not this" and "either-or": notes with
+  escapes, four moves, parameterized by escape cargo (`Prefix` = Neq
+  re-seated, `Domain` = notin/exclude, `Residues` = or-without-forking);
+  the scratch-copy check, the agreement move (GAC precedent), staged
+  build; the substrate condition.md §§8.3/8.5/8.6 land on.
 - `docs/design/lattice-store.md` — DESIGN: the generic store family —
   `LatticeStore<L>` (extracted inside #61), the co-store (Neq generalized
   to excluded boxes = clauses over lattice literals, unit propagation),

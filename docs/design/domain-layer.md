@@ -295,7 +295,12 @@ READS it. The seam grows one operation:
                     pin() → Snapshot     — the token, plus reads served as-of it
 
 `pin()` at solve start does both jobs at once: the consistent read (no
-torn world mid-solve) and the epoch stamp for anything persisted. A
+torn world mid-solve) and the epoch stamp for anything persisted.
+(August 2026, condition.md §8.7: `pin()` is one instance of the
+freeze-and-certify pattern the constraint ring unified — pin stamps are
+EPOCH FACTORS, `t GIVEN source@epoch` as an ordinary conjunct; memo
+validity = `leq` on the factor, replay = `restate`. Phase 4 should
+build the stamp as a `Residues` citizen, not a bespoke mechanism.) A
 derivation's epoch is a VECTOR — {source → token} for each source it
 read (a dependency footprint: which SOURCES, not which facts). Reuse
 checks per source, and the two kinds check differently:
