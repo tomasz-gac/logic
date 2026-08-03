@@ -90,19 +90,37 @@ public class MiniKanren {
 				.map(c -> (Collector<Object, ?, ?>) c);
 	}
 
-	private static <T> Substitutions extendNoCheck(Substitutions s, LVar<T> lhs, Term<T> rhs) {
-		return s.extend(lhs, rhs);
+	private static <T> Option<Substitutions> extendNoCheck(Substitutions s, LVar<T> lhs, Term<T> rhs) {
+		return Option.some(s.extend(lhs, rhs));
 	}
 
+	/**
+	 * True when {@code x} occurs anywhere inside {@code v} under {@code s}: the
+	 * walked term is inspected recursively through the same structural
+	 * decomposition the unifier uses, so a binding that would close a cycle —
+	 * directly or through earlier bindings — is detected before it is made.
+	 */
 	public static <T> Boolean occursCheck(Substitutions s, LVar<T> x, Term<T> v) {
-		return s.walk(v).asVar()
-				.map(vv -> vv == x)
-				.getOrElse(false);
+		return occurs(s, x, v);
 	}
 
-	static <T> Substitutions extend(Substitutions s, LVar<T> lhs, Term<T> rhs) {
+	private static boolean occurs(Substitutions s, LVar<?> x, Term<?> v) {
+		Term<?> walked = s.walk(v);
+		if (walked.asVar().isDefined()) {
+			return walked.asVar().get() == x;
+		}
+		for (Term<?> member : members(walked).getOrElse(Collections.emptyList())) {
+			if (occurs(s, x, member)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** none = the binding would close a cycle; the unification must fail. */
+	static <T> Option<Substitutions> extend(Substitutions s, LVar<T> lhs, Term<T> rhs) {
 		return occursCheck(s, lhs, rhs) ?
-				s :
+				Option.none() :
 				extendNoCheck(s, lhs, rhs);
 	}
 
@@ -116,7 +134,7 @@ public class MiniKanren {
 	}
 
 	private interface Extender {
-		<T> Substitutions apply(Substitutions s, LVar<T> lhs, Term<T> rhs);
+		<T> Option<Substitutions> apply(Substitutions s, LVar<T> lhs, Term<T> rhs);
 	}
 
 	private static <T> MFiber<Substitutions> unify(
@@ -145,11 +163,13 @@ public class MiniKanren {
 						// vars cannot fail the occurs check — prefix collection
 						// observes every extension
 						.map(rVar -> extend.apply(s, lVar, (Term<T>) rVar))
+						.getOrElse(() -> extend.apply(s, lVar, r))
 						.map(MFiber::mdone)
-						.getOrElse(() -> mdone(extend.apply(s, lVar, r))))
+						.getOrElse(MFiber::none))
 				.orElse(() -> r.asVar()
-						.map(rVar -> extend.apply(s, rVar, l))
-						.map(MFiber::mdone))
+						.map(rVar -> extend.apply(s, rVar, l)
+								.map(MFiber::mdone)
+								.getOrElse(MFiber::none)))
 				.orElse(() -> zip(decompose(l), decompose(r))
 						.map(lr -> unifyDecomposed(extend, s, lr._1, lr._2)))
 				.getOrElse(MFiber::none);
@@ -244,12 +264,12 @@ public class MiniKanren {
 		ArrayList<Tuple2<LVar<?>, Term<?>>> collected = new ArrayList<>();
 		Extender collecting = new Extender() {
 			@Override
-			public <U> Substitutions apply(Substitutions p, LVar<U> l, Term<U> r) {
-				Substitutions extended = extend.apply(p, l, r);
-				if (extended != p) {
-					collected.add(Tuple.of(l, r));
-				}
-				return extended;
+			public <U> Option<Substitutions> apply(Substitutions p, LVar<U> l, Term<U> r) {
+				return extend.apply(p, l, r)
+						.map(extended -> {
+							collected.add(Tuple.of(l, r));
+							return extended;
+						});
 			}
 		};
 		return unify(collecting, s, lhs, rhs)
@@ -510,7 +530,8 @@ public class MiniKanren {
 				.flatMap(v -> v.asVar()
 						// a var that walked to something else is already renamed
 						.map(u -> u == val ?
-								extend(s, (LVar<Object>) u, Hole.of((int) s.size())) :
+								// a Hole is an atom: no occurs check to fail here
+								s.extend((LVar<Object>) u, Hole.of((int) s.size())) :
 								s)
 						.map(Fiber::done)
 						.orElse(() -> members(v)

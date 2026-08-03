@@ -33,6 +33,28 @@ import org.junit.Test;
 public class MiniKanrenTest {
 
 	@Test
+	public void shouldRefuseCyclicUnification() {
+		// x = (1 . x) — the occurs check must fail the unification, not admit
+		// a cyclic substitution that no walk can ever ground
+		Unifiable<LList<Integer>> x = lvar();
+		assertThat(runStream(x, x.unifies(LList.of(lval(1), x))).count())
+				.isZero();
+	}
+
+	@Test
+	public void shouldRefuseCycleClosedThroughLaterBinding() {
+		// the cycle closes on the SECOND binding: z walks to fresh, x walks to
+		// (1 . z) — occurs must look through the substitution, not just at it
+		Unifiable<LList<Integer>> x = lvar();
+		Unifiable<LList<Integer>> z = lvar();
+		assertThat(runStream(x,
+				x.unifies(LList.of(lval(1), z)),
+				z.unifies(x))
+				.count())
+				.isZero();
+	}
+
+	@Test
 	public void shouldFindX() {
 		Unifiable<Integer> x = lvar();
 		val subs = MiniKanren.unify(Substitutions.empty(), x, lval(3)).get().get();
