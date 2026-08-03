@@ -25,13 +25,13 @@ public class Condu implements Goal {
 	public Condu orElse(Goal... goals) {
 		if (goals.length == 0) {
 			return this;
-		} else if (goals.length == 1) {
-			clauses.add(goals[0]);
-			return this;
-		} else {
-			clauses.add(new Conjunction().and(goals));
-			return this;
 		}
+		Condu next = new Condu();
+		next.clauses.addAll(clauses);
+		next.clauses.add(goals.length == 1 ?
+				goals[0] :
+				Conjunction.of(goals));
+		return next;
 	}
 
 	@Override

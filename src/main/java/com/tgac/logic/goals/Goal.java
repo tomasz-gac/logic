@@ -76,7 +76,10 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @see Conjunction#and(Goal...)
 	 */
 	default Goal and(Goal... goals) {
-		return new Conjunction().and(this).and(goals);
+		Goal[] all = new Goal[goals.length + 1];
+		all[0] = this;
+		System.arraycopy(goals, 0, all, 1, goals.length);
+		return Conjunction.of(all);
 	}
 
 	/**

@@ -13,6 +13,7 @@ import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
+import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
@@ -236,8 +237,7 @@ public final class Propagation {
 			Agenda agenda = (Agenda) s.getStores().get(Agenda.class).get();
 			if (agenda.itemsExhausted()) {
 				Package cleared = s.withoutStore(Agenda.class);
-				return agenda.runs()
-						.foldLeft(Goal.success(), Goal::and)
+				return Conjunction.of(agenda.runs())
 						.apply(cleared);
 			}
 			Tuple2<Agenda.Item, Agenda> popped = agenda.pop();

@@ -9,6 +9,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.unification.LList;
@@ -18,6 +19,7 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.control.Option;
 import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
@@ -72,10 +74,12 @@ class EnforceConstraintsFD {
 	}
 
 	private static <T> Goal unifyWithAllDomainValues(Term<T> x, Domain<T> d) {
-		return d.stream()
+		List<Goal> alternatives = d.stream()
 				.map(domainValue -> unifyTerms((Term<Object>) x, lval(domainValue)))
-				.reduce(Goal::or)
-				.orElseGet(Goal::failure);
+				.collect(Collectors.toList());
+		return alternatives.isEmpty() ?
+				Goal.failure() :
+				Conde.of(alternatives);
 	}
 
 	// because of ambiguity in Constraints

@@ -23,13 +23,13 @@ public class Conda implements Goal {
 	public Conda orElseFirst(Goal... goals) {
 		if (goals.length == 0) {
 			return this;
-		} else if (goals.length == 1) {
-			clauses.add(goals[0]);
-			return this;
-		} else {
-			clauses.add(new Conjunction().and(goals));
-			return this;
 		}
+		Conda next = new Conda();
+		next.clauses.addAll(clauses);
+		next.clauses.add(goals.length == 1 ?
+				goals[0] :
+				Conjunction.of(goals));
+		return next;
 	}
 
 	@Override

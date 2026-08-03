@@ -22,12 +22,25 @@ public class Conjunction implements Goal {
 	List<Goal> clauses = new ArrayList<>();
 
 	public static Conjunction of(Goal... goals) {
-		return new Conjunction().and(goals);
+		Conjunction conj = new Conjunction();
+		conj.clauses.addAll(Arrays.asList(goals));
+		return conj;
+	}
+
+	public static Conjunction of(Iterable<Goal> goals) {
+		Conjunction conj = new Conjunction();
+		goals.forEach(conj.clauses::add);
+		return conj;
 	}
 
 	public Conjunction and(Goal... goals) {
-		clauses.addAll(Arrays.asList(goals));
-		return this;
+		if (goals.length == 0) {
+			return this;
+		}
+		Conjunction next = new Conjunction();
+		next.clauses.addAll(clauses);
+		next.clauses.addAll(Arrays.asList(goals));
+		return next;
 	}
 
 	@Override

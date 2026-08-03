@@ -4,6 +4,10 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.logic.goals.Conda;
+import com.tgac.logic.goals.Conde;
+import com.tgac.logic.goals.Condu;
+import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Matche;
@@ -34,6 +38,52 @@ public class LogicTest {
 			Unifiable<T> lhs,
 			Unifiable<LList<T>> cons) {
 		return cons.unifies(LList.of(lhs, lvar()));
+	}
+
+	@Test
+	public void orShouldNotMutateItsReceiver() {
+		Unifiable<Integer> x = lvar();
+		Goal base = x.unifies(1).or(x.unifies(2));
+		Goal withThree = base.or(x.unifies(3));
+		Goal withFour = base.or(x.unifies(4));
+		assertThat(withThree.solve(x).map(Term::get).collect(Collectors.toList()))
+				.containsExactlyInAnyOrder(1, 2, 3);
+		assertThat(withFour.solve(x).map(Term::get).collect(Collectors.toList()))
+				.containsExactlyInAnyOrder(1, 2, 4);
+	}
+
+	@Test
+	public void andShouldNotMutateItsReceiver() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Goal base = Conjunction.of(x.unifies(1));
+		Goal two = base.and(y.unifies(2));
+		Goal three = base.and(y.unifies(3));
+		assertThat(two.solve(y).map(Term::get).collect(Collectors.toList()))
+				.containsExactly(2);
+		assertThat(three.solve(y).map(Term::get).collect(Collectors.toList()))
+				.containsExactly(3);
+	}
+
+	@Test
+	public void committedChoiceCombinatorsShouldNotMutateTheirReceivers() {
+		// condu/conda commit to the first succeeding clause, so receiver
+		// mutation is invisible behaviorally — assert on structure instead
+		Unifiable<Integer> x = lvar();
+		Condu condu = (Condu) x.unifies(1).orElse(x.unifies(2));
+		condu.orElse(x.unifies(3));
+		assertThat(condu.getClauses()).hasSize(2);
+		Conda conda = (Conda) x.unifies(1).orElseFirst(x.unifies(2));
+		conda.orElseFirst(x.unifies(3));
+		assertThat(conda.getClauses()).hasSize(2);
+	}
+
+	@Test
+	public void condeOfShouldContainAllAlternatives() {
+		Unifiable<Integer> x = lvar();
+		Goal g = Conde.of(Arrays.asList(x.unifies(1), x.unifies(2)));
+		assertThat(g.solve(x).map(Term::get).collect(Collectors.toList()))
+				.containsExactlyInAnyOrder(1, 2);
 	}
 
 	@Test

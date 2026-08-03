@@ -20,7 +20,7 @@ public class Conde implements Goal {
 	/** One alternative per argument — never conde clause-conjunction syntax. */
 	public static Conde of(Iterable<Goal> alternatives) {
 		Conde conde = new Conde();
-		alternatives.forEach(conde::or);
+		alternatives.forEach(conde.clauses::add);
 		return conde;
 	}
 
@@ -28,13 +28,13 @@ public class Conde implements Goal {
 	public Conde or(Goal... goals) {
 		if (goals.length == 0) {
 			return this;
-		} else if (goals.length == 1) {
-			clauses.add(goals[0]);
-			return this;
-		} else {
-			clauses.add(new Conjunction().and(goals));
-			return this;
 		}
+		Conde next = new Conde();
+		next.clauses.addAll(clauses);
+		next.clauses.add(goals.length == 1 ?
+				goals[0] :
+				Conjunction.of(goals));
+		return next;
 	}
 
 	@Override
