@@ -32,6 +32,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -306,16 +308,15 @@ public class Tabling {
 		// Replay is a conde: every available delivery forks AT ONCE as a
 		// same-depth sibling - the flat shape, not a right-nested chain
 		boolean inside = reader.isInside();
-		List<Fiber<Nothing>> deliveries = new ArrayList<>();
-		Reader walked = reader;
-		while (walked.getCursor() < answers.logSize()) {
-			Tuple2<Reified<?>, Object> arrival = answers.logAt(walked.getCursor());
-			walked = walked.advanced();
-			if (inside || answers.isTop(arrival._2)) {
-				deliveries.add(deliver(entry, walked, arrival._1, arrival._2));
-			}
-		}
-		Reader atEnd = walked;
+		List<Fiber<Nothing>> deliveries = IntStream.range(reader.getCursor(), answers.logSize())
+				.mapToObj(answers::logAt)
+				.filter(arrival -> inside || answers.isTop(arrival._2))
+				.map(arrival -> deliver(entry, reader, arrival._1, arrival._2))
+				.collect(Collectors.toList());
+
+		// the cursor moves past every WALKED arrival, delivered or skipped —
+		// a skipped conditional still consumed its log position
+		Reader atEnd = reader.advanced(answers.logSize() - reader.getCursor());
 		if (!deliveries.isEmpty()) {
 			deliveries.add(Fiber.defer(() -> consume(entry, atEnd, answers)));
 			return Fiber.fork(deliveries);

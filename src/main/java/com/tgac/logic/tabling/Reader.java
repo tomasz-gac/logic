@@ -50,8 +50,8 @@ public class Reader {
 		return new Reader(continuation, pkg, argsTerm, 0);
 	}
 
-	/** The same reader, one ascent further along. */
-	Reader advanced() {
-		return new Reader(continuation, pkg, argsTerm, cursor + 1);
+	/** The same reader, {@code ascents} further along the log. */
+	Reader advanced(int ascents) {
+		return new Reader(continuation, pkg, argsTerm, cursor + ascents);
 	}
 }
