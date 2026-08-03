@@ -47,7 +47,14 @@ Propagation.suspend(watched, ripe, body)       // run body once ripe
 - **`Prefix`** — a delta of bindings, mintable only by the unifier
   (`MiniKanren.unifyPrefix`, a collecting Extender — born valid, O(delta)) or
   the checked `Prefix.binding`. `resolve` is the chokepoint: the ONLY way
-  substitutions grow in constraint-aware code. An inferred binding is
+  substitutions grow in constraint-aware code. The routing exists for two
+  coequal reasons, not one. The **veto**: every store answers `revise` before
+  the binding stands, and any store may fail the branch (bind `x := 1` against
+  a live `x ≠ 1`). The **wake**: routing through `resolve` is the only way the
+  other stores hear of the binding at all — watchers fire, suspensions ripen,
+  consequences cascade. A bypass skips both and fails SILENTLY: the package
+  looks healthy while every other store's knowledge goes stale, and the cost
+  surfaces later as wrong answers, never as a refusal. An inferred binding is
   indistinguishable from a unification. Pure-relational fast path: no stores
   and no pending suspensions → apply the delta, skip all machinery.
 - The **agenda** holds two item kinds — `Bind(Prefix)` and `Stated(Stored)` —

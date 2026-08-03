@@ -59,7 +59,13 @@ public final class Propagation {
 	 *
 	 * <p>Contract for callers: never extend substitutions directly — obtain a
 	 * {@link Prefix} (from {@code MiniKanren.unifyPrefix} or
-	 * {@code Prefix.binding}) and resolve it. Raw {@code MiniKanren.unify} bypasses
+	 * {@code Prefix.binding}) and resolve it. The routing serves two coequal
+	 * purposes: the veto — any store's {@code revise} may fail the branch before
+	 * the binding stands — and the wake — this call is the only place the other
+	 * stores hear of the binding at all (watchers fire, suspensions ripen). A
+	 * bypass therefore does not fail loudly; it leaves every other store's
+	 * knowledge silently stale, and the cost surfaces later as wrong answers
+	 * rather than a refusal. Raw {@code MiniKanren.unify} bypasses
 	 * all constraint processing and is legitimate only inside the unifier itself.
 	 */
 	public static Goal resolve(Prefix prefix) {

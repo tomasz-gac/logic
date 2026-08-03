@@ -172,6 +172,8 @@ public class Tabling {
 												body.get());
 								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
 							})
+							// a lost claim is a silent no-op: winner or loser, every
+							// caller falls through to here and reads as a consumer
 							.flatMap(__ -> consume(entry, reader, entry.answers()));
 				}));
 	}

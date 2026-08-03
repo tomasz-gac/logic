@@ -18,7 +18,13 @@ tests.
 4. **Never commit documentation changes without explicit approval.** Docs (`docs/`,
    `README.md`, this file) are read through by the human before they land — write them,
    announce them, wait. Code commits may include doc edits only when the human already
-   approved those edits.
+   approved those edits. On a substantive doc (new sections, claims, or terms), follow
+   the read-through with one or two operational questions on its load-bearing claim —
+   approval comes after the answers. This is a two-way veto testing model transfer,
+   not attention: an attentive read of fluent prose can still build a coherent wrong
+   model. The answer diagnoses the miss — no engagement with the section means the
+   reading skimmed; a coherent-but-wrong model built from the prose means the DOC
+   licensed it, and the fix is making the implicit explicit before the commit.
 5. **Git discipline.** Work on a branch (`git checkout -b <name>`), commit with explicit
    paths (`git add <path> ...`), NEVER `git add -A` (it once swept a stray debug line into
    a commit). Merge to master with `git checkout master && git merge --ff-only <branch>`,
@@ -31,6 +37,13 @@ tests.
 7. **`functional` is a separate repo and a Maven dependency.** It lives at
    `../functional`. If you change it, `cd ../functional && mvn -q install` before `logic`
    can see the change. Schedulers, fibers, `Cont`, `Nothing` all live there.
+8. **Vocabulary is gated.** Docs may only use terms listed in `docs/glossary.md`. A new
+   term or an imported theorem enters by the human's explicit adoption — proposed in
+   conversation first, ratified, then given its one-line glossary entry (imports marked
+   and traced to a receipt). Renames retire the old entry, never alias it. Research
+   ideas land as one-idea notes in `docs/notes/` (see `TEMPLATE.md`), not as appendices
+   to reference docs; a note graduates into a reference doc only when its obligations
+   are met.
 
 ## STOP and ask the human before touching
 
@@ -147,6 +160,11 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 
 ## Where knowledge lives
 
+- `docs/glossary.md` — the vocabulary gate: every term the docs may use, one line
+  each, with the human's solid/fuzzy ratings. Check it before coining or importing
+  anything (golden rule 8).
+- `docs/notes/` — one-idea research notes (status, evidence, obligations); where
+  hunches live until they earn a reference doc.
 - `docs/reference/constraint-kernel.md` — AUTHORITATIVE: the constraint kernel as
   shipped (package product, Propagation's three entries, the store protocol and
   2×2 vocabulary, FD's toolkit, structure's one owner, the contracts, the
