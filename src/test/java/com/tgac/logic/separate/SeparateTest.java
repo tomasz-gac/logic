@@ -1,5 +1,6 @@
 package com.tgac.logic.separate;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.LogicTest.runStream;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.separate.Disequality.rembero;
@@ -295,7 +296,7 @@ public class SeparateTest {
 						x.separate(x),
 						x.unifies(1).or(x.unifies(2)),
 						x.unifies(3))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get));
 
 		Assertions.assertThat(results)
@@ -310,7 +311,7 @@ public class SeparateTest {
 								x.unifies(2).or(x.unifies(3)),
 								x.unifies(1),
 								x.unifies(3))
-						.solve(x)
+						.solve(x, TestSchedulers.factory())
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -325,7 +326,7 @@ public class SeparateTest {
 						x.separate(x),
 						x.unifies(1).or(x.unifies(2)),
 						x.unifies(3))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 

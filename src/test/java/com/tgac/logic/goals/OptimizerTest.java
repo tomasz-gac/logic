@@ -3,6 +3,7 @@ package com.tgac.logic.goals;
 // ABOUTME: Pins the Optimizer seam: cascading normalization flattens nested and/or
 // ABOUTME: in one pass, is transparent to NamedGoal, and treats Guard/opaque goals as leaves.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -77,10 +78,10 @@ public class OptimizerTest {
 	public void rewrittenGoalSolvesToTheSameAnswers() {
 		Unifiable<Integer> x = lvar();
 		Goal g = unify(x, lval(3)).and(Goal.success().and(Goal.success()));
-		assertThat(g.accept(new CascadingOptimizer()).get().solve(x)
+		assertThat(g.accept(new CascadingOptimizer()).get().solve(x, TestSchedulers.factory())
 				.map(Object::toString)
 				.collect(Collectors.toList()))
-				.isEqualTo(g.solve(x)
+				.isEqualTo(g.solve(x, TestSchedulers.factory())
 						.map(Object::toString)
 						.collect(Collectors.toList()));
 	}

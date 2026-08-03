@@ -1,5 +1,6 @@
 package com.tgac.logic.aggregate;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.separate.Disequality.separate;
 import static com.tgac.logic.unification.LVal.lval;
@@ -27,7 +28,7 @@ public class AggregateTest {
 
 		Goal g = Aggregate.findall(x, oneTwoThree(x), result);
 
-		List<Integer> list = g.solve(result).findFirst().get().get()
+		List<Integer> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());
 		assertThat(list).containsExactlyInAnyOrder(1, 2, 3);
 	}
@@ -39,7 +40,7 @@ public class AggregateTest {
 
 		Goal g = Aggregate.findall(x, oneTwoThree(x), result);
 
-		assertThat(g.solve(result).count()).isEqualTo(1);
+		assertThat(g.solve(result, TestSchedulers.factory()).count()).isEqualTo(1);
 	}
 
 	@Test
@@ -49,7 +50,7 @@ public class AggregateTest {
 
 		Goal g = Aggregate.findall(x, x.unifies(1).and(x.unifies(2)), result);
 
-		List<Integer> list = g.solve(result).findFirst().get().get()
+		List<Integer> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());
 		assertThat(list).isEmpty();
 	}
@@ -63,7 +64,7 @@ public class AggregateTest {
 		Goal g = Aggregate.findall(x, oneTwoThree(x), result)
 				.and(x.unifies(99));
 
-		Integer bound = g.solve(x).findFirst().get().get();
+		Integer bound = g.solve(x, TestSchedulers.factory()).findFirst().get().get();
 		assertThat(bound).isEqualTo(99);
 	}
 
@@ -72,7 +73,7 @@ public class AggregateTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> n = lvar();
 
-		int result = Aggregate.count(oneTwoThree(x), n).solve(n).findFirst().get().get();
+		int result = Aggregate.count(oneTwoThree(x), n).solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(3);
 	}
@@ -83,7 +84,7 @@ public class AggregateTest {
 		Unifiable<Integer> n = lvar();
 
 		int result = Aggregate.count(x.unifies(1).and(x.unifies(2)), n)
-				.solve(n).findFirst().get().get();
+				.solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isZero();
 	}
@@ -93,7 +94,7 @@ public class AggregateTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> total = lvar();
 
-		int result = Aggregate.sum(x, oneTwoThree(x), total).solve(total).findFirst().get().get();
+		int result = Aggregate.sum(x, oneTwoThree(x), total).solve(total, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(6);
 	}
@@ -104,7 +105,7 @@ public class AggregateTest {
 		Unifiable<Integer> m = lvar();
 
 		int result = Aggregate.max(x, x.unifies(1).or(x.unifies(3)).or(x.unifies(2)), m)
-				.solve(m).findFirst().get().get();
+				.solve(m, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(3);
 	}
@@ -115,7 +116,7 @@ public class AggregateTest {
 		Unifiable<Integer> m = lvar();
 
 		int result = Aggregate.min(x, x.unifies(3).or(x.unifies(1)).or(x.unifies(2)), m)
-				.solve(m).findFirst().get().get();
+				.solve(m, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(1);
 	}
@@ -125,7 +126,7 @@ public class AggregateTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> m = lvar();
 
-		long count = Aggregate.max(x, x.unifies(1).and(x.unifies(2)), m).solve(m).count();
+		long count = Aggregate.max(x, x.unifies(1).and(x.unifies(2)), m).solve(m, TestSchedulers.factory()).count();
 
 		assertThat(count).isZero();
 	}
@@ -136,7 +137,7 @@ public class AggregateTest {
 		Unifiable<String> d = lvar();
 		Unifiable<Integer> n = lvar();
 
-		int result = Aggregate.count(descendant(d), n).solve(n).findFirst().get().get();
+		int result = Aggregate.count(descendant(d), n).solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(3);
 	}
@@ -162,7 +163,7 @@ public class AggregateTest {
 
 		Goal g = Aggregate.findall(i, dom(i, EnumeratedDomain.range(0L, 6L)), result);
 
-		List<Long> list = g.solve(result).findFirst().get().get()
+		List<Long> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());
 		assertThat(list).containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L);
 	}
@@ -173,7 +174,7 @@ public class AggregateTest {
 		Unifiable<Integer> n = lvar();
 
 		int result = Aggregate.count(dom(i, EnumeratedDomain.range(0L, 6L)), n)
-				.solve(n).findFirst().get().get();
+				.solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(6);
 	}
@@ -187,7 +188,7 @@ public class AggregateTest {
 				x.unifies(2).or(x.unifies(3)).or(x.unifies(4)).and(separate(x, lval(3))),
 				result);
 
-		List<Integer> list = g.solve(result).findFirst().get().get()
+		List<Integer> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());
 		assertThat(list).containsExactlyInAnyOrder(2, 4);
 	}

@@ -3,6 +3,7 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: Proves the ordering optimizer reduces search work: identical answers,
 // ABOUTME: an order of magnitude fewer branch spawns on a mis-ordered query.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -59,7 +60,7 @@ public class OptimizerBenchmarkTest {
 	public void orderingCutsBranchSpawnsByAnOrderOfMagnitude() {
 		Unifiable<Integer> x1 = lvar(), y1 = lvar();
 		AtomicLong plain = new AtomicLong();
-		assertThat(misOrdered(x1, y1, plain).solve(x1)
+		assertThat(misOrdered(x1, y1, plain).solve(x1, TestSchedulers.factory())
 				.map(Object::toString).collect(Collectors.toList()))
 				.containsExactly("{7}");
 

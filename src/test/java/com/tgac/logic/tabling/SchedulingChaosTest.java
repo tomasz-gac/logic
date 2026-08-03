@@ -4,6 +4,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: random scheduling seeds must yield the same solutions - any seed that
 // ABOUTME: differs is an order-dependence bug, replayable by its seed.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -47,7 +48,7 @@ public class SchedulingChaosTest {
 	 */
 	private static void orderFree(Supplier<Tuple2<Goal, Unifiable<Integer>>> program) {
 		Tuple2<Goal, Unifiable<Integer>> reference = program.get();
-		List<Integer> expected = reference._1.solve(reference._2)
+		List<Integer> expected = reference._1.solve(reference._2, TestSchedulers.factory())
 				.map(Term::<Integer>get).sorted().collect(Collectors.toList());
 		for (long seed = 0; seed < SEEDS; seed++) {
 			Tuple2<Goal, Unifiable<Integer>> chaotic = program.get();

@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.addo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.leq;
@@ -42,7 +43,7 @@ public class SummationTest {
 						.and(dom(k, Interval.of(0L, 100L)));
 
 		List<Tuple3<Long, Long, Long>> result =
-				Utils.collect(goal.solve(lval(Tuple.of(i, j, k)))
+				Utils.collect(goal.solve(lval(Tuple.of(i, j, k)), TestSchedulers.factory())
 						.map(Term::get)
 						.map(t -> t
 								.map1(Term::get)
@@ -114,7 +115,7 @@ public class SummationTest {
 		Unifiable<LList<Integer>> letters = lvar();
 
 		List<List<Integer>> result = Utils.collect(sendMoreMoneyo(letters)
-				.solve(letters)
+				.solve(letters, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
@@ -161,7 +162,7 @@ public class SummationTest {
 		Assertions.assertThat(Utils.collect(addo(a, b, c)
 						.and(dom(a, Interval.of(0, 100)))
 						.and(dom(c, Interval.of(0, 100)))
-						.solve(lval(Tuple.of(a, b, c)))
+						.solve(lval(Tuple.of(a, b, c)), TestSchedulers.factory())
 						.map(Term::get)))
 				.isEmpty();
 	}

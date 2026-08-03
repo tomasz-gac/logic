@@ -1,5 +1,6 @@
 package com.tgac.logic.debug;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.separate.Disequality.separate;
 import static com.tgac.logic.unification.LVal.lval;
@@ -71,7 +72,7 @@ public class TraceCompositionTest {
 	public void tracingDoesNotChangeTabledResults() {
 		Rec rec = new Rec();
 		long traced = x14().solve(lvar(), rec).count();
-		long untraced = x14().solve(lvar()).count();
+		long untraced = x14().solve(lvar(), TestSchedulers.factory()).count();
 
 		assertThat(traced).isEqualTo(untraced).isEqualTo(1);
 		assertThat(rec.ports).isNotEmpty();

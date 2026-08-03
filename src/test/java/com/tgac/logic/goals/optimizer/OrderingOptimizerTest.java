@@ -3,6 +3,7 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: Pins the ambient ordering layer: ascending sort within barrier-delimited
 // ABOUTME: segments, derived orders through combinators, and ambient-solve equivalence.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -160,7 +161,7 @@ public class OrderingOptimizerTest {
 		assertThat(g.solve(x, Optimizer.pipeline(new CascadingOptimizer(), new OrderingOptimizer()))
 				.map(Object::toString).collect(Collectors.toList()))
 				.hasSameElementsAs(
-						g.solve(x).map(Object::toString).collect(Collectors.toList()));
+						g.solve(x, TestSchedulers.factory()).map(Object::toString).collect(Collectors.toList()));
 	}
 
 	@Test
@@ -169,7 +170,7 @@ public class OrderingOptimizerTest {
 		assertThat(countdown(x, 3).solve(x, new OrderingOptimizer())
 				.map(Object::toString).collect(Collectors.toList()))
 				.hasSameElementsAs(
-						countdown(x, 3).solve(x).map(Object::toString).collect(Collectors.toList()));
+						countdown(x, 3).solve(x, TestSchedulers.factory()).map(Object::toString).collect(Collectors.toList()));
 	}
 
 	private static Goal countdown(Unifiable<Integer> x, int n) {

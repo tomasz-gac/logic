@@ -46,9 +46,9 @@ public class LogicTest {
 		Goal base = x.unifies(1).or(x.unifies(2));
 		Goal withThree = base.or(x.unifies(3));
 		Goal withFour = base.or(x.unifies(4));
-		assertThat(withThree.solve(x).map(Term::get).collect(Collectors.toList()))
+		assertThat(withThree.solve(x, TestSchedulers.factory()).map(Term::get).collect(Collectors.toList()))
 				.containsExactlyInAnyOrder(1, 2, 3);
-		assertThat(withFour.solve(x).map(Term::get).collect(Collectors.toList()))
+		assertThat(withFour.solve(x, TestSchedulers.factory()).map(Term::get).collect(Collectors.toList()))
 				.containsExactlyInAnyOrder(1, 2, 4);
 	}
 
@@ -59,9 +59,9 @@ public class LogicTest {
 		Goal base = Conjunction.of(x.unifies(1));
 		Goal two = base.and(y.unifies(2));
 		Goal three = base.and(y.unifies(3));
-		assertThat(two.solve(y).map(Term::get).collect(Collectors.toList()))
+		assertThat(two.solve(y, TestSchedulers.factory()).map(Term::get).collect(Collectors.toList()))
 				.containsExactly(2);
-		assertThat(three.solve(y).map(Term::get).collect(Collectors.toList()))
+		assertThat(three.solve(y, TestSchedulers.factory()).map(Term::get).collect(Collectors.toList()))
 				.containsExactly(3);
 	}
 
@@ -82,7 +82,7 @@ public class LogicTest {
 	public void condeOfShouldContainAllAlternatives() {
 		Unifiable<Integer> x = lvar();
 		Goal g = Conde.of(Arrays.asList(x.unifies(1), x.unifies(2)));
-		assertThat(g.solve(x).map(Term::get).collect(Collectors.toList()))
+		assertThat(g.solve(x, TestSchedulers.factory()).map(Term::get).collect(Collectors.toList()))
 				.containsExactlyInAnyOrder(1, 2);
 	}
 
@@ -93,7 +93,7 @@ public class LogicTest {
 		Unifiable<Integer> x = lvar();
 		Iterator<Reified<Integer>> it = x.unifies(1).or(x.unifies(2)).or(x.unifies(3))
 				.or(x.unifies(4)).or(x.unifies(5))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.iterator();
 		List<Integer> seen = new ArrayList<>();
 		while (it.hasNext()) {
@@ -106,7 +106,7 @@ public class LogicTest {
 	public void shouldConde() {
 		Unifiable<Integer> x = lvar();
 		assertThat(x.unifies(1).or(x.unifies(2)).or(x.unifies(3))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList()))
 				.containsExactlyInAnyOrder(1, 2, 3);
@@ -130,7 +130,7 @@ public class LogicTest {
 
 	public static <T> java.util.stream.Stream<Reified<T>> runStream(Unifiable<T> x, Goal... goals) {
 		return Goal.success().and(goals)
-				.solve(x);
+				.solve(x, TestSchedulers.factory());
 	}
 
 	@Test
@@ -370,7 +370,7 @@ public class LogicTest {
 				val solved =
 						Logic.sameLengtho(lst, LList.ofAll(Stream.range(0, n).collect(Collectors.toList())))
 								.and(palindromo2(lst))
-								.solve(lst)
+								.solve(lst, TestSchedulers.factory())
 		) {
 			val collected = solved
 					.findFirst()
@@ -423,7 +423,7 @@ public class LogicTest {
 		Unifiable<Tuple3<Unifiable<Boolean>, Unifiable<Boolean>, Unifiable<Boolean>>> out = lvar();
 		var result = Utils.collect(Matche.matche(out,
 						Matche.tuple(Logic::conjo))
-				.solve(out)
+				.solve(out, TestSchedulers.factory())
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get)));
 
@@ -436,7 +436,7 @@ public class LogicTest {
 		Unifiable<Tuple3<Unifiable<Boolean>, Unifiable<Boolean>, Unifiable<Boolean>>> out = lvar();
 		var result = Utils.collect(Matche.matche(out,
 						Matche.tuple(Logic::disjo))
-				.solve(out)
+				.solve(out, TestSchedulers.factory())
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get)));
 
@@ -450,7 +450,7 @@ public class LogicTest {
 
 		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.anyo(out, lval(true)))
-				.solve(out)
+				.solve(out, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
@@ -464,7 +464,7 @@ public class LogicTest {
 		Unifiable<LList<Boolean>> out = lvar();
 		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.anyo(out, lval(false)))
-				.solve(out)
+				.solve(out, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
@@ -477,7 +477,7 @@ public class LogicTest {
 		Unifiable<LList<Boolean>> out = lvar();
 		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.allo(out, lval(false)))
-				.solve(out)
+				.solve(out, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
@@ -491,7 +491,7 @@ public class LogicTest {
 		Unifiable<LList<Boolean>> out = lvar();
 		var result = Utils.collect(Logic.sameLengtho(LList.ofAll(Stream.range(0, 3).collect(Collectors.toList())), out)
 				.and(Logic.allo(out, lval(true)))
-				.solve(out)
+				.solve(out, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
 
@@ -508,7 +508,7 @@ public class LogicTest {
 								lval(5),
 								result,
 								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l + r)))
-						.solve(result)
+						.solve(result, TestSchedulers.factory())
 						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactly(26);
@@ -523,7 +523,7 @@ public class LogicTest {
 								lval(0),
 								result,
 								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l - r)))
-						.solve(result)
+						.solve(result, TestSchedulers.factory())
 						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactly(-60);
@@ -538,7 +538,7 @@ public class LogicTest {
 								lval(60),
 								result,
 								(acc, lhs, rhs) -> Logic.project(lhs, rhs, (l, r) -> acc.unifies(l - r)))
-						.solve(result)
+						.solve(result, TestSchedulers.factory())
 						.map(Term::get)
 						.collect(Collectors.toList()))
 				.containsExactly(0);

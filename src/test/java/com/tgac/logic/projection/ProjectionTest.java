@@ -1,5 +1,6 @@
 package com.tgac.logic.projection;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.logic.unification.LVal;
@@ -20,7 +21,7 @@ public class ProjectionTest {
 
 		List<Integer> results = x.unifies(3)
 				.and(Projection.project(x, v -> y.unifies(2 * v)))
-				.solve(y)
+				.solve(y, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 
@@ -36,7 +37,7 @@ public class ProjectionTest {
 		List<Integer> results =
 				Projection.project(x, v -> y.unifies(2 * v))
 						.and(x.unifies(3))
-						.solve(y)
+						.solve(y, TestSchedulers.factory())
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -54,7 +55,7 @@ public class ProjectionTest {
 				Projection.project(y, v -> z.unifies(2 * v))
 						.and(x.unifies(y))
 						.and(y.unifies(3))
-						.solve(z)
+						.solve(z, TestSchedulers.factory())
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -75,7 +76,7 @@ public class ProjectionTest {
 						t -> out.unifies(t._1.get() + t._2.get()))
 				.and(a.unifies(1))
 				.and(b.unifies(2))
-				.solve(out)
+				.solve(out, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 
@@ -92,7 +93,7 @@ public class ProjectionTest {
 				.project(a, b, (x, y) -> out.unifies(x * y))
 				.and(a.unifies(3))
 				.and(b.unifies(4))
-				.solve(out)
+				.solve(out, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 

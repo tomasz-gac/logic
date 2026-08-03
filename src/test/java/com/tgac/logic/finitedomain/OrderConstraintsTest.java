@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.lss;
 import static com.tgac.logic.goals.Goal.defer;
@@ -40,7 +41,7 @@ public class OrderConstraintsTest {
 						.and(dom(i, EnumeratedDomain.range(1L, 3L)))
 						.and(dom(j, EnumeratedDomain.range(1L, 3L)))
 						.and(FiniteDomain.leq(i, j))
-						.solve(lval(Tuple.of(i, j)))
+						.solve(lval(Tuple.of(i, j)), TestSchedulers.factory())
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get)));
 
@@ -61,7 +62,7 @@ public class OrderConstraintsTest {
 						.and((FiniteDomain.leq(i, j)))
 						.and(dom(i, EnumeratedDomain.range(0L, 4L)))
 						.and(dom(j, EnumeratedDomain.range(0L, 4L)))
-						.solve(lval(Tuple.of(i, j)))
+						.solve(lval(Tuple.of(i, j)), TestSchedulers.factory())
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get)));
 
@@ -79,7 +80,7 @@ public class OrderConstraintsTest {
 						.and(dom(i, EnumeratedDomain.range(0L, 4L)))
 						.and(dom(j, EnumeratedDomain.range(0L, 4L)))
 						.and((FiniteDomain.leq(i, j)))
-						.solve(lval(Tuple.of(i, j)))
+						.solve(lval(Tuple.of(i, j)), TestSchedulers.factory())
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get)));
 
@@ -99,7 +100,7 @@ public class OrderConstraintsTest {
 				.and(dom(y, EnumeratedDomain.range(1L, 5L)))
 				.and(FiniteDomain.leq(x, lval(5L)))
 				.and(Constraints.unify(x, y))
-				.solve(lval(Tuple.of(y, z)))
+				.solve(lval(Tuple.of(y, z)), TestSchedulers.factory())
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get)));
 
@@ -125,7 +126,7 @@ public class OrderConstraintsTest {
 				.and(dom(v3, Interval.of(0, n)))
 				.and(dom(v4, Interval.of(0, n)))
 				.and(dom(v5, Interval.of(0, n)))
-				.solve(lst)
+				.solve(lst, TestSchedulers.factory())
 				.map(Term::get)
 				.map(LList::toValueStream)
 				.map(s -> s.collect(Collectors.toList())));
@@ -149,9 +150,9 @@ public class OrderConstraintsTest {
 	@Test
 	public void geqGroundHoldsWhenMoreExceedsLess() {
 		// geq(more, less) means more >= less; ground both ways
-		Assertions.assertThat(FiniteDomain.geq(lval(480L), lval(400L)).solve(lvar()).count())
+		Assertions.assertThat(FiniteDomain.geq(lval(480L), lval(400L)).solve(lvar(), TestSchedulers.factory()).count())
 				.isEqualTo(1L);
-		Assertions.assertThat(FiniteDomain.geq(lval(250L), lval(400L)).solve(lvar()).count())
+		Assertions.assertThat(FiniteDomain.geq(lval(250L), lval(400L)).solve(lvar(), TestSchedulers.factory()).count())
 				.isEqualTo(0L);
 	}
 
@@ -161,7 +162,7 @@ public class OrderConstraintsTest {
 		Unifiable<Long> x = lvar();
 		List<Long> xs = FiniteDomain.dom(x, EnumeratedDomain.range(398L, 403L))
 				.and(FiniteDomain.geq(x, lval(400L)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.sorted()
 				.collect(Collectors.toList());
@@ -171,9 +172,9 @@ public class OrderConstraintsTest {
 
 	@Test
 	public void gtrGroundIsStrict() {
-		Assertions.assertThat(FiniteDomain.gtr(lval(401L), lval(400L)).solve(lvar()).count())
+		Assertions.assertThat(FiniteDomain.gtr(lval(401L), lval(400L)).solve(lvar(), TestSchedulers.factory()).count())
 				.isEqualTo(1L);
-		Assertions.assertThat(FiniteDomain.gtr(lval(400L), lval(400L)).solve(lvar()).count())
+		Assertions.assertThat(FiniteDomain.gtr(lval(400L), lval(400L)).solve(lvar(), TestSchedulers.factory()).count())
 				.isEqualTo(0L);
 	}
 
@@ -183,7 +184,7 @@ public class OrderConstraintsTest {
 		Unifiable<Long> x = lvar();
 		List<Long> xs = FiniteDomain.dom(x, EnumeratedDomain.range(398L, 403L))
 				.and(FiniteDomain.gtr(x, lval(400L)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.sorted()
 				.collect(Collectors.toList());

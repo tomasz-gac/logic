@@ -3,6 +3,7 @@ package com.tgac.logic.algebra;
 // ABOUTME: Semiring laws for the goal witnesses up to answer equality —
 // ABOUTME: multiset Eq for DERIVATIONS, set Eq for ANSWERS (the dedup quotient).
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -47,7 +48,7 @@ public class GoalSemiringLawsTest {
 			Logic.membero(X, LList.ofAll(1, 2, 3)).and(Disequality.separate(X, lval(2))));
 
 	private static List<String> answers(Goal g) {
-		return g.solve(X).map(Object::toString).sorted().collect(Collectors.toList());
+		return g.solve(X, TestSchedulers.factory()).map(Object::toString).sorted().collect(Collectors.toList());
 	}
 
 	/** Same answers with multiplicities — one occurrence per derivation. */

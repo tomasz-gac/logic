@@ -3,6 +3,7 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: Pins the Bounded sweep: constraint posts price 1, failure prices 0 and
 // ABOUTME: kills segments by sorting, FD constrain-first cuts branch spawns.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -70,7 +71,7 @@ public class BoundedSweepTest {
 		// generate-then-constrain, deliberately mis-ordered: domains posted last
 		Unifiable<Long> x1 = lvar(), y1 = lvar();
 		AtomicLong plain = new AtomicLong();
-		assertThat(misOrdered(x1, y1, plain).solve(x1)
+		assertThat(misOrdered(x1, y1, plain).solve(x1, TestSchedulers.factory())
 				.map(Object::toString).collect(Collectors.toList()))
 				.containsExactly("{7}");
 
@@ -90,7 +91,7 @@ public class BoundedSweepTest {
 		// the dead filter is written LAST; dynamic pricing sorts it first
 		Unifiable<Long> x = lvar();
 		AtomicLong plain = new AtomicLong();
-		assertThat(oneOf(x, plain).and(lval(1L).unifies(lval(2L))).solve(x).count()).isZero();
+		assertThat(oneOf(x, plain).and(lval(1L).unifies(lval(2L))).solve(x, TestSchedulers.factory()).count()).isZero();
 		assertThat(plain.get()).isEqualTo(N);
 
 		Unifiable<Long> x2 = lvar();
@@ -139,7 +140,7 @@ public class BoundedSweepTest {
 	public void failureSortsFirstAndKillsTheSegmentBeforeGeneration() {
 		Unifiable<Long> x = lvar();
 		AtomicLong plain = new AtomicLong();
-		assertThat(oneOf(x, plain).and(Goal.failure()).solve(x).count()).isZero();
+		assertThat(oneOf(x, plain).and(Goal.failure()).solve(x, TestSchedulers.factory()).count()).isZero();
 		assertThat(plain.get()).isEqualTo(N);
 
 		Unifiable<Long> x2 = lvar();

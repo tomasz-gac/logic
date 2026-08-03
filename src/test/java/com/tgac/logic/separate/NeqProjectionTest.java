@@ -3,6 +3,7 @@ package com.tgac.logic.separate;
 // ABOUTME: Pins the Neq store's single-sorted boundary algebra: records as data
 // ABOUTME: over names, lossless split, canonical projection, renamed replay.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -119,12 +120,12 @@ public class NeqProjectionTest {
 		Unifiable<Integer> fresh = lvar();
 		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh))))
 				.and(Constraints.unify(fresh, lval(5)))
-				.solve(fresh)
+				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> fresh2 = lvar();
 		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh2))))
 				.and(Constraints.unify(fresh2, lval(6)))
-				.solve(fresh2)
+				.solve(fresh2, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}
 
@@ -141,14 +142,14 @@ public class NeqProjectionTest {
 		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f, g))))
 				.and(Constraints.unify(f, lval(3)))
 				.and(Constraints.unify(g, lval(3)))
-				.solve(f)
+				.solve(f, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> f2 = lvar();
 		Unifiable<Integer> g2 = lvar();
 		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f2, g2))))
 				.and(Constraints.unify(f2, lval(3)))
 				.and(Constraints.unify(g2, lval(4)))
-				.solve(f2)
+				.solve(f2, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}
 
@@ -196,11 +197,11 @@ public class NeqProjectionTest {
 
 		assertThat(Propagation.absorb(neq)
 				.and(Constraints.unify(x, lval(5)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		assertThat(Propagation.absorb(neq)
 				.and(Constraints.unify(x, lval(6)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}
 
@@ -211,11 +212,11 @@ public class NeqProjectionTest {
 		Unifiable<Integer> x = lvar();
 		assertThat(Constraints.unify(x, lval(5))
 				.and(Propagation.absorb(store(record(varOf(x), lval(5)))))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		assertThat(Constraints.unify(x, lval(6))
 				.and(Propagation.absorb(store(record(varOf(x), lval(5)))))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}
 }

@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.leq;
 import static com.tgac.logic.unification.LVal.lval;
@@ -41,7 +42,7 @@ public class PropagationPinTest {
 						dom(x, EnumeratedDomain.range(1L, 2L)),    // ∩ → {1}: collapse-binds, violates x ≠ 1
 						dom(x, EnumeratedDomain.range(2L, 3L))));  // ∩ → {2}: the valid branch
 
-		List<Long> result = g.solve(x).map(Term::get).collect(Collectors.toList());
+		List<Long> result = g.solve(x, TestSchedulers.factory()).map(Term::get).collect(Collectors.toList());
 
 		assertThat(result).containsExactly(2L);
 	}
@@ -69,7 +70,7 @@ public class PropagationPinTest {
 				.and(leq(x, y))                                     // runs while y is wide
 				.and(leq(y, z))                                     // narrows y to {1..3}
 				.and(probe)
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count();
 
 		assertThat(count).isGreaterThan(0);
@@ -99,7 +100,7 @@ public class PropagationPinTest {
 				.and(leq(y, z))                                     // y → {1..3} first
 				.and(leq(x, y))                                     // then x ≤ max(y) = 3
 				.and(probe)
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count();
 
 		assertThat(count).isGreaterThan(0);

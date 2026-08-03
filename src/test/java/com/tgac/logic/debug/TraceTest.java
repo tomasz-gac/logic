@@ -1,5 +1,6 @@
 package com.tgac.logic.debug;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,7 +46,7 @@ public class TraceTest {
 		Unifiable<Integer> x = lvar();
 
 		Goal g = Trace.traced("g", x.unifies(1).or(x.unifies(2)), recorder);
-		long count = g.solve(x).count();
+		long count = g.solve(x, TestSchedulers.factory()).count();
 
 		assertThat(count).isEqualTo(2);
 		assertThat(recorder.ports).containsExactly("Call g", "Exit g", "Redo g", "Exit g");
@@ -58,7 +59,7 @@ public class TraceTest {
 
 		// contradictory: x cannot be both 1 and 2
 		Goal g = Trace.traced("g", x.unifies(1).and(x.unifies(2)), recorder);
-		long count = g.solve(x).count();
+		long count = g.solve(x, TestSchedulers.factory()).count();
 
 		assertThat(count).isEqualTo(0);
 		assertThat(recorder.ports).containsExactly("Call g", "Fail g");
@@ -180,7 +181,7 @@ public class TraceTest {
 
 		Goal inner = Trace.traced("inner", y.unifies(10), recorder);
 		Goal outer = Trace.traced("outer", x.unifies(1).and(inner), recorder);
-		outer.solve(x).count();
+		outer.solve(x, TestSchedulers.factory()).count();
 
 		// outer Call, inner runs and exits, outer exits
 		assertThat(recorder.ports).containsExactly("Call outer", "Call inner", "Exit inner", "Exit outer");

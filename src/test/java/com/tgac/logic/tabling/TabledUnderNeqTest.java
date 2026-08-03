@@ -3,6 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: Pins tabled calls under disequality: neq residues key the cache, ride
 // ABOUTME: answers, and replay by copy — canonical across caller lineages.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -38,13 +39,13 @@ public class TabledUnderNeqTest {
 		Unifiable<Integer> y = lvar();
 		assertThat(notOne.apply(Tuple.of(y))
 				.and(unify(y, lval(2)))
-				.solve(y)
+				.solve(y, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 
 		Unifiable<Integer> z = lvar();
 		assertThat(notOne.apply(Tuple.of(z))
 				.and(unify(z, lval(1)))
-				.solve(z)
+				.solve(z, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 	}
 
@@ -109,7 +110,7 @@ public class TabledUnderNeqTest {
 				.and(notOne.apply(Tuple.of(b)))
 				.and(unify(a, lval(2)))
 				.and(unify(b, lval(3)))
-				.solve(lval(Tuple.of(a, b)))
+				.solve(lval(Tuple.of(a, b)), TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}
 }

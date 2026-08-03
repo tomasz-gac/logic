@@ -1,5 +1,6 @@
 package com.tgac.logic.unification;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.LogicTest.runStream;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
@@ -414,7 +415,7 @@ public class MiniKanrenTest {
 						.and(unify(v, Option.of(val)))
 						.and(unify(u, v))
 						.and(unify(val, 123))
-						.solve(val2)
+						.solve(val2, TestSchedulers.factory())
 						.map(Term::get)))
 				.containsExactly(123);
 	}
@@ -429,7 +430,7 @@ public class MiniKanrenTest {
 						LTree.of(lval(3), LList.empty())));
 
 		Assertions.assertThat(Utils.collect(x.unifies(tlTree1)
-								.solve(x)
+								.solve(x, TestSchedulers.factory())
 								.map(Term::get))
 						.toString())
 				.isEqualTo("[LTree(value={1}, children={({LTree(value=_.0, children={()})}, {LTree(value={3}, children={()})})})]");
@@ -448,7 +449,7 @@ public class MiniKanrenTest {
 		Assertions.assertThat(
 						Utils.collect(x.unifies(tlTree1)
 										.and(y.unifies(1))
-										.solve(x)
+										.solve(x, TestSchedulers.factory())
 										.map(Term::get))
 								.toString())
 				.isEqualTo("[LTree(value={1}, children={({LTree(value=_.0, children={()})}, {LTree(value={3}, children={()})})})]");
@@ -470,7 +471,7 @@ public class MiniKanrenTest {
 						LTree.of(lval(3), LList.empty())));
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
-						.solve(lval(Tuple.of(x, y, z)))
+						.solve(lval(Tuple.of(x, y, z)), TestSchedulers.factory())
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get))))
 				.containsExactly(Tuple.of(1, 2, 3));
@@ -491,7 +492,7 @@ public class MiniKanrenTest {
 						LTree.of(lval(3), LList.empty())));
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
-								.solve(lval(Tuple.of(x, y, z, children)))
+								.solve(lval(Tuple.of(x, y, z, children)), TestSchedulers.factory())
 								.map(Term::get))
 						.toString())
 				.isEqualTo("[({1}, _.0, _.1, {({LTree(value={2}, children={()})}, {LTree(value={3}, children={()})})})]");
@@ -514,7 +515,7 @@ public class MiniKanrenTest {
 						LTree.of(lval(3), LList.empty())));
 
 		Assertions.assertThat(Utils.collect(tlTree1.unifies(tlTree)
-								.solve(lval(Tuple.of(x, y, z, children)))
+								.solve(lval(Tuple.of(x, y, z, children)), TestSchedulers.factory())
 								.map(Term::get))
 						.toString())
 				.isEqualTo("[({1}, {2}, _.0, {({LTree(value={3}, children={()})})})]");
@@ -525,7 +526,7 @@ public class MiniKanrenTest {
 		Unifiable<LTree<Integer>> tree = lvar();
 
 		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
-				.solve(tree)
+				.solve(tree, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 
@@ -538,7 +539,7 @@ public class MiniKanrenTest {
 		Unifiable<LTree<Integer>> tree = LTree.ofAll(3);
 
 		java.util.List<LTree<Integer>> collect = tree.unifies(LTree.empty())
-				.solve(tree)
+				.solve(tree, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 

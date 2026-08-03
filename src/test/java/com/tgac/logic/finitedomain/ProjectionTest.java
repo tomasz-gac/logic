@@ -3,6 +3,7 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: Pins the FD store's single-sorted boundary algebra: named value-equal
 // ABOUTME: propagators, lossless split, renaming across namespaces, absorbed replay.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,14 +59,14 @@ public class ProjectionTest {
 
 		assertThat(Constraints.unify(x, lval(7))
 				.and(Propagation.absorb(incoming))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 
 		FiniteDomainConstraints wide = FiniteDomainConstraints.empty()
 				.withDomain(varOf(x), dom(5, 7, 9));
 		assertThat(Constraints.unify(x, lval(7))
 				.and(Propagation.absorb(wide))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}
 
@@ -81,7 +82,7 @@ public class ProjectionTest {
 					pruned[0] = FiniteDomainConstraints.getFDStore(p).getDomains().isEmpty();
 					return Goal.success().apply(p);
 				})
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count();
 		assertThat(pruned[0]).isTrue();
 	}
@@ -257,7 +258,7 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p);
 
 		List<Integer> values = Propagation.absorb(store)
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::<Integer>get)
 				.sorted()
 				.collect(Collectors.toList());
@@ -302,7 +303,7 @@ public class ProjectionTest {
 		seed.put(varOf(orig), fresh);
 		assertThat(Propagation.absorb(store.rename(Renaming.into(seed)))
 				.and(Constraints.unify(fresh, lval(7)))
-				.solve(fresh)
+				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 
 		Unifiable<Integer> fresh2 = lvar();
@@ -311,7 +312,7 @@ public class ProjectionTest {
 		assertThat(Propagation.absorb(store.rename(Renaming.into(seed2)))
 				.and(Constraints.unify(orig, lval(7)))
 				.and(Constraints.unify(fresh2, lval(3)))
-				.solve(fresh2)
+				.solve(fresh2, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}
 }

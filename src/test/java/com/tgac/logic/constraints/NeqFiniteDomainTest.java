@@ -1,5 +1,6 @@
 package com.tgac.logic.constraints;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -29,7 +30,7 @@ public class NeqFiniteDomainTest {
 		Goal g = dom(x, EnumeratedDomain.range(0L, 3L))
 				.and(Disequality.separate(x, lval(1L)));
 
-		List<Long> result = g.solve(x)
+		List<Long> result = g.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 
@@ -44,7 +45,7 @@ public class NeqFiniteDomainTest {
 		Goal g = Disequality.separate(x, lval(1L))
 				.and(dom(x, EnumeratedDomain.range(0L, 3L)));
 
-		List<Long> result = g.solve(x)
+		List<Long> result = g.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 

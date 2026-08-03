@@ -3,6 +3,7 @@ package com.tgac.logic.lattice;
 // ABOUTME: Proves the lattice store is generic: a flat set-of-values instance gets
 // ABOUTME: verification, narrowing, collapse, propagators, split and rename for free.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -110,11 +111,11 @@ public class LatticeStoreTest {
 	@Test
 	public void aGroundBindingIsVerifiedAgainstTheFlatValue() {
 		Unifiable<Integer> x = lvar();
-		assertThat(flat(x, FlatSet.of(1, 2)).and(x.unifies(1)).solve(x).count())
+		assertThat(flat(x, FlatSet.of(1, 2)).and(x.unifies(1)).solve(x, TestSchedulers.factory()).count())
 				.isEqualTo(1);
 
 		Unifiable<Integer> y = lvar();
-		assertThat(flat(y, FlatSet.of(1, 2)).and(y.unifies(3)).solve(y).count())
+		assertThat(flat(y, FlatSet.of(1, 2)).and(y.unifies(3)).solve(y, TestSchedulers.factory()).count())
 				.isZero();
 	}
 
@@ -123,7 +124,7 @@ public class LatticeStoreTest {
 		Unifiable<Integer> x = lvar();
 		List<Integer> answers = flat(x, FlatSet.of(1, 2))
 				.and(flat(x, FlatSet.of(2, 3)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 		assertThat(answers).containsExactly(2);
@@ -132,18 +133,18 @@ public class LatticeStoreTest {
 	@Test
 	public void disjointImpositionsFail() {
 		Unifiable<Integer> x = lvar();
-		assertThat(flat(x, FlatSet.of(1, 2)).and(flat(x, FlatSet.of(3, 4))).solve(x).count())
+		assertThat(flat(x, FlatSet.of(1, 2)).and(flat(x, FlatSet.of(3, 4))).solve(x, TestSchedulers.factory()).count())
 				.isZero();
 	}
 
 	@Test
 	public void aNamedPropagatorWakesOnItsWatchedTerm() {
 		Unifiable<Integer> x = lvar();
-		assertThat(flat(x, FlatSet.of(1, 2, 3, 4)).and(evenO(x)).and(x.unifies(4)).solve(x).count())
+		assertThat(flat(x, FlatSet.of(1, 2, 3, 4)).and(evenO(x)).and(x.unifies(4)).solve(x, TestSchedulers.factory()).count())
 				.isEqualTo(1);
 
 		Unifiable<Integer> y = lvar();
-		assertThat(flat(y, FlatSet.of(1, 2, 3, 4)).and(evenO(y)).and(y.unifies(3)).solve(y).count())
+		assertThat(flat(y, FlatSet.of(1, 2, 3, 4)).and(evenO(y)).and(y.unifies(3)).solve(y, TestSchedulers.factory()).count())
 				.isZero();
 	}
 

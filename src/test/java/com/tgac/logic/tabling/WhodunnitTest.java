@@ -3,6 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: A murder mystery where tabling and TCLP are both load-bearing: cyclic
 // ABOUTME: reachability diverges untabled, and the murder hour rides as a witness.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -117,7 +118,7 @@ public class WhodunnitTest {
 		// is the query tabling exists for
 		Unifiable<Integer> room = lvar();
 		long emissions = reachableUntabled(room)
-				.solve(room)
+				.solve(room, TestSchedulers.factory())
 				.limit(12)
 				.count();
 		assertThat(emissions).isEqualTo(12);   // …and it would keep going
@@ -130,7 +131,7 @@ public class WhodunnitTest {
 		// live domains (a region key; the pre-TCLP wall refused this call)
 		Unifiable<Integer> room = lvar();
 		List<Integer> rooms = reachableFromGarden().apply(Tuple.of(room))
-				.solve(room)
+				.solve(room, TestSchedulers.factory())
 				.map(Term::<Integer>get)
 				.distinct()
 				.sorted()

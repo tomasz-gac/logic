@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -29,7 +30,7 @@ public class NeqFdTest {
 
 		assertThat(dom(x, EnumeratedDomain.range(1L, 11L))        // {1..10}
 				.and(Disequality.separate(x, lval(5L)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList()))
 				.doesNotContain(5L)
@@ -42,7 +43,7 @@ public class NeqFdTest {
 
 		assertThat(dom(x, EnumeratedDomain.range(4L, 6L))         // {4,5}
 				.and(Disequality.separate(x, lval(5L)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList()))
 				.containsExactly(4L);
@@ -54,7 +55,7 @@ public class NeqFdTest {
 
 		long count = dom(x, EnumeratedDomain.range(5L, 6L))       // {5} exactly
 				.and(Disequality.separate(x, lval(5L)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.count();
 
 		assertThat(count).isEqualTo(0);
@@ -66,7 +67,7 @@ public class NeqFdTest {
 
 		assertThat(Disequality.separate(x, lval(5L))
 				.and(dom(x, EnumeratedDomain.range(1L, 11L)))
-				.solve(x)
+				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList()))
 				.doesNotContain(5L)
@@ -79,7 +80,7 @@ public class NeqFdTest {
 
 		assertThat(Disequality.separate(s, lval("no"))
 				.and(Constraints.unify(s, lval("yes")))
-				.solve(s)
+				.solve(s, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList()))
 				.containsExactly("yes");

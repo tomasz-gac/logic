@@ -3,6 +3,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: Parked suspensions at a tabled-call boundary refuse loudly: the call key
 // ABOUTME: cannot see them and an answer cannot carry them, so silence would be unsound.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.projection.Projection.project;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -37,7 +38,7 @@ public class SuspensionGuardTest {
 		Goal query = project(pending, v -> Goal.success())
 				.and(rel.apply(out));
 
-		assertThatThrownBy(() -> query.solve(out).count())
+		assertThatThrownBy(() -> query.solve(out, TestSchedulers.factory()).count())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("parked suspensions");
 	}
@@ -51,7 +52,7 @@ public class SuspensionGuardTest {
 				}));
 		Unifiable<Integer> out = lvar();
 
-		assertThatThrownBy(() -> rel.apply(out).solve(out).count())
+		assertThatThrownBy(() -> rel.apply(out).solve(out, TestSchedulers.factory()).count())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("suspension");
 	}
@@ -72,7 +73,7 @@ public class SuspensionGuardTest {
 				.and(rel.apply(b))
 				.and(pending.unifies(7));
 
-		List<String> pairs = query.solve(lval(Tuple.of(a, b)))
+		List<String> pairs = query.solve(lval(Tuple.of(a, b)), TestSchedulers.factory())
 				.map(Object::toString)
 				.collect(Collectors.toList());
 		assertThat(pairs).hasSize(4);

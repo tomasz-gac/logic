@@ -1,5 +1,6 @@
 package com.tgac.logic.tabling;
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -54,7 +55,7 @@ public class TabledTest {
 
 		long count = x.unifies(1).and(y.unifies(4))
 				.and(path.apply(Tuple.of(x, y)))
-				.solve(lvar())
+				.solve(lvar(), TestSchedulers.factory())
 				.count();
 
 		assertThat(count).isEqualTo(1);
@@ -70,7 +71,7 @@ public class TabledTest {
 		long count = one.unifies(1)
 				.and(path.apply(Tuple.of(one, a)))
 				.and(path.apply(Tuple.of(one, b)))
-				.solve(lval(Tuple.of(a, b)))
+				.solve(lval(Tuple.of(a, b)), TestSchedulers.factory())
 				.count();
 
 		assertThat(count).isEqualTo(9);
@@ -90,7 +91,7 @@ public class TabledTest {
 		List<Tuple2<Integer, Integer>> results =
 				constant1.apply(Tuple.of(x))
 						.and(constant2.apply(Tuple.of(y)))
-						.solve(lval(Tuple.of(x, y)))
+						.solve(lval(Tuple.of(x, y)), TestSchedulers.factory())
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get))
 						.collect(Collectors.toList());
@@ -114,7 +115,7 @@ public class TabledTest {
 				}));
 
 		Unifiable<Object> p = lvar();
-		long count = pairs.apply(Tuple.of(p)).solve(p).count();
+		long count = pairs.apply(Tuple.of(p)).solve(p, TestSchedulers.factory()).count();
 
 		assertThat(count).isEqualTo(1);
 	}
@@ -186,7 +187,7 @@ public class TabledTest {
 
 		Unifiable<Integer> x = lvar();
 
-		assertThatThrownBy(() -> stuck.apply(Tuple.of(x)).solve(x).count())
+		assertThatThrownBy(() -> stuck.apply(Tuple.of(x)).solve(x, TestSchedulers.factory()).count())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("non-projectable");
 	}
@@ -210,7 +211,7 @@ public class TabledTest {
 
 		long count = x.unifies(1).and(y.unifies(4))
 				.and(pathNoSelf(x, y))
-				.solve(lvar())
+				.solve(lvar(), TestSchedulers.factory())
 				.count();
 
 		assertThat(count).isEqualTo(1);

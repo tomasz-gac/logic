@@ -3,6 +3,7 @@ package com.tgac.logic.aggregate;
 // ABOUTME: Pins aggregation over tabling: a consumer of a tabled entry suspends as
 // ABOUTME: a frame, so findall folds only when the sub-tree is honestly exhausted.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -56,7 +57,7 @@ public class AggregateTablingPinTest {
 		Unifiable<LList<Integer>> collected = lvar();
 
 		List<Integer> sizes = Aggregate.findall(x, rel.apply(x), collected)
-				.solve(collected)
+				.solve(collected, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> (int) l.toValueStream().count())
 				.collect(Collectors.toList());
@@ -73,7 +74,7 @@ public class AggregateTablingPinTest {
 
 		List<Integer> sizes = Aggregate.findall(who,
 						ancestor(lval("alice"), who), collected)
-				.solve(collected)
+				.solve(collected, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> (int) l.toValueStream().count())
 				.collect(Collectors.toList());
@@ -89,7 +90,7 @@ public class AggregateTablingPinTest {
 		Unifiable<String> who = lvar();
 
 		List<Integer> counts = Aggregate.count(ancestor(lval("alice"), who), n)
-				.solve(n)
+				.solve(n, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
 

@@ -3,6 +3,7 @@ package com.tgac.logic.goals;
 // ABOUTME: Committed choice under exhaustion: a nested condu inside a clause
 // ABOUTME: must not leak the fallback when the head clause has solutions.
 
+import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -23,7 +24,7 @@ public class ConduNestingTest {
 				Goal.condu(unify(x, lval("keep")), unify(x, lval("inner-fallback"))),
 				unify(x, lval("outer-fallback")));
 
-		List<String> got = g.solve(x).map(Reified::toString).collect(Collectors.toList());
+		List<String> got = g.solve(x, TestSchedulers.factory()).map(Reified::toString).collect(Collectors.toList());
 
 		assertThat(got).containsExactly("{keep}");
 	}
@@ -38,7 +39,7 @@ public class ConduNestingTest {
 						.and(unify(x, lval("keep")))),
 				unify(x, lval("skip"))));
 
-		List<String> got = g.solve(x).map(Reified::toString).collect(Collectors.toList());
+		List<String> got = g.solve(x, TestSchedulers.factory()).map(Reified::toString).collect(Collectors.toList());
 
 		assertThat(got).containsExactly("{keep}");
 	}
@@ -50,7 +51,7 @@ public class ConduNestingTest {
 				lvar();
 		List<String> got = filter(com.tgac.logic.unification.LList.ofAll(1, 2, 1, 3, 1, 4), out,
 				a -> Logic.project(a, v -> v != 1 ? Goal.success() : Goal.failure()))
-				.solve(out).map(Reified::toString).collect(Collectors.toList());
+				.solve(out, TestSchedulers.factory()).map(Reified::toString).collect(Collectors.toList());
 
 		assertThat(got).hasSize(1);
 	}
@@ -76,7 +77,7 @@ public class ConduNestingTest {
 
 	private static List<String> countdown(int n) {
 		Unifiable<String> out = lvar();
-		return level(n, out).solve(out).map(Reified::toString).collect(Collectors.toList());
+		return level(n, out).solve(out, TestSchedulers.factory()).map(Reified::toString).collect(Collectors.toList());
 	}
 
 	/** level(n): condu(succeed with "hit-n" and recurse; fallback). */
