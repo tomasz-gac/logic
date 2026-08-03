@@ -6,7 +6,6 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.tgac.functional.fibers.schedulers.RandomizedScheduler;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -67,11 +66,10 @@ public class TablingTest {
 		spin[0] = defer(() -> Goal.success().and(spin[0]));
 		List<Integer> got = r.apply(x)
 				.and(x.unifies(1).and(spin[0]).orElseFirst(x.unifies(2)))
-				// a driver that always prefers the shallowest frame starves on the
-				// spin by POLICY — rescuing that is the promotion valve's job,
-				// tested at the substrate; the seeded fair driver tests OURS:
-				// forked deliveries survive arbitrary interleavings
-				.solve(x, f -> RandomizedScheduler.of(f, 42L))
+				// default breadth-first drive: the promotion valve merges the
+				// spin's long-running bucket downward, so the sibling delivery
+				// gets its turns — fork-on-delivery and the valve together
+				.solve(x)
 				.limit(1)
 				.map(Term::get)
 				.collect(Collectors.toList());
