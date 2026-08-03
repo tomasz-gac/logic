@@ -6,6 +6,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tgac.functional.fibers.schedulers.RandomizedScheduler;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -50,6 +51,31 @@ public class TablingTest {
 
 	private Goal ancestor(Unifiable<String> x, Unifiable<String> y) {
 		return ancestor.apply(Tuple.of(x, y));
+	}
+
+	@Test
+	public void deliveryShouldNotStarveSiblingAnswers() {
+		// replay is a conde: one answer's non-forking, diverging continuation
+		// (conda commits, so nothing forks) must not block a sibling answer's
+		// delivery — the cursor walk forks each delivery as its own frame
+		Tabled<Unifiable<Integer>> r = Tabling.define(x ->
+				x.unifies(1).or(x.unifies(2)));
+		Unifiable<Integer> x = lvar();
+		Goal[] spin = new Goal[1];
+		// the conjunction supplies the step boundary (its apply suspends), so
+		// the spin steps forever fairly instead of overflowing at apply time
+		spin[0] = defer(() -> Goal.success().and(spin[0]));
+		List<Integer> got = r.apply(x)
+				.and(x.unifies(1).and(spin[0]).orElseFirst(x.unifies(2)))
+				// a driver that always prefers the shallowest frame starves on the
+				// spin by POLICY — rescuing that is the promotion valve's job,
+				// tested at the substrate; the seeded fair driver tests OURS:
+				// forked deliveries survive arbitrary interleavings
+				.solve(x, f -> RandomizedScheduler.of(f, 42L))
+				.limit(1)
+				.map(Term::get)
+				.collect(Collectors.toList());
+		assertThat(got).containsExactly(2);
 	}
 
 	@Test

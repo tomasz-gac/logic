@@ -29,6 +29,8 @@ import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -306,8 +308,12 @@ public class Tabling {
 			Tuple2<Reified<?>, Object> arrival = answers.logAt(reader.getCursor());
 			Reader advanced = reader.advanced();
 			if (InBody.on(reader.getPkg()) || answers.isTop(arrival._2)) {
-				return deliver(entry, advanced, arrival._1, arrival._2)
-						.flatMap(__ -> Fiber.defer(() -> consume(entry, advanced, answers)));
+				// replay is a conde: each delivery forks as its own frame, so
+				// one answer's continuation can never starve its siblings —
+				// the cursor walk is just another sibling
+				return Fiber.fork(Arrays.asList(
+						deliver(entry, advanced, arrival._1, arrival._2),
+						Fiber.defer(() -> consume(entry, advanced, answers))));
 			}
 			return Fiber.defer(() -> consume(entry, advanced, answers));
 		}
@@ -345,13 +351,13 @@ public class Tabling {
 			Reified<?> term, Object value) {
 		if (value instanceof Condition) {
 			// a condition delivers per region: each conjunct is one branch,
-			// its residues restated onto that delivery's fresh holes
-			Fiber<Nothing> result = Fiber.done(Nothing.nothing());
+			// its residues restated onto that delivery's fresh holes; regions
+			// are disjuncts, so they fork like any other alternatives
+			List<Fiber<Nothing>> deliveries = new ArrayList<>();
 			for (Residues conjunct : ((Condition) value).conjuncts()) {
-				Fiber<Nothing> delivery = deliverAtom(entry, reader, term, conjunct, value);
-				result = result.flatMap(__ -> delivery);
+				deliveries.add(deliverAtom(entry, reader, term, conjunct, value));
 			}
-			return result;
+			return Fiber.fork(deliveries);
 		}
 		return deliverAtom(entry, reader, term, Residues.TRUE, value);
 	}
@@ -384,16 +390,15 @@ public class Tabling {
 		if (InBody.on(reader.getPkg())) {
 			return Fiber.done(Nothing.nothing());
 		}
-		Fiber<Nothing> result = Fiber.done(Nothing.nothing());
+		List<Fiber<Nothing>> deliveries = new ArrayList<>();
 		for (int i = 0; i < answers.size(); i++) {
 			Tuple2<Reified<?>, Object> answer = answers.get(i);
 			if (answers.isTop(answer._2)) {
 				continue;
 			}
-			Fiber<Nothing> delivery = deliver(entry, reader, answer._1, answer._2);
-			result = result.flatMap(__ -> delivery);
+			deliveries.add(deliver(entry, reader, answer._1, answer._2));
 		}
-		return result;
+		return Fiber.fork(deliveries);
 	}
 
 }
