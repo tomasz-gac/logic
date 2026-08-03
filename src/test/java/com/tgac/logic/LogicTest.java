@@ -17,7 +17,9 @@ import io.vavr.Tuple3;
 import io.vavr.collection.Stream;
 import io.vavr.control.Either;
 import io.vavr.control.Option;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -32,6 +34,22 @@ public class LogicTest {
 			Unifiable<T> lhs,
 			Unifiable<LList<T>> cons) {
 		return cons.unifies(LList.of(lhs, lvar()));
+	}
+
+	@Test
+	public void shouldDeliverEveryAnswerThroughIterator() {
+		// the iterator adapter calls tryAdvance one element at a time; answers
+		// buffered at engine completion must survive that path, not only forEach
+		Unifiable<Integer> x = lvar();
+		Iterator<Reified<Integer>> it = x.unifies(1).or(x.unifies(2)).or(x.unifies(3))
+				.or(x.unifies(4)).or(x.unifies(5))
+				.solve(x)
+				.iterator();
+		List<Integer> seen = new ArrayList<>();
+		while (it.hasNext()) {
+			seen.add(it.next().get());
+		}
+		assertThat(seen).containsExactlyInAnyOrder(1, 2, 3, 4, 5);
 	}
 
 	@Test

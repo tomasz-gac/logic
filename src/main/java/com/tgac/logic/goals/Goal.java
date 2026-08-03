@@ -304,10 +304,6 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 *
 	 * The results are provided as a {@link Stream}. The stream is populated lazily as the engine
 	 * finds solutions. The engine is closed when the stream is closed.
-	 * The {@link Spliterator} implementation detail: if the engine completes its computation,
-	 * its {@code tryAdvance} method may process all remaining buffered results by calling the
-	 * consumer multiple times before returning false. Standard {@code Spliterator.tryAdvance}
-	 * typically processes at most one element per call.
 	 * </pre>
 	 *
 	 * @param <T> The type of the value held by the output unifiable variable.
@@ -368,18 +364,13 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 					// Run the engine for a batch of steps.
 					// engine.run() returns true if the entire computation has completed.
 					if (scheduler.run(64, v -> { /* Engine's internal step callback, not for results here */ })) {
-						// Engine has completed. Process any remaining items in the results queue.
-						// Note: This inner loop processes all remaining items in one go if the engine is done.
-						// This differs from typical tryAdvance behavior which processes one item.
-						while (!results.isEmpty()) {
-							action.accept(results.poll());
-						}
-						return false; // Signal that the spliterator is exhausted as engine completed.
-					}
-					// If engine has not completed, but results became available, exit loop to process one.
-					if (!results.isEmpty()) {
+						// Engine has completed: whatever is buffered is all there
+						// will ever be — hand it out one element per call below.
 						break;
 					}
+				}
+				if (results.isEmpty()) {
+					return false; // Engine completed and the buffer is drained.
 				}
 				action.accept(results.poll());
 				return true; // One item processed
