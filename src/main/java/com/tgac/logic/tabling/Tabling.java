@@ -305,13 +305,13 @@ public class Tabling {
 		// final on arrival) and collect the rest finalized at the seal.
 		// Replay is a conde: every available delivery forks AT ONCE as a
 		// same-depth sibling - the flat shape, not a right-nested chain
-		boolean inBody = InBody.on(reader.getPkg());
+		boolean inside = reader.isInside();
 		List<Fiber<Nothing>> deliveries = new ArrayList<>();
 		Reader walked = reader;
 		while (walked.getCursor() < answers.logSize()) {
 			Tuple2<Reified<?>, Object> arrival = answers.logAt(walked.getCursor());
 			walked = walked.advanced();
-			if (inBody || answers.isTop(arrival._2)) {
+			if (inside || answers.isTop(arrival._2)) {
 				deliveries.add(deliver(entry, walked, arrival._1, arrival._2));
 			}
 		}
@@ -390,7 +390,7 @@ public class Tabling {
 	 */
 	private static Fiber<Nothing> deliverSealed(TableEntry<Object> entry, Reader reader,
 			JoinMap<Reified<?>, Object> answers) {
-		if (InBody.on(reader.getPkg())) {
+		if (reader.isInside()) {
 			return Fiber.done(Nothing.nothing());
 		}
 		List<Fiber<Nothing>> deliveries = new ArrayList<>();

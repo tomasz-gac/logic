@@ -35,6 +35,16 @@ public class Reader {
 		return pkg.getStore(Table.class);
 	}
 
+	/**
+	 * An INSIDE reader consumes from within some tabled call's body — its
+	 * call site was reached while a master was executing, so its package
+	 * carries the body stamp. Inside readers stream every ascent as fixpoint
+	 * fuel; outside readers receive only final values and wait for the seal.
+	 */
+	public boolean isInside() {
+		return InBody.on(pkg);
+	}
+
 	/** The reader at the call site: cursor at the start of the log. */
 	static Reader of(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
 		return new Reader(continuation, pkg, argsTerm, 0);
