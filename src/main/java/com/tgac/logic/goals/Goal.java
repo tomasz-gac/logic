@@ -380,6 +380,23 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 			}
 
 			@Override
+			public void forEachRemaining(Consumer<? super Reified<T>> action) {
+				// bulk delivery is legal HERE (unlike tryAdvance): drain the
+				// buffer between engine batches without per-element dispatch
+				while (true) {
+					while (!results.isEmpty()) {
+						action.accept(results.poll());
+					}
+					if (scheduler.run(64, v -> { })) {
+						while (!results.isEmpty()) {
+							action.accept(results.poll());
+						}
+						return;
+					}
+				}
+			}
+
+			@Override
 			public Spliterator<Reified<T>> trySplit() {
 				return null; // Splitting not supported
 			}
