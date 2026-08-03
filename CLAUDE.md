@@ -11,7 +11,7 @@ tests.
 1. **TDD.** Write a failing test first, watch it fail, then make it pass. For a bug, first
    write a test that reproduces it.
 2. **The test suite is your safety net.** `mvn test` must end in `BUILD SUCCESS`. Never
-   commit or merge with a red suite. Count today: ~443 tests. If the count drops, you
+   commit or merge with a red suite. Count today: ~553 tests. If the count drops, you
    deleted or emptied a test — don't.
 3. **Test output must be pristine.** No `System.out.println` in tests or in `src/main`.
    Assert results; don't print them. (One intentional exception is documented below.)

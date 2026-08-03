@@ -420,7 +420,7 @@ deleted — the frame's ambient scope took the role), detach-k
 the Scope/WorkLedger/Channel/JoinSet primitives, the two-edge graph
 and its seal criterion, SUBSUMPTIVE REUSE (sealed entries serve instance
 calls; completed entries genuinely mobile), and the TIER-2 GROUP SEAL
-(detection total for finite solves — full SLG completion as ~60 lines on a
+(detection total for finite solves — the negation-free case of SLG completion as ~60 lines on a
 generic primitive). Plus the distribution design corpus, goals-as-data.md.)**
 4. **The algebra package** (decided July 2026: the abstractions have paid
    for engine-level presence): `Lattice<L>` (F-bounded), `Semiring<S>`,

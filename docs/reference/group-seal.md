@@ -3,7 +3,10 @@
 STATUS: SHIPPED (July 2026, `Region.groupSeal`, ~60 lines). The Tier 2 of
 completion detection: with it, sealing is TOTAL for finite solves — every
 semantically keys-final call event seals as early as its dependency
-closure finishes, which is full SLG completion. Companion to
+closure finishes — SLG completion for the definite-program, negation-free
+case this engine evaluates (SLG proper also carries delaying and
+simplification for negation, which do not exist here; the kinship is
+precedent, not a compatibility goal). Companion to
 `table-completion.md` (the scheme this extends); read that first for the
 vocabulary: call events, cells, ledgers, sleeper edges, the
 singleton seal rule.

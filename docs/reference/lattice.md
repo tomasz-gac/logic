@@ -123,7 +123,7 @@ order. The vocabulary (each name buys its theorem):
   be upward-closed or scheduling leaks into meaning. A finitely-expressible
   ask is a principal filter — "everything ⊒ this threshold" — which is why
   suspension ripeness wants a threshold vocabulary, not a predicate.
-  Modern kin: LVars (monotone writes, threshold reads — deterministic
+  Modern kin: LVars (Kuper & Newton; monotone writes, threshold reads — deterministic
   parallelism because monotone) and Radul–Sussman propagator networks.
 
 The kernel's types, mapped:
@@ -364,7 +364,7 @@ Three theorem shapes ride the tower:
 - **Each law added at a quotient enlarges BOTH freedoms.** Idempotence
   completes ACI — the license for unordered, redundant work — cashed
   independently as chaotic iteration (constraints), CRDTs (distribution),
-  LVars (deterministic parallelism), CALM (coordination-freeness), and
+  LVars (Kuper & Newton; deterministic parallelism), CALM (Hellerstein & Alvaro; coordination-freeness), and
   parallel-worlds-joined excursions (§5c). The sharp contrast: parallel
   COUNTING needs exactly-once delivery — real coordination — because it
   sits above the idempotent quotient; parallel EXISTENCE does not.
