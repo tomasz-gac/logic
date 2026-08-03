@@ -75,7 +75,15 @@ public class OrderingOptimizer extends CascadingOptimizer {
 					.map(p -> new Priced(NamedGoal.of(named.getLabel(), p.getGoal()), p.getOrder()));
 		}
 		if (g instanceof Bounded) {
-			return Fiber.done(new Priced(g, ((Bounded) g).answers(bound)));
+			long declared = ((Bounded) g).answers(bound);
+			// a bound is a COUNT: the saturating arithmetic and the segment
+			// sort both assume non-negatives — a lying estimator refuses here
+			if (declared < 0) {
+				throw new IllegalStateException(
+						"a bound is a count and cannot be negative: "
+								+ g + " declared " + declared);
+			}
+			return Fiber.done(new Priced(g, declared));
 		}
 		return Fiber.done(new Priced(g, Long.MAX_VALUE));
 	}

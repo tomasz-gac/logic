@@ -7,6 +7,7 @@ import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.category.Nothing;
@@ -62,6 +63,16 @@ public class OrderingOptimizerTest {
 		public Cont<Package, Nothing> apply(Package s) {
 			return Cont.just(s);
 		}
+	}
+
+	@Test
+	public void aNegativeBoundRefusesLoudly() {
+		// a bound is a COUNT: the pricer's saturating arithmetic and segment
+		// sort both assume non-negatives, so a lying estimator refuses by name
+		Goal liar = new FixedOrder(-5);
+		assertThatThrownBy(() -> liar.and(new FixedOrder(3)).accept(new OrderingOptimizer()).get())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("-5");
 	}
 
 	@Test

@@ -16,6 +16,12 @@ import java.util.function.ToLongFunction;
  * means no bound is estimable.
  */
 public interface Bounded {
+	/**
+	 * A TRUST SURFACE: the optimizer consumes this count unverified. It must
+	 * be non-negative (the pricer refuses otherwise); an overestimate only
+	 * costs ordering quality, but an underestimate steers the search toward
+	 * a branch that is bigger than promised — never lie low.
+	 */
 	long answers(Substitutions s);
 
 	/**
