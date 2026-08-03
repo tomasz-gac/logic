@@ -38,9 +38,9 @@ public class TabledCallPricingTest {
 		Goal call = rel.apply(Tuple.of(out));
 		Package p = Package.empty().withStore(Table.empty());
 
-		// run the relation to exhaustion in this package's table, then mark complete
+		// run the relation to exhaustion in this package's table: the full
+		// drain seals the entries through completion detection
 		assertThat(call.solveFrom(p, out, BreadthFirstScheduler::new).count()).isEqualTo(2);
-		p.getStore(Table.class).entries().forEach(TableEntry::markComplete);
 
 		assertThat(((Bounded) call).answers(p)).isEqualTo(2);
 	}

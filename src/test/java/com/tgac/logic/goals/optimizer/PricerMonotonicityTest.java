@@ -16,7 +16,6 @@ import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.tabling.Table;
-import com.tgac.logic.tabling.TableEntry;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
 import com.tgac.logic.unification.Unifiable;
@@ -55,7 +54,6 @@ public class PricerMonotonicityTest {
 		Package incomplete = Package.empty().withStore(Table.empty());
 		Package complete = Package.empty().withStore(Table.empty());
 		assertThat(call.solveFrom(complete, out, BreadthFirstScheduler::new).count()).isEqualTo(2);
-		complete.getStore(Table.class).entries().forEach(TableEntry::markComplete);
 
 		MonotoneLaws.check(
 				Arrays.asList(noTable, incomplete, complete),

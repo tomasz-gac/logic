@@ -49,10 +49,6 @@ public class TableEntry<V> {
 		return cell;
 	}
 
-	public void markComplete() {
-		cell.seal();
-	}
-
 	public boolean isComplete() {
 		return cell.isSealed();
 	}
