@@ -29,7 +29,6 @@ import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -299,23 +298,27 @@ public class Tabling {
 	 * 		value arrives with the wake, never polled
 	 */
 	static Fiber<Nothing> consume(TableEntry<Object> entry, Reader reader, JoinMap<Reified<?>, Object> answers) {
-		if (reader.getCursor() < answers.logSize()) {
-			// the log walk: every ascent is one event - a fresh term, a new
-			// region, an improved fold. Inside readers take them all (the
-			// fixpoint's fuel - distributivity makes delivering each arrival
-			// sound); outside readers take only values at ⊕'s top (1 ⊕ a = 1:
-			// final on arrival) and collect the rest finalized at the seal
-			Tuple2<Reified<?>, Object> arrival = answers.logAt(reader.getCursor());
-			Reader advanced = reader.advanced();
-			if (InBody.on(reader.getPkg()) || answers.isTop(arrival._2)) {
-				// replay is a conde: each delivery forks as its own frame, so
-				// one answer's continuation can never starve its siblings —
-				// the cursor walk is just another sibling
-				return Fiber.fork(Arrays.asList(
-						deliver(entry, advanced, arrival._1, arrival._2),
-						Fiber.defer(() -> consume(entry, advanced, answers))));
+		// the log walk: every ascent is one event - a fresh term, a new
+		// region, an improved fold. Inside readers take them all (the
+		// fixpoint's fuel - distributivity makes delivering each arrival
+		// sound); outside readers take only values at ⊕'s top (1 ⊕ a = 1:
+		// final on arrival) and collect the rest finalized at the seal.
+		// Replay is a conde: every available delivery forks AT ONCE as a
+		// same-depth sibling - the flat shape, not a right-nested chain
+		boolean inBody = InBody.on(reader.getPkg());
+		List<Fiber<Nothing>> deliveries = new ArrayList<>();
+		Reader walked = reader;
+		while (walked.getCursor() < answers.logSize()) {
+			Tuple2<Reified<?>, Object> arrival = answers.logAt(walked.getCursor());
+			walked = walked.advanced();
+			if (inBody || answers.isTop(arrival._2)) {
+				deliveries.add(deliver(entry, walked, arrival._1, arrival._2));
 			}
-			return Fiber.defer(() -> consume(entry, advanced, answers));
+		}
+		Reader atEnd = walked;
+		if (!deliveries.isEmpty()) {
+			deliveries.add(Fiber.defer(() -> consume(entry, atEnd, answers)));
+			return Fiber.fork(deliveries);
 		}
 
 		// caught up: await ANY strict ascent. The channel swaps its value
@@ -326,14 +329,14 @@ public class Tabling {
 		return Fiber.await(entry.channel(), v -> v != snapshot)
 				.flatMap(r -> {
 					JoinMap<Reified<?>, Object> current = r.getValue();
-					if (reader.getCursor() < current.logSize() || !r.isSealed()) {
-						return Fiber.defer(() -> consume(entry, reader, current));
+					if (atEnd.getCursor() < current.logSize() || !r.isSealed()) {
+						return Fiber.defer(() -> consume(entry, atEnd, current));
 					}
 					// the seal: an outside reader now receives each term's
 					// converged fold - folds and maximality are order-
 					// invariant, so the output cannot depend on the schedule
-					return deliverSealed(entry, reader, current)
-							.flatMap(__ -> reader.getTable().caughtUp(entry, reader));
+					return deliverSealed(entry, atEnd, current)
+							.flatMap(__ -> reader.getTable().caughtUp(entry, atEnd));
 				});
 	}
 
