@@ -89,6 +89,11 @@ public class JoinMap<K, V> implements Semilattice<JoinMap<K, V>> {
 
 	/** Replay {@code other}'s arrivals; identity-preserving when all are inert. */
 	public JoinMap<K, V> join(JoinMap<K, V> other) {
+		if (other.semiring != semiring) {
+			// folding a foreign log under this map's ⊕ silently mixes algebras
+			throw new IllegalArgumentException("joining across rings: "
+					+ semiring + " vs " + other.semiring);
+		}
 		JoinMap<K, V> result = this;
 		for (Tuple2<K, V> arrival : other.log) {
 			result = result.append(arrival._1, arrival._2).getOrElse(result);

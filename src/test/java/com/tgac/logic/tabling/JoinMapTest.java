@@ -6,6 +6,7 @@ package com.tgac.logic.tabling;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.Semirings;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.Test;
 
 public class JoinMapTest {
@@ -19,6 +20,19 @@ public class JoinMapTest {
 
 	private static JoinMap<String, Condition> regions(String key, Condition c) {
 		return JoinMap.<String, Condition> empty(Condition.RING).append(key, c).get();
+	}
+
+	@Test
+	public void joinRefusesAcrossRings() {
+		// two structurally identical but DISTINCT ring instances: folding one
+		// map's log under another map's ring silently mixes algebras - refuse
+		JoinMap<String, Long> mine = JoinMap.empty(Semirings.MIN_PLUS);
+		JoinMap<String, Long> foreign = JoinMap.<String, Long> empty(new Semirings.MinPlusSemiring())
+				.append("a", 1L).get();
+
+		assertThatThrownBy(() -> mine.join(foreign))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("ring");
 	}
 
 	@Test
