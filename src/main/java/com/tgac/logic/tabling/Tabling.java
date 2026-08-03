@@ -5,6 +5,7 @@ package com.tgac.logic.tabling;
 
 import static com.tgac.logic.unification.LVal.lval;
 
+import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Emitter;
 import com.tgac.functional.fibers.Fiber;
@@ -219,22 +220,17 @@ public class Tabling {
 	 * locals mint fresh per delivery — the existential.
 	 */
 	private static Renaming replayMint(java.util.List<LVar<?>> freshHoles) {
-		java.util.Map<Term<?>, Term<?>> seed = new java.util.HashMap<>();
-		for (int i = 0; i < freshHoles.size(); i++) {
-			seed.put(Hole.of(i), freshHoles.get(i));
-		}
-		return Renaming.into(seed);
+		return Renaming.into(IntStream.range(0, freshHoles.size())
+				.mapToObj(i -> Tuple.of(Hole.of(i), freshHoles.get(i)))
+				.collect(Collectors.toMap(Tuple2::_1, Tuple2::_2)));
 	}
 
 	/** Remove every constraint-store factor: absence is ⊤, posting re-registers. */
 	private static Package stripConstraints(Package pkg) {
-		Package result = pkg;
-		for (Packaged store : pkg.getStores().values()) {
-			if (store instanceof ConstraintStore) {
-				result = result.withoutStore(store.getClass());
-			}
-		}
-		return result;
+		return pkg.getStores().values().toJavaStream()
+				.filter(ConstraintStore.class::isInstance)
+				.reduce(pkg, (p, c) -> p.withoutStore(c.getClass()),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 
 	/**
@@ -357,11 +353,9 @@ public class Tabling {
 			// a condition delivers per region: each conjunct is one branch,
 			// its residues restated onto that delivery's fresh holes; regions
 			// are disjuncts, so they fork like any other alternatives
-			List<Fiber<Nothing>> deliveries = new ArrayList<>();
-			for (Residues conjunct : ((Condition) value).conjuncts()) {
-				deliveries.add(deliverAtom(entry, reader, term, conjunct, value));
-			}
-			return Fiber.fork(deliveries);
+			return Fiber.fork(((Condition) value).conjuncts().toJavaStream()
+					.map(conjunct -> deliverAtom(entry, reader, term, conjunct, value))
+					.collect(Collectors.toList()));
 		}
 		return deliverAtom(entry, reader, term, Residues.TRUE, value);
 	}
@@ -394,15 +388,11 @@ public class Tabling {
 		if (reader.isInside()) {
 			return Fiber.done(Nothing.nothing());
 		}
-		List<Fiber<Nothing>> deliveries = new ArrayList<>();
-		for (int i = 0; i < answers.size(); i++) {
-			Tuple2<Reified<?>, Object> answer = answers.get(i);
-			if (answers.isTop(answer._2)) {
-				continue;
-			}
-			deliveries.add(deliver(entry, reader, answer._1, answer._2));
-		}
-		return Fiber.fork(deliveries);
+		return Fiber.fork(IntStream.range(0, answers.size())
+				.mapToObj(answers::get)
+				.filter(answer -> !answers.isTop(answer._2))
+				.map(answer -> deliver(entry, reader, answer._1, answer._2))
+				.collect(Collectors.toList()));
 	}
 
 }

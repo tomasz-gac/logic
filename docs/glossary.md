@@ -51,7 +51,7 @@ rating pass can stop at any section boundary and still be useful.
 - [?] **run lane** — where woken suspension bodies go: spliced AFTER the drain quiesces, so growth happens between fixpoints, never inside one. *(condition.md §8.1)*
 - [x] **Worklist** — drain-to-quiescence as a fiber, so long cascades stay fairly stepped. *(functional)*
 - [x] **chaos harness / RandomizedScheduler** — seeded random frame choice; order-independence becomes a testable property across seeds. *(schedulers/)*
-- [x] **fairness valve / promotion** — BFS merges a long-running shallowest bucket downward so same-depth siblings can't starve. *(BreadthFirstScheduler)*
+- [x] **fairness valve / promotion** — the UNFAIR scheduler's pour: a long-running shallowest bucket merges downward at the priced threshold — part of the tuned search shape, not just a rescue; honest BFS keeps only the crash hatch (a dead level pours after 10k no-progress steps). *(UnfairBreadthFirstScheduler)*
 
 ## 3. Constraint kernel
 

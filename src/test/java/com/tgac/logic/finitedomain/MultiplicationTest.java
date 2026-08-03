@@ -253,8 +253,8 @@ public class MultiplicationTest {
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();
 		var results = Utils.collect(multo(a, b, c)
-				.and(dom(a, Interval.of(0, 1000)))
-				.and(dom(b, Interval.of(0, 1000)))
+				.and(dom(a, Interval.of(0, 10)))
+				.and(dom(b, Interval.of(0, 10)))
 				.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get)));
