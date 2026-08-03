@@ -149,10 +149,25 @@ public final class Propagation {
 												.flatMap(revision -> revision.match(
 														MFiber::none,            // fail: branch dies
 														() -> MFiber.mdone(pkg), // unchanged
-														upd -> MFiber.mdone(queue(pkg.putStore(upd.factor()), upd))))),
+														upd -> MFiber.mdone(queue(pkg.putStore(
+																ownFactor(cs, upd)), upd))))),
 								Exceptions.throwingBiOp(UnsupportedOperationException::new))
 						.map(Cont::<Package, Nothing>just)
 						.getOrElse(() -> Cont.complete(Nothing.nothing())));
+	}
+
+	/**
+	 * A revision may only replace the store's OWN factor — the javadoc contract,
+	 * enforced: package store entries are keyed by class, so a foreign-class
+	 * replacement would silently overwrite ANOTHER store's factor.
+	 */
+	private static Store ownFactor(ConstraintStore author, Revision.Updated upd) {
+		if (upd.factor().getClass() != author.getClass()) {
+			throw new IllegalStateException("a revision may only replace its own factor: "
+					+ author.getClass().getSimpleName() + " answered with "
+					+ upd.factor().getClass().getSimpleName());
+		}
+		return upd.factor();
 	}
 
 	/** Queues a revision's harvest: binds to the agenda, suspensions ripe-or-parked. */

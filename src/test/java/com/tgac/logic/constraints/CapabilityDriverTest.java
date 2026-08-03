@@ -3,6 +3,7 @@ package com.tgac.logic.constraints;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
@@ -103,6 +104,21 @@ public class CapabilityDriverTest {
 		return x.unifies(0L)
 				.solveFrom(root, x, BreadthFirstScheduler::new)
 				.count();
+	}
+
+	@Test(timeout = 5000)
+	public void aRevisionMayOnlyReplaceItsOwnFactor() {
+		// StoreA answers revise with a StoreB replacement: a cross-store swap
+		// the driver must refuse by name - putStore would otherwise silently
+		// overwrite ANOTHER store's factor
+		Package root = root(
+				new StoreA((prefix, state) -> Revision.updated(
+						new StoreB((pf, st) -> Revision.unchanged()))));
+
+		assertThatThrownBy(() -> solutions(root))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("StoreA")
+				.hasMessageContaining("StoreB");
 	}
 
 	@Test(timeout = 5000)
