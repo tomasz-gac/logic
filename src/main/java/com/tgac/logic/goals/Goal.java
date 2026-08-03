@@ -364,9 +364,9 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 			@Override
 			public boolean tryAdvance(Consumer<? super Reified<T>> action) {
 				while (results.isEmpty()) { // Loop if no results are immediately available
-					// Run the engine for a batch of steps.
-					// engine.run() returns true if the entire computation has completed.
-					if (scheduler.run(64, v -> { /* Engine's internal step callback, not for results here */ })) {
+					// Advance the engine by its own bounded quantum.
+					// advance() returns true if the entire computation has completed.
+					if (scheduler.advance(v -> { /* Engine's internal step callback, not for results here */ })) {
 						// Engine has completed: whatever is buffered is all there
 						// will ever be — hand it out one element per call below.
 						break;
@@ -387,7 +387,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 					while (!results.isEmpty()) {
 						action.accept(results.poll());
 					}
-					if (scheduler.run(64, v -> { })) {
+					if (scheduler.advance(v -> { })) {
 						while (!results.isEmpty()) {
 							action.accept(results.poll());
 						}

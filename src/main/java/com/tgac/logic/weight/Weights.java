@@ -173,7 +173,7 @@ public final class Weights {
 			@Override
 			public boolean tryAdvance(Consumer<? super R> action) {
 				while (results.isEmpty()) {
-					if (scheduler.run(64, v -> {
+					if (scheduler.advance(v -> {
 					})) {
 						while (!results.isEmpty()) {
 							action.accept(results.poll());
@@ -217,7 +217,7 @@ public final class Weights {
 	private static void runToCompletion(Fiber<Nothing> recur,
 			Function<Fiber<Nothing>, Scheduler<Nothing>> factory) {
 		try (Scheduler<Nothing> scheduler = factory.apply(recur)) {
-			while (!scheduler.run(64, v -> {
+			while (!scheduler.advance(v -> {
 			})) {
 				// drain the search to completion
 			}
