@@ -306,7 +306,9 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * - Streaming the reified values of {@code out} as they are found.
 	 *
 	 * The results are provided as a {@link Stream}. The stream is populated lazily as the engine
-	 * finds solutions. The engine is closed when the stream is closed.
+	 * finds solutions. The engine is closed when the stream is closed — so if the
+	 * stream might not be drained, hold it in try-with-resources and take any
+	 * iterator INSIDE the block; the block boundary cancels the drive.
 	 * </pre>
 	 *
 	 * @param <T> The type of the value held by the output unifiable variable.
