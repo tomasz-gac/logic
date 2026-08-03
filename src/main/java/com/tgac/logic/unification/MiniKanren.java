@@ -78,10 +78,6 @@ public class MiniKanren {
 							Tuple.of(Tree.class, Tree.collector()),
 							Tuple.of(Option.class, optionCollector())));
 
-	public static void addCollector(Class<?> cls, Collector<?, ?, ?> collector) {
-		COLLECTORS.getAndUpdate(s -> s.append(Tuple.of(cls, collector)));
-	}
-
 	@SuppressWarnings("unchecked")
 	private static Option<Collector<Object, ?, ?>> getCollector(Iterable<Object> v) {
 		return COLLECTORS.get()
@@ -308,6 +304,11 @@ public class MiniKanren {
 		}
 		Object w = v.get();
 		return MiniKanren.<Object> asIterable(w)
+				// ONE GATE: a value is structural iff its class can also be
+				// REBUILT — decompose and rebuild read the same table, so
+				// half-support (unifies, then crashes at walk) is
+				// unrepresentable; unregistered iterables are atoms
+				.filter(it -> getCollector(it).isDefined())
 				.map(it -> new Decomposition(Decomposition.Kind.ITERABLE, wrapAll(it)))
 				.orElse(() -> tupleAsIterable(w)
 						.map(it -> new Decomposition(Decomposition.Kind.TUPLE, wrapAll(it))))

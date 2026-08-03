@@ -9,6 +9,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.vavr.Tuple;
 import io.vavr.collection.List;
+import io.vavr.control.Either;
+import java.util.Arrays;
+import java.util.Iterator;
 import io.vavr.collection.Vector;
 import org.junit.Test;
 
@@ -16,6 +19,63 @@ public class StructuralClassesTest {
 
 	private static <T> boolean unifies(Term<T> l, Term<T> r) {
 		return MiniKanren.unify(Substitutions.empty(), l, r).get().isDefined();
+	}
+
+	@Test
+	public void anIterableWithoutARebuildRecipeIsAnAtom() {
+		// vavr's Value hierarchy makes Either iterable, but no collector is
+		// registered for it: structurality is ONE gate - a value decomposes
+		// iff its class can also be rebuilt. Unregistered iterables unify as
+		// atomic values, by equals
+		assertThat(unifies(
+				lval(Either.right(1)).getObjectUnifiable(),
+				lval(List.of(1)).getObjectUnifiable()))
+				.isFalse();
+		assertThat(unifies(
+				lval(Either.right(1)).getObjectUnifiable(),
+				lval(Either.right(1)).getObjectUnifiable()))
+				.isTrue();
+		assertThat(unifies(
+				lval(Either.right(1)).getObjectUnifiable(),
+				lval(Either.right(2)).getObjectUnifiable()))
+				.isFalse();
+	}
+
+	@Test
+	public void aUserIterableIsAnAtomNotAStructure() {
+		// implementing Iterable must not opt a domain type into element-wise
+		// unification - structure is granted by the registry, never inherited
+		final class Pair implements Iterable<Object> {
+			final Object a, b;
+
+			Pair(Object a, Object b) {
+				this.a = a;
+				this.b = b;
+			}
+
+			@Override
+			public Iterator<Object> iterator() {
+				return Arrays.asList(a, b).iterator();
+			}
+
+			@Override
+			public boolean equals(Object o) {
+				return o instanceof Pair && a.equals(((Pair) o).a) && b.equals(((Pair) o).b);
+			}
+
+			@Override
+			public int hashCode() {
+				return a.hashCode() * 31 + b.hashCode();
+			}
+		}
+		assertThat(unifies(
+				lval(new Pair(1, 2)).getObjectUnifiable(),
+				lval(List.of(1, 2)).getObjectUnifiable()))
+				.isFalse();
+		assertThat(unifies(
+				lval(new Pair(1, 2)).getObjectUnifiable(),
+				lval(new Pair(1, 2)).getObjectUnifiable()))
+				.isTrue();
 	}
 
 	@Test
