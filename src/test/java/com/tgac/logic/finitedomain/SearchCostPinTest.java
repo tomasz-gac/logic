@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.interpreter.StepListener;
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.functional.fibers.schedulers.UnfairBreadthFirstScheduler;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -47,11 +47,11 @@ public class SearchCostPinTest {
 				.and(dom(b, Interval.of(0, 12)))
 				.and(dom(c, Interval.of(0, 144)))
 				.solve(lval(Tuple.of(a, b, c)),
-						fiber -> new BreadthFirstScheduler<>(fiber).withListener(counting))
+						fiber -> new UnfairBreadthFirstScheduler<>(fiber).withListener(counting))
 				.count();
 
 		assertThat(solutions).isGreaterThan(0);
-		// observed 178,870 steps under the default driver (deterministic);
+		// observed 178,870 steps under the unfair driver (deterministic);
 		// the budget is ~2x - tripping it means the search SHAPE changed
 		assertThat(steps.get()).isLessThan(360_000);
 	}

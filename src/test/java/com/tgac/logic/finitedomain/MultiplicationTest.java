@@ -8,6 +8,7 @@ import static com.tgac.logic.finitedomain.FiniteDomain.multo;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
+import com.tgac.functional.fibers.schedulers.UnfairBreadthFirstScheduler;
 import com.tgac.logic.Utils;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
@@ -35,7 +36,7 @@ public class MultiplicationTest {
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(c.unifies(-4))
-						.solve(lval(Tuple.of(a, b, c)))
+						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get))
 				);
@@ -55,7 +56,7 @@ public class MultiplicationTest {
 						.and(a.unifies(-2))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
-						.solve(lval(Tuple.of(a, b, c)))
+						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
@@ -79,7 +80,7 @@ public class MultiplicationTest {
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(b.unifies(-2))
 						.and(dom(c, Interval.of(-4, 4)))
-						.solve(lval(Tuple.of(a, b, c)))
+						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
@@ -103,7 +104,7 @@ public class MultiplicationTest {
 						.and(a.unifies(0))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
-						.solve(lval(Tuple.of(a, b, c)))
+						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
@@ -127,7 +128,7 @@ public class MultiplicationTest {
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(b.unifies(0))
 						.and(dom(c, Interval.of(-4, 4)))
-						.solve(lval(Tuple.of(a, b, c)))
+						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
@@ -151,7 +152,7 @@ public class MultiplicationTest {
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(c.unifies(0))
-						.solve(lval(Tuple.of(a, b, c)))
+						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
@@ -179,7 +180,7 @@ public class MultiplicationTest {
 						.and(dom(a, Interval.of(-2, 2)))
 						.and(dom(b, Interval.of(-2, 2)))
 						.and(dom(c, Interval.of(-4, 4)))
-						.solve(lval(Tuple.of(a, b, c)))
+						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
 
@@ -232,7 +233,7 @@ public class MultiplicationTest {
 				.and(dom(result, Singleton.of(-3)))
 				.and(dom(rest, Interval.of(-2, 2)))
 				.and(divoWithRest(divided, divisor, rest, result))
-				.solve(lval(Tuple.of(divided, divisor, rest, result)))
+				.solve(lval(Tuple.of(divided, divisor, rest, result)), UnfairBreadthFirstScheduler::of)
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get, Term::get)));
 
@@ -254,7 +255,7 @@ public class MultiplicationTest {
 		var results = Utils.collect(multo(a, b, c)
 				.and(dom(a, Interval.of(0, 1000)))
 				.and(dom(b, Interval.of(0, 1000)))
-				.solve(lval(Tuple.of(a, b, c)))
+				.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get)));
 
