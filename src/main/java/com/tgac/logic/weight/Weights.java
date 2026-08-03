@@ -175,17 +175,34 @@ public final class Weights {
 				while (results.isEmpty()) {
 					if (scheduler.advance(v -> {
 					})) {
-						while (!results.isEmpty()) {
-							action.accept(results.poll());
-						}
-						return false;
-					}
-					if (!results.isEmpty()) {
+						// engine complete: whatever is buffered is all there
+						// will ever be — hand it out one element per call
 						break;
 					}
 				}
+				if (results.isEmpty()) {
+					return false;
+				}
 				action.accept(results.poll());
 				return true;
+			}
+
+			@Override
+			public void forEachRemaining(Consumer<? super R> action) {
+				// bulk delivery is legal HERE (unlike tryAdvance): drain the
+				// buffer between engine batches without per-element dispatch
+				while (true) {
+					while (!results.isEmpty()) {
+						action.accept(results.poll());
+					}
+					if (scheduler.advance(v -> {
+					})) {
+						while (!results.isEmpty()) {
+							action.accept(results.poll());
+						}
+						return;
+					}
+				}
 			}
 
 			@Override

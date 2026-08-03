@@ -19,12 +19,31 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple2;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
 
 public class WeightedSolveTest {
+
+	@Test
+	public void solveEachDeliversEveryAnswerThroughIterator() {
+		// the iterator adapter calls tryAdvance one element at a time; answers
+		// buffered at engine completion must survive that path, not only forEach
+		Unifiable<Integer> x = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, Semirings.MIN_PLUS);
+		Goal query = unify(x, lval(1)).or(unify(x, lval(2))).or(unify(x, lval(3)))
+				.or(unify(x, lval(4))).or(unify(x, lval(5)));
+		Iterator<Tuple2<Reified<Integer>, SemiringStore>> it =
+				Weights.solveEach(query, x, product, BreadthFirstScheduler::new).iterator();
+		List<Integer> seen = new ArrayList<>();
+		while (it.hasNext()) {
+			seen.add(it.next()._1.get());
+		}
+		assertThat(seen).containsExactlyInAnyOrder(1, 2, 3, 4, 5);
+	}
 
 	/**
 	 * Probability (+, ×) over [0,1]; kept test-local — main must not invite
