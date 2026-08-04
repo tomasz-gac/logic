@@ -26,6 +26,7 @@ import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
@@ -133,7 +134,8 @@ public class ProjectionTest {
 				.withDomain(varOf(y), dom(7, 8));
 		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
 
-		FiniteDomainConstraints normalized = store.rename(Renaming.of(bound::walkAll));
+		FiniteDomainConstraints normalized = store.rename(Renaming.of(
+				Collections.<Term<?>, Term<?>> singletonMap(varOf(x), lval(1))));
 		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
 		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
 	}

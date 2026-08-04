@@ -16,7 +16,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 /**
  * The name DICTIONARY knowledge needs to cross a boundary. A name is a live
@@ -30,37 +29,29 @@ import java.util.function.Function;
  * is the existential: one Renaming shared across a delivery keeps a local
  * shared between stores one variable.
  *
- * <p>RESOLUTION is not a mode of this class: rewriting terms to their
- * current meanings under substitutions is its caller's own step, built on
- * {@link #of(Function)} — this class never sees a Substitutions.
+ * <p>RESOLUTION is not a mode of this class: this is a dumb map. Rewriting
+ * terms to their current meanings under substitutions is the answer side's
+ * own step — Residues builds the walked seed and feeds it here like any
+ * other seed.
  */
 public final class Renaming {
 
-	private final Function<Term<?>, Term<?>> lookup;
-	private final Map<Term<?>, Term<?>> minted;
+	private final Map<Term<?>, Term<?>> targets;
 	private final boolean mintOnMiss;
 
-	private Renaming(Function<Term<?>, Term<?>> lookup, Map<Term<?>, Term<?>> minted, boolean mintOnMiss) {
-		this.lookup = lookup;
-		this.minted = minted;
+	private Renaming(Map<Term<?>, Term<?>> targets, boolean mintOnMiss) {
+		this.targets = targets;
 		this.mintOnMiss = mintOnMiss;
-	}
-
-	/** A renaming from a name lookup: {@code null} keeps the name. */
-	public static Renaming of(Function<Term<?>, Term<?>> lookup) {
-		return new Renaming(lookup, new java.util.HashMap<>(), false);
 	}
 
 	/** A renaming from a seed map: unlisted names keep themselves. */
 	public static Renaming of(Map<? extends Term<?>, Term<?>> seed) {
-		Map<Term<?>, Term<?>> copy = new java.util.HashMap<>(seed);
-		return new Renaming(copy::get, copy, false);
+		return new Renaming(new java.util.HashMap<>(seed), false);
 	}
 
 	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */
 	public static Renaming minting(Map<? extends Term<?>, Term<?>> seed) {
-		Map<Term<?>, Term<?>> copy = new java.util.HashMap<>(seed);
-		return new Renaming(copy::get, copy, true);
+		return new Renaming(new java.util.HashMap<>(seed), true);
 	}
 
 	/** Entering the canonical namespace: {@code vars.get(i)} ↦ {@code _.i}. */
@@ -115,10 +106,7 @@ public final class Renaming {
 	}
 
 	private Term<?> target(Term<?> name) {
-		Term<?> known = minted.get(name);
-		if (known == null) {
-			known = lookup.apply(name);
-		}
+		Term<?> known = targets.get(name);
 		if (known != null) {
 			return known;
 		}
@@ -126,7 +114,7 @@ public final class Renaming {
 			return name;
 		}
 		Term<?> fresh = LVar.lvar();
-		minted.put(name, fresh);
+		targets.put(name, fresh);
 		return fresh;
 	}
 

@@ -16,6 +16,7 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.unification.Term;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
@@ -158,13 +159,15 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	}
 
 	/**
-	 * Resolution: every name to its current meaning under the answer's
-	 * substitutions — spent entries fall to values and drop store-side.
-	 * The walking lives HERE, normalization's only caller; {@link Renaming}
-	 * itself never sees a {@link Substitutions}.
+	 * Resolution: every bound name to its current deep meaning — the WALKING
+	 * happens here, once, producing plain data; spent entries fall to values
+	 * and drop store-side when the seed is applied. {@link Renaming} itself
+	 * is a dumb map and never sees a {@link Substitutions}.
 	 */
 	private static Renaming resolution(Substitutions home) {
-		return Renaming.of(home::walkAll);
+		java.util.Map<Term<?>, Term<?>> walked = new java.util.HashMap<>();
+		home.bindings().forEach((v, t) -> walked.put(v, home.walkAll(v)));
+		return Renaming.of(walked);
 	}
 
 	/**
