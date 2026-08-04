@@ -6,6 +6,7 @@ package com.tgac.logic.constraints.store;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
@@ -71,17 +72,30 @@ public class RenamingTest {
 	}
 
 	@Test
-	public void varsAndSlotsApplyInOnePass() {
+	public void mintingAppliesVarsAndSlotsInOnePass() {
+		// the one crossing that speaks both namespaces: seeded vars and
+		// seeded holes land on their targets in a single application
 		Unifiable<Integer> x = lvar();
 		Map<Term<?>, Term<?>> seed = new HashMap<>();
 		seed.put(x.getObjectTerm(), lval(9));
 		seed.put(Hole.of(0), lval(7));
 
-		Term<?> applied = Renaming.of(seed)
+		Term<?> applied = Renaming.minting(seed)
 				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm()).get();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
 				.isTrue();
+	}
+
+	@Test
+	public void aVarRenamingRefusesSlotNames() {
+		// slot names cross by restating or minting; a var seed holding a
+		// hole is a construction error, refused loudly
+		Map<Term<?>, Term<?>> seed = new HashMap<>();
+		seed.put(Hole.of(0), lval(7));
+
+		assertThatThrownBy(() -> Renaming.of(seed))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test
