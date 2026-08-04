@@ -112,12 +112,12 @@ public final class Substitutions implements Semilattice<Substitutions> {
 		return bindings.toString();
 	}
 
-	/** One chain step: the term bound to {@code v}, or null when unbound. */
 	/** The raw binding map, read-only — vavr, so sharing it is safe. */
 	public HashMap<LVar<?>, Term<?>> bindings() {
 		return bindings;
 	}
 
+	/** One chain step: the term bound to {@code v}, or null when unbound. */
 	public Term<?> binding(LVar<?> v) {
 		return bindings.getOrElse(v, null);
 	}
