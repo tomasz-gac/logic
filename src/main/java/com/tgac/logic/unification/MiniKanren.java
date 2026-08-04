@@ -392,7 +392,9 @@ public class MiniKanren {
 						"Unsupported iterable type: %s", iterable));
 
 		return toJavaStream(iterable)
-				.map(u -> mapper.apply(wrapTerm(u))
+				// the mapper recurses into the element's own structure: DEFER
+				// it, or nesting depth becomes construction-time stack depth
+				.map(u -> defer(() -> mapper.apply(wrapTerm(u)))
 						.map(w -> (u instanceof Term) ?
 								w : w.asVal().get()))
 				.reduce(done(new ArrayList<>()),

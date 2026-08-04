@@ -81,19 +81,23 @@ public final class Renaming {
 		if (names.size() == 1 && isName(term)) {
 			return target(term);
 		}
-		Term<?> walked = term;
-		HashMap<LVar<?>, Term<?>> varSubstitution = HashMap.empty();
+		HashMap<LVar<?>, Term<?>> substitutedVars = HashMap.empty();
 		int maxSlot = -1;
 		for (Term<?> name : names) {
 			if (name.asVar().isDefined()) {
-				varSubstitution = varSubstitution.put(name.asVar().get(), target(name));
+				Term<?> mapped = target(name);
+				// a kept name must stay OUT of the replacement map: a
+				// self-binding sends walk's chain-follower into a loop
+				if (mapped != name) {
+					substitutedVars = substitutedVars.put(name.asVar().get(), mapped);
+				}
 			} else {
 				maxSlot = Math.max(maxSlot, ((Hole<?>) name).getNumber());
 			}
 		}
-		Term<?> replaced = varSubstitution.isEmpty()
-				? walked
-				: MiniKanren.walkAll(Substitutions.of(varSubstitution), walked).get();
+		Term<?> replaced = substitutedVars.isEmpty()
+				? term
+				: MiniKanren.walkAll(Substitutions.of(substitutedVars), term).get();
 		if (maxSlot < 0) {
 			return replaced;
 		}
