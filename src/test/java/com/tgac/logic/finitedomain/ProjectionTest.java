@@ -133,7 +133,7 @@ public class ProjectionTest {
 				.withDomain(varOf(y), dom(7, 8));
 		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
 
-		FiniteDomainConstraints normalized = store.rename(Renaming.walking(bound));
+		FiniteDomainConstraints normalized = store.walked(bound);
 		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
 		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
 	}
@@ -154,7 +154,7 @@ public class ProjectionTest {
 
 		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
 		seed.put(varOf(x), a);
-		Renaming renaming = Renaming.into(seed);
+		Renaming renaming = Renaming.minting(seed);
 
 		FiniteDomainConstraints renamed = store.rename(renaming);
 		assertThat(renamed.getDomain(a).get()).isEqualTo(dom(1, 2));
@@ -278,7 +278,7 @@ public class ProjectionTest {
 
 		FiniteDomainConstraints keyed = store.project(Arrays.asList(varOf(x), varOf(y)));
 		FiniteDomainConstraints seeded = keyed.rename(
-				Renaming.ofSlots(Arrays.<Term<?>> asList(x, y)));
+				Renaming.restating(Arrays.<Term<?>> asList(x, y)));
 		assertThat(seeded.getConstraints().head()).isEqualTo(posted);
 		assertThat(seeded.getDomain(varOf(x)).get()).isEqualTo(dom(1, 2));
 	}
@@ -301,7 +301,7 @@ public class ProjectionTest {
 		Unifiable<Integer> fresh = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
 		seed.put(varOf(orig), fresh);
-		assertThat(Propagation.absorb(store.rename(Renaming.into(seed)))
+		assertThat(Propagation.absorb(store.rename(Renaming.minting(seed)))
 				.and(Constraints.unify(fresh, lval(7)))
 				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
@@ -309,7 +309,7 @@ public class ProjectionTest {
 		Unifiable<Integer> fresh2 = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed2 = new java.util.HashMap<>();
 		seed2.put(varOf(orig), fresh2);
-		assertThat(Propagation.absorb(store.rename(Renaming.into(seed2)))
+		assertThat(Propagation.absorb(store.rename(Renaming.minting(seed2)))
 				.and(Constraints.unify(orig, lval(7)))
 				.and(Constraints.unify(fresh2, lval(3)))
 				.solve(fresh2, TestSchedulers.factory())

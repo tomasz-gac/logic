@@ -172,7 +172,7 @@ public class Tabling {
 								Goal seeded = keyResidues.isTrue()
 										? body.get()
 										: Conjunction.of(
-												keyResidues.restate(Renaming.ofSlots(targets)),
+												keyResidues.restate(Renaming.restating(targets)),
 												body.get());
 								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
 							})
@@ -220,7 +220,7 @@ public class Tabling {
 	 * locals mint fresh per delivery — the existential.
 	 */
 	private static Renaming replayMint(java.util.List<LVar<?>> freshHoles) {
-		return Renaming.into(IntStream.range(0, freshHoles.size())
+		return Renaming.minting(IntStream.range(0, freshHoles.size())
 				.mapToObj(i -> Tuple.of(Hole.of(i), freshHoles.get(i)))
 				.collect(Collectors.toMap(Tuple2::_1, Tuple2::_2)));
 	}

@@ -137,7 +137,6 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 */
 	public static Residues normalize(Package answerPkg, List<LVar<?>> holeVars) {
 		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
-		Renaming normalization = Renaming.walking(answerPkg.substitution());
 		Renaming canonicalization = Renaming.canonical(holeVars);
 		for (Packaged store : answerPkg.getStores().values()) {
 			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
@@ -148,7 +147,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 						"Tabling does not support non-projectable store: non-empty "
 								+ store.getClass().getSimpleName() + " on a tabled answer");
 			}
-			Projectable<?> normalized = ((Projectable<?>) store).rename(normalization);
+			Projectable<?> normalized = ((Projectable<?>) store).walked(answerPkg.substitution());
 			if (!normalized.isEmpty()) {
 				residues = residues.put(store.getClass(), normalized.rename(canonicalization));
 			}
@@ -159,8 +158,8 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	/**
 	 * This conjunct imposing itself under {@code renaming} — the ONE replay
 	 * primitive: master seeding renames the key's conjunct back onto the
-	 * live call vars ({@code Renaming.ofSlots}); answer delivery renames it
-	 * onto the instantiation's fresh holes ({@code Renaming.into}, unseeded
+	 * live call vars ({@code Renaming.restating}); answer delivery renames it
+	 * onto the instantiation's fresh holes ({@code Renaming.minting}, unseeded
 	 * locals minting — the existential). Statement stays the driver's: each
 	 * factor rides {@code Propagation.absorb}.
 	 */

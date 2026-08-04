@@ -1,6 +1,6 @@
 package com.tgac.logic.constraints.store;
 
-// ABOUTME: A name mapping applied to constraint knowledge — live vars and
+// ABOUTME: A name DICTIONARY applied to constraint knowledge — live vars and
 // ABOUTME: canonical holes are both names; misses keep their name or mint fresh (∃).
 
 import com.tgac.logic.unification.Hole;
@@ -18,18 +18,22 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * The one operation knowledge needs to cross a boundary: change names. A
- * name is a live {@link LVar} or a canonical {@link Hole} — a store under
- * holes IS its canonical form, so live↔canonical conversion is just another
- * renaming. {@link #walking} normalizes (resolve through the home
- * substitutions, free names keep themselves; spent entries fall to values
- * and drop store-side). {@link #canonical} renames live vars to their slot
- * holes — the comparability quotient keys are made of. {@link #ofSlots}
- * renames slot holes onto live targets — master seeding. {@link #into}
- * retargets live vars — answer replay — and an UNSEEDED var mints a fresh
- * one, recorded, so later lookups (this store or another) agree: one
- * Renaming shared across a delivery keeps a local shared between stores one
- * variable, and the mint is the existential.
+ * The name DICTIONARY knowledge needs to cross a boundary. A name is a live
+ * {@link LVar} or a canonical {@link Hole} — a store under holes IS its
+ * canonical form, so live↔canonical conversion is just another renaming.
+ * Two public directions and one miss policy:
+ * {@link #canonical} enters the slot namespace (live vars to their slot
+ * holes — the comparability quotient keys are made of); {@link #restating}
+ * leaves it onto given live targets — master seeding; {@link #minting}
+ * leaves it with fresh names on every miss — answer replay, where the mint
+ * is the existential: one Renaming shared across a delivery keeps a local
+ * shared between stores one variable.
+ *
+ * <p>RESOLUTION is deliberately not a public mode: rewriting terms to their
+ * current meanings under substitutions (spent entries fall to values and
+ * drop store-side) is a different operation that merely shares this
+ * class's traversal — callers use {@link Projectable#walked}, which
+ * bridges to it internally, so "walk, then translate" reads as two steps.
  */
 public final class Renaming {
 
@@ -43,17 +47,17 @@ public final class Renaming {
 		this.mintOnMiss = mintOnMiss;
 	}
 
-	/** Normalization: walk through {@code home}, free names keep themselves. */
-	public static Renaming walking(Substitutions home) {
+	/** The resolution bridge for {@link Projectable#walked} — not a public mode. */
+	static Renaming resolving(Substitutions home) {
 		return new Renaming(home, new java.util.HashMap<>(), false);
 	}
 
-	/** Retargeting: {@code seed} maps names (live vars or slot holes) to targets; misses mint fresh vars. */
-	public static Renaming into(Map<? extends Term<?>, Term<?>> seed) {
+	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */
+	public static Renaming minting(Map<? extends Term<?>, Term<?>> seed) {
 		return new Renaming(null, new java.util.HashMap<>(seed), true);
 	}
 
-	/** Into the canonical namespace: {@code vars.get(i)} ↦ {@code _.i}. */
+	/** Entering the canonical namespace: {@code vars.get(i)} ↦ {@code _.i}. */
 	public static Renaming canonical(List<LVar<?>> vars) {
 		Map<Term<?>, Term<?>> seed = new java.util.HashMap<>();
 		for (int i = 0; i < vars.size(); i++) {
@@ -62,8 +66,8 @@ public final class Renaming {
 		return new Renaming(null, seed, false);
 	}
 
-	/** Out of the canonical namespace: {@code _.i} ↦ {@code targets.get(i)}. */
-	public static Renaming ofSlots(List<? extends Term<?>> slotTargets) {
+	/** Leaving the canonical namespace onto given targets: {@code _.i} ↦ {@code targets.get(i)}. */
+	public static Renaming restating(List<? extends Term<?>> slotTargets) {
 		Map<Term<?>, Term<?>> seed = new java.util.HashMap<>();
 		for (int i = 0; i < slotTargets.size(); i++) {
 			seed.put(Hole.of(i), slotTargets.get(i));
@@ -85,7 +89,7 @@ public final class Renaming {
 		int maxSlot = -1;
 		for (Term<?> name : names) {
 			if (name.asVar().isDefined()) {
-				varSubstitution = varSubstitution.put((LVar<?>) name.asVar().get(), target(name));
+				varSubstitution = varSubstitution.put(name.asVar().get(), target(name));
 			} else {
 				maxSlot = Math.max(maxSlot, ((Hole<?>) name).getNumber());
 			}

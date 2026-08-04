@@ -118,12 +118,12 @@ public class NeqProjectionTest {
 				.project(Arrays.asList(varOf(x)));
 
 		Unifiable<Integer> fresh = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh))))
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(fresh))))
 				.and(Constraints.unify(fresh, lval(5)))
 				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> fresh2 = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(fresh2))))
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(fresh2))))
 				.and(Constraints.unify(fresh2, lval(6)))
 				.solve(fresh2, TestSchedulers.factory())
 				.count()).isEqualTo(1);
@@ -139,14 +139,14 @@ public class NeqProjectionTest {
 
 		Unifiable<Integer> f = lvar();
 		Unifiable<Integer> g = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f, g))))
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(f, g))))
 				.and(Constraints.unify(f, lval(3)))
 				.and(Constraints.unify(g, lval(3)))
 				.solve(f, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> f2 = lvar();
 		Unifiable<Integer> g2 = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.ofSlots(Arrays.<Term<?>> asList(f2, g2))))
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(f2, g2))))
 				.and(Constraints.unify(f2, lval(3)))
 				.and(Constraints.unify(g2, lval(4)))
 				.solve(f2, TestSchedulers.factory())
@@ -177,7 +177,7 @@ public class NeqProjectionTest {
 
 		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
 		seed.put(varOf(x), a);
-		Renaming renaming = Renaming.into(seed);
+		Renaming renaming = Renaming.minting(seed);
 
 		NeqConstraints renamed = neq.rename(renaming);
 		NeqConstraint only = renamed.getConstraints().head();
