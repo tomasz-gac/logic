@@ -15,6 +15,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.Substitutions;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
@@ -137,6 +138,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 */
 	public static Residues normalize(Package answerPkg, List<LVar<?>> holeVars) {
 		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
+		Renaming resolution = resolution(answerPkg.substitution());
 		Renaming canonicalization = Renaming.canonical(holeVars);
 		for (Packaged store : answerPkg.getStores().values()) {
 			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
@@ -147,12 +149,22 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 						"Tabling does not support non-projectable store: non-empty "
 								+ store.getClass().getSimpleName() + " on a tabled answer");
 			}
-			Projectable<?> normalized = ((Projectable<?>) store).walked(answerPkg.substitution());
+			Projectable<?> normalized = ((Projectable<?>) store).rename(resolution);
 			if (!normalized.isEmpty()) {
 				residues = residues.put(store.getClass(), normalized.rename(canonicalization));
 			}
 		}
 		return of(residues);
+	}
+
+	/**
+	 * Resolution: every name to its current meaning under the answer's
+	 * substitutions — spent entries fall to values and drop store-side.
+	 * The walking lives HERE, normalization's only caller; {@link Renaming}
+	 * itself never sees a {@link Substitutions}.
+	 */
+	private static Renaming resolution(Substitutions home) {
+		return Renaming.of(home::walkAll);
 	}
 
 	/**

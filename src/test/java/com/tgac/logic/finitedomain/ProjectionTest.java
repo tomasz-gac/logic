@@ -133,7 +133,7 @@ public class ProjectionTest {
 				.withDomain(varOf(y), dom(7, 8));
 		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
 
-		FiniteDomainConstraints normalized = store.walked(bound);
+		FiniteDomainConstraints normalized = store.rename(Renaming.of(bound::walkAll));
 		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
 		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
 	}

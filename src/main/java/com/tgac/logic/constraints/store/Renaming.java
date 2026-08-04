@@ -16,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * The name DICTIONARY knowledge needs to cross a boundary. A name is a live
@@ -29,32 +30,37 @@ import java.util.Set;
  * is the existential: one Renaming shared across a delivery keeps a local
  * shared between stores one variable.
  *
- * <p>RESOLUTION is deliberately not a public mode: rewriting terms to their
- * current meanings under substitutions (spent entries fall to values and
- * drop store-side) is a different operation that merely shares this
- * class's traversal — callers use {@link Projectable#walked}, which
- * bridges to it internally, so "walk, then translate" reads as two steps.
+ * <p>RESOLUTION is not a mode of this class: rewriting terms to their
+ * current meanings under substitutions is its caller's own step, built on
+ * {@link #of(Function)} — this class never sees a Substitutions.
  */
 public final class Renaming {
 
-	private final Substitutions home;
-	private final Map<Term<?>, Term<?>> targets;
+	private final Function<Term<?>, Term<?>> lookup;
+	private final Map<Term<?>, Term<?>> minted;
 	private final boolean mintOnMiss;
 
-	private Renaming(Substitutions home, Map<Term<?>, Term<?>> targets, boolean mintOnMiss) {
-		this.home = home;
-		this.targets = targets;
+	private Renaming(Function<Term<?>, Term<?>> lookup, Map<Term<?>, Term<?>> minted, boolean mintOnMiss) {
+		this.lookup = lookup;
+		this.minted = minted;
 		this.mintOnMiss = mintOnMiss;
 	}
 
-	/** The resolution bridge for {@link Projectable#walked} — not a public mode. */
-	static Renaming resolving(Substitutions home) {
-		return new Renaming(home, new java.util.HashMap<>(), false);
+	/** A renaming from a name lookup: {@code null} keeps the name. */
+	public static Renaming of(Function<Term<?>, Term<?>> lookup) {
+		return new Renaming(lookup, new java.util.HashMap<>(), false);
+	}
+
+	/** A renaming from a seed map: unlisted names keep themselves. */
+	public static Renaming of(Map<? extends Term<?>, Term<?>> seed) {
+		Map<Term<?>, Term<?>> copy = new java.util.HashMap<>(seed);
+		return new Renaming(copy::get, copy, false);
 	}
 
 	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */
 	public static Renaming minting(Map<? extends Term<?>, Term<?>> seed) {
-		return new Renaming(null, new java.util.HashMap<>(seed), true);
+		Map<Term<?>, Term<?>> copy = new java.util.HashMap<>(seed);
+		return new Renaming(copy::get, copy, true);
 	}
 
 	/** Entering the canonical namespace: {@code vars.get(i)} ↦ {@code _.i}. */
@@ -63,7 +69,7 @@ public final class Renaming {
 		for (int i = 0; i < vars.size(); i++) {
 			seed.put(vars.get(i), Hole.of(i));
 		}
-		return new Renaming(null, seed, false);
+		return of(seed);
 	}
 
 	/** Leaving the canonical namespace onto given targets: {@code _.i} ↦ {@code targets.get(i)}. */
@@ -72,19 +78,19 @@ public final class Renaming {
 		for (int i = 0; i < slotTargets.size(); i++) {
 			seed.put(Hole.of(i), slotTargets.get(i));
 		}
-		return new Renaming(null, seed, false);
+		return of(seed);
 	}
 
-	/** The term under this renaming — deep: walked, then every name mapped. */
+	/** The term under this renaming — deep: every name mapped. */
 	public Term<?> apply(Term<?> term) {
-		Term<?> walked = home == null ? term : MiniKanren.walkAll(home, term).get();
-		Set<Term<?>> names = namesOf(walked);
+		Set<Term<?>> names = namesOf(term);
 		if (names.isEmpty()) {
-			return walked;
+			return term;
 		}
-		if (names.size() == 1 && isName(walked)) {
-			return target(walked);
+		if (names.size() == 1 && isName(term)) {
+			return target(term);
 		}
+		Term<?> walked = term;
 		HashMap<LVar<?>, Term<?>> varSubstitution = HashMap.empty();
 		int maxSlot = -1;
 		for (Term<?> name : names) {
@@ -109,7 +115,10 @@ public final class Renaming {
 	}
 
 	private Term<?> target(Term<?> name) {
-		Term<?> known = targets.get(name);
+		Term<?> known = minted.get(name);
+		if (known == null) {
+			known = lookup.apply(name);
+		}
 		if (known != null) {
 			return known;
 		}
@@ -117,7 +126,7 @@ public final class Renaming {
 			return name;
 		}
 		Term<?> fresh = LVar.lvar();
-		targets.put(name, fresh);
+		minted.put(name, fresh);
 		return fresh;
 	}
 

@@ -5,7 +5,6 @@ package com.tgac.logic.constraints.store;
 
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.logic.unification.LVar;
-import com.tgac.logic.unification.Substitutions;
 import io.vavr.Tuple2;
 import java.util.List;
 
@@ -18,7 +17,7 @@ import java.util.List;
  * <pre>
  * key projection   = split(callVars)._1.rename(canonical)        — {@link #project}
  * master seeding   = absorb(key.rename(restating(callVars)))
- * answer capture   = walked(home)                                — resolution
+ * answer capture   = rename(resolution) then rename(canonical)  — Residues.normalize
  * answer replay    = absorb(rename(minting(seeds)))              — ∃ by minting
  * </pre>
  *
@@ -57,20 +56,11 @@ public interface Projectable<S extends Projectable<S>> extends Absorbable<S> {
 	 * This store's knowledge under changed names — {@link Renaming#canonical}
 	 * enters the slot namespace, {@link Renaming#restating} leaves it onto
 	 * given targets, {@link Renaming#minting} leaves it minting fresh names
-	 * on every miss (the existential). Resolution is {@link #walked}, its
-	 * own step.
+	 * on every miss (the existential). Resolution — every name to its
+	 * current meaning — is the answer side's own prior step, a plain
+	 * lookup-backed renaming built where it is needed.
 	 */
 	S rename(Renaming renaming);
-
-	/**
-	 * This store's knowledge with every term resolved to its current meaning
-	 * under {@code home} — entries whose name falls to a value are spent and
-	 * drop store-side. The resolution step that precedes any translation:
-	 * "walk, then rename" is the whole answer-side crossing.
-	 */
-	default S walked(Substitutions home) {
-		return rename(Renaming.resolving(home));
-	}
 
 	/**
 	 * This store's knowledge about {@code vars} in canonical names, slot i ↔
