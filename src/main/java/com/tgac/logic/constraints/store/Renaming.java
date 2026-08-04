@@ -6,9 +6,17 @@ package com.tgac.logic.constraints.store;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * The name DICTIONARY knowledge needs to cross a boundary. A name is a live
@@ -56,5 +64,30 @@ public interface Renaming {
 	/** Leaving the canonical namespace onto given targets: {@code _.i} ↦ {@code targets.get(i)}. */
 	static Renaming restating(List<? extends Term<?>> slotTargets) {
 		return new SlotRenaming(slotTargets);
+	}
+
+	/**
+	 * Every NAME occurrence in the term — live vars and canonical holes —
+	 * lazily streamed in traversal order: a short-circuiting consumer stops
+	 * the scan early. Iterative, deep spines never recurse.
+	 */
+	static Stream<Term<?>> namesIn(Term<?> term) {
+		Deque<Term<?>> work = new ArrayDeque<>();
+		work.push(term);
+		return StreamSupport.stream(new Spliterators.AbstractSpliterator<Term<?>>(
+				Long.MAX_VALUE, Spliterator.ORDERED | Spliterator.NONNULL) {
+			@Override
+			public boolean tryAdvance(Consumer<? super Term<?>> action) {
+				while (!work.isEmpty()) {
+					Term<?> current = work.pop();
+					if (current.asVar().isDefined() || current.asReified().isDefined()) {
+						action.accept(current);
+						return true;
+					}
+					MiniKanren.members(current).forEach(members -> members.forEach(work::push));
+				}
+				return false;
+			}
+		}, false);
 	}
 }

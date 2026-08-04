@@ -7,8 +7,6 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -34,19 +32,12 @@ final class SlotRenaming implements Renaming {
 		return MiniKanren.instantiate(term, bySlot).map(t -> t);
 	}
 
-	/** Deepest slot number occurring in the term, -1 when hole-free — iterative, deep spines must not recurse. */
+	/** Deepest slot number occurring in the term, -1 when hole-free. */
 	private static int maxSlotIn(Term<?> term) {
-		int maxSlot = -1;
-		Deque<Term<?>> work = new ArrayDeque<>();
-		work.push(term);
-		while (!work.isEmpty()) {
-			Term<?> current = work.pop();
-			if (current.asReified().isDefined()) {
-				maxSlot = Math.max(maxSlot, ((Hole<?>) current).getNumber());
-			} else {
-				MiniKanren.members(current).forEach(members -> members.forEach(work::push));
-			}
-		}
-		return maxSlot;
+		return Renaming.namesIn(term)
+				.filter(name -> name.asReified().isDefined())
+				.map(Hole.class::cast)
+				.mapToInt(Hole::getNumber)
+				.max().orElse(-1);
 	}
 }

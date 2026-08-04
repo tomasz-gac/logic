@@ -10,8 +10,6 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +32,8 @@ final class Minting implements Renaming {
 
 	@Override
 	public Fiber<Term<?>> apply(Term<?> term) {
-		Set<Term<?>> names = namesIn(term);
+		Set<Term<?>> names = Renaming.namesIn(term)
+				.collect(Collectors.toCollection(LinkedHashSet::new));
 		if (names.isEmpty()) {
 			return Fiber.done(term);
 		}
@@ -60,25 +59,5 @@ final class Minting implements Renaming {
 				.<Term<?>> mapToObj(i -> targets.getOrDefault(Hole.of(i), Hole.of(i)))
 				.collect(Collectors.toList());
 		return renamedVars.flatMap(r -> MiniKanren.instantiate(r, bySlot).map(t -> t));
-	}
-
-	private static boolean isName(Term<?> t) {
-		return t.asVar().isDefined() || t.asReified().isDefined();
-	}
-
-	/** Iterative structural scan — deep spines must not recurse. */
-	private static Set<Term<?>> namesIn(Term<?> t) {
-		Set<Term<?>> names = new LinkedHashSet<>();
-		Deque<Term<?>> work = new ArrayDeque<>();
-		work.push(t);
-		while (!work.isEmpty()) {
-			Term<?> current = work.pop();
-			if (isName(current)) {
-				names.add(current);
-			} else {
-				MiniKanren.members(current).forEach(members -> members.forEach(work::push));
-			}
-		}
-		return names;
 	}
 }

@@ -9,8 +9,6 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashMap;
-import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.Map;
 
 /** Live vars to their targets: {@code walkAll} under a fixed substitution. */
@@ -42,18 +40,8 @@ final class VarRenaming implements Renaming {
 
 	/** walkAll rebuilds structure wholesale — an untouched term must pass by identity. */
 	private boolean renamesAnyIn(Term<?> term) {
-		Deque<Term<?>> work = new ArrayDeque<>();
-		work.push(term);
-		while (!work.isEmpty()) {
-			Term<?> current = work.pop();
-			if (current.asVar().isDefined()) {
-				if (substitutions.binding(current.asVar().get()) != null) {
-					return true;
-				}
-			} else {
-				MiniKanren.members(current).forEach(members -> members.forEach(work::push));
-			}
-		}
-		return false;
+		return Renaming.namesIn(term)
+				.anyMatch(name -> name.asVar().isDefined()
+						&& substitutions.binding(name.asVar().get()) != null);
 	}
 }
