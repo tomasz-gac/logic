@@ -46,13 +46,13 @@ public class NeqProjectionTest {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints neq = store(record(varOf(x), lval(5)));
 
-		NeqConstraints keyed = neq.project(Arrays.asList(varOf(x)));
+		NeqConstraints keyed = neq.project(Arrays.asList(varOf(x))).get();
 		assertThat(keyed.getConstraints()).containsExactly(
 				record(Hole.of(0), lval(5)));
 
 		// a record referencing only OTHER vars is not knowledge about this list
 		Unifiable<Integer> z = lvar();
-		assertThat(neq.project(Arrays.asList(varOf(z))).isEmpty()).isTrue();
+		assertThat(neq.project(Arrays.asList(varOf(z))).get().isEmpty()).isTrue();
 	}
 
 	@Test
@@ -66,9 +66,9 @@ public class NeqProjectionTest {
 		Unifiable<Integer> y2 = lvar();
 
 		NeqConstraints first = store(record(varOf(x1), y1))
-				.project(Arrays.asList(varOf(x1), varOf(y1)));
+				.project(Arrays.asList(varOf(x1), varOf(y1))).get();
 		NeqConstraints second = store(record(varOf(x2), y2))
-				.project(Arrays.asList(varOf(x2), varOf(y2)));
+				.project(Arrays.asList(varOf(x2), varOf(y2))).get();
 
 		assertThat(first).isEqualTo(second);
 		assertThat(first.getConstraints()).containsExactly(
@@ -95,7 +95,7 @@ public class NeqProjectionTest {
 	public void projectingTheEmptyListIsTop() {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints neq = store(record(varOf(x), lval(5)));
-		assertThat(neq.project(Collections.<LVar<?>> emptyList()).isEmpty()).isTrue();
+		assertThat(neq.project(Collections.<LVar<?>> emptyList()).get().isEmpty()).isTrue();
 	}
 
 	@Test
@@ -115,15 +115,15 @@ public class NeqProjectionTest {
 	public void restateReimposesTheDisequality() {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints keyed = store(record(varOf(x), lval(5)))
-				.project(Arrays.asList(varOf(x)));
+				.project(Arrays.asList(varOf(x))).get();
 
 		Unifiable<Integer> fresh = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(fresh))))
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(fresh))).get())
 				.and(Constraints.unify(fresh, lval(5)))
 				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> fresh2 = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(fresh2))))
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(fresh2))).get())
 				.and(Constraints.unify(fresh2, lval(6)))
 				.solve(fresh2, TestSchedulers.factory())
 				.count()).isEqualTo(1);
@@ -135,18 +135,18 @@ public class NeqProjectionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		NeqConstraints keyed = store(record(varOf(x), y))
-				.project(Arrays.asList(varOf(x), varOf(y)));
+				.project(Arrays.asList(varOf(x), varOf(y))).get();
 
 		Unifiable<Integer> f = lvar();
 		Unifiable<Integer> g = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(f, g))))
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(f, g))).get())
 				.and(Constraints.unify(f, lval(3)))
 				.and(Constraints.unify(g, lval(3)))
 				.solve(f, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> f2 = lvar();
 		Unifiable<Integer> g2 = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(f2, g2))))
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(f2, g2))).get())
 				.and(Constraints.unify(f2, lval(3)))
 				.and(Constraints.unify(g2, lval(4)))
 				.solve(f2, TestSchedulers.factory())
@@ -179,13 +179,13 @@ public class NeqProjectionTest {
 		seed.put(varOf(x), a);
 		Renaming renaming = Renaming.minting(seed);
 
-		NeqConstraints renamed = neq.rename(renaming);
+		NeqConstraints renamed = neq.rename(renaming).get();
 		NeqConstraint only = renamed.getConstraints().head();
 		assertThat(only.getSeparate().containsKey(a)).isTrue();
 		Term<?> mintedW = only.getSeparate().get(a).get();
 		assertThat(mintedW.asVar().isDefined()).isTrue();
 		assertThat(mintedW).isNotEqualTo(w);
-		assertThat(renaming.apply(w)).isSameAs(mintedW);
+		assertThat(renaming.apply(w).get()).isSameAs(mintedW);
 	}
 
 	@Test

@@ -3,6 +3,7 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: A name DICTIONARY applied to constraint knowledge — live vars and
 // ABOUTME: canonical holes are both names; misses keep their name or mint fresh (∃).
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -73,13 +74,13 @@ public final class Renaming {
 	}
 
 	/** The term under this renaming — deep: every name mapped. */
-	public Term<?> apply(Term<?> term) {
+	public Fiber<Term<?>> apply(Term<?> term) {
 		Set<Term<?>> names = namesOf(term);
 		if (names.isEmpty()) {
-			return term;
+			return Fiber.done(term);
 		}
 		if (names.size() == 1 && isName(term)) {
-			return target(term);
+			return Fiber.done(target(term));
 		}
 		HashMap<LVar<?>, Term<?>> substitutedVars = HashMap.empty();
 		int maxSlot = -1;
@@ -95,9 +96,9 @@ public final class Renaming {
 				maxSlot = Math.max(maxSlot, ((Hole<?>) name).getNumber());
 			}
 		}
-		Term<?> replaced = substitutedVars.isEmpty()
-				? term
-				: MiniKanren.walkAll(Substitutions.of(substitutedVars), term).get();
+		Fiber<Term<?>> replaced = substitutedVars.isEmpty()
+				? Fiber.done(term)
+				: MiniKanren.walkAll(Substitutions.of(substitutedVars), term).map(t -> t);
 		if (maxSlot < 0) {
 			return replaced;
 		}
@@ -106,7 +107,7 @@ public final class Renaming {
 			Hole<?> hole = Hole.of(i);
 			bySlot.add(names.contains(hole) ? target(hole) : hole);
 		}
-		return MiniKanren.instantiate(replaced, bySlot).get();
+		return replaced.flatMap(r -> MiniKanren.instantiate(r, bySlot).map(t -> t));
 	}
 
 	private Term<?> target(Term<?> name) {

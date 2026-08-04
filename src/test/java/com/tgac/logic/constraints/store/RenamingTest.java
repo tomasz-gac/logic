@@ -30,7 +30,7 @@ public class RenamingTest {
 	@Test
 	public void aNameFreeTermPassesUnchanged() {
 		Term<?> ground = lval(List.of(lval(1), lval(2)));
-		assertThat(Renaming.of(Collections.<Term<?>, Term<?>> emptyMap()).apply(ground))
+		assertThat(Renaming.of(Collections.<Term<?>, Term<?>> emptyMap()).apply(ground).get())
 				.isSameAs(ground);
 	}
 
@@ -39,7 +39,7 @@ public class RenamingTest {
 		Unifiable<Integer> x = lvar();
 		Map<Term<?>, Term<?>> seed = new HashMap<>();
 		seed.put(x.getObjectTerm(), lval(9));
-		assertThat(Renaming.of(seed).apply(x.getObjectTerm())).isEqualTo(lval(9));
+		assertThat(Renaming.of(seed).apply(x.getObjectTerm()).get()).isEqualTo(lval(9));
 	}
 
 	@Test
@@ -52,7 +52,7 @@ public class RenamingTest {
 		seed.put(x.getObjectTerm(), lval(9));
 
 		Term<?> applied = Renaming.of(seed)
-				.apply(lval(List.of(x, lval(2), y)).getObjectTerm());
+				.apply(lval(List.of(x, lval(2), y)).getObjectTerm()).get();
 
 		assertThat(sameAs(applied, lval(List.of(lval(9), lval(2), y)).getObjectTerm())).isTrue();
 		assertThat(sameAs(applied, lval(List.of(lval(8), lval(2), y)).getObjectTerm())).isFalse();
@@ -64,7 +64,7 @@ public class RenamingTest {
 		Term<?> withHoles = lval(List.of(Hole.of(0), lval(2), Hole.of(1)));
 		Term<?> applied = Renaming
 				.restating(Arrays.<Term<?>> asList(lval(7), lval(8)))
-				.apply(withHoles);
+				.apply(withHoles).get();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(2), lval(8)))))
 				.isTrue();
@@ -78,7 +78,7 @@ public class RenamingTest {
 		seed.put(Hole.of(0), lval(7));
 
 		Term<?> applied = Renaming.of(seed)
-				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm());
+				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm()).get();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
 				.isTrue();
@@ -90,7 +90,7 @@ public class RenamingTest {
 		// occurrences become the SAME fresh variable (the existential)
 		Unifiable<Integer> local = lvar();
 		Term<?> applied = Renaming.minting(Collections.<Term<?>, Term<?>> emptyMap())
-				.apply(lval(List.of(local, local)).getObjectTerm());
+				.apply(lval(List.of(local, local)).getObjectTerm()).get();
 
 		java.util.List<Term<?>> members = new java.util.ArrayList<>();
 		MiniKanren.members(applied.asVal().isDefined() ? applied : applied)
@@ -113,7 +113,7 @@ public class RenamingTest {
 		Map<Term<?>, Term<?>> seed = new HashMap<>();
 		seed.put(x.getObjectTerm(), lval(1));
 
-		Term<?> applied = Renaming.of(seed).apply(deep);
+		Term<?> applied = Renaming.of(seed).apply(deep).get();
 
 		assertThat(applied).isNotNull();
 	}

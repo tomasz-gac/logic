@@ -182,7 +182,7 @@ public class LatticeStoreTest {
 		Unifiable<Integer> z = lvar();
 		FlatConstraints a = FlatConstraints.empty().withValue(x, FlatSet.of(5, 6));
 		FlatConstraints b = FlatConstraints.empty().withValue(z, FlatSet.of(5, 6));
-		assertThat(a.rename(Renaming.canonical(Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()))))
-				.isEqualTo(b.rename(Renaming.canonical(Collections.<LVar<?>> singletonList((LVar<?>) z.asVar().get()))));
+		assertThat(a.rename(Renaming.canonical(Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()))).get())
+				.isEqualTo(b.rename(Renaming.canonical(Collections.<LVar<?>> singletonList((LVar<?>) z.asVar().get()))).get());
 	}
 }

@@ -26,6 +26,7 @@ import com.tgac.logic.unification.Term;
 import io.vavr.Predicates;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import io.vavr.collection.Array;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
@@ -470,17 +471,22 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	 * propagators re-watch their renamed terms.
 	 */
 	@Override
-	public S rename(Renaming renaming) {
-		LinkedHashMap<Term<?>, L> renamed = LinkedHashMap.empty();
-		for (Tuple2<Term<?>, L> entry : values) {
-			Term<?> target = renaming.apply(entry._1);
-			if (!target.asVal().isDefined()) {
-				renamed = renamed.put(target, entry._2);
-			}
-		}
-		HashSet<Propagator> renamedConstraints = propagators.map(p ->
-				p.watching(p.watchedTerms().map(renaming::apply)));
-		return create(renamed, renamedConstraints);
+	public Fiber<S> rename(Renaming renaming) {
+		Fiber<LinkedHashMap<Term<?>, L>> renamed = values.foldLeft(
+				Fiber.<LinkedHashMap<Term<?>, L>> done(LinkedHashMap.empty()),
+				(acc, entry) -> acc.flatMap(m -> renaming.apply(entry._1)
+						.map(target -> target.asVal().isDefined() ? m : m.put(target, entry._2))));
+		Fiber<HashSet<Propagator>> renamedConstraints = propagators.foldLeft(
+				Fiber.<HashSet<Propagator>> done(HashSet.empty()),
+				(acc, p) -> acc.flatMap(ps -> rewatched(p, renaming).map(ps::add)));
+		return renamed.flatMap(vals -> renamedConstraints.map(props -> create(vals, props)));
+	}
+
+	private static Fiber<Propagator> rewatched(Propagator propagator, Renaming renaming) {
+		return propagator.watchedTerms().foldLeft(
+						Fiber.<Array<Term<?>>> done(Array.empty()),
+						(acc, watched) -> acc.flatMap(terms -> renaming.apply(watched).map(terms::append)))
+				.map(propagator::watching);
 	}
 
 	@Override

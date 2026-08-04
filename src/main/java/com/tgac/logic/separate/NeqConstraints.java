@@ -127,14 +127,21 @@ class NeqConstraints implements Projectable<NeqConstraints> {
 	 * map like any other (live var ↔ canonical hole), RHS terms map deeply.
 	 */
 	@Override
-	public NeqConstraints rename(Renaming renaming) {
-		return NeqConstraints.of(LinkedHashSet.ofAll(constraints.map(record -> {
-			HashMap<Term<?>, Term<?>> renamed = HashMap.empty();
-			for (Tuple2<Term<?>, Term<?>> pair : record.getSeparate()) {
-				renamed = renamed.put(renaming.apply(pair._1), renaming.apply(pair._2));
-			}
-			return NeqConstraint.of(renamed);
-		})));
+	public Fiber<NeqConstraints> rename(Renaming renaming) {
+		return constraints.foldLeft(
+						Fiber.<LinkedHashSet<NeqConstraint>> done(LinkedHashSet.empty()),
+						(acc, record) -> acc.flatMap(records ->
+								renamedRecord(record, renaming).map(records::add)))
+				.map(NeqConstraints::of);
+	}
+
+	private static Fiber<NeqConstraint> renamedRecord(NeqConstraint record, Renaming renaming) {
+		return record.getSeparate().foldLeft(
+						Fiber.<HashMap<Term<?>, Term<?>>> done(HashMap.empty()),
+						(acc, pair) -> acc.flatMap(renamed -> renaming.apply(pair._1)
+								.flatMap(lhs -> renaming.apply(pair._2)
+										.map(rhs -> renamed.put(lhs, rhs)))))
+				.map(NeqConstraint::of);
 	}
 
 	/** Iterative structural scan — deep spines must not recurse. */

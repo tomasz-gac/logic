@@ -4,6 +4,7 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: with rename and split — keys, seeding and answer replay are compositions.
 
 import com.tgac.functional.algebra.Semilattice;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.LVar;
 import io.vavr.Tuple2;
 import java.util.List;
@@ -58,16 +59,18 @@ public interface Projectable<S extends Projectable<S>> extends Absorbable<S> {
 	 * given targets, {@link Renaming#minting} leaves it minting fresh names
 	 * on every miss (the existential). Resolution — every name to its
 	 * current meaning — is the answer side's own prior step, a plain
-	 * lookup-backed renaming built where it is needed.
+	 * lookup-backed renaming built where it is needed. A {@link Fiber}
+	 * because term rewriting rides the engine's traversals ({@code walkAll},
+	 * {@code instantiate}) — callers compose, never {@code get}.
 	 */
-	S rename(Renaming renaming);
+	Fiber<S> rename(Renaming renaming);
 
 	/**
 	 * This store's knowledge about {@code vars} in canonical names, slot i ↔
 	 * vars[i] — the comparable key citizen. Projecting the empty list of an
 	 * empty store is the empty store: the triviality test is {@code isEmpty}.
 	 */
-	default S project(List<LVar<?>> vars) {
+	default Fiber<S> project(List<LVar<?>> vars) {
 		return split(vars)._1.rename(Renaming.canonical(vars));
 	}
 }

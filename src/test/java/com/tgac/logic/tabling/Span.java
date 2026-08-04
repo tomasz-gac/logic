@@ -57,7 +57,7 @@ class Span implements Projectable<Span> {
 	}
 
 	@Override
-	public Span rename(Renaming renaming) {
+	public Fiber<Span> rename(Renaming renaming) {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 

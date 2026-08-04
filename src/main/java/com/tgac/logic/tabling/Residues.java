@@ -5,6 +5,8 @@ package com.tgac.logic.tabling;
 
 import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.functional.algebra.Semilattice;
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
@@ -13,8 +15,8 @@ import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple2;
@@ -108,23 +110,24 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * knowledge is split away — sound by containment, filtered at
 	 * consumption.
 	 */
-	public static Residues project(Package callerPkg, List<LVar<?>> callVars) {
-		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
-		for (Packaged store : callerPkg.getStores().values()) {
-			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
-				continue;
-			}
-			if (!(store instanceof Projectable)) {
-				throw new IllegalStateException(
-						"Tabling cannot key constraints it cannot project: non-empty "
-								+ store.getClass().getSimpleName() + " at a tabled call");
-			}
-			Projectable<?> keyed = ((Projectable<?>) store).project(callVars);
-			if (!keyed.isEmpty()) {
-				residues = residues.put(store.getClass(), keyed);
-			}
-		}
-		return of(residues);
+	public static Fiber<Residues> project(Package callerPkg, List<LVar<?>> callVars) {
+		return callerPkg.getStores().values().foldLeft(
+						Fiber.<Map<Class<?>, Projectable<?>>> done(HashMap.empty()),
+						(acc, store) -> acc.flatMap(residues -> {
+							if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
+								return Fiber.done(residues);
+							}
+							if (!(store instanceof Projectable)) {
+								throw new IllegalStateException(
+										"Tabling cannot key constraints it cannot project: non-empty "
+												+ store.getClass().getSimpleName() + " at a tabled call");
+							}
+							return ((Projectable<?>) store).project(callVars)
+									.map(keyed -> keyed.isEmpty()
+											? residues
+											: residues.put(store.getClass(), keyed));
+						}))
+				.map(Residues::of);
 	}
 
 	/**
@@ -137,25 +140,34 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * conservatively incomparable across answers. Non-projectable live
 	 * knowledge refuses loudly.
 	 */
-	public static Residues normalize(Package answerPkg, List<LVar<?>> holeVars) {
-		Map<Class<?>, Projectable<?>> residues = HashMap.empty();
-		Renaming resolution = resolution(answerPkg.substitution());
+	public static Fiber<Residues> normalize(Package answerPkg, List<LVar<?>> holeVars) {
 		Renaming canonicalization = Renaming.canonical(holeVars);
-		for (Packaged store : answerPkg.getStores().values()) {
-			if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
-				continue;
-			}
-			if (!(store instanceof Projectable)) {
-				throw new IllegalStateException(
-						"Tabling does not support non-projectable store: non-empty "
-								+ store.getClass().getSimpleName() + " on a tabled answer");
-			}
-			Projectable<?> normalized = ((Projectable<?>) store).rename(resolution);
-			if (!normalized.isEmpty()) {
-				residues = residues.put(store.getClass(), normalized.rename(canonicalization));
-			}
-		}
-		return of(residues);
+		return resolution(answerPkg.substitution()).flatMap(resolution ->
+						answerPkg.getStores().values().foldLeft(
+								Fiber.<Map<Class<?>, Projectable<?>>> done(HashMap.empty()),
+								(acc, store) -> acc.flatMap(residues -> {
+									if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
+										return Fiber.done(residues);
+									}
+									if (!(store instanceof Projectable)) {
+										throw new IllegalStateException(
+												"Tabling does not support non-projectable store: non-empty "
+														+ store.getClass().getSimpleName() + " on a tabled answer");
+									}
+									return normalized((Projectable<?>) store, resolution, canonicalization)
+											.map(factor -> factor.isEmpty()
+													? residues
+													: residues.put(store.getClass(), factor));
+								})))
+				.map(Residues::of);
+	}
+
+	/** One store's answer factor: resolved, then slot-canonical — empty when spent. */
+	private static <S extends Projectable<S>> Fiber<Projectable<?>> normalized(
+			Projectable<S> store, Renaming resolution, Renaming canonicalization) {
+		return store.rename(resolution).flatMap(resolved -> resolved.isEmpty()
+				? Fiber.<Projectable<?>> done(resolved)
+				: resolved.rename(canonicalization).map(factor -> factor));
 	}
 
 	/**
@@ -164,10 +176,15 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * and drop store-side when the seed is applied. {@link Renaming} itself
 	 * is a dumb map and never sees a {@link Substitutions}.
 	 */
-	private static Renaming resolution(Substitutions home) {
-		java.util.Map<Term<?>, Term<?>> walked = new java.util.HashMap<>();
-		home.bindings().forEach((v, t) -> walked.put(v, home.walkAll(v)));
-		return Renaming.of(walked);
+	private static Fiber<Renaming> resolution(Substitutions home) {
+		return home.bindings().foldLeft(
+						Fiber.<java.util.Map<Term<?>, Term<?>>> done(new java.util.HashMap<>()),
+						(acc, binding) -> acc.flatMap(walked ->
+								MiniKanren.walkAll(home, (Term<?>) binding._1).map(meaning -> {
+									walked.put(binding._1, meaning);
+									return walked;
+								})))
+				.map(Renaming::of);
 	}
 
 	/**
@@ -181,9 +198,15 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	public Goal restate(Renaming renaming) {
 		Goal restated = Goal.success();
 		for (Tuple2<Class<?>, Projectable<?>> factor : factors) {
-			restated = Conjunction.of(restated, Propagation.absorb(factor._2.rename(renaming)));
+			restated = Conjunction.of(restated, imposed(factor._2, renaming));
 		}
 		return restated;
+	}
+
+	/** One factor's imposition: rename runs in the goal's fiber, absorb states it. */
+	private static <S extends Projectable<S>> Goal imposed(Projectable<S> factor, Renaming renaming) {
+		return pkg -> Cont.suspend(k -> factor.rename(renaming)
+				.flatMap(renamed -> Propagation.absorb(renamed).apply(pkg).apply(k)));
 	}
 
 	@Override
