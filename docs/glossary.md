@@ -55,6 +55,8 @@ rating pass can stop at any section boundary and still be useful.
 
 ## 3. Constraint kernel
 
+- [ ] **stores are branches as data** — the founding sentence: a constraint store is a compressed set of branches; finite compression exits by EXPANSION (enforce/labelling), infinite compression exits by EXPRESSION (reify/`Constrained`); the compression is also what the optimizer and the crossings move around. *(condition.md)*
+- [ ] **Constrained** — the rendered answer-with-residuals carrier: reify's output when expressed infinities ride the term. *(separate/)*
 - [x] **ConstraintStore** — a store with the two triggers (revise, stated) answered by `Fiber<Revision>`; may read anything, may swap only its OWN factor. *(constraint-kernel)*
 - [x] **revise** — bindings arrived; the store's COMPLETE reaction (custody, own watchers, own cascade). *(constraint-kernel)*
 - [~] **absorb** — meet a whole factor into the resident store + queue normalize; the bulk statement entry. *(constraint-kernel)*
@@ -65,8 +67,8 @@ rating pass can stop at any section boundary and still be useful.
 - [~] **Watches** — the shared chain matcher: which items wake on which terms. *(constraints/store)*
 - [x] **suspension** — a parked (terms, ripeness, body) triple owned by the DRIVER, not a store: Propagation parks it, ripens it after bindings, splices the body into the run lane. *(condition.md §8.1)*
 - [x] **ripeness** — the condition under which a suspension's body may run (e.g. deep-groundness). *(projection/)*
-- [x] **labelling** — enumerate remaining domain values as branches at answer time; deferred materialization's endpoint. *(finitedomain/)*
-- [x] **enforce** — per-answer commit hook at the end of a branch: FD labels, projections fail if unrun; the branch's own seal. *(ConstraintStore)*
+- [x] **labelling** — enumerate remaining domain values as branches at answer time; deferred materialization's endpoint — the finite door's mechanism. *(finitedomain/)*
+- [x] **enforce** — the FINITE exit: per-answer commit at the end of a branch, where compressed branching expands — FD labels, projections fail if unrun; the branch's own seal. *(ConstraintStore)*
 - [?] **narrowing wake** — constraint bodies wake when domains shrink, not only on bindings. *(CLAUDE.md landmines)*
 - [~] **trial unification** — Neq's check: try the forbidden unification on the side and observe. *(separate/)*
 
@@ -79,7 +81,7 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **Domain\<L\>** — what a LatticeStore requires of a per-name value: meet, order, membership, collapse-to-point, stabilization — the admission test as a capability record. *(lattice/)*
 - [~] **Absorbable** — the arrival capability: pure `meet` + `normalize`; store-level Semilattice+PartialOrder. *(constraints/store)*
 - [x] **Projectable** — the departure capability: `split` (lossless factoring over vars) + `rename`; project = split∘canonical-rename. Participation in tabling requires it. *(constraints/store)*
-- [~] **Renaming** — the namespace maps: `walking` (normalize against substitutions), `canonical` (live vars → slot holes), `ofSlots` (holes → live vars), `into` (seeded replay, unseeded mint fresh). *(constraints/store)*
+- [~] **Renaming** — a dumb name map with one flag: `canonical` enters the slot namespace, `restating` leaves it onto given targets, `minting` leaves it with fresh names per miss (the existential); it never sees a Substitutions — resolution builds its walked seed in Residues, the only caller. *(constraints/store)*
 - [~] **Semiring** — (⊕ merge alternatives, ⊗ chain steps, 0, 1); distributivity is the rearrangement license — the law that makes per-arrival delivery inside a fixpoint equal final-value delivery. *(functional algebra)*
 - [x] **IdempotentSemiring** — a⊕a=a: dedup is lawful, at-least-once delivery safe. *(functional algebra)*
 - [x] **BoundedSemiring** — 1⊕a=1 (top absorbs) hence a\*=1: cyclic streaming terminates. *(functional algebra)*
