@@ -521,8 +521,9 @@ public class MiniKanren {
 	/** Invert the rename substitution into slot order: the var named {@code _.i} ↦ {@code _.i}. */
 	private static Map<LVar<?>, Hole<?>> varsToHoles(Substitutions renames) {
 		LVar<?>[] slots = new LVar<?>[(int) renames.size()];
-		for (Tuple2<LVar<?>, Term<?>> entry : renames.map()) {
-			slots[((Hole<?>) entry._2).getNumber()] = entry._1;
+		for (Tuple2<Unknown<?>, Term<?>> entry : renames.map()) {
+			// the rename pass binds live vars only, so the keys are LVars
+			slots[((Hole<?>) entry._2).getNumber()] = (LVar<?>) entry._1;
 		}
 		Map<LVar<?>, Hole<?>> vars = new java.util.LinkedHashMap<>();
 		for (int i = 0; i < slots.length; i++) {

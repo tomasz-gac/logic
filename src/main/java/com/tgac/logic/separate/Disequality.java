@@ -20,6 +20,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Unknown;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -241,10 +242,10 @@ public class Disequality {
 	 * A live record's pairs under their LVar roots — the store invariant
 	 * keeps every LHS an unbound var on the live side.
 	 */
-	private static HashMap<LVar<?>, Term<?>> varKeyed(HashMap<Term<?>, Term<?>> separate) {
-		HashMap<LVar<?>, Term<?>> keyed = HashMap.empty();
+	private static HashMap<Unknown<?>, Term<?>> varKeyed(HashMap<Term<?>, Term<?>> separate) {
+		HashMap<Unknown<?>, Term<?>> keyed = HashMap.empty();
 		for (Tuple2<Term<?>, Term<?>> pair : separate) {
-			keyed = keyed.put((LVar<?>) pair._1.asVar().get(), pair._2);
+			keyed = keyed.put(pair._1.asVar().get(), pair._2);
 		}
 		return keyed;
 	}

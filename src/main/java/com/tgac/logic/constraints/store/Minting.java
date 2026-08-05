@@ -9,6 +9,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Unknown;
 import io.vavr.collection.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -38,12 +39,12 @@ final class Minting implements Renaming {
 			return Fiber.done(term);
 		}
 		names.forEach(name -> targets.computeIfAbsent(name, miss -> LVar.lvar()));
-		HashMap<LVar<?>, Term<?>> varTargets = names.stream()
+		HashMap<Unknown<?>, Term<?>> varTargets = names.stream()
 				.flatMap(name -> name.asVar().toJavaStream())
 				// an identity entry means "keep" — walk's chain-follower
 				// must never see a self-binding
 				.filter(name -> !name.equals(targets.get(name)))
-				.collect(HashMap.collector(name -> name, targets::get));
+				.collect(HashMap.collector(name -> (Unknown<?>) name, targets::get));
 		int maxSlot = names.stream()
 				.filter(name -> !name.asVar().isDefined())
 				.map(Hole.class::cast)

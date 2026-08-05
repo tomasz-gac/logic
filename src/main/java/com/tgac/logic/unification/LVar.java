@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class LVar<T> implements Unifiable<T> {
+public class LVar<T> implements Unifiable<T>, Unknown<T> {
 	private static final AtomicLong VARIABLE_COUNTER = new AtomicLong(0L);
 	private final String name;
 
@@ -26,6 +26,11 @@ public class LVar<T> implements Unifiable<T> {
 
 	public static <T> Unifiable<T> lvar(String name) {
 		return new LVar<>(name);
+	}
+
+	@Override
+	public Option<Unknown<T>> asUnknown() {
+		return Option.of(this);
 	}
 
 	@Override

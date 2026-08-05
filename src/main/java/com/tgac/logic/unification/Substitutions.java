@@ -24,9 +24,9 @@ import java.util.ArrayDeque;
  */
 public final class Substitutions implements Semilattice<Substitutions> {
 
-	private final HashMap<LVar<?>, Term<?>> bindings;
+	private final HashMap<Unknown<?>, Term<?>> bindings;
 
-	Substitutions(HashMap<LVar<?>, Term<?>> bindings) {
+	Substitutions(HashMap<Unknown<?>, Term<?>> bindings) {
 		this.bindings = bindings;
 	}
 
@@ -35,12 +35,14 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	}
 
 	/** A view over an existing binding map — map-level threading (trial unification). */
-	public static Substitutions of(HashMap<LVar<?>, Term<?>> bindings) {
+	public static Substitutions of(HashMap<Unknown<?>, Term<?>> bindings) {
 		return new Substitutions(bindings);
 	}
 
 	/** This plus one binding — the unifier's extension step. */
 	public Substitutions extend(LVar<?> v, Term<?> t) {
+		// the unifier's entry: only LIVE vars are ever BOUND — canonical
+		// names enter the map as renaming seeds, never through unification
 		return new Substitutions(bindings.put(v, t));
 	}
 
@@ -67,7 +69,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	 */
 	public Option<Substitutions> tryJoin(Substitutions other) {
 		Substitutions acc = this;
-		for (Tuple2<LVar<?>, Term<?>> binding : other.bindings) {
+		for (Tuple2<Unknown<?>, Term<?>> binding : other.bindings) {
 			Option<Substitutions> step = unifyInto(acc, binding._1, binding._2);
 			if (step.isEmpty()) {
 				return Option.none();
@@ -78,7 +80,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	private static Option<Substitutions> unifyInto(Substitutions acc, LVar<?> v, Term<?> t) {
+	private static Option<Substitutions> unifyInto(Substitutions acc, Unknown<?> v, Term<?> t) {
 		return MiniKanren.unify(acc, (Term) v, (Term) t).get();
 	}
 
@@ -87,7 +89,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 		return bindings.size();
 	}
 
-	HashMap<LVar<?>, Term<?>> map() {
+	HashMap<Unknown<?>, Term<?>> map() {
 		return bindings;
 	}
 
@@ -113,25 +115,25 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	}
 
 	/** The raw binding map, read-only — vavr, so sharing it is safe. */
-	public HashMap<LVar<?>, Term<?>> bindings() {
+	public HashMap<Unknown<?>, Term<?>> bindings() {
 		return bindings;
 	}
 
 	/** One chain step: the term bound to {@code v}, or null when unbound. */
-	public Term<?> binding(LVar<?> v) {
+	public Term<?> binding(Unknown<?> v) {
 		return bindings.getOrElse(v, null);
 	}
 
 	/** The term's walk-chain end: a value, or the representative unbound variable. */
 	@SuppressWarnings("unchecked")
 	public <T> Term<T> walk(Term<T> v) {
-		if (!v.asVar().isDefined()) {
+		if (!v.asUnknown().isDefined()) {
 			return v;
 		}
 		Term<?> result = v;
 		Term<?> next;
-		while (result.asVar().isDefined()
-				&& (next = bindings.getOrElse(result.asVar().get(), null)) != null) {
+		while (result.asUnknown().isDefined()
+				&& (next = bindings.getOrElse(result.asUnknown().get(), null)) != null) {
 			result = next;
 		}
 		return (Term<T>) result;

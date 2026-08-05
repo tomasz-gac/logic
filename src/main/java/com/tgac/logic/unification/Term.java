@@ -23,6 +23,10 @@ public interface Term<T> extends Supplier<T> {
 		return false;
 	}
 
+	default Option<Unknown<T>> asUnknown() {
+		return Option.none();
+	}
+
 	default Option<LVar<T>> asVar() {
 		return Option.none();
 	}

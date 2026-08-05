@@ -17,8 +17,13 @@ import lombok.Value;
  * @author TGa
  */
 @Value(staticConstructor = "of")
-public class Hole<T> implements Reified<T> {
+public class Hole<T> implements Reified<T>, Unknown<T> {
 	int number;
+
+	@Override
+	public Option<Unknown<T>> asUnknown() {
+		return Option.of(this);
+	}
 
 	@Override
 	public Option<Hole<T>> asReified() {
