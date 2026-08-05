@@ -28,7 +28,7 @@ class UnifyGoal<T> implements Goal, Bounded {
 		return Cont.defer(() -> (noCheck ?
 				MiniKanren.unifyPrefixUnsafe(s.substitution(), u, v) :
 				MiniKanren.unifyPrefix(s.substitution(), u, v))
-				.map(prefix -> Propagation.resolve(prefix).apply(s))
+				.map(prefix -> Propagation.activate(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(nothing())));
 	}
 

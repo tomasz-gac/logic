@@ -4,6 +4,7 @@ package com.tgac.logic.unification;
 // ABOUTME: to shared knowledge (suspension conditions) may see: bindings, nothing else.
 
 import com.tgac.functional.algebra.Semilattice;
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
@@ -82,6 +83,20 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private static Option<Substitutions> unifyInto(Substitutions acc, Unknown<?> v, Term<?> t) {
 		return MiniKanren.unify(acc, (Term) v, (Term) t).get();
+	}
+
+	/**
+	 * The bindings factor examining an arrived delta — the asserted-prefix
+	 * trichotomy, owned by the factor it extends: a pair for a still-open
+	 * variable binds its walked representative, one bound to the same value
+	 * drops, one bound to a DIFFERENT value is a contradiction between
+	 * constraint domains — none, the branch dies. Some carries the extended
+	 * factor and the KEPT delta the driver fans out to the other stores
+	 * (empty kept = nothing new, a no-op arrival).
+	 */
+	public Option<Tuple2<Substitutions, Prefix>> extended(Prefix delta) {
+		return delta.revalidate(this)
+				.map(kept -> Tuple.of(kept.isEmpty() ? this : kept.appliedTo(this), kept));
 	}
 
 	/** The number of bindings. Reified variable numbering derives from it. */

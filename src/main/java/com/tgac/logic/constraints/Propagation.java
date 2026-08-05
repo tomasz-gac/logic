@@ -60,7 +60,9 @@ public final class Propagation {
 	 *
 	 * <p>Contract for callers: never extend substitutions directly — obtain a
 	 * {@link Prefix} (from {@code MiniKanren.unifyPrefix} or
-	 * {@code Prefix.binding}) and resolve it. The routing serves two coequal
+	 * {@code Prefix.binding}) and activate it: unification is STATEMENT, the
+	 * prefix is the item, and the bindings factor is the store that examines
+	 * it. The routing serves two coequal
 	 * purposes: the veto — any store's {@code revise} may fail the branch before
 	 * the binding stands — and the wake — this call is the only place the other
 	 * stores hear of the binding at all (watchers fire, suspensions ripen). A
@@ -69,7 +71,7 @@ public final class Propagation {
 	 * rather than a refusal. Raw {@code MiniKanren.unify} bypasses
 	 * all constraint processing and is legitimate only inside the unifier itself.
 	 */
-	public static Goal resolve(Prefix prefix) {
+	public static Goal activate(Prefix prefix) {
 		return p -> {
 			if (prefix.isEmpty()) {
 				return Cont.just(p);
@@ -327,32 +329,27 @@ public final class Propagation {
 			}
 
 			/**
-			 * Applies the delta: revalidate against the live package (a pair for a
-			 * still-open variable binds its walked representative; one bound to the
-			 * same value is dropped; one bound to a DIFFERENT value is a
-			 * contradiction between constraint domains and the branch dies), extend,
-			 * revise every store, apply their inferences, and queue wakes for the
-			 * newly bound variables.
+			 * Applies the delta: the BINDINGS FACTOR examines its own statement
+			 * ({@code Substitutions.extended} — the trichotomy and the own-factor
+			 * extension), and the driver only routes the consequences: revise
+			 * every store with the kept delta, ripen suspensions.
 			 */
 			@Override
 			Goal apply() {
-				return s -> {
-					// the asserted prefix trichotomy: open binds its representative, same
-					// drops, different is a contradiction between domains — the branch dies
-					Prefix kept = prefix.revalidate(s.substitution()).getOrNull();
-					if (kept == null) {
-						return Cont.complete(Nothing.nothing());
-					}
-					if (kept.isEmpty()) {
-						return Cont.just(s);
-					}
-					Package extended = s.withSubstitutions(kept.appliedTo(s.substitution()));
-					// each store's revise is COMPLETE: custody, its own watchers of the
-					// newly bound variables, and its own cascade
-					return ((Goal) s2 -> reviseAll(s2, (cs, p) -> cs.revise(kept, p)))
-							.and(ripen(kept))
-							.apply(extended);
-				};
+				return s -> s.substitution().extended(prefix)
+						.<Cont<Package, Nothing>> map(examined -> {
+							Prefix kept = examined._2;
+							if (kept.isEmpty()) {
+								return Cont.just(s);
+							}
+							Package extended = s.withSubstitutions(examined._1);
+							// each store's revise is COMPLETE: custody, its own watchers of the
+							// newly bound variables, and its own cascade
+							return ((Goal) s2 -> reviseAll(s2, (cs, p) -> cs.revise(kept, p)))
+									.and(ripen(kept))
+									.apply(extended);
+						})
+						.getOrElse(() -> Cont.complete(Nothing.nothing()));
 			}
 
 			@Override

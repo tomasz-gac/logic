@@ -85,7 +85,7 @@ class EnforceConstraintsFD {
 	// because of ambiguity in Constraints
 	private static <T> Goal unifyTerms(Term<T> u, Unifiable<T> v) {
 		return s -> Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), u, v)
-				.map(prefix -> Propagation.resolve(prefix).apply(s))
+				.map(prefix -> Propagation.activate(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(Nothing.nothing())));
 	}
 
