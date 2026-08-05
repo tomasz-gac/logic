@@ -9,25 +9,20 @@ import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Emitter;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.optimizer.Barrier;
-import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -119,66 +114,62 @@ public class Tabling {
 		// keyed widening: the call pattern is the table key, so no optimizer may
 		// move binders across it — the contract as a type, not an accident of opacity
 		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k ->
-				MiniKanren.reifyWithHoles(callerPkg.substitution(), argsTerm.getObjectTerm()).flatMap(reified -> {
-					// the call's REGION: reify anonymizes the vars, project anonymizes
-					// the knowledge about them — positionally, residue slot i = the
-					// hole reify names _.i, by construction. Non-projectable knowledge
-					// cannot enter the key, and unkeyed knowledge means wrong reuse.
-					Reified<?> reifiedArgs = reified._1;
-					return Residues.ofRelevant(callerPkg, reified._2).flatMap(keyResidues -> {
-						Call key = Call.of(relation, reifiedArgs, keyResidues);
-						Reader reader = Reader.of(k, callerPkg, argsTerm);
-						Table table = reader.getTable();
-						// a weighted solve whose semiring cannot table (non-idempotent,
-						// non-closed) would silently drop weights here — refuse loudly
-						table.assertTablingAllowed();
-						// subsumptive reuse: a sealed general entry is a read-only relation
-						// containing every answer this instance call could produce (subset
-						// property) — read it through consume's unification filter
-						TableEntry<Object> subsumer = table.reusableSubsumer(key);
-						if (subsumer != null) {
-							return consume(subsumer, reader, subsumer.answers());
-						}
-						TableEntry<Object> entry = table.getOrCreateEntry(key);
-						// the ANONYMOUS MASTER, selected by the claim-once CAS
-						// (Fiber.produce): the body runs as this entry's
-						// workforce and belongs to no caller; production is the
-						// emitter, so billing and production cannot disagree.
-						// Every caller, the first included, reads the cell as a
-						// consumer; the sleeper it parks is the dependency edge
-						// completion detection needs, so a caller can never seal
-						// ahead of a call it depends on. The body runs FROM THE
-						// KEY: the first caller's constraint stores are stripped
-						// and the key's residues restated, so the cache holds
-						// exactly the region the key names — every caller filters
-						// at consumption by its own state
-						return Fiber.produce(entry.channel(), emit -> {
-									// the key cannot represent a parked suspension and the
-									// caller-agnostic body must not inherit one — refuse loudly;
-									// consuming an existing entry under one stays legal (the
-									// caller's copy ripens through its own chokepoint)
-									if (Propagation.suspensionsPending(callerPkg)) {
-										throw new IllegalStateException(
-												"a tabled call cannot become master under parked suspensions: "
-														+ "the call key cannot see them and the body must not inherit them");
-									}
-									Package bodyPkg = stripConstraints(table.bodyState(callerPkg));
-									// the master's goal: the key's knowledge re-imposed
-									// onto the live call vars, then the body — seeding
-									// inverts the key's var↦hole renaming
-									Map<Hole<?>, Term<?>> targets = new LinkedHashMap<>();
-									reified._2.forEach((var, hole) -> targets.put(hole, var));
-									Goal seeded = keyResidues.isTrue()
-											? body.get()
-											: Conjunction.of(
-													keyResidues.restate(Renaming.restating(targets)),
-													body.get());
-									return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
-								})
-								// a lost claim is a silent no-op: winner or loser, every
-								// caller falls through to here and reads as a consumer
-								.flatMap(__ -> consume(entry, reader, entry.answers()));
-					});
+				Residues.about(callerPkg, argsTerm).flatMap(keyPair -> {
+					// the call's REGION: the bindings factor's image (args
+					// reified with holes) plus each store's slot-named factor
+					Reified<?> reifiedArgs = keyPair._1;
+					Residues keyResidues = keyPair._2;
+					Call key = Call.of(relation, reifiedArgs, keyResidues);
+					Reader reader = Reader.of(k, callerPkg, argsTerm);
+					Table table = reader.getTable();
+					// a weighted solve whose semiring cannot table (non-idempotent,
+					// non-closed) would silently drop weights here — refuse loudly
+					table.assertTablingAllowed();
+					// subsumptive reuse: a sealed general entry is a read-only relation
+					// containing every answer this instance call could produce (subset
+					// property) — read it through consume's unification filter
+					TableEntry<Object> subsumer = table.reusableSubsumer(key);
+					if (subsumer != null) {
+						return consume(subsumer, reader, subsumer.answers());
+					}
+					TableEntry<Object> entry = table.getOrCreateEntry(key);
+					// the ANONYMOUS MASTER, selected by the claim-once CAS
+					// (Fiber.produce): the body runs as this entry's
+					// workforce and belongs to no caller; production is the
+					// emitter, so billing and production cannot disagree.
+					// Every caller, the first included, reads the cell as a
+					// consumer; the sleeper it parks is the dependency edge
+					// completion detection needs, so a caller can never seal
+					// ahead of a call it depends on. The body runs FROM THE
+					// KEY: the first caller's constraint stores are stripped
+					// and the key's residues restated, so the cache holds
+					// exactly the region the key names — every caller filters
+					// at consumption by its own state
+					return Fiber.produce(entry.channel(), emit -> {
+								// the key cannot represent a parked suspension and the
+								// caller-agnostic body must not inherit one — refuse loudly;
+								// consuming an existing entry under one stays legal (the
+								// caller's copy ripens through its own chokepoint)
+								if (Propagation.suspensionsPending(callerPkg)) {
+									throw new IllegalStateException(
+											"a tabled call cannot become master under parked suspensions: "
+													+ "the call key cannot see them and the body must not inherit them");
+								}
+								Package bodyPkg = stripConstraints(table.bodyState(callerPkg));
+								// the master's goal: the key re-imposed at the live
+								// anchor, then the body — the same restate delivery
+								// uses; its image half re-unifies already-bound args
+								// (idempotent), kept for uniformity
+								Goal seeded = keyResidues.isTrue()
+										? body.get()
+										: Conjunction.of(
+												Residues.restate(reifiedArgs, keyResidues, argsTerm),
+												body.get());
+								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
+							})
+							// a lost claim is a silent no-op: winner or loser, every
+							// caller falls through to here and reads as a consumer
+							.flatMap(__ -> consume(entry, reader, entry.answers()));
 				}));
 	}
 
@@ -203,15 +194,6 @@ public class Tabling {
 				.filter(entry -> entry != null && entry.isComplete())
 				.map(entry -> (long) entry.getAnswerCount())
 				.getOrElse(Long.MAX_VALUE);
-	}
-
-	/**
-	 * The delivery unification through the public entry — a helper so the
-	 * two-Unifiable overload resolves (with {@code T = Object} the
-	 * {@code (Unifiable<T>, T)} overload would be applicable too).
-	 */
-	private static <T> Goal unifyArgs(Unifiable<T> args, Unifiable<T> instantiated) {
-		return Constraints.unify(args, instantiated);
 	}
 
 	/** Remove every constraint-store factor: absence is ⊤, posting re-registers. */
@@ -254,23 +236,20 @@ public class Tabling {
 						"an answer may not leave a tabled body while suspensions pend: "
 								+ "the owed condition cannot ride the answer");
 			}
-			return MiniKanren.reifyWithHoles(answerPkg.substitution(), argsTerm.getObjectTerm())
-					.flatMap(reified -> {
-						// the WHOLE delta rides — body locals and their couplings
-						// included, replayed as existentials at consumption and
-						// verified by the consumer's labelling; whether residues
-						// may ride at all is the mode's capture call
-						return Residues.ofAll(answerPkg, reified._2).flatMap(residues -> {
-							// what the cell caches: the term and the value this derivation
-							// carries — caller-agnostic, since the body ran from ONE
-							Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1, residues);
-							// production is the emit: the fold FEEDS the parked
-							// consumers as this producer's tail; a duplicate answer
-							// is an inert fold, an entailed region is absorbed —
-							// no delta, no wake
-							return emit.emit(entry.answerDelta(cached._1, cached._2));
-						});
-					});
+			// the WHOLE delta rides — body locals and their couplings
+			// included, replayed as existentials at consumption and
+			// verified by the consumer's labelling; whether residues
+			// may ride at all is the mode's capture call
+			return Residues.all(answerPkg, argsTerm).flatMap(answer -> {
+				// what the cell caches: the term and the value this derivation
+				// carries — caller-agnostic, since the body ran from ONE
+				Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, answer._1, answer._2);
+				// production is the emit: the fold FEEDS the parked
+				// consumers as this producer's tail; a duplicate answer
+				// is an inert fold, an entailed region is absorbed —
+				// no delta, no wake
+				return emit.emit(entry.answerDelta(cached._1, cached._2));
+			});
 		});
 	}
 
@@ -353,17 +332,11 @@ public class Tabling {
 	private static Fiber<Nothing> deliverAtom(TableEntry<Object> entry, Reader reader,
 			Reified<?> term, Residues residues, Object cellValue) {
 		Fiber.Fn<Package, Nothing> k = reader.getContinuation();
-		Package callerPkg = reader.getPkg();
-		Unifiable<?> argsTerm = reader.getArgsTerm();
-		return MiniKanren.instantiateWithHoles(term).flatMap(inst ->
-				Conjunction.of(
-								unifyArgs(argsTerm.getObjectUnifiable(), inst._1.getObjectUnifiable()),
-								residues.isTrue() ? Goal.success()
-										: residues.restate(Renaming.minting(inst._2)))
-						.apply(callerPkg)
-						// streaming ⊗s the cell value in; closed records the loop
-						.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,
-								entry, term, cellValue))));
+		return Residues.restate(term, residues, reader.getArgsTerm())
+				.apply(reader.getPkg())
+				// streaming ⊗s the cell value in; closed records the loop
+				.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,
+						entry, term, cellValue)));
 	}
 
 	/**

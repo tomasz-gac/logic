@@ -7,6 +7,7 @@ import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
@@ -18,8 +19,11 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
@@ -100,17 +104,62 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	}
 
 	/**
-	 * The call-side crossing: the caller's constraint knowledge about
-	 * {@code callVars}, projected per store into one canonical conjunct —
-	 * the key citizen that joins the {@link Call}. A store that cannot
-	 * project cannot enter the key, and unkeyed knowledge means silently
-	 * wrong reuse — refused loudly. An EMPTY projection (nothing known
-	 * about the call vars) stays out of the conjunct, so calls under
-	 * irrelevant knowledge stay constraint-free variants; caller-private
-	 * knowledge is split away — sound by containment, filtered at
-	 * consumption.
+	 * IN, narrow: what {@code world} knows JUST about the anchor. The
+	 * anchor's free vars become slots (first-occurrence order — the walked
+	 * anchor reified with holes IS the bindings factor's image); per store,
+	 * knowledge not expressible over them is split away — sound by
+	 * containment, re-verified at consumption. The comparable KEY citizen.
+	 * A store that cannot project cannot enter the key, and unkeyed
+	 * knowledge means silently wrong reuse — refused loudly.
 	 */
-	public static Fiber<Residues> ofRelevant(Package callerPkg, java.util.Map<LVar<?>, Hole<?>> callVars) {
+	public static Fiber<Tuple2<Reified<?>, Residues>> about(Package world, Unifiable<?> anchor) {
+		return MiniKanren.reifyWithHoles(world.substitution(), anchor.getObjectTerm())
+				.flatMap(reified -> ofRelevant(world, reified._2)
+						.map(factors -> Tuple.of((Reified<?>) reified._1, factors)));
+	}
+
+	/**
+	 * IN, complete: EVERYTHING {@code world} knows, anchored at the anchor —
+	 * anchored names become slots, every other name rides whole as an
+	 * existential witness. The polarity against {@link #about}: keys may
+	 * widen (consumption filters), answers may not drop (an answer is a
+	 * claim, and the stores are not closed under ∃-elimination).
+	 */
+	public static Fiber<Tuple2<Reified<?>, Residues>> all(Package world, Unifiable<?> anchor) {
+		return MiniKanren.reifyWithHoles(world.substitution(), anchor.getObjectTerm())
+				.flatMap(reified -> ofAll(world, reified._2)
+						.map(factors -> Tuple.of((Reified<?>) reified._1, factors)));
+	}
+
+	/**
+	 * OUT: captured knowledge imposed on another world at {@code anchor} —
+	 * the ONE leaving crossing. The image's slots mint fresh vars and meet
+	 * the anchor by UNIFICATION (the bindings factor arrives through the
+	 * chokepoint, so partially ground anchors come free), and the store
+	 * factors restate onto the same slots — {@code Renaming.minting}:
+	 * unlisted locals mint fresh, shared across this one imposition (the
+	 * existential). Master seeding and answer delivery are both this.
+	 */
+	public static Goal restate(Reified<?> image, Residues factors, Unifiable<?> anchor) {
+		return pkg -> Cont.suspend(k -> MiniKanren.instantiateWithHoles(image)
+				.flatMap(inst -> Conjunction.of(
+								unifyImage(anchor.getObjectUnifiable(), inst._1.getObjectUnifiable()),
+								factors.isTrue() ? Goal.success()
+										: factors.restate(Renaming.minting(inst._2)))
+						.apply(pkg)
+						.apply(k)));
+	}
+
+	/**
+	 * The image unification through the public entry — a helper so the
+	 * two-Unifiable overload resolves (with {@code T = Object} the
+	 * {@code (Unifiable<T>, T)} overload would be applicable too).
+	 */
+	private static <T> Goal unifyImage(Unifiable<T> anchor, Unifiable<T> instantiated) {
+		return Constraints.unify(anchor, instantiated);
+	}
+
+	private static Fiber<Residues> ofRelevant(Package callerPkg, java.util.Map<LVar<?>, Hole<?>> callVars) {
 		return callerPkg.getStores().values().foldLeft(
 						Fiber.<Map<Class<?>, Projectable<?>>> done(HashMap.empty()),
 						(acc, store) -> acc.flatMap(residues -> {
@@ -140,7 +189,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * conservatively incomparable across answers. Non-projectable live
 	 * knowledge refuses loudly.
 	 */
-	public static Fiber<Residues> ofAll(Package answerPkg, java.util.Map<LVar<?>, Hole<?>> holeVars) {
+	private static Fiber<Residues> ofAll(Package answerPkg, java.util.Map<LVar<?>, Hole<?>> holeVars) {
 		Renaming canonicalization = Renaming.of(holeVars);
 		return resolution(answerPkg.substitution()).flatMap(resolution ->
 						answerPkg.getStores().values().foldLeft(
