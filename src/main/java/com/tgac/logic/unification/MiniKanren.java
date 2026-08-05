@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Spliterators;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -471,7 +472,6 @@ public class MiniKanren {
 		return instantiateTerm(term, seeded);
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Reified<T>> reify(Substitutions s, Term<T> item) {
 		// after renaming, every node is an LVal or a Hole — both Reified
 		return walkAll(s, item)
@@ -481,48 +481,54 @@ public class MiniKanren {
 	}
 
 	/**
-	 * {@link #reify} plus the holes it renamed, in slot order: the i-th list
-	 * element is the variable the reified term names {@code _.i}. The rename
-	 * pass numbers holes by first occurrence, so this IS the term's free-var
-	 * order — callers building positional structures over the holes (residue
-	 * slots) get the correspondence by construction, not by a parallel walk.
+	 * {@link #reify} plus the renaming it performed: each renamed var to its
+	 * hole. Holes are numbered by first occurrence and the map iterates in
+	 * slot order — callers get the var↔slot correspondence as data, not by a
+	 * parallel walk.
 	 */
-	public static <T> Fiber<Tuple2<Reified<T>, java.util.List<LVar<?>>>> reifyWithHoles(
+	public static <T> Fiber<Tuple2<Reified<T>, Map<LVar<?>, Hole<?>>>> reifyWithHoles(
 			Substitutions s, Term<T> item) {
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Substitutions.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)
-								.map(reified -> Tuple.of((Reified<T>) reified, holesInOrder(rp)))));
+								.map(reified -> Tuple.of((Reified<T>) reified, varsToHoles(rp)))));
 	}
 
 	/**
-	 * {@link #instantiate} plus the fresh vars it minted, in slot order: the
-	 * i-th list element is the fresh {@link LVar} standing where the term said
-	 * {@code _.i} — the mirror of {@link #reifyWithHoles}, for callers that
-	 * must re-impose positional knowledge (residues) onto the instantiation.
+	 * {@link #instantiate} plus the minting it performed: each hole to the
+	 * fresh {@link LVar} standing where the term said {@code _.i}, iterating
+	 * in slot order — the mirror of {@link #reifyWithHoles}, for callers that
+	 * must re-impose slot-named knowledge (residues) onto the instantiation.
 	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Fiber<Tuple2<Unifiable<T>, java.util.List<LVar<?>>>> instantiateWithHoles(Reified<T> term) {
+	public static <T> Fiber<Tuple2<Unifiable<T>, Map<Hole<?>, LVar<?>>>> instantiateWithHoles(Reified<T> term) {
 		ConcurrentMap<Integer, Term<Object>> fresh = new ConcurrentHashMap<>();
 		return instantiateTerm(term, fresh)
-				.map(t -> Tuple.of((Unifiable<T>) t, freshBySlot(fresh)));
+				.map(t -> Tuple.of((Unifiable<T>) t, holesToFresh(fresh)));
 	}
 
-	private static java.util.List<LVar<?>> freshBySlot(ConcurrentMap<Integer, Term<Object>> fresh) {
+	private static Map<Hole<?>, LVar<?>> holesToFresh(ConcurrentMap<Integer, Term<Object>> fresh) {
 		LVar<?>[] slots = new LVar<?>[fresh.size()];
 		for (ConcurrentMap.Entry<Integer, Term<Object>> entry : fresh.entrySet()) {
 			slots[entry.getKey()] = (LVar<?>) entry.getValue();
 		}
-		return Arrays.asList(slots);
+		Map<Hole<?>, LVar<?>> bySlot = new java.util.LinkedHashMap<>();
+		for (int i = 0; i < slots.length; i++) {
+			bySlot.put(Hole.of(i), slots[i]);
+		}
+		return bySlot;
 	}
 
-	/** Invert the rename substitution: slot i = the var numbered {@code _.i}. */
-	private static java.util.List<LVar<?>> holesInOrder(Substitutions renames) {
+	/** Invert the rename substitution into slot order: the var named {@code _.i} ↦ {@code _.i}. */
+	private static Map<LVar<?>, Hole<?>> varsToHoles(Substitutions renames) {
 		LVar<?>[] slots = new LVar<?>[(int) renames.size()];
 		for (Tuple2<LVar<?>, Term<?>> entry : renames.map()) {
 			slots[((Hole<?>) entry._2).getNumber()] = entry._1;
 		}
-		return Arrays.asList(slots);
+		Map<LVar<?>, Hole<?>> vars = new java.util.LinkedHashMap<>();
+		for (int i = 0; i < slots.length; i++) {
+			vars.put(slots[i], Hole.of(i));
+		}
+		return vars;
 	}
 
 	@SuppressWarnings("unchecked")

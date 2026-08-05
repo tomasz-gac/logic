@@ -46,13 +46,13 @@ public class NeqProjectionTest {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints neq = store(record(varOf(x), lval(5)));
 
-		NeqConstraints keyed = neq.project(Arrays.asList(varOf(x))).get();
+		NeqConstraints keyed = neq.project(slots(varOf(x))).get();
 		assertThat(keyed.getConstraints()).containsExactly(
 				record(Hole.of(0), lval(5)));
 
 		// a record referencing only OTHER vars is not knowledge about this list
 		Unifiable<Integer> z = lvar();
-		assertThat(neq.project(Arrays.asList(varOf(z))).get().isEmpty()).isTrue();
+		assertThat(neq.project(slots(varOf(z))).get().isEmpty()).isTrue();
 	}
 
 	@Test
@@ -66,9 +66,9 @@ public class NeqProjectionTest {
 		Unifiable<Integer> y2 = lvar();
 
 		NeqConstraints first = store(record(varOf(x1), y1))
-				.project(Arrays.asList(varOf(x1), varOf(y1))).get();
+				.project(slots(varOf(x1), varOf(y1))).get();
 		NeqConstraints second = store(record(varOf(x2), y2))
-				.project(Arrays.asList(varOf(x2), varOf(y2))).get();
+				.project(slots(varOf(x2), varOf(y2))).get();
 
 		assertThat(first).isEqualTo(second);
 		assertThat(first.getConstraints()).containsExactly(
@@ -95,7 +95,7 @@ public class NeqProjectionTest {
 	public void projectingTheEmptyListIsTop() {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints neq = store(record(varOf(x), lval(5)));
-		assertThat(neq.project(Collections.<LVar<?>> emptyList()).get().isEmpty()).isTrue();
+		assertThat(neq.project(Collections.<LVar<?>, Hole<?>> emptyMap()).get().isEmpty()).isTrue();
 	}
 
 	@Test
@@ -115,15 +115,15 @@ public class NeqProjectionTest {
 	public void restateReimposesTheDisequality() {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints keyed = store(record(varOf(x), lval(5)))
-				.project(Arrays.asList(varOf(x))).get();
+				.project(slots(varOf(x))).get();
 
 		Unifiable<Integer> fresh = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(fresh))).get())
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(targets(fresh))).get())
 				.and(Constraints.unify(fresh, lval(5)))
 				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> fresh2 = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(fresh2))).get())
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(targets(fresh2))).get())
 				.and(Constraints.unify(fresh2, lval(6)))
 				.solve(fresh2, TestSchedulers.factory())
 				.count()).isEqualTo(1);
@@ -135,18 +135,18 @@ public class NeqProjectionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		NeqConstraints keyed = store(record(varOf(x), y))
-				.project(Arrays.asList(varOf(x), varOf(y))).get();
+				.project(slots(varOf(x), varOf(y))).get();
 
 		Unifiable<Integer> f = lvar();
 		Unifiable<Integer> g = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(f, g))).get())
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(targets(f, g))).get())
 				.and(Constraints.unify(f, lval(3)))
 				.and(Constraints.unify(g, lval(3)))
 				.solve(f, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> f2 = lvar();
 		Unifiable<Integer> g2 = lvar();
-		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(Arrays.<Term<?>> asList(f2, g2))).get())
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(targets(f2, g2))).get())
 				.and(Constraints.unify(f2, lval(3)))
 				.and(Constraints.unify(g2, lval(4)))
 				.solve(f2, TestSchedulers.factory())
@@ -218,5 +218,21 @@ public class NeqProjectionTest {
 				.and(Propagation.absorb(store(record(varOf(x), lval(5)))))
 				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(1);
+	}
+
+	private static java.util.Map<LVar<?>, Hole<?>> slots(LVar<?>... vars) {
+		java.util.Map<LVar<?>, Hole<?>> bySlot = new java.util.LinkedHashMap<>();
+		for (int i = 0; i < vars.length; i++) {
+			bySlot.put(vars[i], Hole.of(i));
+		}
+		return bySlot;
+	}
+
+	private static java.util.Map<Hole<?>, Term<?>> targets(Term<?>... terms) {
+		java.util.Map<Hole<?>, Term<?>> bySlot = new java.util.LinkedHashMap<>();
+		for (int i = 0; i < terms.length; i++) {
+			bySlot.put(Hole.of(i), terms[i]);
+		}
+		return bySlot;
 	}
 }

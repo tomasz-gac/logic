@@ -16,12 +16,13 @@ final class VarRenaming implements Renaming {
 
 	private final Substitutions substitutions;
 
-	VarRenaming(Map<? extends Term<?>, Term<?>> seed) {
+	VarRenaming(Map<? extends Term<?>, ? extends Term<?>> seed) {
 		this.substitutions = Substitutions.of(seed.entrySet().stream()
 				// an identity entry means "keep" — walk's chain-follower
 				// must never see a self-binding
 				.filter(entry -> !entry.getKey().equals(entry.getValue()))
-				.collect(HashMap.collector(entry -> varName(entry.getKey()), Map.Entry::getValue)));
+				.collect(HashMap.collector(entry -> varName(entry.getKey()),
+						entry -> (Term<?>) entry.getValue())));
 	}
 
 	private static LVar<?> varName(Term<?> name) {

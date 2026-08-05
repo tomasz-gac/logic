@@ -10,7 +10,6 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.List;
 import java.util.Map;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -23,9 +22,9 @@ import java.util.stream.StreamSupport;
  * {@link LVar} or a canonical {@link Hole} — a store under holes IS its
  * canonical form, so live↔canonical conversion is just another renaming.
  * Each crossing is its own implementation with its own algorithm:
- * {@link #of}/{@link #canonical} rename live vars ({@link VarRenaming} —
- * canonical enters the slot namespace, the comparability quotient keys are
- * made of); {@link #restating} leaves it onto given live targets
+ * {@link #of} renames live vars ({@link VarRenaming} — fed the var↦hole
+ * map reify built, it enters the slot namespace the comparability quotient
+ * keys are made of); {@link #restating} leaves it onto given live targets
  * ({@link SlotRenaming}) — master seeding; {@link #minting} speaks both
  * namespaces and mints a fresh var for every unlisted name
  * ({@link Minting}) — answer replay, where the mint is the existential:
@@ -43,26 +42,17 @@ public interface Renaming {
 	Fiber<Term<?>> apply(Term<?> term);
 
 	/** A live-var renaming from a seed map: unlisted names keep themselves. */
-	static Renaming of(Map<? extends Term<?>, Term<?>> seed) {
+	static Renaming of(Map<? extends Term<?>, ? extends Term<?>> seed) {
 		return new VarRenaming(seed);
 	}
 
 	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */
-	static Renaming minting(Map<? extends Term<?>, Term<?>> seed) {
+	static Renaming minting(Map<? extends Term<?>, ? extends Term<?>> seed) {
 		return new Minting(seed);
 	}
 
-	/** Entering the canonical namespace: {@code vars.get(i)} ↦ {@code _.i}. */
-	static Renaming canonical(List<LVar<?>> vars) {
-		Map<Term<?>, Term<?>> seed = new java.util.HashMap<>();
-		for (int i = 0; i < vars.size(); i++) {
-			seed.put(vars.get(i), Hole.of(i));
-		}
-		return of(seed);
-	}
-
-	/** Leaving the canonical namespace onto given targets: {@code _.i} ↦ {@code targets.get(i)}. */
-	static Renaming restating(List<? extends Term<?>> slotTargets) {
+	/** Leaving the canonical namespace: each hole onto its target — unlisted slots keep their names. */
+	static Renaming restating(Map<? extends Hole<?>, ? extends Term<?>> slotTargets) {
 		return new SlotRenaming(slotTargets);
 	}
 

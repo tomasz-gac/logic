@@ -8,6 +8,7 @@ import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 final class SlotRenaming implements Renaming {
 
-	private final List<? extends Term<?>> slotTargets;
+	private final Map<? extends Hole<?>, ? extends Term<?>> slotTargets;
 
 	@Override
 	public Fiber<Term<?>> apply(Term<?> term) {
@@ -27,7 +28,10 @@ final class SlotRenaming implements Renaming {
 		// instantiate MINTS holes it has no entry for; an unlisted slot
 		// must keep its name instead
 		List<Term<?>> bySlot = IntStream.rangeClosed(0, maxSlot)
-				.<Term<?>> mapToObj(i -> i < slotTargets.size() ? slotTargets.get(i) : Hole.of(i))
+				.<Term<?>> mapToObj(i -> {
+					Term<?> target = slotTargets.get(Hole.of(i));
+					return target != null ? target : Hole.of(i);
+				})
 				.collect(Collectors.toList());
 		return MiniKanren.instantiate(term, bySlot).map(t -> t);
 	}

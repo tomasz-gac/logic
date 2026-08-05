@@ -63,8 +63,10 @@ public class RenamingTest {
 	public void compoundSlotNamesInstantiate() {
 		// the slot path: holes in a compound term land on their targets
 		Term<?> withHoles = lval(List.of(Hole.of(0), lval(2), Hole.of(1)));
-		Term<?> applied = Renaming
-				.restating(Arrays.<Term<?>> asList(lval(7), lval(8)))
+		Map<Hole<?>, Term<?>> slotTargets = new HashMap<>();
+		slotTargets.put(Hole.of(0), lval(7));
+		slotTargets.put(Hole.of(1), lval(8));
+		Term<?> applied = Renaming.restating(slotTargets)
 				.apply(withHoles).get();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(2), lval(8)))))

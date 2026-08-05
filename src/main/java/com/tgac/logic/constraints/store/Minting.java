@@ -26,7 +26,7 @@ final class Minting implements Renaming {
 
 	private final Map<Term<?>, Term<?>> targets;
 
-	Minting(Map<? extends Term<?>, Term<?>> seed) {
+	Minting(Map<? extends Term<?>, ? extends Term<?>> seed) {
 		this.targets = new java.util.HashMap<>(seed);
 	}
 

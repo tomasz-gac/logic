@@ -5,9 +5,12 @@ package com.tgac.logic.constraints.store;
 
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import io.vavr.Tuple2;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * The boundary capability, single-sorted: a store IS a residue over its own
@@ -16,10 +19,10 @@ import java.util.List;
  * over the store's own {@link Semilattice}:
  *
  * <pre>
- * key projection   = split(callVars)._1.rename(canonical)        — {@link #project}
- * master seeding   = absorb(key.rename(restating(callVars)))
- * answer capture   = rename(resolution) then rename(canonical)  — Residues.normalize
- * answer replay    = absorb(rename(minting(seeds)))              — ∃ by minting
+ * key projection   = split(vars)._1.rename(of(varsToHoles))          — {@link #project}
+ * master seeding   = absorb(key.rename(restating(holesToVars)))
+ * answer capture   = rename(resolution) then rename(of(varsToHoles)) — Residues.normalize
+ * answer replay    = absorb(rename(minting(holesToFresh)))           — ∃ by minting
  * </pre>
  *
  * Imposition is the DRIVER's: {@code Propagation.absorb(factor)} meets the
@@ -66,11 +69,12 @@ public interface Projectable<S extends Projectable<S>> extends Absorbable<S> {
 	Fiber<S> rename(Renaming renaming);
 
 	/**
-	 * This store's knowledge about {@code vars} in canonical names, slot i ↔
-	 * vars[i] — the comparable key citizen. Projecting the empty list of an
-	 * empty store is the empty store: the triviality test is {@code isEmpty}.
+	 * This store's knowledge about the mapped vars in canonical names — each
+	 * var to its slot hole, the correspondence reify built, carried as data.
+	 * The comparable key citizen. Projecting an empty map of an empty store
+	 * is the empty store: the triviality test is {@code isEmpty}.
 	 */
-	default Fiber<S> project(List<LVar<?>> vars) {
-		return split(vars)._1.rename(Renaming.canonical(vars));
+	default Fiber<S> project(Map<LVar<?>, Hole<?>> slots) {
+		return split(new ArrayList<>(slots.keySet()))._1.rename(Renaming.of(slots));
 	}
 }

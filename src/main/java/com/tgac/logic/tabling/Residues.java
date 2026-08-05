@@ -15,6 +15,7 @@ import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
@@ -22,7 +23,6 @@ import com.tgac.logic.unification.Term;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Map;
-import java.util.List;
 import lombok.Value;
 
 /**
@@ -36,8 +36,8 @@ import lombok.Value;
  * stores it aggregates.
  *
  * <p>The NAMESPACE CROSSINGS live beside the algebra: a conjunct enters
- * from a package by {@link #project} (call side, the key citizen) or
- * {@link #normalize} (answer side, walking + slot canonicalization), and
+ * from a package by {@link #ofRelevant} (call side, the key citizen) or
+ * {@link #ofAll} (answer side, walking + slot canonicalization), and
  * leaves by {@link #restate} — imposing itself under a renaming, each
  * factor riding {@code Propagation.absorb}.
  */
@@ -110,7 +110,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * knowledge is split away — sound by containment, filtered at
 	 * consumption.
 	 */
-	public static Fiber<Residues> project(Package callerPkg, List<LVar<?>> callVars) {
+	public static Fiber<Residues> ofRelevant(Package callerPkg, java.util.Map<LVar<?>, Hole<?>> callVars) {
 		return callerPkg.getStores().values().foldLeft(
 						Fiber.<Map<Class<?>, Projectable<?>>> done(HashMap.empty()),
 						(acc, store) -> acc.flatMap(residues -> {
@@ -140,8 +140,8 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * conservatively incomparable across answers. Non-projectable live
 	 * knowledge refuses loudly.
 	 */
-	public static Fiber<Residues> normalize(Package answerPkg, List<LVar<?>> holeVars) {
-		Renaming canonicalization = Renaming.canonical(holeVars);
+	public static Fiber<Residues> ofAll(Package answerPkg, java.util.Map<LVar<?>, Hole<?>> holeVars) {
+		Renaming canonicalization = Renaming.of(holeVars);
 		return resolution(answerPkg.substitution()).flatMap(resolution ->
 						answerPkg.getStores().values().foldLeft(
 								Fiber.<Map<Class<?>, Projectable<?>>> done(HashMap.empty()),

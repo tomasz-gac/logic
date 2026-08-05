@@ -12,7 +12,6 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
@@ -20,17 +19,15 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.optimizer.Barrier;
 import com.tgac.logic.unification.Hole;
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.Map;
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -128,7 +125,7 @@ public class Tabling {
 					// hole reify names _.i, by construction. Non-projectable knowledge
 					// cannot enter the key, and unkeyed knowledge means wrong reuse.
 					Reified<?> reifiedArgs = reified._1;
-					return Residues.project(callerPkg, reified._2).flatMap(keyResidues -> {
+					return Residues.ofRelevant(callerPkg, reified._2).flatMap(keyResidues -> {
 						Call key = Call.of(relation, reifiedArgs, keyResidues);
 						Reader reader = Reader.of(k, callerPkg, argsTerm);
 						Table table = reader.getTable();
@@ -167,8 +164,10 @@ public class Tabling {
 									}
 									Package bodyPkg = stripConstraints(table.bodyState(callerPkg));
 									// the master's goal: the key's knowledge re-imposed
-									// onto the live call vars, then the body
-									java.util.List<Unifiable<?>> targets = new ArrayList<>(reified._2);
+									// onto the live call vars, then the body — seeding
+									// inverts the key's var↦hole renaming
+									Map<Hole<?>, Term<?>> targets = new LinkedHashMap<>();
+									reified._2.forEach((var, hole) -> targets.put(hole, var));
 									Goal seeded = keyResidues.isTrue()
 											? body.get()
 											: Conjunction.of(
@@ -213,17 +212,6 @@ public class Tabling {
 	 */
 	private static <T> Goal unifyArgs(Unifiable<T> args, Unifiable<T> instantiated) {
 		return Constraints.unify(args, instantiated);
-	}
-
-	/**
-	 * The delivery's mint: residues are slot-canonical, so each slot hole
-	 * seeds onto the term instantiation's fresh var for that slot; unseeded
-	 * locals mint fresh per delivery — the existential.
-	 */
-	private static Renaming replayMint(java.util.List<LVar<?>> freshHoles) {
-		return Renaming.minting(IntStream.range(0, freshHoles.size())
-				.mapToObj(i -> Tuple.of(Hole.of(i), freshHoles.get(i)))
-				.collect(Collectors.toMap(Tuple2::_1, Tuple2::_2)));
 	}
 
 	/** Remove every constraint-store factor: absence is ⊤, posting re-registers. */
@@ -272,7 +260,7 @@ public class Tabling {
 						// included, replayed as existentials at consumption and
 						// verified by the consumer's labelling; whether residues
 						// may ride at all is the mode's capture call
-						return Residues.normalize(answerPkg, reified._2).flatMap(residues -> {
+						return Residues.ofAll(answerPkg, reified._2).flatMap(residues -> {
 							// what the cell caches: the term and the value this derivation
 							// carries — caller-agnostic, since the body ran from ONE
 							Tuple2<Reified<?>, Object> cached = table.capture(entry, answerPkg, reified._1, residues);
@@ -371,7 +359,7 @@ public class Tabling {
 				Conjunction.of(
 								unifyArgs(argsTerm.getObjectUnifiable(), inst._1.getObjectUnifiable()),
 								residues.isTrue() ? Goal.success()
-										: residues.restate(replayMint(inst._2)))
+										: residues.restate(Renaming.minting(inst._2)))
 						.apply(callerPkg)
 						// streaming ⊗s the cell value in; closed records the loop
 						.apply(constrainedPkg -> k.apply(reader.getTable().absorb(constrainedPkg,

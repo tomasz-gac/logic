@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.unification.Hole;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
@@ -182,7 +183,7 @@ public class LatticeStoreTest {
 		Unifiable<Integer> z = lvar();
 		FlatConstraints a = FlatConstraints.empty().withValue(x, FlatSet.of(5, 6));
 		FlatConstraints b = FlatConstraints.empty().withValue(z, FlatSet.of(5, 6));
-		assertThat(a.rename(Renaming.canonical(Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()))).get())
-				.isEqualTo(b.rename(Renaming.canonical(Collections.<LVar<?>> singletonList((LVar<?>) z.asVar().get()))).get());
+		assertThat(a.rename(Renaming.of(Collections.<Term<?>, Term<?>> singletonMap(x.asVar().get(), Hole.of(0)))).get())
+				.isEqualTo(b.rename(Renaming.of(Collections.<Term<?>, Term<?>> singletonMap(z.asVar().get(), Hole.of(0)))).get());
 	}
 }

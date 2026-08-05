@@ -183,12 +183,12 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
 				.withDomain(varOf(y), dom(7, 8));
 
-		FiniteDomainConstraints keyed = store.project(Arrays.asList(varOf(x), varOf(y))).get();
+		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).get();
 		assertThat(keyed.getDomain(Hole.of(0)).get()).isEqualTo(dom(1, 2, 3));
 		assertThat(keyed.getDomain(Hole.of(1)).get()).isEqualTo(dom(7, 8));
 
 		// unconstrained var: absent name = ⊤; order is the caller's
-		FiniteDomainConstraints sparse = store.project(Arrays.asList(varOf(z), varOf(y))).get();
+		FiniteDomainConstraints sparse = store.project(slots(varOf(z), varOf(y))).get();
 		assertThat(sparse.getDomain(Hole.of(0)).isDefined()).isFalse();
 		assertThat(sparse.getDomain(Hole.of(1)).get()).isEqualTo(dom(7, 8));
 	}
@@ -204,7 +204,7 @@ public class ProjectionTest {
 				.withDomain(varOf(y), dom(1, 2, 3))
 				.prepend(keeper(x, y, lval(4)));
 
-		FiniteDomainConstraints keyed = store.project(Arrays.asList(varOf(x), varOf(y))).get();
+		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).get();
 		assertThat(keyed.getConstraints()).hasSize(1);
 		Propagator carried = keyed.getConstraints().head();
 		assertThat(carried.watchedTerms()).containsExactly(Hole.of(0), Hole.of(1), lval(4));
@@ -241,13 +241,13 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.prepend(keeper(x, y));
 
-		FiniteDomainConstraints first = store.project(Arrays.asList(varOf(x), varOf(y))).get();
-		FiniteDomainConstraints again = store.project(Arrays.asList(varOf(x), varOf(y))).get();
+		FiniteDomainConstraints first = store.project(slots(varOf(x), varOf(y))).get();
+		FiniteDomainConstraints again = store.project(slots(varOf(x), varOf(y))).get();
 		assertThat(first).isEqualTo(again);
 
 		FiniteDomainConstraints reposted = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.prepend(keeper(x, y));
-		assertThat(reposted.project(Arrays.asList(varOf(x), varOf(y))).get())
+		assertThat(reposted.project(slots(varOf(x), varOf(y))).get())
 				.isEqualTo(first);
 	}
 
@@ -278,9 +278,9 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.prepend(posted);
 
-		FiniteDomainConstraints keyed = store.project(Arrays.asList(varOf(x), varOf(y))).get();
+		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).get();
 		FiniteDomainConstraints seeded = keyed.rename(
-				Renaming.restating(Arrays.<Term<?>> asList(x, y))).get();
+				Renaming.restating(targets(x, y))).get();
 		assertThat(seeded.getConstraints().head()).isEqualTo(posted);
 		assertThat(seeded.getDomain(varOf(x)).get()).isEqualTo(dom(1, 2));
 	}
@@ -316,5 +316,21 @@ public class ProjectionTest {
 				.and(Constraints.unify(fresh2, lval(3)))
 				.solve(fresh2, TestSchedulers.factory())
 				.count()).isEqualTo(1);
+	}
+
+	private static java.util.Map<LVar<?>, Hole<?>> slots(LVar<?>... vars) {
+		java.util.Map<LVar<?>, Hole<?>> bySlot = new java.util.LinkedHashMap<>();
+		for (int i = 0; i < vars.length; i++) {
+			bySlot.put(vars[i], Hole.of(i));
+		}
+		return bySlot;
+	}
+
+	private static java.util.Map<Hole<?>, Term<?>> targets(Term<?>... terms) {
+		java.util.Map<Hole<?>, Term<?>> bySlot = new java.util.LinkedHashMap<>();
+		for (int i = 0; i < terms.length; i++) {
+			bySlot.put(Hole.of(i), terms[i]);
+		}
+		return bySlot;
 	}
 }
