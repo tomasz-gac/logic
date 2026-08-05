@@ -439,21 +439,16 @@ public class MiniKanren {
 	 * fresh variables — holes sharing a name share the variable — and ground
 	 * structure is preserved. One minted seed, one walk.
 	 */
-	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Unifiable<T>> instantiate(Reified<T> term) {
-		return MiniKanren.<T> instantiated(term).map(t -> (Unifiable<T>) t._1);
+		return MiniKanren.instantiated(term).map(t -> (Unifiable<T>) t._1);
 	}
 
 	private static <T> Fiber<Tuple2<Term<T>, Map<Hole<?>, LVar<?>>>> instantiated(Reified<T> term) {
 		Map<Hole<?>, LVar<?>> fresh = new java.util.LinkedHashMap<>();
-		namesIn((Term<?>) term)
-				.<Hole<?>> map(name -> name.asReified().getOrNull())
-				.filter(hole -> hole != null)
+		namesIn(term)
+				.<Hole<?>> flatMap(name -> name.asReified().toJavaStream())
 				.forEach(hole -> fresh.computeIfAbsent(hole, miss -> (LVar<?>) LVar.lvar()));
-		HashMap<Unknown<?>, Term<?>> seed = fresh.entrySet().stream()
-				.collect(HashMap.collector(entry -> (Unknown<?>) entry.getKey(),
-						entry -> (Term<?>) entry.getValue()));
-		return walkAll(Substitutions.of(seed), (Term<T>) term)
+		return walkAll(Substitutions.of(HashMap.ofAll(fresh)), term)
 				.map(t -> Tuple.of(t, fresh));
 	}
 
@@ -462,17 +457,17 @@ public class MiniKanren {
 	 * lazily streamed in traversal order: a short-circuiting consumer stops
 	 * the scan early. Iterative, deep spines never recurse.
 	 */
-	public static Stream<Term<?>> namesIn(Term<?> term) {
+	public static Stream<Unknown<?>> namesIn(Term<?> term) {
 		java.util.Deque<Term<?>> work = new java.util.ArrayDeque<>();
 		work.push(term);
-		return StreamSupport.stream(new Spliterators.AbstractSpliterator<Term<?>>(
+		return StreamSupport.stream(new Spliterators.AbstractSpliterator<Unknown<?>>(
 				Long.MAX_VALUE, java.util.Spliterator.ORDERED | java.util.Spliterator.NONNULL) {
 			@Override
-			public boolean tryAdvance(java.util.function.Consumer<? super Term<?>> action) {
+			public boolean tryAdvance(java.util.function.Consumer<? super Unknown<?>> action) {
 				while (!work.isEmpty()) {
 					Term<?> current = work.pop();
 					if (current.asUnknown().isDefined()) {
-						action.accept(current);
+						action.accept(current.asUnknown().get());
 						return true;
 					}
 					members(current).forEach(members -> members.forEach(work::push));
@@ -510,9 +505,8 @@ public class MiniKanren {
 	 * mirror of {@link #reifyWithHoles}, for callers that must re-impose
 	 * slot-named knowledge (residues) onto the instantiation.
 	 */
-	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Tuple2<Unifiable<T>, Map<Hole<?>, LVar<?>>>> instantiateWithHoles(Reified<T> term) {
-		return MiniKanren.<T> instantiated(term).map(t -> Tuple.of((Unifiable<T>) t._1, t._2));
+		return MiniKanren.instantiated(term).map(t -> Tuple.of((Unifiable<T>) t._1, t._2));
 	}
 
 	/** Invert the rename substitution into slot order: the var named {@code _.i} ↦ {@code _.i}. */

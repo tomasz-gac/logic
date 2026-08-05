@@ -22,6 +22,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import com.tgac.logic.unification.Unknown;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
@@ -135,7 +136,7 @@ public class ProjectionTest {
 		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
 
 		FiniteDomainConstraints normalized = store.rename(Renaming.of(
-				Collections.<Term<?>, Term<?>> singletonMap(varOf(x), lval(1)))).get();
+				Collections.<Unknown<?>, Term<?>> singletonMap(varOf(x), lval(1)))).get();
 		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
 		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
 	}

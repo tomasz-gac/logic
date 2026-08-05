@@ -31,21 +31,21 @@ import java.util.Map;
  */
 public final class Renaming {
 
-	private final Map<Term<?>, Term<?>> targets;
+	private final Map<Unknown<?>, Term<?>> targets;
 	private final boolean mintOnMiss;
 
-	private Renaming(Map<Term<?>, Term<?>> targets, boolean mintOnMiss) {
+	private Renaming(Map<Unknown<?>, Term<?>> targets, boolean mintOnMiss) {
 		this.targets = targets;
 		this.mintOnMiss = mintOnMiss;
 	}
 
 	/** A renaming from a seed map: unlisted names keep themselves. */
-	public static Renaming of(Map<? extends Term<?>, ? extends Term<?>> seed) {
+	public static Renaming of(Map<? extends Unknown<?>, ? extends Term<?>> seed) {
 		return new Renaming(named(seed), false);
 	}
 
 	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */
-	public static Renaming minting(Map<? extends Term<?>, ? extends Term<?>> seed) {
+	public static Renaming minting(Map<? extends Unknown<?>, ? extends Term<?>> seed) {
 		return new Renaming(named(seed), true);
 	}
 
@@ -55,16 +55,13 @@ public final class Renaming {
 	}
 
 	/**
-	 * A seed key must be a NAME, and an identity entry means "keep" — it
-	 * stays out of the map, so walk's chain-follower never sees a
-	 * self-binding.
+	 * An identity entry means "keep" — it stays out of the map, so walk's
+	 * chain-follower never sees a self-binding. Keys are NAMES by type;
+	 * raw-typed abuse dies on the erased cast at this boundary.
 	 */
-	private static Map<Term<?>, Term<?>> named(Map<? extends Term<?>, ? extends Term<?>> seed) {
-		Map<Term<?>, Term<?>> targets = new java.util.LinkedHashMap<>();
+	private static Map<Unknown<?>, Term<?>> named(Map<? extends Unknown<?>, ? extends Term<?>> seed) {
+		Map<Unknown<?>, Term<?>> targets = new java.util.LinkedHashMap<>();
 		seed.forEach((name, target) -> {
-			if (!name.asUnknown().isDefined()) {
-				throw new IllegalArgumentException("a renaming maps NAMES — live vars and holes: " + name);
-			}
 			if (!name.equals(target)) {
 				targets.put(name, target);
 			}
@@ -84,8 +81,6 @@ public final class Renaming {
 	}
 
 	private HashMap<Unknown<?>, Term<?>> seed() {
-		return targets.entrySet().stream()
-				.collect(HashMap.collector(entry -> (Unknown<?>) entry.getKey(),
-						entry -> (Term<?>) entry.getValue()));
+		return HashMap.ofAll(targets);
 	}
 }

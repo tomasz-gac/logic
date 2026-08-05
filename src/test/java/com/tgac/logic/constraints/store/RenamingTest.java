@@ -14,6 +14,7 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import com.tgac.logic.unification.Unknown;
 import io.vavr.collection.List;
 import java.util.Arrays;
 import java.util.Collections;
@@ -23,6 +24,10 @@ import org.junit.Test;
 
 public class RenamingTest {
 
+	private static Unknown<?> nameOf(Unifiable<?> u) {
+		return u.getObjectTerm().asVar().get();
+	}
+
 	private static boolean sameAs(Term<?> l, Term<?> r) {
 		return MiniKanren.unify(Substitutions.empty(),
 				l.getObjectTerm(), r.getObjectTerm()).get().isDefined();
@@ -31,15 +36,15 @@ public class RenamingTest {
 	@Test
 	public void aNameFreeTermPassesUnchanged() {
 		Term<?> ground = lval(List.of(lval(1), lval(2)));
-		assertThat(Renaming.of(Collections.<Term<?>, Term<?>> emptyMap()).apply(ground).get())
+		assertThat(Renaming.of(Collections.<Unknown<?>, Term<?>> emptyMap()).apply(ground).get())
 				.isSameAs(ground);
 	}
 
 	@Test
 	public void aBareNameMapsDirectly() {
 		Unifiable<Integer> x = lvar();
-		Map<Term<?>, Term<?>> seed = new HashMap<>();
-		seed.put(x.getObjectTerm(), lval(9));
+		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		seed.put(nameOf(x), lval(9));
 		assertThat(Renaming.of(seed).apply(x.getObjectTerm()).get()).isEqualTo(lval(9));
 	}
 
@@ -49,8 +54,8 @@ public class RenamingTest {
 		// names replace while unlisted ones keep themselves
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Map<Term<?>, Term<?>> seed = new HashMap<>();
-		seed.put(x.getObjectTerm(), lval(9));
+		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		seed.put(nameOf(x), lval(9));
 
 		Term<?> applied = Renaming.of(seed)
 				.apply(lval(List.of(x, lval(2), y)).getObjectTerm()).get();
@@ -78,8 +83,8 @@ public class RenamingTest {
 		// the one crossing that speaks both namespaces: seeded vars and
 		// seeded holes land on their targets in a single application
 		Unifiable<Integer> x = lvar();
-		Map<Term<?>, Term<?>> seed = new HashMap<>();
-		seed.put(x.getObjectTerm(), lval(9));
+		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		seed.put(nameOf(x), lval(9));
 		seed.put(Hole.of(0), lval(7));
 
 		Term<?> applied = Renaming.minting(seed)
@@ -94,8 +99,8 @@ public class RenamingTest {
 		// one engine, one map: live vars and holes are both names, so a
 		// plain seed carries both namespaces in one application
 		Unifiable<Integer> x = lvar();
-		Map<Term<?>, Term<?>> seed = new HashMap<>();
-		seed.put(x.getObjectTerm(), lval(9));
+		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		seed.put(nameOf(x), lval(9));
 		seed.put(Hole.of(0), lval(7));
 
 		Term<?> applied = Renaming.of(seed)
@@ -106,13 +111,15 @@ public class RenamingTest {
 	}
 
 	@Test
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public void aRenamingRefusesValueKeys() {
-		// a seed key must be a NAME; nobody wants an LVal → LVal mapping
-		Map<Term<?>, Term<?>> seed = new HashMap<>();
-		seed.put(lval(7), lval(8));
+		// the type proves seed keys are names — nobody wants an LVal → LVal
+		// mapping — and raw-typed abuse dies loudly on the erased cast
+		Map raw = new HashMap();
+		raw.put(lval(7), lval(8));
 
-		assertThatThrownBy(() -> Renaming.of(seed))
-				.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> Renaming.of((Map<Unknown<?>, Term<?>>) raw))
+				.isInstanceOf(ClassCastException.class);
 	}
 
 	@Test
@@ -120,7 +127,7 @@ public class RenamingTest {
 		// one unlisted name, two occurrences: the mint is recorded, so both
 		// occurrences become the SAME fresh variable (the existential)
 		Unifiable<Integer> local = lvar();
-		Term<?> applied = Renaming.minting(Collections.<Term<?>, Term<?>> emptyMap())
+		Term<?> applied = Renaming.minting(Collections.<Unknown<?>, Term<?>> emptyMap())
 				.apply(lval(List.of(local, local)).getObjectTerm()).get();
 
 		java.util.List<Term<?>> members = new java.util.ArrayList<>();
@@ -141,8 +148,8 @@ public class RenamingTest {
 		for (int i = 0; i < 10_000; i++) {
 			deep = lval(List.of(deep));
 		}
-		Map<Term<?>, Term<?>> seed = new HashMap<>();
-		seed.put(x.getObjectTerm(), lval(1));
+		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		seed.put(nameOf(x), lval(1));
 
 		Term<?> applied = Renaming.of(seed).apply(deep).get();
 

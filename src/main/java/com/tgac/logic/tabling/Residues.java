@@ -23,6 +23,7 @@ import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import com.tgac.logic.unification.Unknown;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
@@ -227,9 +228,9 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 */
 	private static Fiber<Renaming> resolution(Substitutions home) {
 		return home.bindings().foldLeft(
-						Fiber.<java.util.Map<Term<?>, Term<?>>> done(new java.util.HashMap<>()),
+						Fiber.<java.util.Map<Unknown<?>, Term<?>>> done(new java.util.HashMap<>()),
 						(acc, binding) -> acc.flatMap(walked ->
-								MiniKanren.walkAll(home, (Term<?>) binding._1).map(meaning -> {
+								MiniKanren.walkAll(home, binding._1).map(meaning -> {
 									walked.put(binding._1, meaning);
 									return walked;
 								})))

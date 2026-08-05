@@ -13,6 +13,7 @@ import com.tgac.logic.unification.Hole;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Unknown;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
@@ -183,7 +184,7 @@ public class LatticeStoreTest {
 		Unifiable<Integer> z = lvar();
 		FlatConstraints a = FlatConstraints.empty().withValue(x, FlatSet.of(5, 6));
 		FlatConstraints b = FlatConstraints.empty().withValue(z, FlatSet.of(5, 6));
-		assertThat(a.rename(Renaming.of(Collections.<Term<?>, Term<?>> singletonMap(x.asVar().get(), Hole.of(0)))).get())
-				.isEqualTo(b.rename(Renaming.of(Collections.<Term<?>, Term<?>> singletonMap(z.asVar().get(), Hole.of(0)))).get());
+		assertThat(a.rename(Renaming.of(Collections.<Unknown<?>, Term<?>> singletonMap(x.asVar().get(), Hole.of(0)))).get())
+				.isEqualTo(b.rename(Renaming.of(Collections.<Unknown<?>, Term<?>> singletonMap(z.asVar().get(), Hole.of(0)))).get());
 	}
 }
