@@ -1,83 +1,91 @@
 package com.tgac.logic.constraints.store;
 
-// ABOUTME: The name DICTIONARY knowledge needs to cross a boundary — one
-// ABOUTME: implementation per crossing, constructed only through the factories.
+// ABOUTME: The name DICTIONARY knowledge needs to cross a boundary — one map,
+// ABOUTME: one engine (walkAll), one miss policy: keep yourself, or mint (∃).
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
-import java.util.ArrayDeque;
-import java.util.Deque;
+import com.tgac.logic.unification.Unknown;
+import io.vavr.collection.HashMap;
 import java.util.Map;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * The name DICTIONARY knowledge needs to cross a boundary. A name is a live
- * {@link LVar} or a canonical {@link Hole} — a store under holes IS its
- * canonical form, so live↔canonical conversion is just another renaming.
- * Each crossing is its own implementation with its own algorithm:
- * {@link #of} renames live vars ({@link VarRenaming} — fed the var↦hole
- * map reify built, it enters the slot namespace the comparability quotient
- * keys are made of); {@link #restating} leaves it onto given live targets
- * ({@link SlotRenaming}) — master seeding; {@link #minting} speaks both
- * namespaces and mints a fresh var for every unlisted name
- * ({@link Minting}) — answer replay, where the mint is the existential:
- * one Renaming shared across a delivery keeps a local shared between
- * stores one variable. Everywhere else, unlisted names keep themselves.
+ * {@link LVar} or a canonical {@link Hole} — one {@link Unknown} type — so a
+ * renaming is literally the map type the engine already walks: seeds go in,
+ * {@code walkAll} carries them, and the crossings differ only in seed shape
+ * and miss policy. {@link #of} keeps unlisted names ({@link #restating} is
+ * its slot-keyed reading — master seeding); {@link #minting} mints a fresh
+ * var for every unlisted name — answer replay, where the mint is the
+ * existential: mints are RECORDED, so one Renaming shared across a delivery
+ * keeps a local shared between stores one variable.
  *
- * <p>RESOLUTION is not a renaming of its own: these are dumb maps.
- * Rewriting terms to their current meanings under substitutions is the
- * answer side's own step — Residues builds the walked seed and feeds it
- * here like any other seed.
+ * <p>RESOLUTION is not a mode of this class: this is a dumb map. Rewriting
+ * terms to their current meanings under substitutions is the answer side's
+ * own step — Residues builds the walked seed and feeds it here like any
+ * other seed.
  */
-public interface Renaming {
+public final class Renaming {
 
-	/** The term under this renaming — deep: every name mapped. */
-	Fiber<Term<?>> apply(Term<?> term);
+	private final Map<Term<?>, Term<?>> targets;
+	private final boolean mintOnMiss;
 
-	/** A live-var renaming from a seed map: unlisted names keep themselves. */
-	static Renaming of(Map<? extends Term<?>, ? extends Term<?>> seed) {
-		return new VarRenaming(seed);
+	private Renaming(Map<Term<?>, Term<?>> targets, boolean mintOnMiss) {
+		this.targets = targets;
+		this.mintOnMiss = mintOnMiss;
+	}
+
+	/** A renaming from a seed map: unlisted names keep themselves. */
+	public static Renaming of(Map<? extends Term<?>, ? extends Term<?>> seed) {
+		return new Renaming(named(seed), false);
 	}
 
 	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */
-	static Renaming minting(Map<? extends Term<?>, ? extends Term<?>> seed) {
-		return new Minting(seed);
+	public static Renaming minting(Map<? extends Term<?>, ? extends Term<?>> seed) {
+		return new Renaming(named(seed), true);
 	}
 
-	/** Leaving the canonical namespace: each hole onto its target — unlisted slots keep their names. */
-	static Renaming restating(Map<? extends Hole<?>, ? extends Term<?>> slotTargets) {
-		return new SlotRenaming(slotTargets);
+	/** Leaving the canonical namespace: {@code _.i} ↦ its target — unlisted slots keep their names. */
+	public static Renaming restating(Map<? extends Hole<?>, ? extends Term<?>> slotTargets) {
+		return of(slotTargets);
 	}
 
 	/**
-	 * Every NAME occurrence in the term — live vars and canonical holes —
-	 * lazily streamed in traversal order: a short-circuiting consumer stops
-	 * the scan early. Iterative, deep spines never recurse.
+	 * A seed key must be a NAME, and an identity entry means "keep" — it
+	 * stays out of the map, so walk's chain-follower never sees a
+	 * self-binding.
 	 */
-	static Stream<Term<?>> namesIn(Term<?> term) {
-		Deque<Term<?>> work = new ArrayDeque<>();
-		work.push(term);
-		return StreamSupport.stream(new Spliterators.AbstractSpliterator<Term<?>>(
-				Long.MAX_VALUE, Spliterator.ORDERED | Spliterator.NONNULL) {
-			@Override
-			public boolean tryAdvance(Consumer<? super Term<?>> action) {
-				while (!work.isEmpty()) {
-					Term<?> current = work.pop();
-					if (current.asVar().isDefined() || current.asReified().isDefined()) {
-						action.accept(current);
-						return true;
-					}
-					MiniKanren.members(current).forEach(members -> members.forEach(work::push));
-				}
-				return false;
+	private static Map<Term<?>, Term<?>> named(Map<? extends Term<?>, ? extends Term<?>> seed) {
+		Map<Term<?>, Term<?>> targets = new java.util.LinkedHashMap<>();
+		seed.forEach((name, target) -> {
+			if (!name.asUnknown().isDefined()) {
+				throw new IllegalArgumentException("a renaming maps NAMES — live vars and holes: " + name);
 			}
-		}, false);
+			if (!name.equals(target)) {
+				targets.put(name, target);
+			}
+		});
+		return targets;
+	}
+
+	/** The term under this renaming — deep: every name mapped, one walk. */
+	public Fiber<Term<?>> apply(Term<?> term) {
+		if (mintOnMiss) {
+			MiniKanren.namesIn(term).forEach(name -> targets.computeIfAbsent(name, miss -> LVar.lvar()));
+		}
+		// walkAll rebuilds structure wholesale — an untouched term must pass by identity
+		return targets.isEmpty() || MiniKanren.namesIn(term).noneMatch(targets::containsKey)
+				? Fiber.done(term)
+				: MiniKanren.walkAll(Substitutions.of(seed()), term).map(t -> t);
+	}
+
+	private HashMap<Unknown<?>, Term<?>> seed() {
+		return targets.entrySet().stream()
+				.collect(HashMap.collector(entry -> (Unknown<?>) entry.getKey(),
+						entry -> (Term<?>) entry.getValue()));
 	}
 }

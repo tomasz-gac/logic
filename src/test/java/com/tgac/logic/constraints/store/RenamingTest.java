@@ -90,11 +90,26 @@ public class RenamingTest {
 	}
 
 	@Test
-	public void aVarRenamingRefusesSlotNames() {
-		// slot names cross by restating or minting; a var seed holding a
-		// hole is a construction error, refused loudly
+	public void aSeedMayMixVarsAndSlots() {
+		// one engine, one map: live vars and holes are both names, so a
+		// plain seed carries both namespaces in one application
+		Unifiable<Integer> x = lvar();
 		Map<Term<?>, Term<?>> seed = new HashMap<>();
+		seed.put(x.getObjectTerm(), lval(9));
 		seed.put(Hole.of(0), lval(7));
+
+		Term<?> applied = Renaming.of(seed)
+				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm()).get();
+
+		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
+				.isTrue();
+	}
+
+	@Test
+	public void aRenamingRefusesValueKeys() {
+		// a seed key must be a NAME; nobody wants an LVal → LVal mapping
+		Map<Term<?>, Term<?>> seed = new HashMap<>();
+		seed.put(lval(7), lval(8));
 
 		assertThatThrownBy(() -> Renaming.of(seed))
 				.isInstanceOf(IllegalArgumentException.class);

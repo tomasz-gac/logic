@@ -42,8 +42,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Spliterators;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -439,37 +437,49 @@ public class MiniKanren {
 	/**
 	 * Convert a reified term back into a solver term: canonical holes become
 	 * fresh variables — holes sharing a name share the variable — and ground
-	 * structure is preserved.
+	 * structure is preserved. One minted seed, one walk.
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Unifiable<T>> instantiate(Reified<T> term) {
-		return instantiateTerm(term, new ConcurrentHashMap<>())
-				.map(t -> (Unifiable<T>) t);
+		return MiniKanren.<T> instantiated(term).map(t -> (Unifiable<T>) t._1);
 	}
 
-	private static <T> Fiber<Term<T>> instantiateTerm(
-			Term<T> u,
-			ConcurrentMap<Integer, Term<Object>> fresh) {
-		return u.asReified()
-				.map(hole -> Fiber.<Term<T>> done((Term<T>) fresh.computeIfAbsent(
-						hole.getNumber(), number -> LVar.lvar())))
-				.orElse(() -> MiniKanren.<T> mapStructure(u, e -> instantiateTerm(e, fresh)))
-				.getOrElse(done(u));
+	private static <T> Fiber<Tuple2<Term<T>, Map<Hole<?>, LVar<?>>>> instantiated(Reified<T> term) {
+		Map<Hole<?>, LVar<?>> fresh = new java.util.LinkedHashMap<>();
+		namesIn((Term<?>) term)
+				.<Hole<?>> map(name -> name.asReified().getOrNull())
+				.filter(hole -> hole != null)
+				.forEach(hole -> fresh.computeIfAbsent(hole, miss -> (LVar<?>) LVar.lvar()));
+		HashMap<Unknown<?>, Term<?>> seed = fresh.entrySet().stream()
+				.collect(HashMap.collector(entry -> (Unknown<?>) entry.getKey(),
+						entry -> (Term<?>) entry.getValue()));
+		return walkAll(Substitutions.of(seed), (Term<T>) term)
+				.map(t -> Tuple.of(t, fresh));
 	}
 
 	/**
-	 * The term with hole {@code _.i} replaced by {@code bySlot.get(i)} — the
-	 * positional instantiation a transcribed residue uses to re-target its
-	 * knowledge onto live vars. Holes beyond the list become fresh variables,
-	 * as in {@link #instantiate(Reified)}.
+	 * Every NAME occurrence in the term — live vars and canonical holes —
+	 * lazily streamed in traversal order: a short-circuiting consumer stops
+	 * the scan early. Iterative, deep spines never recurse.
 	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Fiber<Term<T>> instantiate(Term<T> term, java.util.List<? extends Term<?>> bySlot) {
-		ConcurrentMap<Integer, Term<Object>> seeded = new ConcurrentHashMap<>();
-		for (int i = 0; i < bySlot.size(); i++) {
-			seeded.put(i, (Term<Object>) bySlot.get(i));
-		}
-		return instantiateTerm(term, seeded);
+	public static Stream<Term<?>> namesIn(Term<?> term) {
+		java.util.Deque<Term<?>> work = new java.util.ArrayDeque<>();
+		work.push(term);
+		return StreamSupport.stream(new Spliterators.AbstractSpliterator<Term<?>>(
+				Long.MAX_VALUE, java.util.Spliterator.ORDERED | java.util.Spliterator.NONNULL) {
+			@Override
+			public boolean tryAdvance(java.util.function.Consumer<? super Term<?>> action) {
+				while (!work.isEmpty()) {
+					Term<?> current = work.pop();
+					if (current.asUnknown().isDefined()) {
+						action.accept(current);
+						return true;
+					}
+					members(current).forEach(members -> members.forEach(work::push));
+				}
+				return false;
+			}
+		}, false);
 	}
 
 	public static <T> Fiber<Reified<T>> reify(Substitutions s, Term<T> item) {
@@ -496,26 +506,13 @@ public class MiniKanren {
 
 	/**
 	 * {@link #instantiate} plus the minting it performed: each hole to the
-	 * fresh {@link LVar} standing where the term said {@code _.i}, iterating
-	 * in slot order — the mirror of {@link #reifyWithHoles}, for callers that
-	 * must re-impose slot-named knowledge (residues) onto the instantiation.
+	 * fresh {@link LVar} standing where the term said {@code _.i} — the
+	 * mirror of {@link #reifyWithHoles}, for callers that must re-impose
+	 * slot-named knowledge (residues) onto the instantiation.
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Fiber<Tuple2<Unifiable<T>, Map<Hole<?>, LVar<?>>>> instantiateWithHoles(Reified<T> term) {
-		ConcurrentMap<Integer, Term<Object>> fresh = new ConcurrentHashMap<>();
-		return instantiateTerm(term, fresh)
-				.map(t -> Tuple.of((Unifiable<T>) t, holesToFresh(fresh)));
-	}
-
-	private static Map<Hole<?>, LVar<?>> holesToFresh(ConcurrentMap<Integer, Term<Object>> fresh) {
-		LVar<?>[] slots = new LVar<?>[fresh.size()];
-		for (ConcurrentMap.Entry<Integer, Term<Object>> entry : fresh.entrySet()) {
-			slots[entry.getKey()] = (LVar<?>) entry.getValue();
-		}
-		Map<Hole<?>, LVar<?>> bySlot = new java.util.LinkedHashMap<>();
-		for (int i = 0; i < slots.length; i++) {
-			bySlot.put(Hole.of(i), slots[i]);
-		}
-		return bySlot;
+		return MiniKanren.<T> instantiated(term).map(t -> Tuple.of((Unifiable<T>) t._1, t._2));
 	}
 
 	/** Invert the rename substitution into slot order: the var named {@code _.i} ↦ {@code _.i}. */
