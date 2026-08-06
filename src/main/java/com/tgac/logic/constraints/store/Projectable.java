@@ -7,6 +7,7 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
+import io.vavr.Tuple2;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,22 @@ import java.util.Map;
  * can ascend forever on adversarial programs — the author's responsibility,
  * exactly like tabling an unbounded generator.
  */
-public interface Projectable<S extends Projectable<S>> extends Crossing<S>, Absorbable<S> {
+public interface Projectable<S extends Projectable<S>> extends Absorbable<S> {
+
+	/**
+	 * Lossless factoring: (the knowledge expressible over {@code vars}, the
+	 * remainder) — {@code _1 ∧ _2 = this}. The store decides what is
+	 * separable (custody); the CALLER decides what to do with the halves:
+	 * keys keep {@code _1} and discard the caller-private remainder.
+	 */
+	Tuple2<S, S> split(List<LVar<?>> vars);
+
+	/**
+	 * This store's knowledge under changed names. A {@link Fiber} because
+	 * term rewriting rides the engine's traversals — callers compose, never
+	 * {@code get}.
+	 */
+	Fiber<S> rename(Renaming renaming);
 
 	/**
 	 * This store's knowledge about the mapped vars in canonical names — each

@@ -214,7 +214,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 							() -> Cont.just(reg),
 							applied -> {
 								Goal binds = applied.inferred().stream()
-										.map(Propagation::activate)
+										.map(Propagation::resolve)
 										.reduce(Goal.success(), Goal::and);
 								Goal wakes = applied.reexamine().stream()
 										.map(this::reexamineOwn)
@@ -242,7 +242,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 							upd -> {
 								Package updated = s.putStore(upd.factor());
 								return upd.inferred().stream()
-										.map(Propagation::activate)
+										.map(Propagation::resolve)
 										.reduce(Goal.success(), Goal::and)
 										.apply(updated);
 							}));
