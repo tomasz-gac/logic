@@ -175,7 +175,16 @@ rating pass can stop at any section boundary and still be useful.
 - [~] **caveated authorization** — the driving vertical slice: recursive grants with conditions over real data. *(domain-layer §7)*
 - [~] **wave execution** — poll → materialize → pin → cold solve → commit outputs; correctness = observational equivalence to a fresh cold solve at that snapshot. *(domain-layer §9)*
 
-## 10. Method
+## 10. Weighted TCLP (design)
+
+- [x] **answer-set aggregation / derivation weighting** — the two views, split by payload residence and multiplicity: payload rides the answer term, folded once per distinct solution vs factor rides the package, counted once per derivation. *(weighted-tclp §1)*
+- [~] **WeightedCondition\<W\>** — the carrier: a finite representation of Assignments → W as (region, weight) pieces; value at θ = ⊕ of every covering piece; ⊕ = piece union, ⊗ = cross-meet with weight product. *(weighted-tclp §2)*
+- [x] **uncompression invariant** — the load-bearing theorem: enforcing an answer's complete anonymized delta recovers exactly the ground extension of the original branch — `ground(project(branch)) == enforce(anonymize(project(branch)))`; the WHOLE package is the unit. *(weighted-tclp)*
+- [x] **compressed-fold license** — folding without uncompressing is lawful only per carrier law: merge equal regions by ⊕ always; drop (B, w_B) under (A, w_A) iff B ⊑ A and w_A ⊕ w_B = w_A. Presence: always fires (= today's absorption); counting: never except zero. *(weighted-tclp §3)*
+- [x] **fold schedule** — WHEN the fold may run and which carrier admits it: the two oracles, streaming (bounded rail, folds compressed), sealed (acyclic, new structural mode), closed (cyclic, StarSolve after uncompression); one semantic pipeline under all of them. *(weighted-tclp §4)*
+- [?] **level set** — the coarsest partition of solved cells on which "one region, one weight" is truthful; delivery's grouping unit, born extensional. *(weighted-tclp §5)*
+
+## 11. Method
 
 - [x] **comprehension veto** — "if I don't get it, it's not designed properly"; explanation is a proof obligation and the code changes until it can be given. *(method.md)*
 - [x] **adversarial deflation** — every proposal attacked before it ships; downgrades are wins. *(method.md)*
