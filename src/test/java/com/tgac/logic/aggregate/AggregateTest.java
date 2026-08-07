@@ -203,6 +203,21 @@ public class AggregateTest {
 	}
 
 	@Test
+	public void theRefusalNamesEveryPreExistingVariableItFound() {
+		Unifiable<Integer> y = lvar("first");
+		Unifiable<Integer> z = lvar("second");
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<LList<Integer>> x) ->
+				x.unifies(LList.ofAll(y, z)), n);
+
+		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("first")
+				.hasMessageContaining("second");
+	}
+
+	@Test
 	public void countRefusesABodyConstrainingAPreExistingVariable() {
 		// a constraint stated on an outer variable binds nothing — it enters
 		// through the statement seam, not the binding seam — but the answer

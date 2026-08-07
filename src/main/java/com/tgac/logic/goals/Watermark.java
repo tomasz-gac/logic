@@ -10,6 +10,9 @@ import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unknown;
 import io.vavr.Tuple2;
 import io.vavr.control.Option;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Value;
@@ -42,17 +45,16 @@ public class Watermark implements Packaged {
 	 */
 	public static void check(Package pkg, Prefix prefix) {
 		markOn(pkg).forEach(watermark -> {
+			Set<Unknown<?>> old = new LinkedHashSet<>();
 			for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
 				if (watermark.refuses(binding._1)) {
-					throw refusal(binding._1);
+					old.add(binding._1);
 				}
 				MiniKanren.namesIn(binding._2)
 						.filter(watermark::refuses)
-						.findFirst()
-						.ifPresent(old -> {
-							throw refusal(old);
-						});
+						.forEach(old::add);
 			}
+			refuseIfAny(old);
 		});
 	}
 
@@ -79,22 +81,23 @@ public class Watermark implements Packaged {
 	}
 
 	private static void refuseOldFreeNames(Package pkg, Watermark watermark, Stream<Term<?>> terms) {
-		terms.map(term -> pkg.substitution().walkAll(term))
+		refuseIfAny(terms.map(term -> pkg.substitution().walkAll(term))
 				.flatMap(MiniKanren::namesIn)
 				.filter(watermark::refuses)
-				.findFirst()
-				.ifPresent(old -> {
-					throw refusal(old);
-				});
+				.collect(Collectors.toCollection(LinkedHashSet::new)));
+	}
+
+	private static void refuseIfAny(Set<Unknown<?>> old) {
+		if (!old.isEmpty()) {
+			throw new IllegalStateException(
+					"closed sub-solve touches pre-existing variables "
+							+ old.stream().map(Object::toString).collect(Collectors.joining(", "))
+							+ ": its answer set would depend on knowledge the surrounding search can still grow");
+		}
 	}
 
 	private static Option<Watermark> markOn(Package pkg) {
 		return pkg.getStores().get(Watermark.class).map(Watermark.class::cast);
 	}
 
-	private static IllegalStateException refusal(Unknown<?> name) {
-		return new IllegalStateException(
-				"closed sub-solve touches pre-existing variable " + name
-						+ ": its answer set would depend on knowledge the surrounding search can still grow");
-	}
 }
