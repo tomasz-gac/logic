@@ -306,19 +306,64 @@ the boundary. Independently gated.
 
 ## 9. Literature and the novelty claim
 
-Adjacent published mechanisms: soft constraints / semiring-based CLP
-(the carrier's shape, including projection-as-⊕); tabled CLP with
-entailment (delivery under caller meet); partial-order/lattice answer
-subsumption (the compressed-fold license's home); algebraic model
-counting (uncompress-then-fold, and the compiled shortcut); monotone vs
-stratified aggregation (finality: stream vs seal); semiring parsing and
-SLG-side completion waiting (the ⊕-⊗ factoring); algebraic transitive
-closure and cyclic equation solving (the closed fold); the
-probabilistic tabling systems (probability tiers). Safe wording: the
-potentially distinctive contribution is the integration of projected
-Condition regions as a semiring-valued table carrier over this engine's
-fiber-computed completion substrate; novelty has not been established by
-a focused literature review.
+Component by component. Each mapping LOCATES the design; none is a
+leaned-on import — nothing here carries a theorem-import receipt, and
+the recollections have not been verified by a focused review. The
+moment a schedule's admission or a carrier choice leans on one of these
+results, its receipt is owed first.
+
+- **The pipeline** is the stated semantics of two fields. Semiring
+  provenance for Datalog (Green–Karvounarakis–Tannen) DEFINES the
+  annotated answer as the fold over the fully ground program — the
+  closed-fold receipt restates that definition as a test. Algebraic
+  model counting (Kimmig–Van den Broeck–De Raedt) is the same shape
+  propositionally: ground to a circuit, then fold; their
+  compiled-circuit properties (decomposability, determinism) play the
+  compressed-fold license's role — structural laws under which folding
+  the compressed form equals folding the extension.
+- **The carrier.** A weighted conditional answer is a row of a
+  semiring-ANNOTATED c-table (Imieliński–Lipski conditional tables,
+  combined with annotations in the provenance line). The denotation
+  Assignments → W with ⊕ is the c-semiring soft-constraint formalism
+  (Bistarelli–Montanari–Rossi), with one deliberate divergence:
+  c-semirings project a variable away by ⊕-summing over it — exactly
+  the early span this design forbids. Here projection keeps witnesses
+  and defers every ⊕ to the ground basis.
+- **The uncompression invariant** is the representation condition of
+  constraint databases (Kanellakis–Kuper–Revesz) — evaluation commutes
+  with the represented extension — specialized to answer tables.
+  Level-set delivery resembles their post-elimination output form; as a
+  NAMED delivery operation in tabled LP no precedent is known (nearest:
+  unnamed equal-probability grouping in probabilistic databases).
+- **The fold schedules** follow Mohri's semiring shortest-distance
+  program: which algorithm a carrier admits is read off its laws. Per
+  schedule: streaming ≈ XSB partial-order answer subsumption, whose
+  documented in-table unsafety for sum/count matches the bounded-rail
+  admission; sealed ≈ semiring parsing (Goodman) — topological fold of
+  a packed derivation forest, acyclicity required; closed ≈ Lehmann's
+  algebraic closure, where StarSolve already lives. ℕ∞ has a canonical
+  home — ω-continuous/complete semirings (Kuich, Ésik) — and the
+  frontier past linear equations is Newtonian program analysis
+  (Esparza–Kiefer–Luttenberger).
+- **The two views** are the database world's stratified-aggregation vs
+  annotated-semantics split (Soufflé and Flix sit on the stratified
+  side; Dyna erases the split by weighting everything). Set-semantics
+  aggregation as a fold over the exact-once replay of a presence-sealed
+  table is an XSB idiom (tabling + findall at completion) that no known
+  system states as a theorem. Mod TCLP (Arias–Carro, Ciao) anchors the
+  conditional-answer tabling itself — entailment-checked constrained
+  answers, no weights.
+- **Probability tiers**: the probabilistic tabling systems (PITA,
+  ProbLog) own the event-overlap problem and its solutions; §8's tier
+  choice selects between their obligations, it does not compete with
+  them.
+
+Safe wording of the novelty claim: every piece has a home; the
+unclaimed junction is conditional answers as the semiring cell's VALUE
+over this engine's fiber-computed completion substrate, seal-time
+grounding licensed by an explicit losslessness invariant, and delivery
+re-entering constraint language through level sets. Novelty has not
+been established by a focused literature review.
 
 ## 10. Build plan (gated, each step with receipts)
 
