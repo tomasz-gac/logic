@@ -9,10 +9,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.projection.Projection;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
@@ -247,6 +249,23 @@ public class AggregateTest {
 		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("watched");
+	}
+
+	@Test
+	public void countRefusesAnInlineRipeSuspensionDeclaringAPreExistingVariable() {
+		// ripeness is any upward-closed condition — it can pass without the
+		// watched variable being bound, running the body inline; the watched
+		// set is the body's DECLARED read surface, so it is checked before
+		// ripeness, not only on the parking branch
+		Unifiable<Integer> y = lvar("declared");
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<Integer> x) ->
+				Propagation.suspend(Collections.singletonList(y), s -> true, x.unifies(1)), n);
+
+		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("declared");
 	}
 
 	@Test

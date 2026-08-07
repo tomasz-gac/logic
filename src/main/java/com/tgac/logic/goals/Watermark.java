@@ -70,10 +70,12 @@ public class Watermark implements Packaged {
 	}
 
 	/**
-	 * Refuses parked {@code watched} terms mentioning a variable older than
-	 * the mark that is still free in {@code pkg} — a suspension watching
-	 * outer state can never ripen inside a closed sub-solve, and silently
-	 * failing the branch at enforce would make the fold conditional.
+	 * Refuses {@code watched} terms mentioning a variable older than the
+	 * mark that is still free in {@code pkg} — the suspension seam. The
+	 * watched set is the body's DECLARED read surface: reads never pass the
+	 * binding or statement seams, so the declaration is the one place a
+	 * read of outer state can refuse, whether the body would run inline or
+	 * park.
 	 */
 	public static void check(Package pkg, Iterable<? extends Term<?>> watched) {
 		markOn(pkg).forEach(watermark -> refuseOldFreeNames(pkg, watermark,
