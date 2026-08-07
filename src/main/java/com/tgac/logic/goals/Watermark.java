@@ -9,6 +9,9 @@ import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unknown;
 import io.vavr.Tuple2;
+import io.vavr.control.Option;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import lombok.Value;
 
 /**
@@ -38,21 +41,55 @@ public class Watermark implements Packaged {
 	 * the mark carried by {@code pkg}; a no-op for unmarked packages.
 	 */
 	public static void check(Package pkg, Prefix prefix) {
-		pkg.getStores().get(Watermark.class)
-				.map(Watermark.class::cast)
-				.forEach(watermark -> {
-					for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
-						if (watermark.refuses(binding._1)) {
-							throw refusal(binding._1);
-						}
-						MiniKanren.namesIn(binding._2)
-								.filter(watermark::refuses)
-								.findFirst()
-								.ifPresent(old -> {
-									throw refusal(old);
-								});
-					}
+		markOn(pkg).forEach(watermark -> {
+			for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
+				if (watermark.refuses(binding._1)) {
+					throw refusal(binding._1);
+				}
+				MiniKanren.namesIn(binding._2)
+						.filter(watermark::refuses)
+						.findFirst()
+						.ifPresent(old -> {
+							throw refusal(old);
+						});
+			}
+		});
+	}
+
+	/**
+	 * Refuses a stated {@code item} whose terms mention a variable older than
+	 * the mark that is still free in {@code pkg} — the statement seam: a
+	 * constraint on an outer variable binds nothing yet makes every answer
+	 * conditional on it. Deep-walking first admits terms whose old variables
+	 * are already bound to values.
+	 */
+	public static void check(Package pkg, Stored item) {
+		markOn(pkg).forEach(watermark -> refuseOldFreeNames(pkg, watermark, item.terms()));
+	}
+
+	/**
+	 * Refuses parked {@code watched} terms mentioning a variable older than
+	 * the mark that is still free in {@code pkg} — a suspension watching
+	 * outer state can never ripen inside a closed sub-solve, and silently
+	 * failing the branch at enforce would make the fold conditional.
+	 */
+	public static void check(Package pkg, Iterable<? extends Term<?>> watched) {
+		markOn(pkg).forEach(watermark -> refuseOldFreeNames(pkg, watermark,
+				StreamSupport.stream(watched.spliterator(), false).map(t -> (Term<?>) t)));
+	}
+
+	private static void refuseOldFreeNames(Package pkg, Watermark watermark, Stream<Term<?>> terms) {
+		terms.map(term -> pkg.substitution().walkAll(term))
+				.flatMap(MiniKanren::namesIn)
+				.filter(watermark::refuses)
+				.findFirst()
+				.ifPresent(old -> {
+					throw refusal(old);
 				});
+	}
+
+	private static Option<Watermark> markOn(Package pkg) {
+		return pkg.getStores().get(Watermark.class).map(Watermark.class::cast);
 	}
 
 	private static IllegalStateException refusal(Unknown<?> name) {

@@ -77,6 +77,7 @@ public class Package {
 
 	/** Prepends {@code c} into its store; unchanged when the store is absent. */
 	public Package withStored(Stored c) {
+		Watermark.check(this, c);
 		return stores.get(c.getStoreClass())
 				.map(cs -> ((Store) cs).prepend(c))
 				.map(cs -> Package.of(substitutions, stores.put(c.getStoreClass(), cs)))

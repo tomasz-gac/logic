@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.projection.Projection;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
@@ -199,6 +200,38 @@ public class AggregateTest {
 		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("smuggled");
+	}
+
+	@Test
+	public void countRefusesABodyConstrainingAPreExistingVariable() {
+		// a constraint stated on an outer variable binds nothing — it enters
+		// through the statement seam, not the binding seam — but the answer
+		// set depends on it all the same
+		Unifiable<Integer> y = lvar("constrained");
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<Integer> x) ->
+				separate(y, lval(1)).and(x.unifies(1)), n);
+
+		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("constrained");
+	}
+
+	@Test
+	public void countRefusesABodySuspendedOnAPreExistingVariable() {
+		// a projection parked on an outer variable can never ripen inside a
+		// closed sub-solve; silently failing the branch would make the count
+		// conditional on outside state
+		Unifiable<Integer> y = lvar("watched");
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<Integer> x) ->
+				Projection.project(y, v -> x.unifies(v)), n);
+
+		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("watched");
 	}
 
 	@Test

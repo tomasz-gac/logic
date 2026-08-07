@@ -126,10 +126,14 @@ public final class Propagation {
 	 */
 	public static Goal suspend(Iterable<? extends Term<?>> watched,
 			Predicate<Substitutions> ripe, Goal body) {
-		return s -> ripe.test(s.substitution()) ?
-				body.apply(s) :
-				Cont.just(s.withStore(Suspensions.EMPTY)
-						.updateStore(Suspensions.class, sus -> sus.park(Suspension.of(watched, ripe, body))));
+		return s -> {
+			if (ripe.test(s.substitution())) {
+				return body.apply(s);
+			}
+			Watermark.check(s, watched);
+			return Cont.just(s.withStore(Suspensions.EMPTY)
+					.updateStore(Suspensions.class, sus -> sus.park(Suspension.of(watched, ripe, body))));
+		};
 	}
 
 	/**

@@ -10,6 +10,7 @@ import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Array;
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -58,6 +59,11 @@ public final class Propagator implements Stored {
 	/** The terms whose variables this propagator watches — as stated, un-walked. */
 	public Array<? extends Term<?>> watchedTerms() {
 		return watchedTerms;
+	}
+
+	@Override
+	public Stream<Term<?>> terms() {
+		return watchedTerms.toJavaStream().map(t -> (Term<?>) t);
 	}
 
 	/**
