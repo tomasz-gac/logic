@@ -1,9 +1,10 @@
 # The bindings factor should speak the crossing language
 
-- **status**: argued; PARTIALLY BUILT (Aug 5, branch renaming-simplified): the
-  Crossing cut and the three doors shipped in the pair form — see "built so
-  far" below. The title claim itself (Substitutions implements Crossing) hit
-  a key-type wall and is gated.
+- **status**: TITLE CLAIM KILLED (Aug 6) — see compression-of-what.md.
+  What survives on unknown-names: the three Residues doors (about/all/
+  restate) in the pair form, and the polarity argument (keys may widen,
+  answers may not drop). The bindings factor does not join the factor
+  map; it renders as the reified anchor.
 - **evidence held**: derivation; API surface; tabling rewrite sketch; one
   counterexample (the x<z<y coupling) pinning the two-method polarity
 - **imports**: Projectable, Absorbable, Renaming, the crossings, Hole,

@@ -1,16 +1,12 @@
 # The chokepoint is the agenda: substitutions may be a constraint store
 
-- **status**: argued; PARTIALLY BUILT (Aug 5, branch renaming-simplified):
-  resolve died into activate(Prefix), Bind.apply routes through the
-  bindings factor's own examination (Substitutions.extended — the
-  trichotomy and the own-factor extension). NOT built: the ConstraintStore
-  interface conformance — DISCOVERED WALL: ConstraintStore lives in
-  constraints.store and references Package and Goal, so the base
-  unification layer implementing it inverts the layering (a package
-  cycle). Options for the human: accept the cycle; a store-shaped view of
-  the bindings factor living in constraints.store; or defer conformance to
-  the residence decision (obligation 3). The operational reroute needed
-  none of them.
+- **status**: KILLED (Aug 6) — see compression-of-what.md: constraints
+  compress branching over substitutions; the substitution holds the
+  realized value and cannot be one of the compressed things. The built
+  pieces were abandoned with branch renaming-simplified; the surviving
+  operational content on unknown-names is Substitutions.extended (the Bind
+  examination). resolve kept its name; Crossing folded back into
+  Projectable.
 - **evidence held**: the receipt that `Agenda.Bind` ALREADY EXISTS —
   `resolve`'s whole body is: empty-prefix no-op, pure-relational fast path,
   `enqueue(new Agenda.Bind(prefix))`. Unification already rides the agenda;
