@@ -339,10 +339,17 @@ and a gated tail; each step lands on a green suite:
   fair-completeness regression tabling introduces). Touches completion
   accounting, billing, dedup, sealed and closed replay — a design
   pass with the human, not a patch.
-- **Wave 0 — hygiene (2+3)**: one rendering path for conditional answers
-  (triggers the ring trio's package move — persistence's marshal format
-  gets its home early), then the weight-capture wiring. Small, and every
-  later wave touches what these clean up.
+- **Wave 0 — DISSOLVED (August 2026)**: both items left it. One
+  rendering path for conditional answers was killed — reify is how
+  stores EXPRESS infinities to a caller, project is how a live package
+  is lifted into anonymized values transplantable into other packages;
+  two distinct functionalities, nothing to unify. (Its rider dies with
+  it: the ring trio's package move and the marshal format's early home
+  now wait for persistence itself.) The weight-capture wiring moved
+  into the weighted-TCLP line (docs/design/weighted-tclp.md, the
+  streaming-fold step) and inherits that build plan's gate — it is not
+  a wave; its ungated head, Aggregate-onto-Semiring, is Wave 1's
+  Aggregate reframe.
 - **Wave 1 — the correctness debt (~3)**: the Aggregate reframe, now
   fully dissolved (condition.md §8.7): every fold routes to existing
   machinery — idempotent → Weights anywhere including recursion;
