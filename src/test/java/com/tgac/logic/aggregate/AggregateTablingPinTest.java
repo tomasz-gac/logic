@@ -53,10 +53,9 @@ public class AggregateTablingPinTest {
 	public void findallOverAColdSimpleTabledGoal() {
 		Tabled<Unifiable<Integer>> rel = Tabling.define(x ->
 				x.unifies(1).or(x.unifies(2)));
-		Unifiable<Integer> x = lvar();
 		Unifiable<LList<Integer>> collected = lvar();
 
-		List<Integer> sizes = Aggregate.findall(x, rel.apply(x), collected)
+		List<Integer> sizes = Aggregate.findall((Unifiable<Integer> x) -> rel.apply(x), collected)
 				.solve(collected, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> (int) l.toValueStream().count())
@@ -69,11 +68,10 @@ public class AggregateTablingPinTest {
 
 	@Test
 	public void findallOverAColdRecursiveTabledGoal() {
-		Unifiable<String> who = lvar();
 		Unifiable<LList<String>> collected = lvar();
 
-		List<Integer> sizes = Aggregate.findall(who,
-						ancestor(lval("alice"), who), collected)
+		List<Integer> sizes = Aggregate.findall(
+						(Unifiable<String> who) -> ancestor(lval("alice"), who), collected)
 				.solve(collected, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> (int) l.toValueStream().count())
@@ -87,9 +85,8 @@ public class AggregateTablingPinTest {
 	@Test
 	public void countOverAColdTabledGoal() {
 		Unifiable<Integer> n = lvar();
-		Unifiable<String> who = lvar();
 
-		List<Integer> counts = Aggregate.count(ancestor(lval("alice"), who), n)
+		List<Integer> counts = Aggregate.count((Unifiable<String> who) -> ancestor(lval("alice"), who), n)
 				.solve(n, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());

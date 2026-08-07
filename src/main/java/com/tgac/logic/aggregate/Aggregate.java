@@ -24,6 +24,7 @@ import com.tgac.logic.unification.Unifiable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,11 +34,19 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * Aggregation over the solutions of a goal. Each construct runs its goal to
- * exhaustion in the current state, folds the answers, and succeeds exactly
- * once with the result (except {@link #max}/{@link #min}, which fail on an
- * empty solution set). The enclosed goal's variables do not leak: collected
- * answers are copied.
+ * Aggregation over the solutions of a CLOSED sub-goal. Each construct hands
+ * its body a fresh template variable born inside the aggregate's scope, runs
+ * the goal the body builds to exhaustion, folds the answers, and succeeds
+ * exactly once with the result (except {@link #max}/{@link #min}, which fail
+ * on an empty solution set). The enclosed goal's variables do not leak:
+ * collected answers are copied.
+ *
+ * A closed sub-goal is a self-contained program: it may consume ground
+ * values from the surrounding search (the walk dissolves a bound variable
+ * into its value), but a variable born before the aggregate surfacing inside
+ * the sub-solve refuses loudly, by name — the {@link Watermark}. Otherwise
+ * the fold's scalar would silently depend on knowledge the surrounding
+ * search can still grow.
  *
  * Every aggregate is a BARRIER: its answer is a fold over the sub-search AS
  * RUN FROM THE BINDINGS AT ITS POSITION, so moving it changes the question,
@@ -54,10 +63,62 @@ import lombok.NoArgsConstructor;
 public class Aggregate {
 
 	/**
-	 * Collect a copy of {@code template} for every solution of {@code goal}
-	 * into {@code result}, in the order the scheduler produces them.
+	 * Collect a copy of the template for every solution of the goal
+	 * {@code body} builds, in the order the scheduler produces them.
 	 */
-	public static <T> Goal findall(Unifiable<T> template, Goal goal, Unifiable<LList<T>> result) {
+	public static <T> Goal findall(Function<Unifiable<T>, Goal> body, Unifiable<LList<T>> result) {
+		return closedAggregate(body, (template, goal) -> findall(template, goal, result));
+	}
+
+	/**
+	 * Count the solutions of the goal {@code body} builds.
+	 */
+	public static <T> Goal count(Function<Unifiable<T>, Goal> body, Unifiable<Integer> result) {
+		return closedAggregate(body, (template, goal) -> count(goal, result));
+	}
+
+	/**
+	 * Sum the template over the solutions of the goal {@code body} builds
+	 * (0 if none).
+	 */
+	public static Goal sum(Function<Unifiable<Integer>, Goal> body, Unifiable<Integer> result) {
+		return closedAggregate(body, (expr, goal) -> fold(expr, goal, result, Monoids.INT_SUM, false));
+	}
+
+	/**
+	 * Largest template over the solutions of the goal {@code body} builds;
+	 * fails if none.
+	 */
+	public static Goal max(Function<Unifiable<Integer>, Goal> body, Unifiable<Integer> result) {
+		return closedAggregate(body, (expr, goal) -> fold(expr, goal, result, Monoids.INT_MAX, true));
+	}
+
+	/**
+	 * Smallest template over the solutions of the goal {@code body} builds;
+	 * fails if none.
+	 */
+	public static Goal min(Function<Unifiable<Integer>, Goal> body, Unifiable<Integer> result) {
+		return closedAggregate(body, (expr, goal) -> fold(expr, goal, result, Monoids.INT_MIN, true));
+	}
+
+	/**
+	 * The closed-aggregate frame: at apply, draw the watermark, mint the
+	 * template above it, build the body's goal, and run it with the mark
+	 * riding its packages. The mark never leaves the sub-solve — answers
+	 * are copied.
+	 */
+	private static <T> Goal closedAggregate(
+			Function<Unifiable<T>, Goal> body,
+			BiFunction<Unifiable<T>, Goal, Goal> fold) {
+		return Barrier.of((Goal) pkg -> k -> {
+			Watermark watermark = Watermark.now();
+			Unifiable<T> template = lvar();
+			Goal closed = pkg2 -> body.apply(template).apply(pkg2.putStore(watermark));
+			return fold.apply(template, closed).apply(pkg).apply(k);
+		});
+	}
+
+	private static <T> Goal findall(Unifiable<T> template, Goal goal, Unifiable<LList<T>> result) {
 		return Barrier.of(pkg -> k -> {
 			Collection<Reified<T>> collected = new ConcurrentLinkedQueue<>();
 			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
@@ -70,29 +131,7 @@ public class Aggregate {
 		});
 	}
 
-	/**
-	 * Count the solutions of the goal {@code body} builds. The body receives
-	 * a fresh template variable born inside the aggregate's scope: a closed
-	 * aggregate's sub-goal mentions no pre-existing variable, so its answer
-	 * set depends on nothing the surrounding search can still change.
-	 */
-	public static <T> Goal count(Function<Unifiable<T>, Goal> body, Unifiable<Integer> result) {
-		return Barrier.of((Goal) pkg -> k -> {
-			Watermark watermark = Watermark.now();
-			Unifiable<T> template = lvar();
-			return count(closed(body.apply(template), watermark), result).apply(pkg).apply(k);
-		});
-	}
-
-	/** Runs {@code goal} with {@code watermark} riding its packages; the mark never leaves the sub-solve — answers are copied. */
-	private static Goal closed(Goal goal, Watermark watermark) {
-		return pkg -> goal.apply(pkg.putStore(watermark));
-	}
-
-	/**
-	 * Count the solutions of {@code goal}.
-	 */
-	public static Goal count(Goal goal, Unifiable<Integer> result) {
+	private static Goal count(Goal goal, Unifiable<Integer> result) {
 		return Barrier.of(pkg -> k -> {
 			AtomicInteger n = new AtomicInteger(0);
 			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
@@ -102,27 +141,6 @@ public class Aggregate {
 							})))
 					.flatMap(exhausted -> Constraints.unify(result, lval(n.get())).apply(pkg).apply(k));
 		});
-	}
-
-	/**
-	 * Sum {@code expr} over the solutions of {@code goal} (0 if none).
-	 */
-	public static Goal sum(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
-		return fold(expr, goal, result, Monoids.INT_SUM, false);
-	}
-
-	/**
-	 * Largest {@code expr} over the solutions of {@code goal}; fails if none.
-	 */
-	public static Goal max(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
-		return fold(expr, goal, result, Monoids.INT_MAX, true);
-	}
-
-	/**
-	 * Smallest {@code expr} over the solutions of {@code goal}; fails if none.
-	 */
-	public static Goal min(Unifiable<Integer> expr, Goal goal, Unifiable<Integer> result) {
-		return fold(expr, goal, result, Monoids.INT_MIN, true);
 	}
 
 	/**

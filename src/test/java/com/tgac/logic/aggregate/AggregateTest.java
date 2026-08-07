@@ -24,10 +24,9 @@ public class AggregateTest {
 
 	@Test
 	public void findallCollectsEverySolution() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<LList<Integer>> result = lvar();
 
-		Goal g = Aggregate.findall(x, oneTwoThree(x), result);
+		Goal g = Aggregate.findall((Unifiable<Integer> x) -> oneTwoThree(x), result);
 
 		List<Integer> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());
@@ -36,20 +35,18 @@ public class AggregateTest {
 
 	@Test
 	public void findallSucceedsExactlyOnce() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<LList<Integer>> result = lvar();
 
-		Goal g = Aggregate.findall(x, oneTwoThree(x), result);
+		Goal g = Aggregate.findall((Unifiable<Integer> x) -> oneTwoThree(x), result);
 
 		assertThat(g.solve(result, TestSchedulers.factory()).count()).isEqualTo(1);
 	}
 
 	@Test
 	public void findallOfAFailingGoalIsTheEmptyList() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<LList<Integer>> result = lvar();
 
-		Goal g = Aggregate.findall(x, x.unifies(1).and(x.unifies(2)), result);
+		Goal g = Aggregate.findall((Unifiable<Integer> x) -> x.unifies(1).and(x.unifies(2)), result);
 
 		List<Integer> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());
@@ -57,12 +54,12 @@ public class AggregateTest {
 	}
 
 	@Test
-	public void findallDoesNotLeakTheTemplateBindingOutward() {
-		// the collected copies are independent; x stays usable after
+	public void findallLeavesTheOuterWorldUntouched() {
+		// the collected copies are independent; an outer variable stays free
 		Unifiable<Integer> x = lvar();
 		Unifiable<LList<Integer>> result = lvar();
 
-		Goal g = Aggregate.findall(x, oneTwoThree(x), result)
+		Goal g = Aggregate.findall((Unifiable<Integer> t) -> oneTwoThree(t), result)
 				.and(x.unifies(99));
 
 		Integer bound = g.solve(x, TestSchedulers.factory()).findFirst().get().get();
@@ -71,20 +68,19 @@ public class AggregateTest {
 
 	@Test
 	public void countCountsSolutions() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> n = lvar();
 
-		int result = Aggregate.count(oneTwoThree(x), n).solve(n, TestSchedulers.factory()).findFirst().get().get();
+		int result = Aggregate.count((Unifiable<Integer> x) -> oneTwoThree(x), n)
+				.solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(3);
 	}
 
 	@Test
 	public void countOfAFailingGoalIsZero() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> n = lvar();
 
-		int result = Aggregate.count(x.unifies(1).and(x.unifies(2)), n)
+		int result = Aggregate.count((Unifiable<Integer> x) -> x.unifies(1).and(x.unifies(2)), n)
 				.solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isZero();
@@ -92,20 +88,19 @@ public class AggregateTest {
 
 	@Test
 	public void sumAddsTheExpression() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> total = lvar();
 
-		int result = Aggregate.sum(x, oneTwoThree(x), total).solve(total, TestSchedulers.factory()).findFirst().get().get();
+		int result = Aggregate.sum(x -> oneTwoThree(x), total)
+				.solve(total, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(6);
 	}
 
 	@Test
 	public void maxTakesTheLargest() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> m = lvar();
 
-		int result = Aggregate.max(x, x.unifies(1).or(x.unifies(3)).or(x.unifies(2)), m)
+		int result = Aggregate.max(x -> x.unifies(1).or(x.unifies(3)).or(x.unifies(2)), m)
 				.solve(m, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(3);
@@ -113,10 +108,9 @@ public class AggregateTest {
 
 	@Test
 	public void minTakesTheSmallest() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> m = lvar();
 
-		int result = Aggregate.min(x, x.unifies(3).or(x.unifies(1)).or(x.unifies(2)), m)
+		int result = Aggregate.min(x -> x.unifies(3).or(x.unifies(1)).or(x.unifies(2)), m)
 				.solve(m, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(1);
@@ -124,10 +118,10 @@ public class AggregateTest {
 
 	@Test
 	public void maxOfAFailingGoalFails() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> m = lvar();
 
-		long count = Aggregate.max(x, x.unifies(1).and(x.unifies(2)), m).solve(m, TestSchedulers.factory()).count();
+		long count = Aggregate.max(x -> x.unifies(1).and(x.unifies(2)), m)
+				.solve(m, TestSchedulers.factory()).count();
 
 		assertThat(count).isZero();
 	}
@@ -135,10 +129,10 @@ public class AggregateTest {
 	@Test
 	public void countReflectsAnEnclosingRelation() {
 		// alice's descendants, counted inside the logic
-		Unifiable<String> d = lvar();
 		Unifiable<Integer> n = lvar();
 
-		int result = Aggregate.count(descendant(d), n).solve(n, TestSchedulers.factory()).findFirst().get().get();
+		int result = Aggregate.count((Unifiable<String> d) -> descendant(d), n)
+				.solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(3);
 	}
@@ -147,10 +141,9 @@ public class AggregateTest {
 	public void countIsCorrectUnderTheParallelScheduler() {
 		// atomic accumulation + exploration completing after the fork joins
 		for (int i = 0; i < 20; i++) {
-			Unifiable<Integer> x = lvar();
 			Unifiable<Integer> n = lvar();
 
-			int result = Aggregate.count(oneTwoThree(x), n)
+			int result = Aggregate.count((Unifiable<Integer> x) -> oneTwoThree(x), n)
 					.solveParallel(n).findFirst().get().get();
 
 			assertThat(result).isEqualTo(3);
@@ -159,10 +152,9 @@ public class AggregateTest {
 
 	@Test
 	public void findallEnumeratesAFiniteDomain() {
-		Unifiable<Long> i = lvar();
 		Unifiable<LList<Long>> result = lvar();
 
-		Goal g = Aggregate.findall(i, dom(i, EnumeratedDomain.range(0L, 6L)), result);
+		Goal g = Aggregate.findall((Unifiable<Long> i) -> dom(i, EnumeratedDomain.range(0L, 6L)), result);
 
 		List<Long> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());
@@ -171,10 +163,9 @@ public class AggregateTest {
 
 	@Test
 	public void countCountsFiniteDomainSolutions() {
-		Unifiable<Long> i = lvar();
 		Unifiable<Integer> n = lvar();
 
-		int result = Aggregate.count(dom(i, EnumeratedDomain.range(0L, 6L)), n)
+		int result = Aggregate.count((Unifiable<Long> i) -> dom(i, EnumeratedDomain.range(0L, 6L)), n)
 				.solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(6);
@@ -182,11 +173,10 @@ public class AggregateTest {
 
 	@Test
 	public void findallRespectsDisequalityWhenAnswersAreGround() {
-		Unifiable<Integer> x = lvar();
 		Unifiable<LList<Integer>> result = lvar();
 
-		Goal g = Aggregate.findall(x,
-				x.unifies(2).or(x.unifies(3)).or(x.unifies(4)).and(separate(x, lval(3))),
+		Goal g = Aggregate.findall((Unifiable<Integer> x) ->
+						x.unifies(2).or(x.unifies(3)).or(x.unifies(4)).and(separate(x, lval(3))),
 				result);
 
 		List<Integer> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
@@ -197,16 +187,6 @@ public class AggregateTest {
 	// bob, charlie, david are alice's descendants
 	private Goal descendant(Unifiable<String> d) {
 		return d.unifies("bob").or(d.unifies("charlie")).or(d.unifies("david"));
-	}
-
-	@Test
-	public void countOverAClosedBodyCounts() {
-		Unifiable<Integer> n = lvar();
-
-		Goal g = Aggregate.count((Unifiable<Integer> x) -> oneTwoThree(x), n);
-
-		assertThat(g.solve(n, TestSchedulers.factory()).findFirst().get().get())
-				.isEqualTo(3);
 	}
 
 	@Test

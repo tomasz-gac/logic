@@ -103,9 +103,8 @@ public class TraceCompositionTest {
 	@Test
 	public void tracingDoesNotChangeFindallResults() {
 		Rec rec = new Rec();
-		Unifiable<Integer> x = lvar();
 		Unifiable<LList<Integer>> result = lvar();
-		Goal g = Aggregate.findall(x, oneTwoThree(x).named("member"), result);
+		Goal g = Aggregate.findall((Unifiable<Integer> x) -> oneTwoThree(x).named("member"), result);
 
 		List<Integer> traced = g.solve(result, rec).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());

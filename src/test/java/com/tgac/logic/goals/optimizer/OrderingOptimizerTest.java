@@ -109,7 +109,7 @@ public class OrderingOptimizerTest {
 	public void aggregatesHoldPositionStructurally() {
 		// an aggregate must never sort ahead of the goals that bind its inputs —
 		// it is a barrier, not a cheap one-answer goal
-		Goal agg = Aggregate.count(Goal.success(), lvar());
+		Goal agg = Aggregate.count(t -> Goal.success(), lvar());
 		Goal b2 = new FixedOrder(2);
 		Goal sorted = b2.and(agg).accept(new OrderingOptimizer()).get();
 		assertThat(((Conjunction) sorted).getClauses())
@@ -126,7 +126,7 @@ public class OrderingOptimizerTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> n = lvar();
 		java.util.List<Integer> counts = x.unifies(1).or(x.unifies(2))
-				.and(Aggregate.count(unify(x, lval(5)), n))
+				.and(Aggregate.count(t -> unify(x, lval(5)), n))
 				.solve(n, new OrderingOptimizer())
 				.map(com.tgac.logic.unification.Term::get)
 				.collect(Collectors.toList());
