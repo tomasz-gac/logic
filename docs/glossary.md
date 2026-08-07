@@ -26,9 +26,10 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **Term / Unifiable / Reified** — structural root / solver input / solver output; `instantiate` is the only Reified→Unifiable bridge. *(CLAUDE.md)*
 - [x] **LVar / LVal** — logic variable / wrapped value. *(unification/)*
 - [x] **Hole** — a canonical slot name (`_.n`); what a slot looks like inside a term; carries alpha-normal keys and the ∀-binder marking. *(tabled-constraints §4.1)*
+- [x] **Unknown** — the one name type: what a substitution may key and a walk may chase. `LVar` (live, identity) and `Hole` (canonical, numbered) implement it; the unifier still binds only LVars — Prefix keeps the privilege. *(unification/)*
 - [x] **walk / walkAll** — resolve a term through substitutions, shallow / deep. *(unification/)*
-- [~] **reify** — render an answer against canonical names; constrained stores attach their residuals. *(unification/)*
-- [~] **alpha-equivalence** — equality of reified terms up to variable naming; plain `equals` on `Reified`. *(unification/)*
+- [x] **reify** — render an answer against canonical names; constrained stores attach their residuals. *(unification/)*
+- [x] **alpha-equivalence** — equality of reified terms up to variable naming; plain `equals` on `Reified`. *(unification/)*
 - [x] **Prefix** — a checked set of new bindings; mintable only by the unifier or `Prefix.binding`. *(unification/)*
 - [x] **the chokepoint** — `Propagation.resolve`: the ONLY way substitutions grow in constraint-aware code; two coequal reasons — the veto (any store may fail the branch) and the wake (the only way other stores hear at all; bypass fails silently). *(constraint-kernel)*
 
@@ -44,22 +45,22 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **produce / claim** — claimed production: a compare-and-swap where the first claimant's body becomes the channel's workforce; losers no-op or run an alternative. *(emit.md)*
 - [x] **Emitter** — the one typed door for emission, minted by produce. *(emit.md)*
 - [x] **await** — park a frame at a channel until a readiness predicate holds of the grown value; predicate must be upward-closed. *(await.md)*
-- [~] **drained / exhaustion** — observing that a sub-computation finished without (or with) delivering; how failure-as-silence becomes observable. *(await.md)*
+- [x] **drained / exhaustion** — observing that a sub-computation finished without (or with) delivering; how failure-as-silence becomes observable. *(await.md)*
 - [~] **strand refusal** — a drive out of work with a consumer still parked refuses loudly and NAMES the channel it starved at. *(completion.md)*
 - [x] **"the ledger is the work"** — billing by construction: the counters are not tracking work, they are what work is. *(completion.md)*
-- [~] **ambient scope** — the frame's current workforce, inherited at every fork: assigned once at claim, it reaches any helper at any depth with no passing — work bills to frames because packages branch (a package-threaded ledger would fork with the world and never agree). *(table-completion)*
-- [?] **run lane** — where woken suspension bodies go: spliced AFTER the drain quiesces, so growth happens between fixpoints, never inside one. *(condition.md §8.1)*
+- [x] **ambient scope** — the frame's current workforce, inherited at every fork: assigned once at claim, it reaches any helper at any depth with no passing — work bills to frames because packages branch (a package-threaded ledger would fork with the world and never agree). *(table-completion)*
+- [x] **run lane** — where woken suspension bodies go: spliced AFTER the drain quiesces, so growth happens between fixpoints, never inside one. *(condition.md §8.1)*
 - [x] **Worklist** — drain-to-quiescence as a fiber, so long cascades stay fairly stepped. *(functional)*
 - [x] **chaos harness / RandomizedScheduler** — seeded random frame choice; order-independence becomes a testable property across seeds. *(schedulers/)*
 - [x] **fairness valve / promotion** — the UNFAIR scheduler's pour: a long-running shallowest bucket merges downward at the priced threshold — part of the tuned search shape, not just a rescue; honest BFS keeps only the crash hatch (a dead level pours after 10k no-progress steps). *(UnfairBreadthFirstScheduler)*
 
 ## 3. Constraint kernel
 
-- [ ] **stores are branches as data** — the founding sentence: a constraint store is a compressed set of branches; finite compression exits by EXPANSION (enforce/labelling), infinite compression exits by EXPRESSION (reify/`Constrained`); the compression is also what the optimizer and the crossings move around. *(condition.md)*
-- [ ] **Constrained** — the rendered answer-with-residuals carrier: reify's output when expressed infinities ride the term. *(separate/)*
+- [x] **stores are branches as data** — the founding sentence: a constraint store is a compressed set of branches; finite compression exits by EXPANSION (enforce/labelling), infinite compression exits by EXPRESSION (reify/`Constrained`); the compression is also what the optimizer and the crossings move around. *(condition.md)*
+- [x] **Constrained** — the rendered answer-with-residuals carrier: reify's output when expressed infinities ride the term. *(separate/)*
 - [x] **ConstraintStore** — a store with the two triggers (revise, stated) answered by `Fiber<Revision>`; may read anything, may swap only its OWN factor. *(constraint-kernel)*
 - [x] **revise** — bindings arrived; the store's COMPLETE reaction (custody, own watchers, own cascade). *(constraint-kernel)*
-- [~] **absorb** — meet a whole factor into the resident store + queue normalize; the bulk statement entry. *(constraint-kernel)*
+- [x] **absorb** — meet a whole factor into the resident store + queue normalize; the bulk statement entry. *(constraint-kernel)*
 - [~] **normalize (store)** — re-establish normal form after a meet brought foreign knowledge; may fail. *(constraint-kernel)*
 - [x] **Revision** — a store's answer: unchanged / fail / updated(own factor + consequences: inferred prefixes, runs). *(constraint-kernel)*
 - [?] **custody** — a store understands only its own state; the driver combines verdicts it does not inspect. *(constraint-kernel)*
@@ -69,7 +70,7 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **ripeness** — the condition under which a suspension's body may run (e.g. deep-groundness). *(projection/)*
 - [x] **labelling** — enumerate remaining domain values as branches at answer time; deferred materialization's endpoint — the finite door's mechanism. *(finitedomain/)*
 - [x] **enforce** — the FINITE exit: per-answer commit at the end of a branch, where compressed branching expands — FD labels, projections fail if unrun; the branch's own seal. *(ConstraintStore)*
-- [?] **narrowing wake** — constraint bodies wake when domains shrink, not only on bindings. *(CLAUDE.md landmines)*
+- [x] **narrowing wake** — constraint bodies wake when domains shrink, not only on bindings. *(CLAUDE.md landmines)*
 - [~] **trial unification** — Neq's check: try the forbidden unification on the side and observe. *(separate/)*
 
 ## 4. Algebra and capabilities
@@ -81,7 +82,7 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **Domain\<L\>** — what a LatticeStore requires of a per-name value: meet, order, membership, collapse-to-point, stabilization — the admission test as a capability record. *(lattice/)*
 - [~] **Absorbable** — the arrival capability: pure `meet` + `normalize`; store-level Semilattice+PartialOrder. *(constraints/store)*
 - [x] **Projectable** — the departure capability: `split` (lossless factoring over vars) + `rename`; project = split∘canonical-rename. Participation in tabling requires it. *(constraints/store)*
-- [~] **Renaming** — a dumb name map with one flag: `canonical` enters the slot namespace, `restating` leaves it onto given targets, `minting` leaves it with fresh names per miss (the existential); it never sees a Substitutions — resolution builds its walked seed in Residues, the only caller. *(constraints/store)*
+- [~] **Renaming** — one final class: a seed map `Unknown → Term` plus an optional mint-on-miss; `apply` is one walkAll under the seed. Factories: `of` (seed only, misses pass through), `minting` (fresh name per miss — the existential), `restating` (Hole-keyed targets). Callers build the seed; Residues' resolution is the main one. *(constraints/store)*
 - [~] **Semiring** — (⊕ merge alternatives, ⊗ chain steps, 0, 1); distributivity is the rearrangement license — the law that makes per-arrival delivery inside a fixpoint equal final-value delivery. *(functional algebra)*
 - [x] **IdempotentSemiring** — a⊕a=a: dedup is lawful, at-least-once delivery safe. *(functional algebra)*
 - [x] **BoundedSemiring** — 1⊕a=1 (top absorbs) hence a\*=1: cyclic streaming terminates. *(functional algebra)*
@@ -115,6 +116,7 @@ rating pass can stop at any section boundary and still be useful.
 ## 6. The constraint ring (the July–August unification)
 
 - [~] **Residues** — ONE region of constraint knowledge: per-store factors conjoined; the ⊗-monoid (meet, TRUE); leq = containment, narrower entails wider. *(condition.md §3)*
+- [x] **about / all / restate** — Residues' three doors, each speaking pairs of (reified image, factors): `about(world, anchor)` extracts the knowledge touching the anchor, `all(world, anchor)` extracts the whole normalized delta (existential witnesses included), `restate(image, factors, anchor)` re-states an extraction into a consumer world under one shared minting Renaming — the existential's scope. *(tabling/Residues)*
 - [x] **conjunct** — one Residues value inside a Condition; one derivation's region. *(condition.md)*
 - [~] **Condition** — a term's proven space: a DNF of Residues kept in absorption normal form; ⊕ = region union, ⊗ = cross-meet, 1 = TRUE (ground), bounded. *(condition.md §4)*
 - [~] **absorption normal form** — a ∨ (a∧b) = a: dominated conjuncts drop, dominating newcomers evict; subsumption dedup IS this law. *(condition.md §4)*

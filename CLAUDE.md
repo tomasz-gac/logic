@@ -179,6 +179,12 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   (suspensions as factors, weight ⊗ Condition, imposition spectrum, negation,
   clause learning). Read before touching tabling delivery.
 - `docs/design/semiring-inference.md` — weighted/probabilistic inference via semirings, phased.
+- `docs/design/weighted-tclp.md` — DESIGN (Aug 2026): weighted TCLP as one
+  semantic pipeline — uncompress the anonymized answer package, fold,
+  group, compress, emit as level sets; the uncompression invariant is the
+  load-bearing theorem; fold schedules with two oracles; the answer-set
+  vs derivation-weighting split (payload residence + multiplicity). Read
+  before any Aggregate-onto-Semiring work.
 - `docs/reference/fixpoint-machine.md` — the shared fixpoint mental model tying the two above
   together, AND why NOT to merge them into one engine prematurely.
 - `docs/shelved/virtual-threads-engine.md` — a Java 21 direct-style-on-virtual-threads engine
