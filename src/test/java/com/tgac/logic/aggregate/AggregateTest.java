@@ -6,6 +6,7 @@ import static com.tgac.logic.separate.Disequality.separate;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
@@ -196,5 +197,41 @@ public class AggregateTest {
 	// bob, charlie, david are alice's descendants
 	private Goal descendant(Unifiable<String> d) {
 		return d.unifies("bob").or(d.unifies("charlie")).or(d.unifies("david"));
+	}
+
+	@Test
+	public void countOverAClosedBodyCounts() {
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<Integer> x) -> oneTwoThree(x), n);
+
+		assertThat(g.solve(n, TestSchedulers.factory()).findFirst().get().get())
+				.isEqualTo(3);
+	}
+
+	@Test
+	public void countRefusesABodyTouchingAPreExistingVariable() {
+		Unifiable<Integer> y = lvar("smuggled");
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<Integer> x) -> x.unifies(y), n);
+
+		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("smuggled");
+	}
+
+	@Test
+	public void aPreExistingVariableAlreadyBoundToGroundIsAdmitted() {
+		// the walk dissolves a bound outer variable into its value before
+		// the sub-solve ever sees a variable — the free surface is empty
+		Unifiable<Integer> y = lvar("bound");
+		Unifiable<Integer> n = lvar();
+
+		Goal g = y.unifies(5)
+				.and(Aggregate.count((Unifiable<Integer> x) -> x.unifies(y), n));
+
+		assertThat(g.solve(n, TestSchedulers.factory()).findFirst().get().get())
+				.isEqualTo(1);
 	}
 }

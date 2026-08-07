@@ -18,6 +18,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Watermark;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
@@ -71,6 +72,7 @@ public final class Propagation {
 	 */
 	public static Goal resolve(Prefix prefix) {
 		return p -> {
+			Watermark.check(p, prefix);
 			if (prefix.isEmpty()) {
 				return Cont.just(p);
 			}

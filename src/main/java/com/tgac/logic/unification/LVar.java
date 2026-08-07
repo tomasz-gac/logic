@@ -2,22 +2,31 @@ package com.tgac.logic.unification;
 
 import io.vavr.control.Option;
 import java.util.concurrent.atomic.AtomicLong;
-import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 /**
  * @author TGa
  */
 
 @Getter
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class LVar<T> implements Unifiable<T>, Unknown<T> {
 	private static final AtomicLong VARIABLE_COUNTER = new AtomicLong(0L);
+	private final long birth;
 	private final String name;
 
+	private LVar(String name) {
+		this.birth = VARIABLE_COUNTER.getAndIncrement();
+		this.name = name;
+	}
+
 	LVar() {
-		name = "_." + VARIABLE_COUNTER.getAndIncrement(); //System.identityHashCode(this);
+		this.birth = VARIABLE_COUNTER.getAndIncrement();
+		this.name = "_." + birth;
+	}
+
+	/** The birth counter's current value: every variable created from now on satisfies {@code getBirth() >= births()}. */
+	public static long births() {
+		return VARIABLE_COUNTER.get();
 	}
 
 	public static <T> Unifiable<T> lvar() {

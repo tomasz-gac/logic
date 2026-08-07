@@ -14,6 +14,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Watermark;
 import com.tgac.logic.goals.optimizer.Barrier;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.MiniKanren;
@@ -23,6 +24,7 @@ import com.tgac.logic.unification.Unifiable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -66,6 +68,25 @@ public class Aggregate {
 					.flatMap(exhausted -> buildList(collected).flatMap(list ->
 							Constraints.unify(result, list).apply(pkg).apply(k)));
 		});
+	}
+
+	/**
+	 * Count the solutions of the goal {@code body} builds. The body receives
+	 * a fresh template variable born inside the aggregate's scope: a closed
+	 * aggregate's sub-goal mentions no pre-existing variable, so its answer
+	 * set depends on nothing the surrounding search can still change.
+	 */
+	public static <T> Goal count(Function<Unifiable<T>, Goal> body, Unifiable<Integer> result) {
+		return Barrier.of((Goal) pkg -> k -> {
+			Watermark watermark = Watermark.now();
+			Unifiable<T> template = lvar();
+			return count(closed(body.apply(template), watermark), result).apply(pkg).apply(k);
+		});
+	}
+
+	/** Runs {@code goal} with {@code watermark} riding its packages; the mark never leaves the sub-solve — answers are copied. */
+	private static Goal closed(Goal goal, Watermark watermark) {
+		return pkg -> goal.apply(pkg.putStore(watermark));
 	}
 
 	/**
