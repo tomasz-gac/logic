@@ -80,6 +80,33 @@ public class AggregateTest {
 	}
 
 	@Test
+	public void countCountsDistinctSolutionsNotDeliveries() {
+		// x = 2 is proven twice; the answer set is {1, 2}
+		Unifiable<Integer> n = lvar();
+
+		int result = Aggregate.count((Unifiable<Integer> x) ->
+						x.unifies(1).or(x.unifies(2)).or(x.unifies(2)), n)
+				.solve(n, TestSchedulers.factory()).findFirst().get().get();
+
+		assertThat(result).isEqualTo(2);
+	}
+
+	@Test
+	public void countAgreesWithTheBoundaryFold() {
+		// the boundary idiom is the oracle: solve, distinct, count
+		Unifiable<Integer> x = lvar();
+		Goal dup = x.unifies(1).or(x.unifies(2)).or(x.unifies(2));
+		long boundary = dup.solve(x, TestSchedulers.factory()).distinct().count();
+
+		Unifiable<Integer> n = lvar();
+		int inGoal = Aggregate.count((Unifiable<Integer> t) ->
+						t.unifies(1).or(t.unifies(2)).or(t.unifies(2)), n)
+				.solve(n, TestSchedulers.factory()).findFirst().get().get();
+
+		assertThat((long) inGoal).isEqualTo(boundary);
+	}
+
+	@Test
 	public void countOfAFailingGoalIsZero() {
 		Unifiable<Integer> n = lvar();
 
@@ -97,6 +124,33 @@ public class AggregateTest {
 				.solve(total, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(6);
+	}
+
+	@Test
+	public void sumIsOverDistinctSolutions() {
+		// x = 2 proven twice contributes once: {1, 2} sums to 3
+		Unifiable<Integer> total = lvar();
+
+		int result = Aggregate.sum((Unifiable<Integer> x) ->
+						x.unifies(1).or(x.unifies(2)).or(x.unifies(2)), total)
+				.solve(total, TestSchedulers.factory()).findFirst().get().get();
+
+		assertThat(result).isEqualTo(3);
+	}
+
+	@Test
+	public void sumFoldsOncePerDistinctSolutionNotPerDistinctPayload() {
+		// product(a, 10) and product(b, 10): two solutions, equal payloads —
+		// the payload is not the solution identity
+		Unifiable<Integer> total = lvar();
+
+		int result = Aggregate.sum((Unifiable<String> s, Unifiable<Integer> v) ->
+						s.unifies("a").and(v.unifies(10))
+								.or(s.unifies("a").and(v.unifies(10)))
+								.or(s.unifies("b").and(v.unifies(10))), total)
+				.solve(total, TestSchedulers.factory()).findFirst().get().get();
+
+		assertThat(result).isEqualTo(20);
 	}
 
 	@Test

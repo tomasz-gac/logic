@@ -11,6 +11,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import com.tgac.functional.algebra.Monoid;
 import com.tgac.functional.algebra.Monoids;
 import com.tgac.functional.fibers.Fiber;
+import io.vavr.Tuple;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
@@ -24,11 +25,12 @@ import com.tgac.logic.unification.Unifiable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -71,18 +73,38 @@ public class Aggregate {
 	}
 
 	/**
-	 * Count the solutions of the goal {@code body} builds.
+	 * Count the DISTINCT solutions of the goal {@code body} builds — the
+	 * answer set's size, not the delivery stream's length: a solution proven
+	 * several ways counts once (alpha-equivalence on the reified template).
 	 */
 	public static <T> Goal count(Function<Unifiable<T>, Goal> body, Unifiable<Integer> result) {
-		return closedAggregate(body, (template, goal) -> count(goal, result));
+		return closedAggregate(body, (template, goal) -> count(template, goal, result));
 	}
 
 	/**
-	 * Sum the template over the solutions of the goal {@code body} builds
-	 * (0 if none).
+	 * Sum the template over the DISTINCT solutions of the goal {@code body}
+	 * builds (0 if none). The template is both the solution identity and the
+	 * payload; to sum a payload over solutions with a richer identity, use
+	 * {@link #sum(BiFunction, Unifiable)}.
 	 */
 	public static Goal sum(Function<Unifiable<Integer>, Goal> body, Unifiable<Integer> result) {
-		return closedAggregate(body, (expr, goal) -> fold(expr, goal, result, Monoids.INT_SUM, false));
+		return closedAggregate(body, (expr, goal) -> foldDistinct(expr, expr, goal, result, Monoids.INT_SUM, false));
+	}
+
+	/**
+	 * Sum {@code payload} once per DISTINCT (solution, payload) pair of the
+	 * goal {@code body} builds (0 if none). The payload is not the solution
+	 * identity: distinct solutions carrying equal payloads each contribute.
+	 */
+	public static <S> Goal sum(BiFunction<Unifiable<S>, Unifiable<Integer>, Goal> body, Unifiable<Integer> result) {
+		return Barrier.of((Goal) pkg -> k -> {
+			Watermark watermark = Watermark.now();
+			Unifiable<S> solution = lvar();
+			Unifiable<Integer> payload = lvar();
+			Goal closed = pkg2 -> body.apply(solution, payload).apply(pkg2.putStore(watermark));
+			return foldDistinct(lval(Tuple.of(solution, payload)), payload, closed, result, Monoids.INT_SUM, false)
+					.apply(pkg).apply(k);
+		});
 	}
 
 	/**
@@ -131,15 +153,50 @@ public class Aggregate {
 		});
 	}
 
-	private static Goal count(Goal goal, Unifiable<Integer> result) {
-		return Barrier.of(pkg -> k -> {
-			AtomicInteger n = new AtomicInteger(0);
+	private static <T> Goal count(Unifiable<T> template, Goal goal, Unifiable<Integer> result) {
+		return Barrier.of((Goal) pkg -> k -> {
+			Set<Reified<T>> solutions = ConcurrentHashMap.newKeySet();
 			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
-							Constraints.reify(answerPkg, lvar()).apply(reified -> {
-								n.incrementAndGet();
+							Constraints.reify(answerPkg, template).apply(reified -> {
+								solutions.add(reified);
 								return done(nothing());
 							})))
-					.flatMap(exhausted -> Constraints.unify(result, lval(n.get())).apply(pkg).apply(k));
+					.flatMap(exhausted -> Constraints.unify(result, lval(solutions.size())).apply(pkg).apply(k));
+		});
+	}
+
+	/**
+	 * Folds {@code payload} once per distinct solution: the reified
+	 * {@code identity} keys the answer set, and each key's first delivery
+	 * contributes its payload to the monoid. The seen flag keeps "no answers"
+	 * distinguishable from a fold that happens to equal the monoid identity.
+	 */
+	private static Goal foldDistinct(
+			Unifiable<?> identity,
+			Unifiable<Integer> payload,
+			Goal goal,
+			Unifiable<Integer> result,
+			Monoid<Integer> monoid,
+			boolean failWhenEmpty) {
+		return Barrier.of((Goal) pkg -> k -> {
+			Set<Reified<?>> solutions = ConcurrentHashMap.newKeySet();
+			AtomicReference<Integer> acc = new AtomicReference<>(monoid.empty());
+			AtomicBoolean seen = new AtomicBoolean(false);
+			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
+							Constraints.reify(answerPkg, identity).apply(id ->
+									Constraints.reify(answerPkg, payload).apply(v -> {
+										if (solutions.add(id)) {
+											seen.set(true);
+											acc.updateAndGet(cur -> monoid.combine(cur, requireInt(v)));
+										}
+										return done(nothing());
+									}))))
+					.flatMap(exhausted -> {
+						if (!seen.get() && failWhenEmpty) {
+							return done(nothing());
+						}
+						return Constraints.unify(result, lval(acc.get())).apply(pkg).apply(k);
+					});
 		});
 	}
 
