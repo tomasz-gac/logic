@@ -782,16 +782,32 @@ with what killed it:
 is surrounded by a host language that already has folds; the boundary
 IS the finality certificate. Three pieces:
 
-1. **The closedness refusal** — the correctness fix for today's
-   `Aggregate`, which runs mid-solve against current bindings. The
-   sound primary form is the CLOSED aggregate: the sub-goal mentions no
-   pre-existing variables (a self-contained program, branch-independent,
-   deterministic). The birth watermark (LVar's monotone counter)
-   enforces it, SIMPLIFIED — no declared surfaces, no ripeness: ANY
-   variable older than the aggregate → refuse loudly, naming it. (The
-   general watermark detector — declared surfaces and all — still
-   serves §8.1's state-independent bodies and the assembler's fragment
-   hygiene; aggregates just need its degenerate case.)
+1. **The closedness refusal** — SHIPPED (August 2026). The sound
+   primary form is the CLOSED aggregate: the sub-goal is a
+   self-contained program, branch-independent, deterministic. AS BUILT:
+   every `Aggregate` primitive is function-shaped —
+   `count(x -> g(x), n)` — the body receives a template born inside the
+   aggregate's scope, so a closed body carries no pre-existing variable
+   by construction; the template-first forms are gone (their template
+   pre-existed by construction and could never carry the mark). The
+   birth watermark (`LVar.getBirth()`, the monotone counter; `Watermark`
+   is a mode marker riding the sub-solve's packages) refuses at every
+   door outside knowledge has: the BINDING seam (`Propagation.resolve`,
+   ahead of both the agenda and the pure fast path — prefix keys and
+   value leaves), the STATEMENT seam (`Package.withStored`, the one door
+   `activate` and Disequality's direct park both pass; `Stored.terms()`
+   names what an item speaks about), and the SUSPENSION seam
+   (`Propagation.suspend`, BEFORE the ripeness test — watched is the
+   body's declared read surface, and an upward-closed condition can
+   pass without the watched terms being bound). Each check deep-walks
+   first, so a pre-existing variable already bound to a value dissolves
+   before any comparison — ground knowledge is spent, the free surface
+   is what refuses — and a refusal names EVERY offending variable its
+   event carries. (The general watermark detector — declared surfaces
+   checked against actual capture — still serves §8.1's
+   state-independent bodies and the assembler's fragment hygiene;
+   undeclared reads off the relational vocabulary remain its territory,
+   not this check's.)
 2. **The idiom** — solve₁ → fold in the host language → seed solve₂
    with the result as a fact table (the row-set store is the carrier).
    Strata made explicit as solves; stratified aggregation and stratified
@@ -829,15 +845,29 @@ proves the same answer several ways, and the fork is whether ⊕ cares.
   not a feature. **findall** is an ordered (non-commutative) fold —
   boundary by nature.
 
-The worked pairs (today's `Aggregate.count` counts DELIVERIES from the
-CURRENT package — the proofs-conflation and the staleness bug in one
-signature):
+The worked pairs (`Aggregate.count` counts the DISTINCT solutions of
+its closed sub-solve — the staleness bug died with the closed form, the
+proofs-conflation with the set-semantics fold; the boundary idiom is
+the pinned oracle, and the two routes agree by test):
 
     // membero over [1, 2, 2]:
-    Aggregate.count(g, n)                    // n = 3, and stale under late bindings
+    Aggregate.count(x -> membero(x, l), n)   // n = 2 — answers, closed
     Weights.solve(g, product(COUNTING), …)
             .get(COUNTING)                   // 3 — proofs, honestly named, whole-solve
-    g.solve(x).distinct().count()            // 2 — answers
+    g.solve(x).distinct().count()            // 2 — answers, at the boundary
+
+    // solution identity is the whole tuple, never the payload:
+    Aggregate.sum((s, v) -> product(s, v), total)
+    // product(a, 10), product(b, 10) → 20, never 10
+
+A NON-GROUND solution refuses the fold (`Reified.isGround`): a free
+name denotes infinitely many distinct tuples, so no finite count
+exists — and counting answer RECORDS instead would be
+representation-sensitive (one region or two records for the same set
+must not count differently). A ground solution with a residual witness
+on a body local counts once: the witness is existential. "How much" of
+an infinite region is a measure question, not a count — outside this
+feature.
 
     // min over answers = min over proofs (idempotent), recursion-safe:
     price(item, x).and(Projection.project(x, v -> factor(MIN_PLUS, v)))
@@ -853,8 +883,9 @@ signature):
 
 So the feature dissolves: NOTHING new is built for any fold; the
 closedness refusal survives (it guards the sub-solve's inputs, orthogonal
-to the ring); `Aggregate` becomes thin sugar over the routes — or
-retires — the keep-or-deprecate call is the human's. The routing rule is
+to the ring). The keep-or-retire call on `Aggregate`'s signatures is
+DECIDED: the function shape stays as the closed boundary sugar; the
+template-first forms are retired. The routing rule is
 one sentence: DUPLICATE-INSENSITIVE → ring, anywhere; DUPLICATE-SENSITIVE
 → proofs mean rings-with-star, answers mean fold the stream.
 
