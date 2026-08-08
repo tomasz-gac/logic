@@ -158,11 +158,26 @@ public class Aggregate {
 			Set<Reified<T>> solutions = ConcurrentHashMap.newKeySet();
 			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, template).apply(reified -> {
-								solutions.add(reified);
+								solutions.add(requireGround(reified));
 								return done(nothing());
 							})))
 					.flatMap(exhausted -> Constraints.unify(result, lval(solutions.size())).apply(pkg).apply(k));
 		});
+	}
+
+	/**
+	 * A solution tuple must be ground: a free name denotes infinitely many
+	 * distinct tuples (no finite count exists), and counting answer RECORDS
+	 * instead would depend on how the branch compressed them — the same set
+	 * written as one region or two records must not count differently.
+	 */
+	private static <T> Reified<T> requireGround(Reified<T> reified) {
+		if (!reified.isGround()) {
+			throw new IllegalStateException(
+					"aggregate over a non-ground solution " + reified
+							+ ": a solution with free names denotes infinitely many distinct tuples");
+		}
+		return reified;
 	}
 
 	/**
@@ -185,7 +200,7 @@ public class Aggregate {
 			return Exhaustion.exhausted(goal.apply(pkg).apply(answerPkg ->
 							Constraints.reify(answerPkg, identity).apply(id ->
 									Constraints.reify(answerPkg, payload).apply(v -> {
-										if (solutions.add(id)) {
+										if (solutions.add(requireGround(id))) {
 											seen.set(true);
 											acc.updateAndGet(cur -> monoid.combine(cur, requireInt(v)));
 										}

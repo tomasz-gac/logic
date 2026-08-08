@@ -45,6 +45,12 @@ class Constrained<T> implements Reified<T> {
 	}
 
 	@Override
+	public boolean isGround() {
+		// residuals ride this carrier precisely because a name stayed free
+		return false;
+	}
+
+	@Override
 	public String toString() {
 		return that.toString() + " : " +
 				constraints.toJavaStream()

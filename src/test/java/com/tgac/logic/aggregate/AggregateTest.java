@@ -107,6 +107,48 @@ public class AggregateTest {
 	}
 
 	@Test
+	public void countRefusesANonGroundSolution() {
+		// x with x != 3 denotes infinitely many distinct tuples — and counting
+		// answer RECORDS would be representation-sensitive: {1,2} as one region
+		// or as two records denotes the same set with different record counts
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<Integer> x) -> separate(x, lval(3)), n);
+
+		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("free");
+	}
+
+	@Test
+	public void countRefusesAWhollyFreeSolution() {
+		// no residual needed: a free template alone denotes every value
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<Integer> x) -> Goal.success(), n);
+
+		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("free");
+	}
+
+	@Test
+	public void aGroundSolutionWithAResidualWitnessCounts() {
+		// the solution tuple is ground; the constrained variable is a body
+		// local, existentially quantified — one distinct solution
+		Unifiable<Integer> n = lvar();
+
+		Goal g = Aggregate.count((Unifiable<Integer> x) ->
+				Goal.defer(() -> {
+					Unifiable<Integer> y = lvar();
+					return x.unifies(1).and(separate(y, lval(3)));
+				}), n);
+
+		assertThat(g.solve(n, TestSchedulers.factory()).findFirst().get().get())
+				.isEqualTo(1);
+	}
+
+	@Test
 	public void countOfAFailingGoalIsZero() {
 		Unifiable<Integer> n = lvar();
 
