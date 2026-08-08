@@ -1,9 +1,14 @@
 # The note store — one mechanism for "not this" and "either-or"
 
-**STATUS: DESIGN (August 2026, derived with the human across the condition
-arc's question cascade; nothing built — #89 is the design-pass task, and
-every name here — `NoteStore`, `Exclusion`, `Disjunction`, `lit`,
-`inputs` — is a PLACEHOLDER for the human's naming call). This doc
+**STATUS: DESIGN, PASS RUN (August 2026). The design pass's rulings are
+folded in below: the scratch-copy check is capped at depth one (§4),
+compound is the crossing representation with distribution bounded to
+positive notes (§5), and the chassis survived its cheapest kill — Neq's
+`verificationStep` is the four moves computed in one trial-unification
+pass, with enforce-the-last degenerate for `Prefix` cargo. Every name —
+`NoteStore`, `Exclusion`, `Disjunction`, `lit`, `inputs` — remains a
+PLACEHOLDER for the human's naming call, which gates the first line of
+stage-one code. This doc
 supersedes lattice-store.md's co-store pitch by restating it in the
 vocabulary that survived the comprehension veto, and extends it to the
 positive case. Companions: `condition.md` (§0 the homes picture, §8.3 the
@@ -112,9 +117,29 @@ by the drained machinery aggregate/conda already ride. Verdicts TIER at
 the run-lane boundary (condition.md §8.1): at drain-quiescence the check
 is cheap and sound-but-incomplete (a merely-parked suspension in the
 scratch proves nothing); the full alternation is complete but terminates
-only as the program does. OPEN QUESTION for the pass: excursion
-re-entrancy — a scratch run can wake a body that states another note;
-nested speculation needs a decided discipline.
+only as the program does.
+
+**RULED (the pass): the check is capped at depth one.** A scratch-copy
+check never opens another — a `Residues`-cargo escape examined INSIDE a
+scratch answers "still possible" without proof. Soundness rests on one
+asymmetry: crossing off requires a WITNESSED failure, keeping requires
+nothing. Every failure a scratch can witness is exact — a meet
+emptying, a propagator's verdict, enforce-the-last imposing its
+survivor's pack (real propagation), or fail-on-empty, which needs every
+escape crossed off and under the cap assembles only from exact
+cross-offs. Conservatism is closed under itself: keeping an escape can
+only make a scratch fail LESS, which keeps more. What is kept too long
+dies at real imposition — narrowing makes the impossibility visible to
+the exact operations, or labelling at enforce imposes the pack for real
+— so the cap costs search time on doomed alternatives, never answers.
+Recursing would not buy completeness anyway: mutual waking of
+store-resident notes forces an in-progress cut whose cycle answer is
+the same conservative "possible", the cost per wake is exponential in
+depth on the chokepoint's hot path, and the question deep scratches
+answer — "would this alternative survive full exploration?" — already
+has a fair, billed, chaos-tested home: the search itself. Depth is a
+tier with a measurable trigger (branches routinely dying at labelling
+that a deeper check would have killed early), not a principle.
 
 **The agreement move** (lift): whatever ALL surviving escapes agree on
 holds now, unconditionally — from `(x∈1..3) ∨ (x∈7..9)` the store may
@@ -156,6 +181,68 @@ Goal taxRate = Disjunction.either(
 //   {route = 42  GIVEN  income ∈ 0..85000 ∨ income ∈ 85001..190000}
 ```
 
+**RULED (the pass): compound at the crossings; distribution is bounded
+and per-boundary.** When project lifts a note into a conditional
+answer, the answer's Condition holds it as ONE conjunct whose Residues
+carries the note whole as a NoteStore factor — never eagerly
+distributed into one conjunct per escape. Three reasons, in force
+order:
+
+- **Distribution un-builds the feature downstream.** Delivery streams
+  per conjunct, and each delivered conjunct restates into the consumer
+  as its own branch: a distributed disjunction replays as forks — the
+  exact forks `either` exists to avoid — while a compound note replays
+  as one delivery whose restate re-imposes the note.
+  Or-without-forking survives the table only under compound.
+- **Distribution splits the ⊕, never the wrapper — polarity never
+  dissolves.** A negative note distributes by De Morgan
+  (¬(A ∧ B) = ¬A ∨ ¬B → one conjunct per literal), but each piece is a
+  UNIT NOTE — a single-escape exclusion, still a NoteStore factor —
+  because a bare `Domain` factor asserts membership and cannot say
+  "not" (a box's complement is not a box). Unwrapping into a resident
+  positive factor is available only to positive escapes; a carrier
+  that can genuinely express a complement may recompress a unit
+  exclusion as an opt-in capability. An exclusion never explores under
+  EITHER representation — negative boxes denote infinite regions, so
+  they never label; their finite exit is parasitic on a positive
+  generator (FD enumerates, each binding wakes the note, excluded
+  points die — veto, not generation), and absent one they ride out as
+  residuals, non-ground. Distribution's cost for negatives is therefore
+  a pure DELIVERY artifact: the De Morgan conjuncts overlap (¬A and ¬B
+  share the both-escape worlds), neither absorbs the other, so the same
+  answer delivers twice and the consumer's downstream search runs
+  duplicated under overlapping filters — paid for an answer that never
+  had alternatives to explore — against one gain, exact antitone
+  subsumption on unit boxes. De Morgan is also the general law behind
+  §8.5's negation home: ¬Condition De-Morgans conjunct-wise into
+  notes — the store IS the CNF side of the house, and the ruling is
+  precisely "hold that side compound instead of paying the crossing."
+- **The costs are asymmetric.** Compound errs toward fat-but-correct:
+  subsumption against a disjunctive factor is conservative, so the
+  table may keep an entry it cannot prove covered — missed reuse,
+  never a wrong answer. Distribution errs toward exponential (k^n
+  conjuncts for n notes of k escapes), and spends the two properties
+  the gated tail needs whole: negation's blowup-free home (¬Condition
+  stays notes, never DNF) and the agreement move's grip on the note.
+
+A boundary may still distribute deliberately, with a receipt; the
+sanctioned case is the fold's uncompression — enforcement is expansion
+by definition.
+
+**Split transcribes, wrapped, polarity intact.** `NoteStore.split`
+extracts the notes mentioning the split variables AS NoteStore factors
+— canonically renamed, never simplified into another store's
+representation (a unary exclusion handed to FD as a Domain factor
+would flip polarity silently; structure's one owner). Two obligations
+ride this: subsumption on excluded boxes is ANTITONE (excluding a
+bigger box denotes a smaller region, so note-level leq reverses the
+box-level leq — the polarity swap surfacing in the order), and
+enforcement of a negative is SUBTRACTION against the resident positive
+domain — an exclusion alone denotes a cofinite region, which is why an
+answer whose only knowledge of a variable is an exclusion reads as
+non-ground (`Reified.isGround` false) and refuses the fold, consistent
+with the aggregation ruling.
+
 ## 6. The build, staged — each stage green with a customer
 
 1. **Chassis + `Domain` escapes, negative** → ships `notin`/`exclude`
@@ -185,11 +272,11 @@ first cargo.
 ## 7. Risks, named
 
 Watch fan-out on fat notes (watched-two-escapes is the mitigation; real
-bookkeeping); the CNF/DNF representation dial when notes cross into
-`Condition` values (keep compound — cheap, conservatively comparable —
-vs distribute — canonical, worst-case exponential; absorption prunes;
-decide per boundary); scratch-run re-entrancy (§4); and the standing
-doctrine — every stage prices against the suite before it merges.
+bookkeeping); the CNF/DNF representation dial — RULED in §5: compound
+at the crossings, distribution positive-only and per-boundary with a
+receipt; scratch-run re-entrancy — RULED in §4: depth one; and the
+standing doctrine — every stage prices against the suite before it
+merges.
 
 ## 8. Why this one build compounds
 
