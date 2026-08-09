@@ -6,8 +6,12 @@ package com.tgac.logic.notes;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Store;
+import com.tgac.logic.goals.Stored;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -74,6 +78,28 @@ public class VerificationTest {
 		Option<List<Note>> verdict = verified(Package.empty(), first, second);
 
 		assertThat(verdict.get().head().getPostings()).containsExactly(first, second);
+	}
+
+	@Test
+	public void aStatementPostingRefusesWhenItsStoreIsAbsent() {
+		// Package.withStored silently no-ops on an unregistered store; a
+		// dropped statement would read "unchanged" — the false cross-off
+		// direction, which can veto a satisfiable branch. Residence is
+		// asserted after posting instead
+		Stored orphan = new Stored() {
+			@Override
+			public Class<? extends Store> getStoreClass() {
+				return Store.class;
+			}
+
+			@Override
+			public java.util.stream.Stream<Term<?>> terms() {
+				return java.util.stream.Stream.empty();
+			}
+		};
+
+		assertThatThrownBy(() -> Verification.imposed(Posting.state(orphan), Package.empty()).get())
+				.isInstanceOf(IllegalStateException.class);
 	}
 
 	@Test

@@ -3,6 +3,7 @@ package com.tgac.logic.notes;
 // ABOUTME: One atomic constraint posting — the chokepoint's statement vocabulary
 // ABOUTME: as a value: a unification literal or a stored-item statement. Closed.
 
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Goal;
@@ -66,7 +67,24 @@ public interface Posting {
 
 		@Override
 		public Goal impose() {
-			return Propagation.activate(item);
+			return Propagation.activate(item).and(landed());
+		}
+
+		/**
+		 * Package.withStored silently no-ops on an unregistered store, and a
+		 * dropped statement would read "unchanged" — the false cross-off
+		 * direction, which can veto a satisfiable branch. Residence is
+		 * asserted after posting.
+		 */
+		private Goal landed() {
+			return s -> {
+				if (!s.getStores().containsKey(item.getStoreClass())) {
+					throw new IllegalStateException(
+							"statement posting dropped: no store registered for "
+									+ item.getStoreClass().getSimpleName() + " — " + item);
+				}
+				return Cont.just(s);
+			};
 		}
 
 		@Override
