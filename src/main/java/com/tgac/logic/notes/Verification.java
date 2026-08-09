@@ -125,6 +125,13 @@ public final class Verification {
 	 * growth, representation drift), the conservative direction. If solver
 	 * knowledge ever lives outside the Package, this classifier is where
 	 * that breaks silently.
+	 *
+	 * <p>OWED at the store slice: per-factor MUTUAL leq (each store's own
+	 * Absorbable order) in place of structural equals — drift-immune
+	 * equivalence, so a store renormalizing its representation cannot hide
+	 * an entailment. For cross-offs that is an optimization; for the LAST
+	 * posting it is the veto's soundness with statement postings, since a
+	 * violated note that reads "changed" survives instead of failing.
 	 */
 	private static boolean unchanged(Package before, Package after) {
 		return before == after || before.equals(after);
