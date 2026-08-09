@@ -1,44 +1,42 @@
 package com.tgac.logic.separate;
 
-// ABOUTME: The Prefix-cargo instance of the note chassis: a record's escapes are
-// ABOUTME: its pairs, verified jointly by trial unification — Neq as notes.
-
 import static com.tgac.logic.separate.Disequality.purify;
 import static com.tgac.logic.separate.Disequality.removeSubsumed;
 import static com.tgac.logic.separate.Disequality.walkAllConstraints;
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Revision;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.notes.Notes;
+import com.tgac.logic.goals.Stored;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
+import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
-import io.vavr.control.Option;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Set;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 
-/**
- * A record is one note: "at least one pair must stay apart." The escapes are
- * verified JOINTLY — trial unification threads bindings across pairs that
- * share variables — so the cargo's verifier is the whole-record trial, not a
- * per-escape loop: satisfied records discard, violated records fail, the
- * surviving delta IS the simplified record (impossible pairs dropped out).
- */
-@Getter
-@EqualsAndHashCode(callSuper = false)
+@Value
 @RequiredArgsConstructor(staticName = "of")
-final class NeqConstraints extends Notes<NeqConstraint, NeqConstraints> {
+class NeqConstraints implements Projectable<NeqConstraints> {
 	public static final NeqConstraints EMPTY = NeqConstraints.of(LinkedHashSet.empty());
-	private final LinkedHashSet<NeqConstraint> constraints;
+	LinkedHashSet<NeqConstraint> constraints;
+
+	private static ConstraintStore empty() {
+		return EMPTY;
+	}
 
 	public static NeqConstraints get(Package p) {
 		return p.getStore(NeqConstraints.class);
@@ -49,38 +47,73 @@ final class NeqConstraints extends Notes<NeqConstraint, NeqConstraints> {
 		return get(p).getConstraints().toList().reverse();
 	}
 
+	/**
+	 * More records = more known: meet is record union, so the derived leq is
+	 * record superset. The store is a set semantically — revise re-verifies
+	 * wholesale and subsumption prunes — so union is exact, not a widening.
+	 */
+	@Override
+	public NeqConstraints meet(NeqConstraints other) {
+		return NeqConstraints.of(constraints.addAll(other.constraints));
+	}
+
+	/** Record containment directly — the order the union-meet derives. */
+	@Override
+	public boolean leq(NeqConstraints other) {
+		return constraints.containsAll(other.constraints);
+	}
+
 	public static Package register(Package a) {
-		return a.withStore(EMPTY);
+		return a.withStore(empty());
 	}
 
 	@Override
-	protected LinkedHashSet<NeqConstraint> records() {
-		return constraints;
+	public boolean isEmpty() {
+		return constraints.isEmpty();
 	}
 
 	@Override
-	protected NeqConstraints make(LinkedHashSet<NeqConstraint> records) {
-		return NeqConstraints.of(records);
+	public ConstraintStore remove(Stored c) {
+		return NeqConstraints.of(constraints.remove((NeqConstraint) c));
 	}
 
 	@Override
-	protected Class<NeqConstraint> recordClass() {
-		return NeqConstraint.class;
+	public ConstraintStore prepend(Stored c) {
+		return NeqConstraints.of(constraints.add((NeqConstraint) c));
 	}
 
 	@Override
-	protected Option<Option<NeqConstraint>> verify(
-			NeqConstraint record, Package state) {
-		return Disequality.verifyAndSimplify(List.of(record), state.substitution())
-				.map(List::headOption);
+	public boolean contains(Stored c) {
+		return c instanceof NeqConstraint
+				&& constraints.contains((NeqConstraint) c);
+	}
+
+	@Override
+	public <T> Goal enforce(Term<T> x) {
+		return Goal.success();
 	}
 
 	/**
 	 * Lossless factoring: a record goes to the covered half iff every var it
 	 * touches (LHS names and RHS term vars alike) is supplied.
+	 * {@code _1 ∧ _2 = this}.
 	 */
 	@Override
-	protected boolean fits(NeqConstraint record, Set<Term<?>> covered) {
+	public Tuple2<NeqConstraints, NeqConstraints> split(java.util.List<LVar<?>> vars) {
+		Set<Term<?>> covered = new java.util.HashSet<>(vars);
+		LinkedHashSet<NeqConstraint> in = LinkedHashSet.empty();
+		LinkedHashSet<NeqConstraint> out = LinkedHashSet.empty();
+		for (NeqConstraint record : constraints) {
+			if (fits(record, covered)) {
+				in = in.add(record);
+			} else {
+				out = out.add(record);
+			}
+		}
+		return Tuple.of(NeqConstraints.of(in), NeqConstraints.of(out));
+	}
+
+	private static boolean fits(NeqConstraint record, Set<Term<?>> covered) {
 		for (Tuple2<Term<?>, Term<?>> pair : record.getSeparate()) {
 			if (!covered.contains(pair._1) || escapes(pair._2, covered)) {
 				return false;
@@ -94,12 +127,20 @@ final class NeqConstraints extends Notes<NeqConstraint, NeqConstraints> {
 	 * map like any other (live var ↔ canonical hole), RHS terms map deeply.
 	 */
 	@Override
-	protected Fiber<NeqConstraint> renamed(NeqConstraint record, Renaming renaming) {
+	public Fiber<NeqConstraints> rename(Renaming renaming) {
+		return constraints.foldLeft(
+						Fiber.<LinkedHashSet<NeqConstraint>> done(LinkedHashSet.empty()),
+						(acc, record) -> acc.flatMap(records ->
+								renamedRecord(record, renaming).map(records::add)))
+				.map(NeqConstraints::of);
+	}
+
+	private static Fiber<NeqConstraint> renamedRecord(NeqConstraint record, Renaming renaming) {
 		return record.getSeparate().foldLeft(
 						Fiber.<HashMap<Term<?>, Term<?>>> done(HashMap.empty()),
-						(acc, pair) -> acc.flatMap(renamedPairs -> renaming.apply(pair._1)
+						(acc, pair) -> acc.flatMap(renamed -> renaming.apply(pair._1)
 								.flatMap(lhs -> renaming.apply(pair._2)
-										.map(rhs -> renamedPairs.put(lhs, rhs)))))
+										.map(rhs -> renamed.put(lhs, rhs)))))
 				.map(NeqConstraint::of);
 	}
 
@@ -118,6 +159,23 @@ final class NeqConstraints extends Notes<NeqConstraint, NeqConstraints> {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Wholesale re-verification IS this store's normal form — records are
+	 * re-checked and simplified against the state, violated records fail.
+	 */
+	@Override
+	public Fiber<Revision> normalize(Package state) {
+		return Fiber.done(Disequality.verifyAndSimplify(constraints.toList(), state.substitution())
+				.map(c -> (Revision) Revision.updated(NeqConstraints.of(LinkedHashSet.ofAll(c))))
+				.getOrElse(Revision::fail));
+	}
+
+	@Override
+	public Fiber<Revision> revise(Prefix prefix, Package state) {
+		// the reaction was always wholesale — revise is normalize by another trigger
+		return normalize(state);
 	}
 
 	@Override
