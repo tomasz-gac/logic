@@ -117,6 +117,15 @@ public final class Verification {
 				.map(done -> List.ofAll(delivered));
 	}
 
+	/**
+	 * Sound because every piece of solver knowledge lives IN the package —
+	 * substitutions, factors, parked suspensions, tables — so an imposition
+	 * that added knowledge necessarily perturbs the structure, and equality
+	 * witnesses "nothing new". Errs only toward "changed" (bookkeeping
+	 * growth, representation drift), the conservative direction. If solver
+	 * knowledge ever lives outside the Package, this classifier is where
+	 * that breaks silently.
+	 */
 	private static boolean unchanged(Package before, Package after) {
 		return before == after || before.equals(after);
 	}
