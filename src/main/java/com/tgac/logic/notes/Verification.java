@@ -14,27 +14,23 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * Neq's {@code verificationStep} with postings for pairs and the scratch for
- * the trial: impose the note's postings sequentially on a scratch copy of the
- * state and read each imposition three ways —
+ * Neq's verification with postings for pairs and the scratch for the trial —
+ * the same signatures, contract for contract: {@link #verify} is
+ * verifyAndSimplify (none = a note is violated, the branch fails; the kept
+ * list holds the survivors, discarded notes simply absent), {@link #trial} is
+ * unifyConstraints (none = the note is subsumed fully, discard; empty = every
+ * posting already holds, violated; survivors = the simplified note's
+ * postings). The store slice maps verify onto {@link
+ * com.tgac.logic.constraints.store.Revision} in one line: none → fail,
+ * kept → updated.
  *
- * <ul>
- * <li>the imposition FAILS → the forbidden conjunction is refuted, the note is
- * subsumed fully by the state → discard;</li>
- * <li>the imposition changes NOTHING → that posting already holds (given the
- * state and the postings before it) → crossed off, lawful by monotonicity:
- * knowledge only grows, so an entailed posting stays entailed;</li>
- * <li>the imposition brings NEW knowledge → the posting is still owed → it
- * survives, as its ORIGINAL self — nothing is ever read back out of the
- * scratch.</li>
- * </ul>
- *
- * No survivors → every posting already holds → the forbidden conjunction is
- * entailed → the branch fails. One survivor left IS the plain negative
- * constraint on that posting, same representation.
- *
- * <p>Sequential imposition threads bindings across postings sharing variables
- * — the same jointness as Neq's whole-record trial unification.
+ * <p>A posting is imposed on the scratch and read three ways: the imposition
+ * FAILS → the forbidden conjunction is refuted; it changes NOTHING → that
+ * posting already holds, crossed off (lawful by monotonicity: knowledge only
+ * grows, so an entailed posting stays entailed); it brings NEW knowledge →
+ * still owed, the posting survives as its ORIGINAL self — nothing is ever
+ * read back out of the scratch. Sequential imposition threads bindings across
+ * postings sharing variables — the jointness of Neq's whole-record trial.
  *
  * <p>The change detection is exact for bindings (an entailed unification
  * resolves an empty prefix and returns the package untouched). A stated item
@@ -46,33 +42,52 @@ import lombok.NoArgsConstructor;
 public final class Verification {
 
 	/**
-	 * none = every posting already holds — the forbidden conjunction is
-	 * entailed, FAIL the branch; some(none) = some posting refuted — the note
-	 * is subsumed fully, DISCARD; some(note) = keep, entailed postings
-	 * crossed off.
+	 * Every note re-verified against the state: none = some note is violated,
+	 * the branch fails; otherwise the kept list — survivors simplified,
+	 * satisfied notes absent.
 	 */
-	public static Fiber<Option<Option<Note>>> verificationStep(Note note, Package state) {
-		return step(note.getPostings(), List.empty(), state);
+	public static Fiber<Option<List<Note>>> verify(List<Note> notes, Package state) {
+		return notes.foldLeft(
+				Fiber.done(Option.of(List.empty())),
+				(acc, note) -> acc.flatMap(kept -> kept.isDefined() ?
+						verificationStep(state, kept.get(), note) :
+						Fiber.done(kept)));
 	}
 
-	private static Fiber<Option<Option<Note>>> step(
+	/** One note against the state: the kept list grown by the note's verdict. */
+	private static Fiber<Option<List<Note>>> verificationStep(
+			Package state, List<Note> kept, Note note) {
+		return trial(note.getPostings(), List.empty(), state)
+				.map(delta -> !delta.isDefined() ?
+						Option.of(kept) :
+						delta.get().isEmpty() ?
+								Option.none() :
+								Option.of(kept.append(Note.of(delta.get()))));
+	}
+
+	/**
+	 * The note's postings imposed sequentially on the scratch: none = an
+	 * imposition failed, the forbidden conjunction is refuted — the note is
+	 * subsumed fully by the state; empty = every posting already holds — the
+	 * note is violated; otherwise the surviving postings, entailed ones
+	 * crossed off.
+	 */
+	static Fiber<Option<List<Posting>>> trial(
 			List<Posting> pending,
 			List<Posting> survivors,
 			Package scratch) {
 		if (pending.isEmpty()) {
-			return Fiber.done(survivors.isEmpty() ?
-					Option.none() :
-					Option.of(Option.of(Note.of(survivors))));
+			return Fiber.done(Option.of(survivors));
 		}
 		Posting posting = pending.head();
 		return imposed(posting, scratch).flatMap(outcome -> {
 			if (!outcome.isDefined()) {
-				return Fiber.done(Option.of(Option.none()));
+				return Fiber.done(Option.none());
 			}
 			Package grown = outcome.get();
 			return unchanged(scratch, grown) ?
-					step(pending.tail(), survivors, scratch) :
-					step(pending.tail(), survivors.append(posting), grown);
+					trial(pending.tail(), survivors, scratch) :
+					trial(pending.tail(), survivors.append(posting), grown);
 		});
 	}
 

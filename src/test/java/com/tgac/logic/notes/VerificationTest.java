@@ -23,8 +23,8 @@ public class VerificationTest {
 		return state;
 	}
 
-	private static Option<Option<Note>> verified(Package state, Posting... postings) {
-		return Verification.verificationStep(Note.of(List.of(postings)), state).get();
+	private static Option<List<Note>> verified(Package state, Posting... postings) {
+		return Verification.verify(List.of(Note.of(List.of(postings))), state).get();
 	}
 
 	@Test
@@ -34,10 +34,9 @@ public class VerificationTest {
 		Unifiable<Integer> x = lvar();
 		Package state = given(Posting.bind(x, lval(5)));
 
-		Option<Option<Note>> verdict = verified(state, Posting.bind(x, lval(3)));
+		Option<List<Note>> verdict = verified(state, Posting.bind(x, lval(3)));
 
-		assertThat(verdict.isDefined()).isTrue();
-		assertThat(verdict.get().isDefined()).isFalse();
+		assertThat(verdict.get()).isEmpty();
 	}
 
 	@Test
@@ -46,7 +45,7 @@ public class VerificationTest {
 		Unifiable<Integer> x = lvar();
 		Package state = given(Posting.bind(x, lval(3)));
 
-		Option<Option<Note>> verdict = verified(state, Posting.bind(x, lval(3)));
+		Option<List<Note>> verdict = verified(state, Posting.bind(x, lval(3)));
 
 		assertThat(verdict.isDefined()).isFalse();
 	}
@@ -59,9 +58,9 @@ public class VerificationTest {
 		Package state = given(Posting.bind(y, lval(2)));
 		Posting stillOwed = Posting.bind(x, lval(1));
 
-		Option<Option<Note>> verdict = verified(state, stillOwed, Posting.bind(y, lval(2)));
+		Option<List<Note>> verdict = verified(state, stillOwed, Posting.bind(y, lval(2)));
 
-		Note survivor = verdict.get().get();
+		Note survivor = verdict.get().head();
 		assertThat(survivor.getPostings()).containsExactly(stillOwed);
 	}
 
@@ -72,9 +71,9 @@ public class VerificationTest {
 		Posting first = Posting.bind(x, lval(1));
 		Posting second = Posting.bind(y, lval(2));
 
-		Option<Option<Note>> verdict = verified(Package.empty(), first, second);
+		Option<List<Note>> verdict = verified(Package.empty(), first, second);
 
-		assertThat(verdict.get().get().getPostings()).containsExactly(first, second);
+		assertThat(verdict.get().head().getPostings()).containsExactly(first, second);
 	}
 
 	@Test
@@ -86,8 +85,8 @@ public class VerificationTest {
 		Package state = given(Posting.bind(x, lval(2)));
 		Posting alias = Posting.bind(x, y);
 
-		Option<Option<Note>> verdict = verified(state, alias, Posting.bind(y, lval(2)));
+		Option<List<Note>> verdict = verified(state, alias, Posting.bind(y, lval(2)));
 
-		assertThat(verdict.get().get().getPostings()).containsExactly(alias);
+		assertThat(verdict.get().head().getPostings()).containsExactly(alias);
 	}
 }
