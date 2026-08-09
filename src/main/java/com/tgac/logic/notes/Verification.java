@@ -122,16 +122,18 @@ public final class Verification {
 	 * substitutions, factors, parked suspensions, tables — so an imposition
 	 * that added knowledge necessarily perturbs the structure, and equality
 	 * witnesses "nothing new". Errs only toward "changed" (bookkeeping
-	 * growth, representation drift), the conservative direction. If solver
-	 * knowledge ever lives outside the Package, this classifier is where
-	 * that breaks silently.
+	 * growth, representation drift), the conservative direction — a missed
+	 * entailment only delays: notes re-verify on every revise and the
+	 * ground floor decides by answer time. If solver knowledge ever lives
+	 * outside the Package, this classifier is where that breaks silently.
 	 *
-	 * <p>OWED at the store slice: per-factor MUTUAL leq (each store's own
-	 * Absorbable order) in place of structural equals — drift-immune
-	 * equivalence, so a store renormalizing its representation cannot hide
-	 * an entailment. For cross-offs that is an optimization; for the LAST
-	 * posting it is the veto's soundness with statement postings, since a
-	 * violated note that reads "changed" survives instead of failing.
+	 * <p>Exactness at the points this runs rests on the imposition law
+	 * (idempotent normalization, the ground floor, no silent swallowing —
+	 * the logic laws kit's claims): verification runs on post-drain
+	 * packages, quiescent hence normalized, so an entailed imposition
+	 * cannot drift. Per-factor mutual leq (each store's own Absorbable
+	 * order) remains available as a drift-immune refinement — pure
+	 * optimization, buying earliness on the delay side.
 	 */
 	private static boolean unchanged(Package before, Package after) {
 		return before == after || before.equals(after);
