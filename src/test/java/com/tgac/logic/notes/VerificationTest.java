@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
+import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -98,8 +99,23 @@ public class VerificationTest {
 			}
 		};
 
-		assertThatThrownBy(() -> Verification.imposed(Posting.state(orphan), Package.empty()).get())
+		assertThatThrownBy(() -> Verification.imposed(
+				Posting.state(List.empty(), terms -> orphan), Package.empty()).get())
 				.isInstanceOf(IllegalStateException.class);
+	}
+
+	@Test
+	public void statementPostingsCompareByTheirGeneratedItems() {
+		// two distinct maker lambdas, one named schema over the same terms:
+		// identity lives on the generated item, the maker is excluded
+		Term<?> x = lvar();
+		Posting first = Posting.state(List.of(x), terms ->
+				Propagator.of(Store.class, "same-schema", terms, (watched, pkg) -> null));
+		Posting second = Posting.state(List.of(x), terms ->
+				Propagator.of(Store.class, "same-schema", terms, (watched, pkg) -> null));
+
+		assertThat(first).isEqualTo(second);
+		assertThat(first.terms()).containsExactly(x);
 	}
 
 	@Test

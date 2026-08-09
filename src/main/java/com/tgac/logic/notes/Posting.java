@@ -11,7 +11,11 @@ import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.collection.List;
+import java.util.function.Function;
 import java.util.stream.Stream;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.Value;
 
 /**
@@ -33,9 +37,16 @@ public interface Posting {
 		return new Binding<>(lhs, rhs);
 	}
 
-	/** A constraint statement — a {@link Stored} item, built by its owning store's front door. */
-	static Posting state(Stored item) {
-		return new Statement(item);
+	/**
+	 * A constraint statement as a call-value: arguments as terms plus the
+	 * owning store's item maker — the (actuals, template) shape. The item is
+	 * generated at construction; a renaming regenerates it at the renamed
+	 * actuals, so transcription never needs the item's structure. The maker
+	 * must read its variables through the actuals it is handed, never
+	 * lexical capture; ground data may close over.
+	 */
+	static Posting state(List<Term<?>> actuals, Function<List<Term<?>>, Stored> maker) {
+		return new Statement(actuals, maker);
 	}
 
 	@Value
@@ -61,9 +72,25 @@ public interface Posting {
 		}
 	}
 
-	@Value
+	/**
+	 * Equality delegates to the GENERATED item — lawful under the named-schema
+	 * contract (a propagator compares as store, name and watched terms, body
+	 * excluded) — so the maker is excluded from identity exactly as the
+	 * contract prescribes, and equality at renamed actuals follows from the
+	 * regenerated item.
+	 */
+	@Getter
+	@EqualsAndHashCode(of = "item")
 	class Statement implements Posting {
-		Stored item;
+		private final List<Term<?>> actuals;
+		private final Function<List<Term<?>>, Stored> maker;
+		private final Stored item;
+
+		private Statement(List<Term<?>> actuals, Function<List<Term<?>>, Stored> maker) {
+			this.actuals = actuals;
+			this.maker = maker;
+			this.item = maker.apply(actuals);
+		}
 
 		@Override
 		public Goal impose() {
@@ -89,7 +116,7 @@ public interface Posting {
 
 		@Override
 		public Stream<Term<?>> terms() {
-			return item.terms();
+			return actuals.toJavaStream().map(t -> (Term<?>) t);
 		}
 
 		@Override
