@@ -6,10 +6,12 @@ package com.tgac.logic.notes;
 import static com.tgac.functional.category.Nothing.nothing;
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -80,26 +82,39 @@ public final class Verification {
 			return Fiber.done(Option.of(survivors));
 		}
 		Posting posting = pending.head();
-		return imposed(posting, scratch).flatMap(outcome -> {
-			if (!outcome.isDefined()) {
+		return imposed(posting, scratch).flatMap(worlds -> {
+			if (worlds.isEmpty()) {
 				return Fiber.done(Option.none());
 			}
-			Package grown = outcome.get();
+			if (worlds.size() > 1) {
+				// the imposition woke something that forked: no single world
+				// to thread. Conservative on both counts — the posting stays
+				// owed (never a false cross-off) and later postings verify
+				// against the unthreaded scratch (missed jointness only ever
+				// keeps more)
+				return trial(pending.tail(), survivors.append(posting), scratch);
+			}
+			Package grown = worlds.head();
 			return unchanged(scratch, grown) ?
 					trial(pending.tail(), survivors, scratch) :
 					trial(pending.tail(), survivors.append(posting), grown);
 		});
 	}
 
-	/** none = the imposition failed (the run stayed silent); some = the package it delivered. */
-	static Fiber<Option<Package>> imposed(Posting posting, Package scratch) {
-		AtomicReference<Package> delivered = new AtomicReference<>();
-		return posting.impose().apply(scratch)
-				.apply(pkg -> {
-					delivered.set(pkg);
-					return Fiber.done(nothing());
-				})
-				.map(done -> Option.of(delivered.get()));
+	/**
+	 * The worlds the imposition delivered, under the Exhaustion claim so
+	 * completion is honest even when the imposition wakes suspension bodies —
+	 * bodies are arbitrary goals and may spawn. Empty = the run stayed
+	 * silent: the imposition failed.
+	 */
+	static Fiber<List<Package>> imposed(Posting posting, Package scratch) {
+		Queue<Package> delivered = new ConcurrentLinkedQueue<>();
+		return Exhaustion.exhausted(posting.impose().apply(scratch)
+						.apply(pkg -> {
+							delivered.add(pkg);
+							return Fiber.done(nothing());
+						}))
+				.map(done -> List.ofAll(delivered));
 	}
 
 	private static boolean unchanged(Package before, Package after) {

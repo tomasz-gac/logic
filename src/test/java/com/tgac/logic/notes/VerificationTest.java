@@ -18,7 +18,7 @@ public class VerificationTest {
 	private static Package given(Posting... postings) {
 		Package state = Package.empty();
 		for (Posting posting : postings) {
-			state = Verification.imposed(posting, state).get().get();
+			state = Verification.imposed(posting, state).get().head();
 		}
 		return state;
 	}
