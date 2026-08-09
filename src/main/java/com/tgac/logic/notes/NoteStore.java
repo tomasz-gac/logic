@@ -1,22 +1,15 @@
 package com.tgac.logic.notes;
 
-// ABOUTME: The note store, Domain-cargo negative polarity: notes live by the four
-// ABOUTME: moves — cross off, enforce the last, fail on empty, discard when satisfied.
+// ABOUTME: The Domain-cargo negative instance of the note chassis: escapes are
+// ABOUTME: (anchor, box) literals read anchor ∉ box, examined by lattice ops.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.finitedomain.Domain;
-import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
-import com.tgac.logic.goals.Stored;
 import com.tgac.logic.lattice.LatticeStore;
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
@@ -26,100 +19,51 @@ import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.HashSet;
 import java.util.Set;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Value;
 
 /**
- * A note's escape answers two questions against the live state — did you come
- * true? did you become impossible? — and the store runs the four moves from
- * the answers, wholesale on every trigger, the shape lifted from Neq. An
- * escape {@code anchor ∉ box} is TRUE when the anchor's knowledge is disjoint
- * from the box (bound outside it, or its domain misses it entirely) and
- * IMPOSSIBLE when the knowledge sits inside the box (bound into it, or its
- * domain contained by it). Anchors' domains are read from whatever
+ * An escape {@code anchor ∉ box} is TRUE when the anchor's knowledge is
+ * disjoint from the box (bound outside it, or its domain misses it entirely)
+ * and IMPOSSIBLE when the knowledge sits inside the box (bound into it, or
+ * its domain contained by it). Anchors' domains are read from whatever
  * {@link LatticeStore} resides in the package — reads in revise are legal;
  * custody restricts writes.
  */
-@Value
+@Getter
+@EqualsAndHashCode(callSuper = false)
 @RequiredArgsConstructor(staticName = "of")
-class NoteStore implements Projectable<NoteStore> {
+final class NoteStore extends Notes<Note, NoteStore> {
 	public static final NoteStore EMPTY = NoteStore.of(LinkedHashSet.empty());
-	LinkedHashSet<Note> notes;
+	private final LinkedHashSet<Note> notes;
 
 	public static Package register(Package a) {
 		return a.withStore(EMPTY);
 	}
 
-	/** More notes = more known: meet is union; wholesale re-verification keeps it exact. */
 	@Override
-	public NoteStore meet(NoteStore other) {
-		return NoteStore.of(notes.addAll(other.notes));
+	protected LinkedHashSet<Note> records() {
+		return notes;
 	}
 
 	@Override
-	public boolean leq(NoteStore other) {
-		return notes.containsAll(other.notes);
+	protected NoteStore make(LinkedHashSet<Note> records) {
+		return NoteStore.of(records);
 	}
 
 	@Override
-	public boolean isEmpty() {
-		return notes.isEmpty();
-	}
-
-	@Override
-	public ConstraintStore remove(Stored c) {
-		return NoteStore.of(notes.remove((Note) c));
-	}
-
-	@Override
-	public ConstraintStore prepend(Stored c) {
-		return NoteStore.of(notes.add((Note) c));
-	}
-
-	@Override
-	public boolean contains(Stored c) {
-		return c instanceof Note && notes.contains((Note) c);
-	}
-
-	@Override
-	public <T> Goal enforce(Term<T> x) {
-		return Goal.success();
+	protected Class<Note> recordClass() {
+		return Note.class;
 	}
 
 	/**
-	 * The four moves, wholesale: each note re-examined against the state.
-	 * Any escape true → the note is satisfied, discarded. Impossible escapes
-	 * cross off. No escapes left → the branch fails. One left → the note IS
-	 * the plain exclusion on its survivor, same representation, watching it.
+	 * The two questions per escape, then the note's verdict: any escape true
+	 * → satisfied, discard; impossible escapes cross off; none left → the
+	 * branch fails; one survivor IS the plain exclusion watching its anchor.
 	 */
 	@Override
-	public Fiber<Revision> normalize(Package state) {
-		return Fiber.done(verifyAll(state)
-				.map(kept -> (Revision) Revision.updated(NoteStore.of(kept)))
-				.getOrElse(Revision::fail));
-	}
-
-	@Override
-	public Fiber<Revision> revise(Prefix prefix, Package state) {
-		return normalize(state);
-	}
-
-	private Option<LinkedHashSet<Note>> verifyAll(Package state) {
-		LinkedHashSet<Note> kept = LinkedHashSet.empty();
-		for (Note note : notes) {
-			Option<Option<Note>> verdict = verify(note, state);
-			if (!verdict.isDefined()) {
-				return Option.none();
-			}
-			for (Note survivor : verdict.get()) {
-				kept = kept.add(survivor);
-			}
-		}
-		return Option.of(kept);
-	}
-
-	/** none = the branch fails; some(none) = satisfied, discard; some(note) = keep, simplified. */
-	private static Option<Option<Note>> verify(Note note, Package state) {
+	protected Option<Option<Note>> verify(Note note, Package state) {
 		List<Tuple2<Term<?>, Domain<?>>> surviving = List.empty();
 		for (Tuple2<Term<?>, Domain<?>> escape : note.getEscapes()) {
 			switch (examine(escape, state)) {
@@ -168,33 +112,14 @@ class NoteStore implements Projectable<NoteStore> {
 		return Option.none();
 	}
 
-	/** A note goes to the covered half iff every anchor it watches is supplied. */
 	@Override
-	public Tuple2<NoteStore, NoteStore> split(java.util.List<LVar<?>> vars) {
-		Set<Term<?>> covered = new HashSet<>(vars);
-		LinkedHashSet<Note> in = LinkedHashSet.empty();
-		LinkedHashSet<Note> out = LinkedHashSet.empty();
-		for (Note note : notes) {
-			if (note.getEscapes().forAll(escape -> covered.contains(escape._1))) {
-				in = in.add(note);
-			} else {
-				out = out.add(note);
-			}
-		}
-		return Tuple.of(NoteStore.of(in), NoteStore.of(out));
+	protected boolean fits(Note note, Set<Term<?>> covered) {
+		return note.getEscapes().forAll(escape -> covered.contains(escape._1));
 	}
 
 	/** Anchors translate through the renaming; boxes are ground values and ride unchanged. */
 	@Override
-	public Fiber<NoteStore> rename(Renaming renaming) {
-		return notes.foldLeft(
-						Fiber.<LinkedHashSet<Note>> done(LinkedHashSet.empty()),
-						(acc, note) -> acc.flatMap(renamed ->
-								renamedNote(note, renaming).map(renamed::add)))
-				.map(NoteStore::of);
-	}
-
-	private static Fiber<Note> renamedNote(Note note, Renaming renaming) {
+	protected Fiber<Note> renamed(Note note, Renaming renaming) {
 		return note.getEscapes().foldLeft(
 						Fiber.<List<Tuple2<Term<?>, Domain<?>>>> done(List.empty()),
 						(acc, escape) -> acc.flatMap(escapes -> renaming.apply(escape._1)
