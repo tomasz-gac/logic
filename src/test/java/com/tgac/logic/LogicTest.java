@@ -410,8 +410,11 @@ public class LogicTest {
 	@Test
 	public void shouldRefreshVariablesOnDisjunction() {
 		Unifiable<LList<Integer>> lst = lvar();
-		// each generated list uses fresh variables, so lengths grow 0,1,2,3
-		assertThat(runStream(lst, lists(lst))
+		// each generated list uses fresh variables, so lengths grow 0,1,2,3 —
+		// an ARRIVAL-ORDER assertion, so the driver is pinned to the fair
+		// breadth-first default: arrival order is not scheduler-invariant
+		// (RandomizedScheduler seed 11 delivers length 4 before 3)
+		assertThat(lists(lst).solve(lst)
 				.limit(4)
 				.map(Object::toString)
 				.collect(Collectors.toList()))
