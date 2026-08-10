@@ -27,8 +27,8 @@ import io.vavr.Tuple;
 import io.vavr.control.Option;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -257,30 +257,30 @@ public final class Propagation {
 		if (!p.getStores().get(Agenda.class).isDefined()) {
 			return Fiber.done(Option.of(p));
 		}
-		AtomicReference<Package> quiesced = new AtomicReference<>();
-		return drainItems().apply(p)
-				.apply(pkg -> {
-					quiesced.set(pkg);
-					return Fiber.done(Nothing.nothing());
-				})
-				.map(done -> Option.of(quiesced.get()));
+		Goal settle = drainItems(s -> Cont.just(s.withoutStore(Agenda.class)));
+		return Cont.collected(settle.apply(p))
+				.map(worlds -> worlds.isEmpty() ?
+						Option.none() :
+						Option.of(worlds.get(0)));
 	}
 
 	/**
-	 * The item half of {@link #drain()}: pop and apply to exhaustion, then
-	 * clear the agenda WITHOUT splicing the collected runs — the settling
-	 * copy's knowledge is complete at item exhaustion, and its runs belong
-	 * to the real drain.
+	 * The item loop both drains share: pop and apply to exhaustion, then
+	 * hand the package — agenda resident, items done, collected runs intact
+	 * — to {@code atExhaustion}, where the two callers part ways:
+	 * {@link #drain()} splices the runs, {@link #settled(Package)} discards
+	 * them with the copy. The continuation is a plain call, not a composed
+	 * goal, so the loop prices exactly as the original single-loop drain.
 	 */
-	private static Goal drainItems() {
+	private static Goal drainItems(Function<Package, Cont<Package, Nothing>> atExhaustion) {
 		return Goal.defer(() -> s -> {
 			Agenda agenda = (Agenda) s.getStores().get(Agenda.class).get();
 			if (agenda.itemsExhausted()) {
-				return Cont.just(s.withoutStore(Agenda.class));
+				return atExhaustion.apply(s);
 			}
 			Tuple2<Agenda.Item, Agenda> popped = agenda.pop();
 			return popped._1.apply()
-					.and(drainItems())
+					.and(drainItems(atExhaustion))
 					.apply(s.putStore(popped._2));
 		});
 	}
@@ -304,17 +304,10 @@ public final class Propagation {
 	 * goals splice as plain search — every trigger inside them starts a fresh drain.
 	 */
 	private static Goal drain() {
-		return Goal.defer(() -> s -> {
+		return drainItems(s -> {
 			Agenda agenda = (Agenda) s.getStores().get(Agenda.class).get();
-			if (agenda.itemsExhausted()) {
-				Package cleared = s.withoutStore(Agenda.class);
-				return Conjunction.of(agenda.runs())
-						.apply(cleared);
-			}
-			Tuple2<Agenda.Item, Agenda> popped = agenda.pop();
-			return popped._1.apply()
-					.and(drain())
-					.apply(s.putStore(popped._2));
+			return Conjunction.of(agenda.runs())
+					.apply(s.withoutStore(Agenda.class));
 		});
 	}
 

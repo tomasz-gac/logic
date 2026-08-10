@@ -3,16 +3,12 @@ package com.tgac.logic.notes;
 // ABOUTME: The verification step: impose a note's postings on a scratch package,
 // ABOUTME: read each imposition three ways, route the four moves. Neq generalized.
 
-import static com.tgac.functional.category.Nothing.nothing;
-
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -110,19 +106,14 @@ public final class Verification {
 	}
 
 	/**
-	 * The worlds the imposition delivered, under the Exhaustion claim so
-	 * completion is honest even when the imposition wakes suspension bodies —
-	 * bodies are arbitrary goals and may spawn. Empty = the run stayed
-	 * silent: the imposition failed.
+	 * The worlds the imposition delivered, grounded through Cont.collected —
+	 * a fresh workforce claim, so completion is honest even when the
+	 * imposition wakes suspension bodies (arbitrary goals, may spawn).
+	 * Empty = the run stayed silent: the imposition failed.
 	 */
 	static Fiber<List<Package>> imposed(Posting posting, Package scratch) {
-		Queue<Package> delivered = new ConcurrentLinkedQueue<>();
-		return Exhaustion.exhausted(posting.impose().apply(scratch)
-						.apply(pkg -> {
-							delivered.add(pkg);
-							return Fiber.done(nothing());
-						}))
-				.map(done -> List.ofAll(delivered));
+		return Cont.collected(posting.impose().apply(scratch))
+				.map(List::ofAll);
 	}
 
 	/**
