@@ -24,8 +24,10 @@ import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
+import io.vavr.control.Option;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -239,14 +241,48 @@ public final class Propagation {
 	}
 
 	/**
-	 * A quiescent view of {@code p}: the in-flight agenda, if any, removed.
-	 * The agenda is DRIVER state riding the package mid-drain, not knowledge —
-	 * a scratch copy of a mid-drain package must start quiescent, or its
-	 * impositions append to the outer drain instead of running to their own
-	 * quiescence, and the stale agenda perturbs change detection.
+	 * Completes any in-flight agenda on {@code p}: pending ITEMS drain to
+	 * exhaustion, and the settled package carries no agenda. Collected runs
+	 * are search, not knowledge — they stay with the real drain and are
+	 * discarded with the copy. none = a pending item failed: the branch this
+	 * package came from is doomed on the same items, deterministically.
+	 *
+	 * <p>The seam a scratch verification needs: a caller may sit mid-drain,
+	 * where evaluation on a copy would APPEND to the inherited agenda instead
+	 * of draining, and where verdicts would compare a quiescent trial result
+	 * against an unfinished original. Settling completes the knowledge first;
+	 * both sides of every later comparison are quiescent.
 	 */
-	public static Package quiescent(Package p) {
-		return p.withoutStore(Agenda.class);
+	public static Fiber<Option<Package>> settled(Package p) {
+		if (!p.getStores().get(Agenda.class).isDefined()) {
+			return Fiber.done(Option.of(p));
+		}
+		AtomicReference<Package> quiesced = new AtomicReference<>();
+		return drainItems().apply(p)
+				.apply(pkg -> {
+					quiesced.set(pkg);
+					return Fiber.done(Nothing.nothing());
+				})
+				.map(done -> Option.of(quiesced.get()));
+	}
+
+	/**
+	 * The item half of {@link #drain()}: pop and apply to exhaustion, then
+	 * clear the agenda WITHOUT splicing the collected runs — the settling
+	 * copy's knowledge is complete at item exhaustion, and its runs belong
+	 * to the real drain.
+	 */
+	private static Goal drainItems() {
+		return Goal.defer(() -> s -> {
+			Agenda agenda = (Agenda) s.getStores().get(Agenda.class).get();
+			if (agenda.itemsExhausted()) {
+				return Cont.just(s.withoutStore(Agenda.class));
+			}
+			Tuple2<Agenda.Item, Agenda> popped = agenda.pop();
+			return popped._1.apply()
+					.and(drainItems())
+					.apply(s.putStore(popped._2));
+		});
 	}
 
 	/**

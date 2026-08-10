@@ -50,16 +50,18 @@ public final class Verification {
 	 * satisfied notes absent.
 	 */
 	public static Fiber<Option<List<Note>>> verify(List<Note> notes, Package state) {
-		// a scratch starts QUIESCENT: verification runs inside revise, and a
-		// mid-drain package carries the outer agenda — impositions would
-		// append to it instead of draining, and the stale agenda perturbs
-		// change detection
-		Package base = Propagation.quiescent(state);
-		return notes.foldLeft(
-				Fiber.done(Option.of(List.empty())),
-				(acc, note) -> acc.flatMap(kept -> kept.isDefined() ?
-						verificationStep(base, kept.get(), note) :
-						Fiber.done(kept)));
+		// evaluation and comparison both need quiescence: the caller may sit
+		// mid-drain, so the base COMPLETES the pending items first (runs are
+		// search and stay with the real drain). A settle failure means the
+		// branch is doomed on the same items, deterministically — report the
+		// veto now and spare the real drain the recomputation
+		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
+				Fiber.done(Option.none()) :
+				notes.foldLeft(
+						Fiber.done(Option.of(List.empty())),
+						(acc, note) -> acc.flatMap(kept -> kept.isDefined() ?
+								verificationStep(settled.get(), kept.get(), note) :
+								Fiber.done(kept))));
 	}
 
 	/** One note against the state: the kept list grown by the note's verdict. */

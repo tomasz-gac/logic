@@ -110,6 +110,21 @@ public class NoteStoreTest {
 	}
 
 	@Test
+	public void aBindNoteFiltersAtLabellingOnly() {
+		// the note stays undecided until enforce-time labelling
+		// equality-binds the anchor — the ground floor through the binding
+		// seam, per labelled point
+		Unifiable<Long> x = lvar();
+
+		Goal g = dom(x, EnumeratedDomain.range(0L, 5L))
+				.and(held(Posting.bind(x, lval(3L))));
+
+		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
+				.map(Term::get).collect(Collectors.toList());
+		assertThat(answers).containsExactlyInAnyOrder(0L, 1L, 2L, 4L);
+	}
+
+	@Test
 	public void aDisjointDomainDischargesTheNoteThroughTheStore() {
 		// the constraint-failing path: the imposition fails via the FD meet
 		// emptying in the scratch, not via unification — refuted, discarded
