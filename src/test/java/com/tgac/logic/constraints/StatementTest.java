@@ -26,7 +26,7 @@ public class StatementTest {
 		// the lift: the same value FD hands to exclusion is a conjunct
 		Unifiable<Long> x = lvar();
 
-		Goal g = FiniteDomain.in(x, EnumeratedDomain.range(0L, 5L))
+		Goal g = FiniteDomain.dom(x, EnumeratedDomain.range(0L, 5L))
 				.and(x.unifies(3L));
 
 		List<Long> answers = g.solve(x, TestSchedulers.factory())
@@ -34,7 +34,7 @@ public class StatementTest {
 		assertThat(answers).containsExactly(3L);
 
 		Unifiable<Long> y = lvar();
-		Goal outside = FiniteDomain.in(y, EnumeratedDomain.range(0L, 5L))
+		Goal outside = FiniteDomain.dom(y, EnumeratedDomain.range(0L, 5L))
 				.and(y.unifies(7L));
 		assertThat(outside.solve(y, TestSchedulers.factory()).count()).isZero();
 	}
@@ -43,7 +43,7 @@ public class StatementTest {
 	public void aStatementPricesAtOne() {
 		// blind or sighted with nothing against it: one success, ever
 		Unifiable<Long> x = lvar();
-		Statement in = FiniteDomain.in(x, EnumeratedDomain.range(0L, 5L));
+		Statement in = FiniteDomain.dom(x, EnumeratedDomain.range(0L, 5L));
 
 		assertThat(in.answers(Package.empty().substitution())).isEqualTo(1L);
 		assertThat(in.answers(Package.empty())).isEqualTo(1L);
@@ -58,8 +58,8 @@ public class StatementTest {
 						dom(x, EnumeratedDomain.range(0L, 5L)).apply(Package.empty()))
 				.get().get(0);
 
-		Statement doomed = FiniteDomain.in(x, EnumeratedDomain.range(6L, 9L));
-		Statement alive = FiniteDomain.in(x, EnumeratedDomain.range(3L, 9L));
+		Statement doomed = FiniteDomain.dom(x, EnumeratedDomain.range(6L, 9L));
+		Statement alive = FiniteDomain.dom(x, EnumeratedDomain.range(3L, 9L));
 
 		assertThat(doomed.answers(live)).isZero();
 		assertThat(alive.answers(live)).isEqualTo(1L);

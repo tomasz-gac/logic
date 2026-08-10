@@ -132,7 +132,7 @@ public class NogoodsTest {
 		Unifiable<Long> x = lvar();
 
 		Goal g = dom(x, EnumeratedDomain.range(0L, 4L))
-				.and(held(FiniteDomain.in(x, EnumeratedDomain.range(5L, 8L))));
+				.and(held(dom(x, EnumeratedDomain.range(5L, 8L))));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());
@@ -147,7 +147,7 @@ public class NogoodsTest {
 		Unifiable<Long> x = lvar();
 
 		Goal g = dom(x, EnumeratedDomain.range(0L, 10L))
-				.and(held(FiniteDomain.in(x, EnumeratedDomain.range(3L, 6L))));
+				.and(held(dom(x, EnumeratedDomain.range(3L, 6L))));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());
@@ -162,7 +162,7 @@ public class NogoodsTest {
 		Unifiable<Long> x = lvar();
 
 		Goal g = dom(x, EnumeratedDomain.range(3L, 6L))
-				.and(held(FiniteDomain.in(x, EnumeratedDomain.range(0L, 10L))));
+				.and(held(dom(x, EnumeratedDomain.range(0L, 10L))));
 
 		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
 	}

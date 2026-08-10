@@ -198,17 +198,17 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	}
 
 	/**
-	 * Statement-position imposition as the chokepoint's own statement: the
-	 * single-entry factor rides the bulk statement entry (which registers the
-	 * resident store itself), and collapse, re-examination and the cross-store
-	 * wake all happen inside this store's own trigger methods — the routing
-	 * lives with the store, not at the call site. Doomed under partial
-	 * knowledge exactly when the value cannot stand against the live state: a
-	 * ground target the value refuses, or a live entry it meets to bottom.
+	 * Statement-position imposition as the chokepoint's own statement: an
+	 * {@link Imposition} item through the statement entry, consumed by this
+	 * store's {@code stated} — the routing lives with the store, not at the
+	 * call site. Doomed under partial knowledge exactly when the value cannot
+	 * stand against the live state: a ground target the value refuses, or a
+	 * live entry it meets to bottom.
 	 */
 	public Statement impose(Term<?> target, L value) {
-		return Statement.absorb(io.vavr.collection.List.of(target),
-				actuals -> create(LinkedHashMap.of(actuals.head(), value), HashSet.empty()),
+		return Statement.stated(new Imposition<>(getClass(), target, value),
+				p -> p.getStores().containsKey(getClass()) ? p
+						: p.withStore(create(LinkedHashMap.empty(), HashSet.empty())),
 				p -> doomedAt(p, target, value));
 	}
 
@@ -296,31 +296,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 		for (Tuple2<Term<?>, L> entry : values) {
 			Term<?> walked = state.walk(entry._1);
 			if (walked == entry._1) {
-				// live at its root — update()'s verification and collapse arms
-				// in statement position: the routing lives here, with the store.
-				// A ground-keyed entry is a membership check — admits or the
-				// branch dies — and is spent either way (values are consulted
-				// only for unbound variables)
-				if (walked.asVal().isDefined()) {
-					if (!entry._2.admits(walked.get())) {
-						return Fiber.done(Revision.fail());
-					}
-					factor = factor.create(factor.values.remove(entry._1), factor.propagators);
-					continue;
-				}
-				// the meet that queued this normalize may have collapsed the
-				// value to a point: the binding is the knowledge, the entry spent
-				Option<Object> point = entry._2.asPoint();
-				if (point.isDefined() && walked.asVar().isDefined()) {
-					Option<Prefix> collapse = Prefix.binding(
-							state.substitution(), walked.asVar().get(), lval(point.get()));
-					if (collapse.isDefined()) {
-						inferred.add(collapse.get());
-						queue.add(entry._1);
-						factor = factor.create(factor.values.remove(entry._1), factor.propagators);
-					}
-				}
-				continue;
+				continue;    // live at its root
 			}
 			factor = consume(factor.update(state, walked, entry._2),
 					factor, inferred, runs, queue);
@@ -340,7 +316,24 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public Fiber<Revision> stated(Stored item, Package state) {
+		if (item instanceof Imposition) {
+			// update's verification/collapse/narrowing routing, inside the
+			// store's method: the item is a message, the values map keeps
+			// the knowledge
+			Imposition<L> imposition = (Imposition<L>) item;
+			List<Prefix> inferred = new ArrayList<>();
+			List<Goal> runs = new ArrayList<>();
+			ArrayDeque<Term<?>> queue = new ArrayDeque<>();
+			S factor = consume(
+					update(state, state.walk(imposition.getTarget()), imposition.getValue()),
+					self(), inferred, runs, queue);
+			if (factor == null) {
+				return Fiber.done(Revision.fail());
+			}
+			return cascade(state, factor, inferred, runs, queue);
+		}
 		if (!(item instanceof Propagator)) {
 			return Fiber.done(Revision.unchanged());
 		}

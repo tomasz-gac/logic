@@ -1,7 +1,7 @@
 package com.tgac.logic.nogoods;
 
 // ABOUTME: The user front door: exclude states one nogood over literals;
-// ABOUTME: FiniteDomain.notin is FD's negated-box sugar over the same door.
+// ABOUTME: excluding a dom statement is the negated box — no second door exists.
 
 import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.TestSchedulers;
@@ -47,11 +47,11 @@ public class ExclusionTest {
 	}
 
 	@Test
-	public void notinCarvesTheBoxOutOfALabelledDomain() {
+	public void excludingADomCarvesTheBoxOutOfALabelledDomain() {
 		Unifiable<Long> x = lvar();
 
 		Goal g = dom(x, EnumeratedDomain.range(0L, 10L))
-				.and(FiniteDomain.notin(x, EnumeratedDomain.range(3L, 6L)));
+				.and(exclude(dom(x, EnumeratedDomain.range(3L, 6L))));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());

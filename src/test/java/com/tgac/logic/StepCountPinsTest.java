@@ -113,6 +113,6 @@ public class StepCountPinsTest {
 														.or(unify(prev, lval(5)).and(unify(room, lval(1)))))))));
 		Unifiable<Integer> room = lvar();
 
-		assertThat(steps(reachable.apply(Tuple.of(room)), room)).isEqualTo(802);
+		assertThat(steps(reachable.apply(Tuple.of(room)), room)).isEqualTo(801);
 	}
 }

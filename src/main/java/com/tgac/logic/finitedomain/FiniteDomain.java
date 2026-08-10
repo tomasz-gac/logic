@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Propagation;
@@ -8,9 +9,7 @@ import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.nogoods.Exclusion;
 import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
@@ -32,6 +31,7 @@ import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -41,25 +41,10 @@ import lombok.Value;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class FiniteDomain {
 
-	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
-		Statement in = in(u, d);
-		return Bounded.sighted(in::answers, fdGoal()
-				.and(in)
-				.named(pkg -> pkg.format(u) + " ⊂ " + pkg.format(d)));
-	}
-
-	/**
-	 * The membership {@code u ∈ d} as a statement — the single-entry FD
-	 * factor through the store's imposition door, doom check included.
-	 */
+	/** The membership {@code u ∈ d} through the store's imposition door. */
 	@SuppressWarnings("unchecked")
-	public static <T> Statement in(Unifiable<T> u, Domain<T> d) {
+	public static <T> Statement dom(Unifiable<T> u, Domain<T> d) {
 		return FiniteDomainConstraints.empty().impose(u, (Domain<Object>) d);
-	}
-
-	/** The negated box {@code u ∉ d}: FD's sugar over the exclusion door. */
-	public static <T> Goal notin(Unifiable<T> u, Domain<T> d) {
-		return Exclusion.exclude(in(u, d));
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
@@ -85,16 +70,18 @@ public class FiniteDomain {
 				.filter(uds -> uds.size() == us.size());
 	}
 
-	/**
-	 * Statement-time entry: parks a propagator watching {@code us} in the FD store
-	 * and queues its first examination; wakes re-examine the same parked object
-	 * against the live state (constraint-kernel.md).
-	 */
-	private static <T> Goal fdConstraint(String name, Array<Unifiable<T>> us,
+	private static <T> Propagator prop(String name, Array<Unifiable<T>> us,
 			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
-		return p -> Propagation.activate(
-						Propagator.of(FiniteDomainConstraints.class, name, us, body))
-				.apply(FiniteDomainConstraints.register(p));
+		return Propagator.of(FiniteDomainConstraints.class, name, us, body);
+	}
+
+	/**
+	 * Statement-time entry: the propagator watching its terms as a statement —
+	 * parked in the FD store at imposition, first examination queued, wakes
+	 * re-examining the same parked object (constraint-kernel.md).
+	 */
+	private static Statement fdStatement(Propagator item, Predicate<Package> doomed) {
+		return Statement.stated(item, FiniteDomainConstraints::register, doomed);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -123,34 +110,32 @@ public class FiniteDomain {
 		}
 	}
 
-	public static <T> Goal leq(Unifiable<T> less, Unifiable<T> more) {
-		return Bounded.of(s -> cmpOrder(s, less, more, c -> c <= 0), fdGoal()
-				.and(leqFD(less, more))
-				.named(pkg -> pkg.format(less) + " ≤ " + pkg.format(more)));
+	public static <T> Statement leq(Unifiable<T> less, Unifiable<T> more) {
+		return fdStatement(leqProp(less, more),
+				p -> cmpOrder(p.substitution(), less, more, c -> c <= 0) == 0);
 	}
 
-	public static <T> Goal lss(Unifiable<T> less, Unifiable<T> more) {
-		return Bounded.of(s -> cmpOrder(s, less, more, c -> c < 0), fdGoal()
-				.and(leqFD(less, more))
-				.and(separate(less, more))
-				.named(pkg -> pkg.format(less) + " < " + pkg.format(more)));
+	public static <T> Statement lss(Unifiable<T> less, Unifiable<T> more) {
+		return Statement.all(
+				p -> cmpOrder(p.substitution(), less, more, c -> c < 0) == 0,
+				fdStatement(leqProp(less, more), p -> false),
+				separate(less, more));
 	}
 
-	public static <T> Goal gtr(Unifiable<T> more, Unifiable<T> less) {
-		return Bounded.of(s -> cmpOrder(s, more, less, c -> c > 0), fdGoal()
-				.and(leqFD(less, more))
-				.and(separate(more, less))
-				.named(pkg -> pkg.format(more) + " > " + pkg.format(less)));
+	public static <T> Statement gtr(Unifiable<T> more, Unifiable<T> less) {
+		return Statement.all(
+				p -> cmpOrder(p.substitution(), more, less, c -> c > 0) == 0,
+				fdStatement(leqProp(less, more), p -> false),
+				separate(more, less));
 	}
 
-	public static <T> Goal geq(Unifiable<T> more, Unifiable<T> less) {
-		return Bounded.of(s -> cmpOrder(s, more, less, c -> c >= 0), fdGoal()
-				.and(leqFD(less, more))
-				.named(pkg -> pkg.format(more) + " ≥ " + pkg.format(less)));
+	public static <T> Statement geq(Unifiable<T> more, Unifiable<T> less) {
+		return fdStatement(leqProp(less, more),
+				p -> cmpOrder(p.substitution(), more, less, c -> c >= 0) == 0);
 	}
 
-	private static <T> Goal leqFD(Unifiable<T> less, Unifiable<T> more) {
-		return fdConstraint("leq",
+	private static <T> Propagator leqProp(Unifiable<T> less, Unifiable<T> more) {
+		return prop("leq",
 				Array.of(less, more),
 				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1))
@@ -174,26 +159,24 @@ public class FiniteDomain {
 						VarWithDomain.of(mor.getUnifiable(), moreDom))));
 	}
 
-	public static <T> Goal addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return Bounded.of(1, fdGoal()
-				.and(addoFD(a, b, c))
-				.named(pkg -> pkg.format(a) + " + " + pkg.format(b) + " = " + pkg.format(c)));
+	public static <T> Statement addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
+		return addoFD(a, b, c);
 	}
 
-	public static <T> Goal subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return addo(c, b, a)
-				.named(pkg -> pkg.format(a) + " - " + pkg.format(b) + " = " + pkg.format(c));
+	public static <T> Statement subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
+		return addoFD(c, b, a);
 	}
 
-	static <T> Goal addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return fdConstraint("add",
+	static <T> Statement addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
+		return fdStatement(prop("add",
 				Array.of(a, b, rhs),
 				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
 								.apply((u, v, w) ->
 										addVerdict(u, v, w,
 												u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
-												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))));
+												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max())))),
+				p -> false);
 	}
 
 	private static <T> Verdict addVerdict(
@@ -226,26 +209,24 @@ public class FiniteDomain {
 						VarWithDomain.of(u.getUnifiable(), ui))));
 	}
 
-	public static <T> Goal multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return Bounded.of(1, fdGoal()
-				.and(mulFD(a, b, c))
-				.named(pkg -> pkg.format(a) + " * " + pkg.format(b) + " = " + pkg.format(c)));
+	public static <T> Statement multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
+		return mulFD(a, b, c);
 	}
 
-	public static <T> Goal divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {
-		return multo(result, divisor, divided)
-				.named(pkg -> pkg.format(divided) + " / " + pkg.format(divisor) + " = " + pkg.format(result));
+	public static <T> Statement divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {
+		return multo(result, divisor, divided);
 	}
 
-	static <T> Goal mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return fdConstraint("mul",
+	static <T> Statement mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
+		return fdStatement(prop("mul",
 				Array.of(a, b, rhs),
 				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
 								.apply((u, v, w) ->
 										mulVerdict(u, v, w,
 												u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
-												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max()))));
+												u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max())))),
+				p -> false);
 	}
 
 	private static <T> Verdict mulVerdict(
@@ -322,18 +303,16 @@ public class FiniteDomain {
 				maxResult(Arithmetic::div, wdPerm)));
 	}
 
-	public static <T> Goal separate(Unifiable<T> l, Unifiable<T> r) {
-		return Bounded.of(s -> {
-			Term<?> lw = s.walk(l);
-			Term<?> rw = s.walk(r);
-			return lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get().equals(rw.get()) ? 0 : 1;
-		}, fdGoal()
-				.and(separateFDC(l, r))
-				.named(pkg -> pkg.format(l) + " ≠_fd " + pkg.format(r)));
+	public static <T> Statement separate(Unifiable<T> l, Unifiable<T> r) {
+		return fdStatement(separateProp(l, r), p -> {
+			Term<?> lw = p.substitution().walk(l);
+			Term<?> rw = p.substitution().walk(r);
+			return lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get().equals(rw.get());
+		});
 	}
 
-	private static <T> Goal separateFDC(Unifiable<T> l, Unifiable<T> r) {
-		return fdConstraint("separate",
+	private static <T> Propagator separateProp(Unifiable<T> l, Unifiable<T> r) {
+		return prop("separate",
 				Array.of(l, r),
 				(watched, s) -> letDomain(s, FiniteDomain.<T> typed(watched))
 						.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
@@ -372,10 +351,6 @@ public class FiniteDomain {
 				.map(Singleton::getValue);
 	}
 
-	private static Goal fdGoal() {
-		return s -> Cont.just(FiniteDomainConstraints.register(s));
-	}
-
 	private static <T extends Comparable<T>> T minResult(BinaryOperator<T> f, Array<Tuple2<T, T>> args) {
 		return args.toJavaStream()
 				.map(t -> t.apply(f))
@@ -390,15 +365,39 @@ public class FiniteDomain {
 				.orElseThrow(IllegalStateException::new);
 	}
 
-	public static <T> Goal copyDomain(Unifiable<T> from, Unifiable<T> to) {
-		return Bounded.of(1, fdGoal()
-				.and(s -> in(to, from.asVar()
-						.flatMap(l -> FiniteDomainConstraints.<T> getDom(s, l))
-						.orElse(() -> s.walk(from).asVal()
-								.map(Arithmetic::ofCasted)
-								.map(Singleton::of))
-						.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get()))))
-						.apply(s))
-				.named(pkg -> String.format("copyDom(%s, %s)", pkg.format(from), pkg.format(to))));
+	public static <T> Statement copyDomain(Unifiable<T> from, Unifiable<T> to) {
+		return new CopyDomain<>(from, to);
+	}
+
+	/**
+	 * One-shot statement-position copy: {@code to} takes {@code from}'s LIVE
+	 * domain (or its ground value as a singleton) at imposition time — the
+	 * source is read from the state, so the statement carries only its ends.
+	 */
+	@Value
+	static class CopyDomain<T> implements Statement {
+		Unifiable<T> from;
+		Unifiable<T> to;
+
+		@Override
+		public Cont<Package, Nothing> apply(Package s) {
+			return dom(to, from.asVar()
+					.flatMap(l -> FiniteDomainConstraints.<T> getDom(s, l))
+					.orElse(() -> s.walk(from).asVal()
+							.map(Arithmetic::ofCasted)
+							.map(Singleton::of))
+					.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get()))))
+					.apply(s);
+		}
+
+		@Override
+		public Stream<Term<?>> terms() {
+			return Stream.of(from, to);
+		}
+
+		@Override
+		public String toString() {
+			return "copyDom(" + from + ", " + to + ")";
+		}
 	}
 }

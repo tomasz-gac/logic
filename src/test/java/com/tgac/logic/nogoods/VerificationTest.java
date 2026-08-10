@@ -15,6 +15,7 @@ import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.collection.Array;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import org.junit.Test;
@@ -101,19 +102,19 @@ public class VerificationTest {
 		};
 
 		assertThatThrownBy(() -> Verification.imposed(
-				Statement.state(List.empty(), terms -> orphan), Package.empty()).get())
+				Statement.stated(orphan), Package.empty()).get())
 				.isInstanceOf(IllegalStateException.class);
 	}
 
 	@Test
-	public void statementStatementsCompareByTheirGeneratedItems() {
-		// two distinct maker lambdas, one named schema over the same terms:
-		// identity lives on the generated item, the maker is excluded
+	public void statedItemsCompareByTheirOwnIdentity() {
+		// one named schema over the same terms, two bodies: identity lives on
+		// the item (the named-schema contract), and the statement follows it
 		Term<?> x = lvar();
-		Statement first = Statement.state(List.of(x), terms ->
-				Propagator.of(Store.class, "same-schema", terms, (watched, pkg) -> null));
-		Statement second = Statement.state(List.of(x), terms ->
-				Propagator.of(Store.class, "same-schema", terms, (watched, pkg) -> null));
+		Statement first = Statement.stated(
+				Propagator.of(Store.class, "same-schema", Array.of(x), (watched, pkg) -> null));
+		Statement second = Statement.stated(
+				Propagator.of(Store.class, "same-schema", Array.of(x), (watched, pkg) -> null));
 
 		assertThat(first).isEqualTo(second);
 		assertThat(first.terms()).containsExactly(x);

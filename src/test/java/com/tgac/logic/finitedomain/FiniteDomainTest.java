@@ -200,7 +200,7 @@ public class FiniteDomainTest {
 								.boxed()
 								.collect(Collectors.toList()))
 				.map(indices -> indices.stream()
-						.map(j -> separate(distinct.get(indices.get(0) - 1), distinct.get(j)))
+						.map(j -> (Goal) separate(distinct.get(indices.get(0) - 1), distinct.get(j)))
 						.reduce(Goal::and)
 						.orElseGet(Goal::success))
 				.reduce(Goal::and)

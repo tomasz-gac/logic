@@ -1,7 +1,7 @@
 package com.tgac.logic.constraints;
 
 // ABOUTME: The chokepoint's statement vocabulary lifted to Goal: apply IS the
-// ABOUTME: imposition — unification, stored-item statement, or absorbed factor. Closed.
+// ABOUTME: imposition — a binding, a stated item, or an absorbed factor. Closed.
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
@@ -15,8 +15,8 @@ import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
-import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -25,11 +25,14 @@ import lombok.Value;
 /**
  * What knowledge may enter a package, as a GOAL: applying a statement imposes
  * it through the chokepoint, so the same value is a conjunct in a program and
- * a literal in a nogood. The constructors are the whole vocabulary —
- * a program is not a statement, so negation of statements never becomes
- * negation of programs. Implementing this interface is claiming the
- * imposition law (idempotent, monotone, at most one success, chokepoint-only);
- * the laws kit checks constructors, not calls.
+ * a literal in a nogood. The constructors are the whole vocabulary — one per
+ * chokepoint door, holding the imposed content DIRECTLY (the item a store
+ * would post, the factor it would meet) — so a store's front door returns the
+ * statement and no adapter layer exists. A program is not a statement:
+ * negation of statements never becomes negation of programs. Implementing
+ * this interface is claiming the imposition law (idempotent, monotone, at
+ * most one success, chokepoint-only); the laws kit checks constructors, not
+ * calls.
  *
  * <p>The 0-or-1 taxonomy lands here as {@link Bounded}: a statement succeeds
  * at most once, so its order is never computed — it is 1 by construction,
@@ -65,32 +68,41 @@ public interface Statement extends Goal, Bounded {
 		return new Binding<>(lhs, rhs);
 	}
 
-	/**
-	 * A constraint statement as a call-value: arguments as terms plus the
-	 * owning store's item maker — the (actuals, template) shape. The item is
-	 * generated at construction; a renaming regenerates it at the renamed
-	 * actuals, so transcription never needs the item's structure. The maker
-	 * must read its variables through the actuals it is handed, never
-	 * lexical capture; ground data may close over.
-	 */
-	static Statement state(List<Term<?>> actuals, Function<List<Term<?>>, Stored> maker) {
-		return new Item(actuals, maker);
+	/** A stored item through the statement entry; the owning store reacts in its {@code stated}. */
+	static Statement stated(Stored item) {
+		return new Activation(item, UnaryOperator.identity(), p -> false);
 	}
 
 	/**
-	 * A whole factor as a call-value — the same (actuals, template) shape
-	 * with an {@link Absorbable} product, imposed through the bulk statement
-	 * entry, which registers the resident store itself: no residence guard
-	 * needed. How a domain membership posts: the factor IS the knowledge.
+	 * {@link #stated} with the owning store's registration (an unregistered
+	 * store would drop the item silently) and its doom check.
 	 */
-	static Statement absorb(List<Term<?>> actuals, Function<List<Term<?>>, Absorbable<?>> maker) {
-		return new Absorption(actuals, maker, p -> false);
-	}
-
-	/** {@link #absorb} with the owning store's doom check. */
-	static Statement absorb(List<Term<?>> actuals, Function<List<Term<?>>, Absorbable<?>> maker,
+	static Statement stated(Stored item, UnaryOperator<Package> registration,
 			Predicate<Package> doomed) {
-		return new Absorption(actuals, maker, doomed);
+		return new Activation(item, registration, doomed);
+	}
+
+	/**
+	 * A whole factor through the bulk statement entry, which registers the
+	 * resident store itself. The factor cannot name its watched surface
+	 * generically, so the terms are declared alongside.
+	 */
+	static Statement absorb(Absorbable<?> factor, List<Term<?>> terms) {
+		return new Absorption(factor, terms);
+	}
+
+	/**
+	 * The conjunction of statements is a statement (each succeeds at most
+	 * once, chokepoint-only — the class is closed under ∧); doomed when any
+	 * part is.
+	 */
+	static Statement all(Statement... statements) {
+		return new AllOf(List.of(statements), p -> false);
+	}
+
+	/** {@link #all} with a joint doom check the parts alone cannot see. */
+	static Statement all(Predicate<Package> doomed, Statement... statements) {
+		return new AllOf(List.of(statements), doomed);
 	}
 
 	@Value
@@ -117,28 +129,28 @@ public interface Statement extends Goal, Bounded {
 	}
 
 	/**
-	 * Equality delegates to the GENERATED item — lawful under the named-schema
-	 * contract (a propagator compares as store, name and watched terms, body
-	 * excluded) — so the maker is excluded from identity exactly as the
-	 * contract prescribes, and equality at renamed actuals follows from the
-	 * regenerated item.
+	 * The stated item held directly — equality is the item's own (lawful
+	 * under the named-schema contract); registration and pricing are the
+	 * owning store's business and stay outside identity.
 	 */
 	@Getter
 	@EqualsAndHashCode(of = "item")
-	class Item implements Statement {
-		private final List<Term<?>> actuals;
-		private final Function<List<Term<?>>, Stored> maker;
+	class Activation implements Statement {
 		private final Stored item;
+		private final UnaryOperator<Package> registration;
+		private final Predicate<Package> doomCheck;
 
-		private Item(List<Term<?>> actuals, Function<List<Term<?>>, Stored> maker) {
-			this.actuals = actuals;
-			this.maker = maker;
-			this.item = maker.apply(actuals);
+		private Activation(Stored item, UnaryOperator<Package> registration,
+				Predicate<Package> doomCheck) {
+			this.item = item;
+			this.registration = registration;
+			this.doomCheck = doomCheck;
 		}
 
 		@Override
 		public Cont<Package, Nothing> apply(Package pkg) {
-			return Propagation.activate(item).and(landed()).apply(pkg);
+			return Propagation.activate(item).and(landed())
+					.apply(registration.apply(pkg));
 		}
 
 		/**
@@ -159,8 +171,13 @@ public interface Statement extends Goal, Bounded {
 		}
 
 		@Override
+		public boolean doomed(Package p) {
+			return doomCheck.test(p);
+		}
+
+		@Override
 		public Stream<Term<?>> terms() {
-			return actuals.toJavaStream().map(t -> (Term<?>) t);
+			return item.terms();
 		}
 
 		@Override
@@ -169,26 +186,16 @@ public interface Statement extends Goal, Bounded {
 		}
 	}
 
-	/**
-	 * Equality delegates to the generated factor, the maker excluded — the
-	 * same identity discipline as {@link Item}. The doom check is the owning
-	 * store's and stays outside identity: pricing is not what the statement
-	 * says.
-	 */
+	/** The absorbed factor held directly — equality is the factor's own. */
 	@Getter
 	@EqualsAndHashCode(of = "factor")
 	class Absorption implements Statement {
-		private final List<Term<?>> actuals;
-		private final Function<List<Term<?>>, Absorbable<?>> maker;
 		private final Absorbable<?> factor;
-		private final Predicate<Package> doomCheck;
+		private final List<Term<?>> declared;
 
-		private Absorption(List<Term<?>> actuals, Function<List<Term<?>>, Absorbable<?>> maker,
-				Predicate<Package> doomCheck) {
-			this.actuals = actuals;
-			this.maker = maker;
-			this.factor = maker.apply(actuals);
-			this.doomCheck = doomCheck;
+		private Absorption(Absorbable<?> factor, List<Term<?>> declared) {
+			this.factor = factor;
+			this.declared = declared;
 		}
 
 		@Override
@@ -197,18 +204,39 @@ public interface Statement extends Goal, Bounded {
 		}
 
 		@Override
-		public boolean doomed(Package p) {
-			return doomCheck.test(p);
-		}
-
-		@Override
 		public Stream<Term<?>> terms() {
-			return actuals.toJavaStream().map(t -> (Term<?>) t);
+			return declared.toJavaStream().map(t -> (Term<?>) t);
 		}
 
 		@Override
 		public String toString() {
 			return "absorb(" + factor + ")";
+		}
+	}
+
+	@Value
+	class AllOf implements Statement {
+		List<Statement> parts;
+		Predicate<Package> jointDoom;
+
+		@Override
+		public Cont<Package, Nothing> apply(Package pkg) {
+			return parts.foldLeft(Goal.success(), Goal::and).apply(pkg);
+		}
+
+		@Override
+		public boolean doomed(Package p) {
+			return jointDoom.test(p) || parts.exists(part -> part.doomed(p));
+		}
+
+		@Override
+		public Stream<Term<?>> terms() {
+			return parts.toJavaStream().flatMap(Statement::terms);
+		}
+
+		@Override
+		public String toString() {
+			return parts.mkString(" ∧ ");
 		}
 	}
 }
