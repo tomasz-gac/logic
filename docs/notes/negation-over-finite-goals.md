@@ -1,4 +1,4 @@
-# Negation of a finite tabled goal = its sealed answer set posted as notes
+# Negation of a finite tabled goal = its sealed answer set posted as nogoods
 
 - **status**: argued — derived in conversation (August 2026), no code
 - **evidence held**: derivation; both prerequisites already receipted
@@ -16,19 +16,19 @@
   `q :- not(q)` shape asserting the named refusal (and mapping it to a
   stratification error in the user's vocabulary); (2) the non-ground
   refusal receipt
-- **links**: note-store.md (the kernel this compiles into),
+- **links**: nogood-store.md (the kernel this compiles into),
   row-set-basis-to-core.md (the membership constraint the compact
   compilation states; no negative sibling store — the stipulation),
   group-seal.md (licensed over peer rings by the value-waiter EOF arm),
-  transcription-generifies.md (constrained answers as postings, later),
+  transcription-generifies.md (constrained answers as literals, later),
   condition.md §8 (negation's slot in the dependency chains)
 
 ## The claim
 
 `not(g(xs))` for a tabled goal whose table seals: drive the table to its
-seal, read the complete answer set, post the complement — one note per
-answer, the postings being the binds of the call args to that answer's
-values. "NOT all these bindings simultaneously" is a note's exact
+seal, read the complete answer set, post the complement — one nogood per
+answer, the literals being the binds of the call args to that answer's
+values. "NOT all these bindings simultaneously" is a nogood's exact
 meaning, so answers transcribe directly. Neq is the unit case (the
 negation of a one-answer goal); pldb's table constraint is the positive
 form of the same shape, this is its co-store. Unlike negation-as-failure
@@ -38,7 +38,7 @@ difference, the "no revocation record" authorization slice.
 
 Every stage exists: closed solve (the closed-aggregate frame, birth
 watermark guarding capture), await the seal, transcribe, absorb the
-notes.
+nogoods.
 
 ## What it does NOT buy, and where the SLG boundary already lives
 
@@ -75,12 +75,13 @@ over a cold tabled goal drives the table to exhaustion before folding
 negation front door riding the same path cannot vacuously succeed.
 
 Non-ground answers refuse, v1: an answer with a free local makes the
-bind-posting read "changed, still owed" forever — the note never fires
+bind-literal read "changed, still owed" forever — the nogood never fires
 while `g` semantically covers everything. Same ruling as the aggregate
 fold ("x, x ≠ 3 is infinitely many distinct answers — refuse").
 Constrained answers come later, riding residue transcription into
-absorb postings.
+absorb literals.
 
-The cheapest kill is obligation (1): if the walk already refuses
-seal-waiter rings, the gap is smaller than argued; if it seals one, the
-note's central danger is demonstrated in one test.
+The original cheapest kill ran and became evidence: the join probe
+demonstrated the substrate refusing a seal-waiter ring, closing the
+note's central danger. What remains falsifiable is the front door —
+the `q :- not(q)` pin and the non-ground refusal, the two obligations.

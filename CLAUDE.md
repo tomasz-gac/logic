@@ -204,12 +204,15 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   result, caveated authorization as the driving slice; §3 and §11 are the
   claim boundaries (what the algebra buys and does NOT buy); the pldb
   build phases are its §12 (Phase 0 = Wave R).
-- `docs/design/note-store.md` — DESIGN (Aug 2026, names placeholder): the
-  note store — one mechanism for "not this" and "either-or": notes with
-  escapes, four moves, parameterized by escape cargo (`Prefix` = Neq
-  re-seated, `Domain` = notin/exclude, `Residues` = or-without-forking);
-  the scratch-copy check, the agreement move (GAC precedent), staged
-  build; the substrate condition.md §§8.3/8.5/8.6 land on.
+- `docs/design/nogood-store.md` — STAGES 1–2 BUILT (Aug 2026; names
+  ratified imports from CP-SAT): the nogood store — `Nogood` = "NOT all
+  these literals simultaneously" (Neq's record shape, store-wide),
+  `Literal` (bind | state | absorb) the closed chokepoint vocabulary as
+  call-values, `Nogoods` the store; verification = sequential scratch
+  imposition read three ways (fail = refuted, unchanged = crossed off,
+  new = owed); the direction analysis + imposition law; settled base;
+  no polarity — `either` as sibling, composition replaces mixing; the
+  substrate condition.md §§8.3/8.5/8.6 land on.
 - `docs/design/lattice-store.md` — DESIGN: the generic store family —
   `LatticeStore<L>` (extracted inside #61), the co-store (Neq generalized
   to excluded boxes = clauses over lattice literals, unit propagation),

@@ -272,13 +272,13 @@ changing; the fix is the boundary reframe, condition.md §8.7: a
 closedness refusal on today's Aggregate plus the solve→fold→seed idiom;
 recursive/monotone folds were always Weights' job; the branch-state
 residual is gated); negative
-constraints, note-store stage 1 (4: `x ∉ 1..3`, forbidden combinations —
+constraints, nogood-store stage 1 (4: `x ∉ 1..3`, forbidden combinations —
 real rulebooks are half negatives, today inexpressible); negative
 knowledge through tabling, stage 2 (2); or-between-constraints, stage 3
 (6: brackets, tariffs, optionality, precedence pairs WITHOUT forking —
 the toy-vs-business divider); suspensions as conditions on answers (5:
 the last refuse-loudly wall); real negation (7: integrity constraints
-need it; storage cheap once the note store exists — the operator is the
+need it; storage cheap once the nogood store exists — the operator is the
 cost); TCLP key alignment (3: shelved on observed misses).
 
 **Accidental complexity** — clause learning, cheap tier (4: never repeat
@@ -362,8 +362,8 @@ and a gated tail; each step lands on a green suite:
   Aggregate signatures is the human's call. The branch-state residual
   stays in the gated tail.
 - **Wave 2 — the rule vocabulary (4+2+5+6)**: opens with the gated
-  design conversation (the note-store pass + the naming session), then
-  stage 1 (notin/exclude ships), stage 2 (notes ride tabling),
+  design conversation (the nogood-store pass + the naming session), then
+  stage 1 (notin/exclude ships), stage 2 (nogoods ride tabling),
   suspensions-as-conditions (reuses the watermark; closes the last
   refuse-loudly wall; the aggregate rider lands here), stage 3 (`either`
   — or-without-forking, the scratch check, the agreement move).

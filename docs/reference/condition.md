@@ -450,7 +450,7 @@ run the same ring directly.
 
 Between the two evaluators sits a third discipline, recorded here as a
 design direction (its full design, plain-vocabulary chassis, API
-sketches and build stages live in `note-store.md` — the ring-side story
+sketches and build stages live in `nogood-store.md` — the ring-side story
 stays here): a DISJUNCTIVE STORE — a store holding a `Condition` as
 live constraint data ("the world is in one of these regions"), so a
 disjunction of constraints propagates instead of forking the search.

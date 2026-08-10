@@ -16,11 +16,11 @@
   entry — "table constraint" next to tabling's "table" in core is a
   collision, the gate settles the core store's name before the move
 - **links**: negation-over-finite-goals.md (consumer under negation),
-  lattice-store.md §4/§10 (the co-store slot — filled by NoteStore
+  lattice-store.md §4/§10 (the co-store slot — filled by Nogoods
   composition per the stipulation, not by a sibling store),
   weighted-tclp.md §5
   (positive-face consumer: emit as level sets), condition.md (a learned
-  nogood is a conditional answer for false), note-store.md (postings
+  nogood is a conditional answer for false), nogood-store.md (literals
   as the chokepoint the row set composes through)
 
 ## The claim
@@ -39,10 +39,10 @@ source on the same store, losing nothing.
 Three consumers want the core form. Directly, as positive membership
 (Support GAC): weighted TCLP's delivery — a level set IS a posted row
 set ("emit as level-set constraints" is the pipeline's last stage);
-and pldb itself. Under negation, through the NoteStore — the human's
+and pldb itself. Under negation, through the Nogoods store — the human's
 stipulation (August 2026): NO negative row-set store gets built, the
-NoteStore is the negative face. Negation over finite goals posts ONE
-note stating the positive membership constraint over the sealed answer
+Nogoods store is the negative face. Negation over finite goals posts ONE
+nogood stating the positive membership constraint over the sealed answer
 set (¬(args ∈ answers) = every row excluded), and learned nogoods take
 the same shape. The co-store slot lattice-store §4 reserves is filled
 by this composition, not by a sibling store.
@@ -59,16 +59,16 @@ residence decides who owes Projectable and transcription faces
 (package-resident core store owes them, boundary-resident pldb store
 does not).
 
-## The NoteStore relation
+## The Nogoods relation
 
-Two compilations of the same negative knowledge, both notes: per-answer
-(one note per row, bind postings) and compact (one note, one statement
-posting of the positive membership constraint over the whole set — the
+Two compilations of the same negative knowledge, both nogoods: per-answer
+(one nogood per row, bind literals) and compact (one nogood, one statement
+literal of the positive membership constraint over the whole set — the
 trial's three-way reading does the rest: membership fails on the
-scratch = discharged, entailed = violated, narrows = owed). The posting
+scratch = discharged, entailed = violated, narrows = owed). The literal
 vocabulary stays the chokepoint — a row-set constraint is a `Stored`,
-postable via a statement posting, so it composes with the verification
-kernel unchanged. The known trade rides along: the note form is a lazy
+postable via a statement literal, so it composes with the verification
+kernel unchanged. The known trade rides along: the nogood form is a lazy
 veto, not an eager carve (the ¬¬C observation from
 transcription-generifies.md) — exclusions filter at labelling.
 

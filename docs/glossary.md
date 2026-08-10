@@ -137,19 +137,19 @@ rating pass can stop at any section boundary and still be useful.
 - [~] **birth watermark** — record the variable counter at a boundary; anything older, undeclared and unground that leaked into a sub-result refuses loudly, named. *(condition.md §8.7)*
 - [~] **GROUP BY is table keys** — a weighted tabled call keyed on the group vars IS the grouped fold. *(condition.md §8.7)*
 
-## 8. Research vocabulary (condition.md §8, note-store, domain-layer — the newest layer)
+## 8. Research vocabulary (condition.md §8, nogood-store, domain-layer — the newest layer)
 
 - [x] **two evaluators / eager and lazy rail** — the kernel evaluates conditions by propagation (prunes now); the weight path carries them inertly (collects, pays at finality); one ring, two residences. *(condition.md §8.3)*
 - [~] **imposition spectrum** — fork ⟷ resident data (disjunctive store) ⟷ carried value: three homes for a constraint, chosen by price. *(condition.md §8.3)*
 - [~] **plan space** — the imposition choice belongs to the optimizer: licensed by confluence + the two-evaluators identity, guarded by ∞→exact and zombie labelling. *(condition.md §8.3)*
 - [~] **toll gate** — a lifted goal crosses the tabling barrier as DATA through the crossings (into the key or caller-private); filters migrate cleanly, binders widen keys soundly-but-priced. *(condition.md §8.3)*
 - [~] **the Projectable equivalence** — resident-in-a-store and riding-as-a-value are one object: the crossings are lossless conversion operators (no retraction; relocate the imposition point instead). *(condition.md §8.3)*
-- [~] **note / escape / four moves** — the note store's mechanism: "at least one escape holds"; cross off / enforce the last / fail on empty / discard when satisfied. *(note-store)*
-- [~] **NoteStore\<V\>** — one store parameterized by escape cargo (`Semilattice & PartialOrder`); Prefix = Neq re-seated, Domain = notin/exclude, Residues = or-without-forking. *(note-store)*
-- [~] **scratch-copy check (excursion)** — is a whole pack still possible? absorb it into a scratch package and watch propagation; drained observes failure; verdicts tier at the run-lane boundary. *(note-store §4)*
-- [~] **agreement move (lift)** — what ALL surviving escapes agree on holds now; needs an opt-in join; hull joins sound; the deduction forking can never make. *(note-store §4)*
-- [?] **polarity** — "avoid this" vs "be in this": the two escape questions swap answers; a flag, not a machine. *(note-store §2)*
-- [~] **co-store** — the negative-box configuration of the note store (Neq generalized: forbid boxes instead of points). *(note-store / lattice-store)*
+- [x] **nogood** ⋯import — the record: "NOT all these literals simultaneously" (CP-SAT: Stallman & Sussman's dependency-directed record, generalized); Neq's record shape, store-wide. Retires *note / escape / four moves*. *(nogood-store §1)*
+- [x] **Literal (bind | state | absorb)** ⋯import — one atomic constraint statement as data: a unification literal, a stored-item call-value, or a whole Absorbable factor (lazy clause generation's constraint-literal extension); the closed chokepoint vocabulary. *(nogood-store §2)*
+- [x] **Nogoods** — the store: nogoods held conjunctively, union meet, normalize = re-verification against the settled state. Retires *NoteStore\<V\>* (the cargo-typed kernel this design superseded); *polarity* retired with it — the store is negative-only, composition replaces polarity mixing. *(nogood-store §§1,6)*
+- [~] **scratch-copy check (excursion)** — impose a nogood's literals sequentially on a scratch package and read each three ways: fails = refuted/discard, unchanged = entailed/crossed off, new knowledge = still owed. *(nogood-store §§1,3)*
+- [~] **agreement move (lift)** — what ALL surviving alternatives agree on holds now; needs an opt-in join; hull joins sound; the deduction forking can never make. The either-sibling's feature. *(nogood-store §6)*
+- [~] **co-store** — the negative-box configuration (Neq generalized: forbid boxes instead of points); filled by Nogoods composition per the human's stipulation — no negative sibling store gets built. *(nogood-store / lattice-store §4)*
 - [~] **Neq = ¬Condition** — a record set is a negated DNF (records are clauses); FD+Neq are the finite–cofinite complement-closed pair. *(condition.md §8.5)*
 - [~] **constructive negation** ⋯import — negation computed as the complement of a SEALED answer region, delivered as constraints; "negation is the ultimate outside reader". *(condition.md §8.5)*
 - [~] **clause learning / tabling the failures** ⋯import — a learned nogood is "⊥ GIVEN R"; ¬R is a co-store clause; nogoods are born at 1 and stream; the fair scheduler prunes the frontier instead of backjumping. *(condition.md §8.6)*
@@ -160,7 +160,7 @@ rating pass can stop at any section boundary and still be useful.
 - [~] **equivalence inflation** — the named failure mode: "can model" silently becoming "is". *(method.md)*
 - [~] **theorem import receipt** — hypotheses, enforcement points, evidence, and the NOT-PURCHASED list recorded before a named result is leaned on. *(method.md)*
 - [~] **evidence types** — derive / falsify / expose / measure / demonstrate: match the verb to the evidence held; never silently promote. *(method.md)*
-- [~] **mid-solve pin** — a runtime invariant checked once per event at the boundary that owns it, refusing loudly with names (the canary family). *(note-store §5)*
+- [~] **mid-solve pin** — a runtime invariant checked once per event at the boundary that owns it, refusing loudly with names (the canary family). *(nogood-store §§2,5)*
 
 ## 9. Data boundary (domain-layer)
 

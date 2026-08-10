@@ -11,9 +11,11 @@ sibling (the co-store, generalizing Neq), the instance catalogue, the
 theorems that license what the store family promises, the speculation
 tier built once over the abstraction, and the cross-store doctrine.
 (August 2026: the co-store pitch is RESTATED AND EXTENDED in
-`note-store.md` — one note store parameterized by its escape cargo,
-Neq = the `Prefix` instance, plus the positive/disjunctive case; read
-that first, it is the version that survived the comprehension veto.)
+`nogood-store.md` — negative-only nogoods over literals, Neq the
+degenerate bind case, `either` the disjunctive sibling; the human's
+stipulation stands: no negative row-set store, exclusion composes
+through Nogoods. Read that first — it is the version that survived
+the comprehension veto.)
 Status: DESIGN. Sequencing is §9 — the extraction happens INSIDE #61,
 per the second-implementation rule; nothing here is speculative build.
 

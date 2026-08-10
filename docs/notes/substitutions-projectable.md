@@ -33,7 +33,7 @@
   5. Naming: is the encompassing value still "Residues" once it holds the
      bindings factor? It is now the whole conditional answer.
 - **links**: docs/reference/condition.md §0, docs/shelved/answers-as-diffs.md,
-  docs/design/note-store.md, docs/design/domain-layer.md (conditional answers),
+  docs/design/nogood-store.md, docs/design/domain-layer.md (conditional answers),
   #88 (weight capture rides the complete crossing), #90 (locals' frame),
   #111 (Query front door)
 
