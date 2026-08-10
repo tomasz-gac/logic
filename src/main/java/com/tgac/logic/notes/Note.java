@@ -22,8 +22,7 @@ public class Note implements Stored {
 
 	@Override
 	public Class<? extends Store> getStoreClass() {
-		throw new UnsupportedOperationException(
-				"the note store is not built yet: the verification core precedes it");
+		return NoteStore.class;
 	}
 
 	@Override
