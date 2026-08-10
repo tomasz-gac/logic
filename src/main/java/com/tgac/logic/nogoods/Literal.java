@@ -1,7 +1,7 @@
 package com.tgac.logic.nogoods;
 
 // ABOUTME: One atomic constraint literal — the chokepoint's statement vocabulary
-// ABOUTME: as a value: a unification literal or a stored-item statement. Closed.
+// ABOUTME: as a value: unification, stored-item statement, or absorbed factor. Closed.
 
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
