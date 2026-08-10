@@ -10,6 +10,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.lattice.Propagator;
+import com.tgac.logic.notes.Posting;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -19,6 +20,9 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
+import io.vavr.collection.HashSet;
+import io.vavr.collection.LinkedHashMap;
+import io.vavr.collection.List;
 import io.vavr.control.Option;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,6 +44,20 @@ public class FiniteDomain {
 		return Bounded.sighted(p -> domOrder(p, u, d), fdGoal()
 				.and(applyDom(u, d))
 				.named(pkg -> pkg.format(u) + " ⊂ " + pkg.format(d)));
+	}
+
+	/**
+	 * The membership {@code u ∈ d} as a posting — a call-value whose product
+	 * is the single-entry FD factor: the box is ground data and closes over,
+	 * the anchor reads through the actuals, so a renaming regenerates the
+	 * factor at the renamed anchor.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Posting in(Unifiable<T> u, Domain<T> d) {
+		return Posting.absorb(List.of(u), actuals ->
+				FiniteDomainConstraints.of(
+						LinkedHashMap.of(actuals.head(), (Domain<?>) d),
+						HashSet.empty()));
 	}
 
 	/**

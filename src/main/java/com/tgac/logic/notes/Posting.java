@@ -6,6 +6,7 @@ package com.tgac.logic.notes;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.MiniKanren;
@@ -47,6 +48,16 @@ public interface Posting {
 	 */
 	static Posting state(List<Term<?>> actuals, Function<List<Term<?>>, Stored> maker) {
 		return new Statement(actuals, maker);
+	}
+
+	/**
+	 * A whole factor as a call-value — the same (actuals, template) shape
+	 * with an {@link Absorbable} product, imposed through the bulk statement
+	 * entry, which registers the resident store itself: no residence guard
+	 * needed. How a domain membership posts: the factor IS the knowledge.
+	 */
+	static Posting absorb(List<Term<?>> actuals, Function<List<Term<?>>, Absorbable<?>> maker) {
+		return new Absorption(actuals, maker);
 	}
 
 	@Value
@@ -122,6 +133,39 @@ public interface Posting {
 		@Override
 		public String toString() {
 			return "state(" + item + ")";
+		}
+	}
+
+	/**
+	 * Equality delegates to the generated factor, the maker excluded — the
+	 * same identity discipline as {@link Statement}.
+	 */
+	@Getter
+	@EqualsAndHashCode(of = "factor")
+	class Absorption implements Posting {
+		private final List<Term<?>> actuals;
+		private final Function<List<Term<?>>, Absorbable<?>> maker;
+		private final Absorbable<?> factor;
+
+		private Absorption(List<Term<?>> actuals, Function<List<Term<?>>, Absorbable<?>> maker) {
+			this.actuals = actuals;
+			this.maker = maker;
+			this.factor = maker.apply(actuals);
+		}
+
+		@Override
+		public Goal impose() {
+			return Propagation.absorb(factor);
+		}
+
+		@Override
+		public Stream<Term<?>> terms() {
+			return actuals.toJavaStream().map(t -> (Term<?>) t);
+		}
+
+		@Override
+		public String toString() {
+			return "absorb(" + factor + ")";
 		}
 	}
 }

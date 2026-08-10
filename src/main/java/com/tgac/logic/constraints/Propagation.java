@@ -239,6 +239,17 @@ public final class Propagation {
 	}
 
 	/**
+	 * A quiescent view of {@code p}: the in-flight agenda, if any, removed.
+	 * The agenda is DRIVER state riding the package mid-drain, not knowledge —
+	 * a scratch copy of a mid-drain package must start quiescent, or its
+	 * impositions append to the outer drain instead of running to their own
+	 * quiescence, and the stale agenda perturbs change detection.
+	 */
+	public static Package quiescent(Package p) {
+		return p.withoutStore(Agenda.class);
+	}
+
+	/**
 	 * The single entry to propagation work. A drain in flight (agenda present)?
 	 * Append — the running loop will reach the item. Otherwise this is a trigger:
 	 * install the agenda, drain to quiescence, then splice the collected runs.

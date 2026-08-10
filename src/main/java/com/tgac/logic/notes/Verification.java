@@ -6,6 +6,7 @@ package com.tgac.logic.notes;
 import static com.tgac.functional.category.Nothing.nothing;
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import io.vavr.collection.List;
@@ -49,10 +50,15 @@ public final class Verification {
 	 * satisfied notes absent.
 	 */
 	public static Fiber<Option<List<Note>>> verify(List<Note> notes, Package state) {
+		// a scratch starts QUIESCENT: verification runs inside revise, and a
+		// mid-drain package carries the outer agenda — impositions would
+		// append to it instead of draining, and the stale agenda perturbs
+		// change detection
+		Package base = Propagation.quiescent(state);
 		return notes.foldLeft(
 				Fiber.done(Option.of(List.empty())),
 				(acc, note) -> acc.flatMap(kept -> kept.isDefined() ?
-						verificationStep(state, kept.get(), note) :
+						verificationStep(base, kept.get(), note) :
 						Fiber.done(kept)));
 	}
 
