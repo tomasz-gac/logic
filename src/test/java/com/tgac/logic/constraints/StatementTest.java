@@ -1,4 +1,4 @@
-package com.tgac.logic.nogoods;
+package com.tgac.logic.constraints;
 
 // ABOUTME: Statement is the chokepoint vocabulary lifted to Goal: apply IS the
 // ABOUTME: imposition, and Bounded's order is the 0-or-1 taxonomy with the doom bit.

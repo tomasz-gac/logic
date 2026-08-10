@@ -3,6 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The verification core against Neq's own semantics: refuted discards,
 // ABOUTME: entailed fails, survivors keep their original literals, bindings thread.
 
+import com.tgac.logic.constraints.Statement;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;

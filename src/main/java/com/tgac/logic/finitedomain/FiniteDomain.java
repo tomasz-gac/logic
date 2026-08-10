@@ -11,7 +11,7 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.nogoods.Exclusion;
-import com.tgac.logic.nogoods.Statement;
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -42,48 +42,24 @@ import lombok.Value;
 public class FiniteDomain {
 
 	public static <T> Goal dom(Unifiable<T> u, Domain<T> d) {
-		return Bounded.sighted(p -> domOrder(p, u, d), fdGoal()
-				.and(applyDom(u, d))
+		Statement in = in(u, d);
+		return Bounded.sighted(in::answers, fdGoal()
+				.and(in)
 				.named(pkg -> pkg.format(u) + " ⊂ " + pkg.format(d)));
 	}
 
 	/**
-	 * The membership {@code u ∈ d} as a literal — a call-value whose product
-	 * is the single-entry FD factor: the box is ground data and closes over,
-	 * the anchor reads through the actuals, so a renaming regenerates the
-	 * factor at the renamed anchor.
+	 * The membership {@code u ∈ d} as a statement — the single-entry FD
+	 * factor through the store's imposition door, doom check included.
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Statement in(Unifiable<T> u, Domain<T> d) {
-		return Statement.absorb(List.of(u), actuals ->
-						FiniteDomainConstraints.of(
-								LinkedHashMap.of(actuals.head(), (Domain<?>) d),
-								HashSet.empty()),
-				p -> domOrder(p, u, d) == 0);
+		return FiniteDomainConstraints.empty().impose(u, (Domain<Object>) d);
 	}
 
 	/** The negated box {@code u ∉ d}: FD's sugar over the exclusion door. */
 	public static <T> Goal notin(Unifiable<T> u, Domain<T> d) {
 		return Exclusion.exclude(in(u, d));
-	}
-
-	/**
-	 * Statement-position domain update: walk the target, apply against the live
-	 * FD factor, and route the outcome through the public entries — resolve for a
-	 * collapse, narrowed for a strict narrowing.
-	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	private static long domOrder(Package p, Term<?> u, Domain<?> d) {
-		Term<?> w = p.substitution().walk(u);
-		if (w.asVal().isDefined()) {
-			return ((Domain) d).contains(w.get()) ? 1 : 0;
-		}
-		// open variable: a live store domain disjoint with the post is failure now
-		boolean deadPost = p.getStores().get(FiniteDomainConstraints.class)
-				.map(FiniteDomainConstraints.class::cast)
-				.flatMap(store -> store.getDomain((LVar) w.asVar().get()))
-				.exists(existing -> ((Domain) existing).isDisjoint((Domain) d));
-		return deadPost ? 0 : 1;
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
@@ -94,11 +70,6 @@ public class FiniteDomain {
 			return satisfied.test(((Comparable) lw.get()).compareTo(rw.get())) ? 1 : 0;
 		}
 		return 1;
-	}
-
-	@SuppressWarnings("unchecked")
-	private static Goal applyDom(Term<?> target, Domain<?> d) {
-		return FiniteDomainConstraints.empty().impose(target, (Domain<Object>) d);
 	}
 
 	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
@@ -421,7 +392,7 @@ public class FiniteDomain {
 
 	public static <T> Goal copyDomain(Unifiable<T> from, Unifiable<T> to) {
 		return Bounded.of(1, fdGoal()
-				.and(s -> applyDom(to, from.asVar()
+				.and(s -> in(to, from.asVar()
 						.flatMap(l -> FiniteDomainConstraints.<T> getDom(s, l))
 						.orElse(() -> s.walk(from).asVal()
 								.map(Arithmetic::ofCasted)

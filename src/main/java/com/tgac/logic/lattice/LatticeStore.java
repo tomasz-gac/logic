@@ -11,6 +11,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
@@ -197,31 +198,30 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	}
 
 	/**
-	 * Statement-position imposition: walk the target, apply against the live
-	 * factor (registering an empty store if absent), and route the outcome
-	 * through the public entries — resolve for a collapse, re-examination for
-	 * a strict narrowing.
+	 * Statement-position imposition as the chokepoint's own statement: the
+	 * single-entry factor rides the bulk statement entry (which registers the
+	 * resident store itself), and collapse, re-examination and the cross-store
+	 * wake all happen inside this store's own trigger methods — the routing
+	 * lives with the store, not at the call site. Doomed under partial
+	 * knowledge exactly when the value cannot stand against the live state: a
+	 * ground target the value refuses, or a live entry it meets to bottom.
 	 */
+	public Statement impose(Term<?> target, L value) {
+		return Statement.absorb(io.vavr.collection.List.of(target),
+				actuals -> create(LinkedHashMap.of(actuals.head(), value), HashSet.empty()),
+				p -> doomedAt(p, target, value));
+	}
+
 	@SuppressWarnings("unchecked")
-	public Goal impose(Term<?> target, L value) {
-		return s -> {
-			Package reg = s.getStores().containsKey(getClass()) ? s
-					: s.withStore(create(LinkedHashMap.empty(), HashSet.empty()));
-			S live = (S) reg.getStore(getClass());
-			return live.update(reg, reg.walk(target), value)
-					.<Cont<Package, Nothing>> match(
-							() -> Cont.complete(Nothing.nothing()),
-							() -> Cont.just(reg),
-							applied -> {
-								Goal binds = applied.inferred().stream()
-										.map(Propagation::resolve)
-										.reduce(Goal.success(), Goal::and);
-								Goal wakes = applied.reexamine().stream()
-										.map(this::reexamineOwn)
-										.reduce(Goal.success(), Goal::and);
-								return binds.and(wakes).apply(reg.putStore(applied.factor()));
-							});
-		};
+	private boolean doomedAt(Package p, Term<?> target, L value) {
+		Term<?> w = p.substitution().walk(target);
+		if (w.asVal().isDefined()) {
+			return !value.admits(w.get());
+		}
+		return p.getStores().get(getClass())
+				.map(store -> (S) store)
+				.flatMap(live -> live.getValue(w))
+				.exists(existing -> existing.meet(value).isAbsorbing());
 	}
 
 	/**
@@ -296,7 +296,31 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 		for (Tuple2<Term<?>, L> entry : values) {
 			Term<?> walked = state.walk(entry._1);
 			if (walked == entry._1) {
-				continue;    // live at its root
+				// live at its root — update()'s verification and collapse arms
+				// in statement position: the routing lives here, with the store.
+				// A ground-keyed entry is a membership check — admits or the
+				// branch dies — and is spent either way (values are consulted
+				// only for unbound variables)
+				if (walked.asVal().isDefined()) {
+					if (!entry._2.admits(walked.get())) {
+						return Fiber.done(Revision.fail());
+					}
+					factor = factor.create(factor.values.remove(entry._1), factor.propagators);
+					continue;
+				}
+				// the meet that queued this normalize may have collapsed the
+				// value to a point: the binding is the knowledge, the entry spent
+				Option<Object> point = entry._2.asPoint();
+				if (point.isDefined() && walked.asVar().isDefined()) {
+					Option<Prefix> collapse = Prefix.binding(
+							state.substitution(), walked.asVar().get(), lval(point.get()));
+					if (collapse.isDefined()) {
+						inferred.add(collapse.get());
+						queue.add(entry._1);
+						factor = factor.create(factor.values.remove(entry._1), factor.propagators);
+					}
+				}
+				continue;
 			}
 			factor = consume(factor.update(state, walked, entry._2),
 					factor, inferred, runs, queue);

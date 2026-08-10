@@ -3,6 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: Lattice laws for the nogood store: meet is nogood union, so more
 // ABOUTME: nogoods = lower — claimed for the coverage gate.
 
+import com.tgac.logic.constraints.Statement;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 

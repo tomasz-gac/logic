@@ -4,6 +4,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: "NOT all these literals simultaneously" — through the statement entry.
 
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.goals.Goal;
 import io.vavr.collection.List;
 import lombok.AccessLevel;

@@ -5,6 +5,7 @@ package com.tgac.logic.nogoods;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import io.vavr.collection.List;

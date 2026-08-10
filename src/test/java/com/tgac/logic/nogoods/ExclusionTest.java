@@ -3,6 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The user front door: exclude states one nogood over literals;
 // ABOUTME: FiniteDomain.notin is FD's negated-box sugar over the same door.
 
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.nogoods.Exclusion.exclude;

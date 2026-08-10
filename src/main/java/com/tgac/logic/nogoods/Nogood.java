@@ -3,6 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: One nogood: NOT all these literals simultaneously — Neq's record shape
 // ABOUTME: with literals as the pairs. Born as its escape list; nothing converts.
 
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;

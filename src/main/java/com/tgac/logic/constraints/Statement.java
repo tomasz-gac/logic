@@ -1,12 +1,10 @@
-package com.tgac.logic.nogoods;
+package com.tgac.logic.constraints;
 
 // ABOUTME: The chokepoint's statement vocabulary lifted to Goal: apply IS the
 // ABOUTME: imposition — unification, stored-item statement, or absorbed factor. Closed.
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.constraints.Constraints;
-import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -27,7 +25,7 @@ import lombok.Value;
 /**
  * What knowledge may enter a package, as a GOAL: applying a statement imposes
  * it through the chokepoint, so the same value is a conjunct in a program and
- * a literal in a {@link Nogood}. The constructors are the whole vocabulary —
+ * a literal in a nogood. The constructors are the whole vocabulary —
  * a program is not a statement, so negation of statements never becomes
  * negation of programs. Implementing this interface is claiming the
  * imposition law (idempotent, monotone, at most one success, chokepoint-only);

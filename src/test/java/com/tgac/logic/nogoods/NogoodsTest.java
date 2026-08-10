@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.unification.Term;
