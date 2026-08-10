@@ -10,6 +10,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.lattice.Propagator;
+import com.tgac.logic.nogoods.Exclusion;
 import com.tgac.logic.nogoods.Literal;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
@@ -58,6 +59,11 @@ public class FiniteDomain {
 				FiniteDomainConstraints.of(
 						LinkedHashMap.of(actuals.head(), (Domain<?>) d),
 						HashSet.empty()));
+	}
+
+	/** The negated box {@code u ∉ d}: FD's sugar over the exclusion door. */
+	public static <T> Goal notin(Unifiable<T> u, Domain<T> d) {
+		return Exclusion.exclude(in(u, d));
 	}
 
 	/**
