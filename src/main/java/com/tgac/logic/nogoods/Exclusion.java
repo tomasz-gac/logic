@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Exclusion {
 
-	public static Goal exclude(Literal... literals) {
+	public static Goal exclude(Statement... literals) {
 		Nogood nogood = Nogood.of(List.of(literals));
 		return pkg -> Propagation.activate(nogood).apply(Nogoods.register(pkg));
 	}

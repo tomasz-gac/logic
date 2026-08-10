@@ -26,10 +26,10 @@ public class NogoodsLawsTest {
 
 	private static final Unifiable<Integer> X = lvar();
 	private static final Unifiable<Integer> Y = lvar();
-	private static final Nogood X_APART = Nogood.of(List.of(Literal.bind(X, lval(1))));
-	private static final Nogood Y_APART = Nogood.of(List.of(Literal.bind(Y, lval(2))));
+	private static final Nogood X_APART = Nogood.of(List.of(Statement.bind(X, lval(1))));
+	private static final Nogood Y_APART = Nogood.of(List.of(Statement.bind(Y, lval(2))));
 	private static final Nogood NOT_BOTH = Nogood.of(List.of(
-			Literal.bind(X, lval(1)), Literal.bind(Y, lval(2))));
+			Statement.bind(X, lval(1)), Statement.bind(Y, lval(2))));
 
 	@Test
 	public void nogoodUnionIsAMeetSemilattice() {

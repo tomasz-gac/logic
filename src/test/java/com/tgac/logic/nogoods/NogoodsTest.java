@@ -23,7 +23,7 @@ import org.junit.Test;
 
 public class NogoodsTest {
 
-	private static Goal held(Literal... literals) {
+	private static Goal held(Statement... literals) {
 		Nogood nogood = Nogood.of(List.of(literals));
 		return pkg -> Propagation.activate(nogood).apply(Nogoods.register(pkg));
 	}
@@ -32,7 +32,7 @@ public class NogoodsTest {
 	public void aViolatedNogoodFailsTheBranch() {
 		Unifiable<Integer> x = lvar();
 
-		Goal g = held(Literal.bind(x, lval(3))).and(x.unifies(3));
+		Goal g = held(Statement.bind(x, lval(3))).and(x.unifies(3));
 
 		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
 	}
@@ -41,7 +41,7 @@ public class NogoodsTest {
 	public void aSatisfiedNogoodDischarges() {
 		Unifiable<Integer> x = lvar();
 
-		Goal g = held(Literal.bind(x, lval(3))).and(x.unifies(5));
+		Goal g = held(Statement.bind(x, lval(3))).and(x.unifies(5));
 
 		assertThat(g.solve(x, TestSchedulers.factory()).findFirst().get().get())
 				.isEqualTo(5);
@@ -55,7 +55,7 @@ public class NogoodsTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Goal afterCrossOff = held(Literal.bind(x, lval(1)), Literal.bind(y, lval(2)))
+		Goal afterCrossOff = held(Statement.bind(x, lval(1)), Statement.bind(y, lval(2)))
 				.and(y.unifies(2));
 		assertThat(afterCrossOff.solve(y, TestSchedulers.factory()).findFirst().get().get())
 				.isEqualTo(2);
@@ -70,7 +70,7 @@ public class NogoodsTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Goal g = held(Literal.bind(x, lval(1)), Literal.bind(y, lval(2)))
+		Goal g = held(Statement.bind(x, lval(1)), Statement.bind(y, lval(2)))
 				.and(y.unifies(2))
 				.and(x.unifies(5));
 
@@ -87,11 +87,11 @@ public class NogoodsTest {
 		// born SATISFIED discards and the branch delivers
 		Unifiable<Integer> x = lvar();
 
-		Goal violated = x.unifies(3).and(held(Literal.bind(x, lval(3))));
+		Goal violated = x.unifies(3).and(held(Statement.bind(x, lval(3))));
 		assertThat(violated.solve(x, TestSchedulers.factory()).count()).isZero();
 
 		Unifiable<Integer> z = lvar();
-		Goal discarded = z.unifies(3).and(held(Literal.bind(z, lval(4))));
+		Goal discarded = z.unifies(3).and(held(Statement.bind(z, lval(4))));
 		assertThat(discarded.solve(z, TestSchedulers.factory()).findFirst().get().get())
 				.isEqualTo(3);
 	}
@@ -103,7 +103,7 @@ public class NogoodsTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Goal g = held(Literal.bind(x, lval(1)), Literal.bind(y, lval(2)));
+		Goal g = held(Statement.bind(x, lval(1)), Statement.bind(y, lval(2)));
 
 		assertThatThrownBy(() -> g.solve(x, TestSchedulers.factory()).count())
 				.isInstanceOf(IllegalStateException.class);
@@ -117,7 +117,7 @@ public class NogoodsTest {
 		Unifiable<Long> x = lvar();
 
 		Goal g = dom(x, EnumeratedDomain.range(0L, 5L))
-				.and(held(Literal.bind(x, lval(3L))));
+				.and(held(Statement.bind(x, lval(3L))));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());

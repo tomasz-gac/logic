@@ -20,26 +20,26 @@ import org.junit.Test;
 
 public class VerificationTest {
 
-	private static Package given(Literal... literals) {
+	private static Package given(Statement... literals) {
 		Package state = Package.empty();
-		for (Literal literal : literals) {
+		for (Statement literal : literals) {
 			state = Verification.imposed(literal, state).get().head();
 		}
 		return state;
 	}
 
-	private static Option<List<Nogood>> verified(Package state, Literal... literals) {
+	private static Option<List<Nogood>> verified(Package state, Statement... literals) {
 		return Verification.verify(List.of(Nogood.of(List.of(literals))), state).get();
 	}
 
 	@Test
-	public void aRefutedLiteralSubsumesTheNogoodFully() {
+	public void aRefutedStatementSubsumesTheNogoodFully() {
 		// x is 5, so x = 3 can never hold: the forbidden conjunction is
 		// refuted, the nogood discards
 		Unifiable<Integer> x = lvar();
-		Package state = given(Literal.bind(x, lval(5)));
+		Package state = given(Statement.bind(x, lval(5)));
 
-		Option<List<Nogood>> verdict = verified(state, Literal.bind(x, lval(3)));
+		Option<List<Nogood>> verdict = verified(state, Statement.bind(x, lval(3)));
 
 		assertThat(verdict.get()).isEmpty();
 	}
@@ -48,22 +48,22 @@ public class VerificationTest {
 	public void anEntailedConjunctionFailsTheBranch() {
 		// x is already 3: the forbidden thing holds — the veto
 		Unifiable<Integer> x = lvar();
-		Package state = given(Literal.bind(x, lval(3)));
+		Package state = given(Statement.bind(x, lval(3)));
 
-		Option<List<Nogood>> verdict = verified(state, Literal.bind(x, lval(3)));
+		Option<List<Nogood>> verdict = verified(state, Statement.bind(x, lval(3)));
 
 		assertThat(verdict.isDefined()).isFalse();
 	}
 
 	@Test
-	public void anEntailedLiteralIsCrossedOffAndSurvivorsKeepTheirOriginals() {
+	public void anEntailedStatementIsCrossedOffAndSurvivorsKeepTheirOriginals() {
 		// y already holds its half; only the x half is still owed
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Package state = given(Literal.bind(y, lval(2)));
-		Literal stillOwed = Literal.bind(x, lval(1));
+		Package state = given(Statement.bind(y, lval(2)));
+		Statement stillOwed = Statement.bind(x, lval(1));
 
-		Option<List<Nogood>> verdict = verified(state, stillOwed, Literal.bind(y, lval(2)));
+		Option<List<Nogood>> verdict = verified(state, stillOwed, Statement.bind(y, lval(2)));
 
 		Nogood survivor = verdict.get().head();
 		assertThat(survivor.getLiterals()).containsExactly(stillOwed);
@@ -73,8 +73,8 @@ public class VerificationTest {
 	public void anUndecidedNogoodSurvivesWhole() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Literal first = Literal.bind(x, lval(1));
-		Literal second = Literal.bind(y, lval(2));
+		Statement first = Statement.bind(x, lval(1));
+		Statement second = Statement.bind(y, lval(2));
 
 		Option<List<Nogood>> verdict = verified(Package.empty(), first, second);
 
@@ -82,7 +82,7 @@ public class VerificationTest {
 	}
 
 	@Test
-	public void aStatementLiteralRefusesWhenItsStoreIsAbsent() {
+	public void aStatementStatementRefusesWhenItsStoreIsAbsent() {
 		// Package.withStored silently no-ops on an unregistered store; a
 		// dropped statement would read "unchanged" — the false cross-off
 		// direction, which can veto a satisfiable branch. Residence is
@@ -100,18 +100,18 @@ public class VerificationTest {
 		};
 
 		assertThatThrownBy(() -> Verification.imposed(
-				Literal.state(List.empty(), terms -> orphan), Package.empty()).get())
+				Statement.state(List.empty(), terms -> orphan), Package.empty()).get())
 				.isInstanceOf(IllegalStateException.class);
 	}
 
 	@Test
-	public void statementLiteralsCompareByTheirGeneratedItems() {
+	public void statementStatementsCompareByTheirGeneratedItems() {
 		// two distinct maker lambdas, one named schema over the same terms:
 		// identity lives on the generated item, the maker is excluded
 		Term<?> x = lvar();
-		Literal first = Literal.state(List.of(x), terms ->
+		Statement first = Statement.state(List.of(x), terms ->
 				Propagator.of(Store.class, "same-schema", terms, (watched, pkg) -> null));
-		Literal second = Literal.state(List.of(x), terms ->
+		Statement second = Statement.state(List.of(x), terms ->
 				Propagator.of(Store.class, "same-schema", terms, (watched, pkg) -> null));
 
 		assertThat(first).isEqualTo(second);
@@ -119,15 +119,15 @@ public class VerificationTest {
 	}
 
 	@Test
-	public void bindingsThreadAcrossLiteralsSharingVariables() {
+	public void bindingsThreadAcrossStatementsSharingVariables() {
 		// x is 2; imposing x = y binds y to 2, so y = 2 is then entailed and
 		// crosses off — the jointness of Neq's whole-record trial
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Package state = given(Literal.bind(x, lval(2)));
-		Literal alias = Literal.bind(x, y);
+		Package state = given(Statement.bind(x, lval(2)));
+		Statement alias = Statement.bind(x, y);
 
-		Option<List<Nogood>> verdict = verified(state, alias, Literal.bind(y, lval(2)));
+		Option<List<Nogood>> verdict = verified(state, alias, Statement.bind(y, lval(2)));
 
 		assertThat(verdict.get().head().getLiterals()).containsExactly(alias);
 	}

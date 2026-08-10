@@ -18,7 +18,7 @@ import lombok.Value;
  */
 @Value(staticConstructor = "of")
 public class Nogood implements Stored {
-	List<Literal> literals;
+	List<Statement> literals;
 
 	@Override
 	public Class<? extends Store> getStoreClass() {
@@ -27,7 +27,7 @@ public class Nogood implements Stored {
 
 	@Override
 	public Stream<Term<?>> terms() {
-		return literals.toJavaStream().flatMap(Literal::terms);
+		return literals.toJavaStream().flatMap(Statement::terms);
 	}
 
 	@Override

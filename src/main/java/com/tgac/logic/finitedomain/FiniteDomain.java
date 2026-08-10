@@ -11,7 +11,7 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.nogoods.Exclusion;
-import com.tgac.logic.nogoods.Literal;
+import com.tgac.logic.nogoods.Statement;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -54,11 +54,12 @@ public class FiniteDomain {
 	 * factor at the renamed anchor.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Literal in(Unifiable<T> u, Domain<T> d) {
-		return Literal.absorb(List.of(u), actuals ->
-				FiniteDomainConstraints.of(
-						LinkedHashMap.of(actuals.head(), (Domain<?>) d),
-						HashSet.empty()));
+	public static <T> Statement in(Unifiable<T> u, Domain<T> d) {
+		return Statement.absorb(List.of(u), actuals ->
+						FiniteDomainConstraints.of(
+								LinkedHashMap.of(actuals.head(), (Domain<?>) d),
+								HashSet.empty()),
+				p -> domOrder(p, u, d) == 0);
 	}
 
 	/** The negated box {@code u ∉ d}: FD's sugar over the exclusion door. */

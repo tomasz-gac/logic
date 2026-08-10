@@ -78,14 +78,14 @@ public final class Verification {
 	 * nogood is violated; otherwise the surviving literals, entailed ones
 	 * crossed off.
 	 */
-	static Fiber<Option<List<Literal>>> trial(
-			List<Literal> pending,
-			List<Literal> survivors,
+	static Fiber<Option<List<Statement>>> trial(
+			List<Statement> pending,
+			List<Statement> survivors,
 			Package scratch) {
 		if (pending.isEmpty()) {
 			return Fiber.done(Option.of(survivors));
 		}
-		Literal literal = pending.head();
+		Statement literal = pending.head();
 		return imposed(literal, scratch).flatMap(worlds -> {
 			if (worlds.isEmpty()) {
 				return Fiber.done(Option.none());
@@ -112,8 +112,8 @@ public final class Verification {
 	 * (arbitrary goals, may spawn). Empty = the run stayed silent: the
 	 * imposition failed.
 	 */
-	static Fiber<List<Package>> imposed(Literal literal, Package scratch) {
-		return Exhaustion.collected(literal.impose().apply(scratch))
+	static Fiber<List<Package>> imposed(Statement literal, Package scratch) {
+		return Exhaustion.collected(literal.apply(scratch))
 				.map(List::ofAll);
 	}
 

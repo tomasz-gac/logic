@@ -25,7 +25,7 @@ public class ExclusionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Goal g = exclude(Literal.bind(x, lval(3)), Literal.bind(y, lval(4)))
+		Goal g = exclude(Statement.bind(x, lval(3)), Statement.bind(y, lval(4)))
 				.and(x.unifies(3))
 				.and(y.unifies(4));
 
@@ -37,7 +37,7 @@ public class ExclusionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Goal g = exclude(Literal.bind(x, lval(3)), Literal.bind(y, lval(4)))
+		Goal g = exclude(Statement.bind(x, lval(3)), Statement.bind(y, lval(4)))
 				.and(x.unifies(3))
 				.and(y.unifies(5));
 
