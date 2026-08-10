@@ -14,6 +14,7 @@ import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Conjunction;
+import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
@@ -258,7 +259,7 @@ public final class Propagation {
 			return Fiber.done(Option.of(p));
 		}
 		Goal settle = drainItems(s -> Cont.just(s.withoutStore(Agenda.class)));
-		return Cont.collected(settle.apply(p))
+		return Exhaustion.collected(settle.apply(p))
 				.map(worlds -> worlds.isEmpty() ?
 						Option.none() :
 						Option.of(worlds.get(0)));

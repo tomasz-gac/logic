@@ -4,8 +4,8 @@ package com.tgac.logic.notes;
 // ABOUTME: read each imposition three ways, route the four moves. Neq generalized.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -106,13 +106,14 @@ public final class Verification {
 	}
 
 	/**
-	 * The worlds the imposition delivered, grounded through Cont.collected —
-	 * a fresh workforce claim, so completion is honest even when the
-	 * imposition wakes suspension bodies (arbitrary goals, may spawn).
-	 * Empty = the run stayed silent: the imposition failed.
+	 * The worlds the imposition delivered, grounded through the protocol
+	 * home ({@link Exhaustion#collected}): a fresh workforce claim, so
+	 * completion is honest even when the imposition wakes suspension bodies
+	 * (arbitrary goals, may spawn). Empty = the run stayed silent: the
+	 * imposition failed.
 	 */
 	static Fiber<List<Package>> imposed(Posting posting, Package scratch) {
-		return Cont.collected(posting.impose().apply(scratch))
+		return Exhaustion.collected(posting.impose().apply(scratch))
 				.map(List::ofAll);
 	}
 
