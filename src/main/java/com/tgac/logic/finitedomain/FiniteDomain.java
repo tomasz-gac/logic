@@ -10,7 +10,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.notes.Posting;
+import com.tgac.logic.nogoods.Literal;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -47,14 +47,14 @@ public class FiniteDomain {
 	}
 
 	/**
-	 * The membership {@code u ∈ d} as a posting — a call-value whose product
+	 * The membership {@code u ∈ d} as a literal — a call-value whose product
 	 * is the single-entry FD factor: the box is ground data and closes over,
 	 * the anchor reads through the actuals, so a renaming regenerates the
 	 * factor at the renamed anchor.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Posting in(Unifiable<T> u, Domain<T> d) {
-		return Posting.absorb(List.of(u), actuals ->
+	public static <T> Literal in(Unifiable<T> u, Domain<T> d) {
+		return Literal.absorb(List.of(u), actuals ->
 				FiniteDomainConstraints.of(
 						LinkedHashMap.of(actuals.head(), (Domain<?>) d),
 						HashSet.empty()));

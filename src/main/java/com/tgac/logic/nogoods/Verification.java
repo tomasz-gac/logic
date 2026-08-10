@@ -1,6 +1,6 @@
-package com.tgac.logic.notes;
+package com.tgac.logic.nogoods;
 
-// ABOUTME: The verification step: impose a note's postings on a scratch package,
+// ABOUTME: The verification step: impose a nogood's literals on a scratch package,
 // ABOUTME: read each imposition three ways, route the four moves. Neq generalized.
 
 import com.tgac.functional.fibers.Fiber;
@@ -13,39 +13,39 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
 /**
- * Neq's verification with postings for pairs and the scratch for the trial —
+ * Neq's verification with literals for pairs and the scratch for the trial —
  * the same signatures, contract for contract: {@link #verify} is
- * verifyAndSimplify (none = a note is violated, the branch fails; the kept
- * list holds the survivors, discarded notes simply absent), {@link #trial} is
- * unifyConstraints (none = the note is subsumed fully, discard; empty = every
- * posting already holds, violated; survivors = the simplified note's
- * postings). The store slice maps verify onto {@link
+ * verifyAndSimplify (none = a nogood is violated, the branch fails; the kept
+ * list holds the survivors, discarded nogoods simply absent), {@link #trial} is
+ * unifyConstraints (none = the nogood is subsumed fully, discard; empty = every
+ * literal already holds, violated; survivors = the simplified nogood's
+ * literals). The store slice maps verify onto {@link
  * com.tgac.logic.constraints.store.Revision} in one line: none → fail,
  * kept → updated.
  *
- * <p>A posting is imposed on the scratch and read three ways: the imposition
+ * <p>A literal is imposed on the scratch and read three ways: the imposition
  * FAILS → the forbidden conjunction is refuted; it changes NOTHING → that
- * posting already holds, crossed off (lawful by monotonicity: knowledge only
- * grows, so an entailed posting stays entailed); it brings NEW knowledge →
- * still owed, the posting survives as its ORIGINAL self — nothing is ever
+ * literal already holds, crossed off (lawful by monotonicity: knowledge only
+ * grows, so an entailed literal stays entailed); it brings NEW knowledge →
+ * still owed, the literal survives as its ORIGINAL self — nothing is ever
  * read back out of the scratch. Sequential imposition threads bindings across
- * postings sharing variables — the jointness of Neq's whole-record trial.
+ * literals sharing variables — the jointness of Neq's whole-record trial.
  *
  * <p>The change detection is exact for bindings (an entailed unification
  * resolves an empty prefix and returns the package untouched). A stated item
- * always changes the store it enters, so statement postings classify
- * conservatively toward "still owed" — a missed cross-off keeps the note
+ * always changes the store it enters, so statement literals classify
+ * conservatively toward "still owed" — a missed cross-off keeps the nogood
  * wider, never wrong.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Verification {
 
 	/**
-	 * Every note re-verified against the state: none = some note is violated,
+	 * Every nogood re-verified against the state: none = some nogood is violated,
 	 * the branch fails; otherwise the kept list — survivors simplified,
-	 * satisfied notes absent.
+	 * satisfied nogoods absent.
 	 */
-	public static Fiber<Option<List<Note>>> verify(List<Note> notes, Package state) {
+	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
 		// evaluation and comparison both need quiescence: the caller may sit
 		// mid-drain, so the base COMPLETES the pending items first (runs are
 		// search and stay with the real drain). A settle failure means the
@@ -53,55 +53,55 @@ public final class Verification {
 		// veto now and spare the real drain the recomputation
 		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
 				Fiber.done(Option.none()) :
-				notes.foldLeft(
+				nogoods.foldLeft(
 						Fiber.done(Option.of(List.empty())),
-						(acc, note) -> acc.flatMap(kept -> kept.isDefined() ?
-								verificationStep(settled.get(), kept.get(), note) :
+						(acc, nogood) -> acc.flatMap(kept -> kept.isDefined() ?
+								verificationStep(settled.get(), kept.get(), nogood) :
 								Fiber.done(kept))));
 	}
 
-	/** One note against the state: the kept list grown by the note's verdict. */
-	private static Fiber<Option<List<Note>>> verificationStep(
-			Package state, List<Note> kept, Note note) {
-		return trial(note.getPostings(), List.empty(), state)
+	/** One nogood against the state: the kept list grown by the nogood's verdict. */
+	private static Fiber<Option<List<Nogood>>> verificationStep(
+			Package state, List<Nogood> kept, Nogood nogood) {
+		return trial(nogood.getLiterals(), List.empty(), state)
 				.map(delta -> !delta.isDefined() ?
 						Option.of(kept) :
 						delta.get().isEmpty() ?
 								Option.none() :
-								Option.of(kept.append(Note.of(delta.get()))));
+								Option.of(kept.append(Nogood.of(delta.get()))));
 	}
 
 	/**
-	 * The note's postings imposed sequentially on the scratch: none = an
-	 * imposition failed, the forbidden conjunction is refuted — the note is
-	 * subsumed fully by the state; empty = every posting already holds — the
-	 * note is violated; otherwise the surviving postings, entailed ones
+	 * The nogood's literals imposed sequentially on the scratch: none = an
+	 * imposition failed, the forbidden conjunction is refuted — the nogood is
+	 * subsumed fully by the state; empty = every literal already holds — the
+	 * nogood is violated; otherwise the surviving literals, entailed ones
 	 * crossed off.
 	 */
-	static Fiber<Option<List<Posting>>> trial(
-			List<Posting> pending,
-			List<Posting> survivors,
+	static Fiber<Option<List<Literal>>> trial(
+			List<Literal> pending,
+			List<Literal> survivors,
 			Package scratch) {
 		if (pending.isEmpty()) {
 			return Fiber.done(Option.of(survivors));
 		}
-		Posting posting = pending.head();
-		return imposed(posting, scratch).flatMap(worlds -> {
+		Literal literal = pending.head();
+		return imposed(literal, scratch).flatMap(worlds -> {
 			if (worlds.isEmpty()) {
 				return Fiber.done(Option.none());
 			}
 			if (worlds.size() > 1) {
 				// the imposition woke something that forked: no single world
-				// to thread. Conservative on both counts — the posting stays
-				// owed (never a false cross-off) and later postings verify
+				// to thread. Conservative on both counts — the literal stays
+				// owed (never a false cross-off) and later literals verify
 				// against the unthreaded scratch (missed jointness only ever
 				// keeps more)
-				return trial(pending.tail(), survivors.append(posting), scratch);
+				return trial(pending.tail(), survivors.append(literal), scratch);
 			}
 			Package grown = worlds.head();
 			return unchanged(scratch, grown) ?
 					trial(pending.tail(), survivors, scratch) :
-					trial(pending.tail(), survivors.append(posting), grown);
+					trial(pending.tail(), survivors.append(literal), grown);
 		});
 	}
 
@@ -112,8 +112,8 @@ public final class Verification {
 	 * (arbitrary goals, may spawn). Empty = the run stayed silent: the
 	 * imposition failed.
 	 */
-	static Fiber<List<Package>> imposed(Posting posting, Package scratch) {
-		return Exhaustion.collected(posting.impose().apply(scratch))
+	static Fiber<List<Package>> imposed(Literal literal, Package scratch) {
+		return Exhaustion.collected(literal.impose().apply(scratch))
 				.map(List::ofAll);
 	}
 
@@ -123,7 +123,7 @@ public final class Verification {
 	 * that added knowledge necessarily perturbs the structure, and equality
 	 * witnesses "nothing new". Errs only toward "changed" (bookkeeping
 	 * growth, representation drift), the conservative direction — a missed
-	 * entailment only delays: notes re-verify on every revise and the
+	 * entailment only delays: nogoods re-verify on every revise and the
 	 * ground floor decides by answer time. If solver knowledge ever lives
 	 * outside the Package, this classifier is where that breaks silently.
 	 *

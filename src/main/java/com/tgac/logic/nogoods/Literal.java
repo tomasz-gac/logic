@@ -1,6 +1,6 @@
-package com.tgac.logic.notes;
+package com.tgac.logic.nogoods;
 
-// ABOUTME: One atomic constraint posting — the chokepoint's statement vocabulary
+// ABOUTME: One atomic constraint literal — the chokepoint's statement vocabulary
 // ABOUTME: as a value: a unification literal or a stored-item statement. Closed.
 
 import com.tgac.functional.monad.Cont;
@@ -21,20 +21,20 @@ import lombok.Value;
 
 /**
  * What knowledge may enter a package, as data: a binding resolves or an item
- * is stated. A posting's imposition routes the chokepoint like any statement.
- * The constructors are the whole vocabulary — a program is not a posting, so
- * negation of postings never becomes negation of programs.
+ * is stated. A literal's imposition routes the chokepoint like any statement.
+ * The constructors are the whole vocabulary — a program is not a literal, so
+ * negation of literals never becomes negation of programs.
  */
-public interface Posting {
+public interface Literal {
 
-	/** The posting as its statement goal — imposition routes the chokepoint. */
+	/** The literal as its statement goal — imposition routes the chokepoint. */
 	Goal impose();
 
-	/** Every term this posting speaks about — the declared surface. */
+	/** Every term this literal speaks about — the declared surface. */
 	Stream<Term<?>> terms();
 
 	/** {@code lhs = rhs}: a unification literal, Prefix-shaped at imposition time. */
-	static <T> Posting bind(Unifiable<T> lhs, Unifiable<T> rhs) {
+	static <T> Literal bind(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return new Binding<>(lhs, rhs);
 	}
 
@@ -46,7 +46,7 @@ public interface Posting {
 	 * must read its variables through the actuals it is handed, never
 	 * lexical capture; ground data may close over.
 	 */
-	static Posting state(List<Term<?>> actuals, Function<List<Term<?>>, Stored> maker) {
+	static Literal state(List<Term<?>> actuals, Function<List<Term<?>>, Stored> maker) {
 		return new Statement(actuals, maker);
 	}
 
@@ -56,12 +56,12 @@ public interface Posting {
 	 * entry, which registers the resident store itself: no residence guard
 	 * needed. How a domain membership posts: the factor IS the knowledge.
 	 */
-	static Posting absorb(List<Term<?>> actuals, Function<List<Term<?>>, Absorbable<?>> maker) {
+	static Literal absorb(List<Term<?>> actuals, Function<List<Term<?>>, Absorbable<?>> maker) {
 		return new Absorption(actuals, maker);
 	}
 
 	@Value
-	class Binding<T> implements Posting {
+	class Binding<T> implements Literal {
 		Unifiable<T> lhs;
 		Unifiable<T> rhs;
 
@@ -92,7 +92,7 @@ public interface Posting {
 	 */
 	@Getter
 	@EqualsAndHashCode(of = "item")
-	class Statement implements Posting {
+	class Statement implements Literal {
 		private final List<Term<?>> actuals;
 		private final Function<List<Term<?>>, Stored> maker;
 		private final Stored item;
@@ -112,13 +112,13 @@ public interface Posting {
 		 * Package.withStored silently no-ops on an unregistered store, and a
 		 * dropped statement would read "unchanged" — the false cross-off
 		 * direction, which can veto a satisfiable branch. Residence is
-		 * asserted after posting.
+		 * asserted after literal.
 		 */
 		private Goal landed() {
 			return s -> {
 				if (!s.getStores().containsKey(item.getStoreClass())) {
 					throw new IllegalStateException(
-							"statement posting dropped: no store registered for "
+							"statement literal dropped: no store registered for "
 									+ item.getStoreClass().getSimpleName() + " — " + item);
 				}
 				return Cont.just(s);
@@ -142,7 +142,7 @@ public interface Posting {
 	 */
 	@Getter
 	@EqualsAndHashCode(of = "factor")
-	class Absorption implements Posting {
+	class Absorption implements Literal {
 		private final List<Term<?>> actuals;
 		private final Function<List<Term<?>>, Absorbable<?>> maker;
 		private final Absorbable<?> factor;

@@ -1,7 +1,7 @@
-package com.tgac.logic.notes;
+package com.tgac.logic.nogoods;
 
 // ABOUTME: The verification core against Neq's own semantics: refuted discards,
-// ABOUTME: entailed fails, survivors keep their original postings, bindings thread.
+// ABOUTME: entailed fails, survivors keep their original literals, bindings thread.
 
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -20,26 +20,26 @@ import org.junit.Test;
 
 public class VerificationTest {
 
-	private static Package given(Posting... postings) {
+	private static Package given(Literal... literals) {
 		Package state = Package.empty();
-		for (Posting posting : postings) {
-			state = Verification.imposed(posting, state).get().head();
+		for (Literal literal : literals) {
+			state = Verification.imposed(literal, state).get().head();
 		}
 		return state;
 	}
 
-	private static Option<List<Note>> verified(Package state, Posting... postings) {
-		return Verification.verify(List.of(Note.of(List.of(postings))), state).get();
+	private static Option<List<Nogood>> verified(Package state, Literal... literals) {
+		return Verification.verify(List.of(Nogood.of(List.of(literals))), state).get();
 	}
 
 	@Test
-	public void aRefutedPostingSubsumesTheNoteFully() {
+	public void aRefutedLiteralSubsumesTheNogoodFully() {
 		// x is 5, so x = 3 can never hold: the forbidden conjunction is
-		// refuted, the note discards
+		// refuted, the nogood discards
 		Unifiable<Integer> x = lvar();
-		Package state = given(Posting.bind(x, lval(5)));
+		Package state = given(Literal.bind(x, lval(5)));
 
-		Option<List<Note>> verdict = verified(state, Posting.bind(x, lval(3)));
+		Option<List<Nogood>> verdict = verified(state, Literal.bind(x, lval(3)));
 
 		assertThat(verdict.get()).isEmpty();
 	}
@@ -48,45 +48,45 @@ public class VerificationTest {
 	public void anEntailedConjunctionFailsTheBranch() {
 		// x is already 3: the forbidden thing holds — the veto
 		Unifiable<Integer> x = lvar();
-		Package state = given(Posting.bind(x, lval(3)));
+		Package state = given(Literal.bind(x, lval(3)));
 
-		Option<List<Note>> verdict = verified(state, Posting.bind(x, lval(3)));
+		Option<List<Nogood>> verdict = verified(state, Literal.bind(x, lval(3)));
 
 		assertThat(verdict.isDefined()).isFalse();
 	}
 
 	@Test
-	public void anEntailedPostingIsCrossedOffAndSurvivorsKeepTheirOriginals() {
+	public void anEntailedLiteralIsCrossedOffAndSurvivorsKeepTheirOriginals() {
 		// y already holds its half; only the x half is still owed
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Package state = given(Posting.bind(y, lval(2)));
-		Posting stillOwed = Posting.bind(x, lval(1));
+		Package state = given(Literal.bind(y, lval(2)));
+		Literal stillOwed = Literal.bind(x, lval(1));
 
-		Option<List<Note>> verdict = verified(state, stillOwed, Posting.bind(y, lval(2)));
+		Option<List<Nogood>> verdict = verified(state, stillOwed, Literal.bind(y, lval(2)));
 
-		Note survivor = verdict.get().head();
-		assertThat(survivor.getPostings()).containsExactly(stillOwed);
+		Nogood survivor = verdict.get().head();
+		assertThat(survivor.getLiterals()).containsExactly(stillOwed);
 	}
 
 	@Test
-	public void anUndecidedNoteSurvivesWhole() {
+	public void anUndecidedNogoodSurvivesWhole() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Posting first = Posting.bind(x, lval(1));
-		Posting second = Posting.bind(y, lval(2));
+		Literal first = Literal.bind(x, lval(1));
+		Literal second = Literal.bind(y, lval(2));
 
-		Option<List<Note>> verdict = verified(Package.empty(), first, second);
+		Option<List<Nogood>> verdict = verified(Package.empty(), first, second);
 
-		assertThat(verdict.get().head().getPostings()).containsExactly(first, second);
+		assertThat(verdict.get().head().getLiterals()).containsExactly(first, second);
 	}
 
 	@Test
-	public void aStatementPostingRefusesWhenItsStoreIsAbsent() {
+	public void aStatementLiteralRefusesWhenItsStoreIsAbsent() {
 		// Package.withStored silently no-ops on an unregistered store; a
 		// dropped statement would read "unchanged" — the false cross-off
 		// direction, which can veto a satisfiable branch. Residence is
-		// asserted after posting instead
+		// asserted after literal instead
 		Stored orphan = new Stored() {
 			@Override
 			public Class<? extends Store> getStoreClass() {
@@ -100,18 +100,18 @@ public class VerificationTest {
 		};
 
 		assertThatThrownBy(() -> Verification.imposed(
-				Posting.state(List.empty(), terms -> orphan), Package.empty()).get())
+				Literal.state(List.empty(), terms -> orphan), Package.empty()).get())
 				.isInstanceOf(IllegalStateException.class);
 	}
 
 	@Test
-	public void statementPostingsCompareByTheirGeneratedItems() {
+	public void statementLiteralsCompareByTheirGeneratedItems() {
 		// two distinct maker lambdas, one named schema over the same terms:
 		// identity lives on the generated item, the maker is excluded
 		Term<?> x = lvar();
-		Posting first = Posting.state(List.of(x), terms ->
+		Literal first = Literal.state(List.of(x), terms ->
 				Propagator.of(Store.class, "same-schema", terms, (watched, pkg) -> null));
-		Posting second = Posting.state(List.of(x), terms ->
+		Literal second = Literal.state(List.of(x), terms ->
 				Propagator.of(Store.class, "same-schema", terms, (watched, pkg) -> null));
 
 		assertThat(first).isEqualTo(second);
@@ -119,16 +119,16 @@ public class VerificationTest {
 	}
 
 	@Test
-	public void bindingsThreadAcrossPostingsSharingVariables() {
+	public void bindingsThreadAcrossLiteralsSharingVariables() {
 		// x is 2; imposing x = y binds y to 2, so y = 2 is then entailed and
 		// crosses off — the jointness of Neq's whole-record trial
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Package state = given(Posting.bind(x, lval(2)));
-		Posting alias = Posting.bind(x, y);
+		Package state = given(Literal.bind(x, lval(2)));
+		Literal alias = Literal.bind(x, y);
 
-		Option<List<Note>> verdict = verified(state, alias, Posting.bind(y, lval(2)));
+		Option<List<Nogood>> verdict = verified(state, alias, Literal.bind(y, lval(2)));
 
-		assertThat(verdict.get().head().getPostings()).containsExactly(alias);
+		assertThat(verdict.get().head().getLiterals()).containsExactly(alias);
 	}
 }
