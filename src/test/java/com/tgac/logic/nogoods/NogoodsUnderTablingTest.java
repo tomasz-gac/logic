@@ -66,13 +66,15 @@ public class NogoodsUnderTablingTest {
 	}
 
 	@Test
-	public void aBodyLocalNogoodRidesAsAWitness() {
-		// the body forbids x = w for a local w the caller never sees; w's
-		// binding rides the answer delta, so the exclusion lands on 2
+	public void aBodyLocalNogoodIsExistentialPerWitness() {
+		// a body local is an EXISTENTIAL witness: answers split per labelled
+		// w, each carrying ¬(x=w) for ITS w — the w=2 branch admits {1,3,4},
+		// the w=3 branch {1,2,4}, and the projection onto x keeps the
+		// duplicates (distinct answer deltas differing only in the witness)
 		Tabled<Unifiable<Long>> notTheLocal = Tabling.define(x -> {
 			Unifiable<Long> w = lvar();
-			return dom(x, EnumeratedDomain.range(1L, 4L))
-					.and(dom(w, EnumeratedDomain.range(2L, 3L)))
+			return dom(x, EnumeratedDomain.range(1L, 5L))
+					.and(dom(w, EnumeratedDomain.range(2L, 4L)))
 					.and(exclude(x.unifies(w)));
 		});
 		Unifiable<Long> x = lvar();
@@ -83,7 +85,25 @@ public class NogoodsUnderTablingTest {
 				.sorted()
 				.collect(Collectors.toList());
 
-		assertThat(values).containsExactly(1L, 3L);
+		assertThat(values).containsExactly(1L, 1L, 2L, 3L, 4L, 4L);
+	}
+
+	@Test
+	public void differingFromEveryWitnessIsTheNegatedBox() {
+		// the UNIVERSAL reading — x differs from ALL of {2,3} — is not a
+		// witnessed nogood but ¬(x ∈ 2..3): the negated box, spelled directly
+		Tabled<Unifiable<Long>> outsideTheBox = Tabling.define(x ->
+				dom(x, EnumeratedDomain.range(1L, 5L))
+						.and(exclude(dom(x, EnumeratedDomain.range(2L, 4L)))));
+		Unifiable<Long> x = lvar();
+
+		List<Long> values = outsideTheBox.apply(x)
+				.solve(x, TestSchedulers.factory())
+				.map(Term::get)
+				.sorted()
+				.collect(Collectors.toList());
+
+		assertThat(values).containsExactly(1L, 4L);
 	}
 
 	@Test
