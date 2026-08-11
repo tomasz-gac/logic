@@ -13,8 +13,9 @@ import lombok.NoArgsConstructor;
  * States a forbidden conjunction: the nogood is examined at statement (born
  * violated fails, born satisfied discards), re-verified on every revise, and
  * decided at the latest by the ground floor at labelling. Store-agnostic —
- * stores expose their own literal wrappers (e.g. {@code FiniteDomain.in})
- * and sugar doors over this one (e.g. {@code FiniteDomain.notin}).
+ * store front doors already return the statements this door takes —
+ * {@code exclude(dom(x, box))} is the negated box, {@code
+ * exclude(x.unifies(3), y.unifies(4))} is Neq's record shape.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Exclusion {
