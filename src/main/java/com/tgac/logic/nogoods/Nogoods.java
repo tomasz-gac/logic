@@ -92,7 +92,7 @@ final class Nogoods implements Projectable<Nogoods> {
 		return nogoods.foldLeft(
 						Fiber.<LinkedHashSet<Nogood>> done(LinkedHashSet.empty()),
 						(acc, nogood) -> acc.flatMap(renamed ->
-								Transcription.nogood(nogood, renaming).map(renamed::add)))
+								nogood.rename(renaming).map(item -> renamed.add((Nogood) item))))
 				.map(Nogoods::of);
 	}
 

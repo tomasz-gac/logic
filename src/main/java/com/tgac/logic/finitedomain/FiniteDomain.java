@@ -1,9 +1,11 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
@@ -393,6 +395,14 @@ public class FiniteDomain {
 		@Override
 		public Stream<Term<?>> terms() {
 			return Stream.of(from, to);
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public Fiber<Posting> rename(Renaming renaming) {
+			return renaming.apply(from)
+					.flatMap(f -> renaming.apply(to)
+							.map(t -> new CopyDomain<>((Unifiable<T>) f, (Unifiable<T>) t)));
 		}
 
 		@Override

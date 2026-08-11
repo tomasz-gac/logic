@@ -6,7 +6,11 @@ package com.tgac.logic.constraints;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Absorbable;
+import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.NamedGoal;
@@ -49,6 +53,17 @@ public interface Posting extends Goal, Bounded {
 
 	/** Every term this posting speaks about — the declared surface. */
 	Stream<Term<?>> terms();
+
+	/**
+	 * This posting under changed names — the crossing keeps every row WRAPPED
+	 * (nogood-store.md §7): terms rename through the {@link Renaming}, ground
+	 * data rides unchanged, items re-instantiate over the renamed terms
+	 * ({@link Transcribable}). Labels are presentation and drop; doom checks
+	 * capture lexical terms and reset to the safe default; registrations are
+	 * store-generic and carry. Content that cannot transcribe refuses loudly
+	 * with its name — the boundary never crosses knowledge silently.
+	 */
+	Fiber<Posting> rename(Renaming renaming);
 
 	/**
 	 * Provably failing under the current partial knowledge? A TRUST SURFACE
@@ -152,6 +167,16 @@ public interface Posting extends Goal, Bounded {
 		}
 
 		@Override
+		public Fiber<Posting> rename(Renaming renaming) {
+			if (!(item instanceof Transcribable)) {
+				throw new IllegalStateException(
+						"stated item cannot cross the boundary: " + item);
+			}
+			return ((Transcribable) item).rename(renaming)
+					.map(renamed -> Propagation.activate(renamed, registration, p -> false));
+		}
+
+		@Override
 		public String toString() {
 			return "state(" + item + ")";
 		}
@@ -184,6 +209,13 @@ public interface Posting extends Goal, Bounded {
 							MiniKanren.namesIn(binding._2).map(name -> (Term<?>) name)));
 		}
 
+		/** A prefix is a live-lineage delta; its canonical crossing is undesigned. */
+		@Override
+		public Fiber<Posting> rename(Renaming renaming) {
+			throw new IllegalStateException(
+					"a resolved prefix cannot cross the boundary: " + prefix);
+		}
+
 		@Override
 		public String toString() {
 			return prefix.toString();
@@ -210,6 +242,20 @@ public interface Posting extends Goal, Bounded {
 		@Override
 		public Stream<Term<?>> terms() {
 			return declared.toJavaStream().map(t -> (Term<?>) t);
+		}
+
+		@Override
+		public Fiber<Posting> rename(Renaming renaming) {
+			if (!(factor instanceof Projectable)) {
+				throw new IllegalStateException(
+						"absorbed factor cannot cross the boundary: " + factor);
+			}
+			return ((Projectable<?>) factor).rename(renaming)
+					.flatMap(renamed -> declared.foldLeft(
+									Fiber.<List<Term<?>>> done(List.empty()),
+									(acc, term) -> acc.flatMap(terms ->
+											renaming.apply(term).map(terms::append)))
+							.map(terms -> Propagation.absorb(renamed, terms)));
 		}
 
 		@Override
@@ -265,6 +311,12 @@ public interface Posting extends Goal, Bounded {
 			return inner.answers(p);
 		}
 
+		/** Labels are presentation; canonical data crosses bare. */
+		@Override
+		public Fiber<Posting> rename(Renaming renaming) {
+			return inner.rename(renaming);
+		}
+
 		@Override
 		public String toString() {
 			return named.toString();
@@ -289,6 +341,16 @@ public interface Posting extends Goal, Bounded {
 		@Override
 		public Stream<Term<?>> terms() {
 			return parts.toJavaStream().flatMap(Posting::terms);
+		}
+
+		/** Parts transcribe wrapped; the joint doom resets to the safe default. */
+		@Override
+		public Fiber<Posting> rename(Renaming renaming) {
+			return parts.foldLeft(
+							Fiber.<List<Posting>> done(List.empty()),
+							(acc, part) -> acc.flatMap(renamed ->
+									part.rename(renaming).map(renamed::append)))
+					.map(renamed -> Posting.all(renamed.toJavaArray(Posting[]::new)));
 		}
 
 		@Override

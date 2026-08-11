@@ -3,7 +3,10 @@ package com.tgac.logic.nogoods;
 // ABOUTME: One nogood: NOT all these literals simultaneously — Neq's record shape
 // ABOUTME: with literals as the pairs. Born as its escape list; nothing converts.
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
@@ -18,7 +21,7 @@ import lombok.Value;
  * a nogood only ever says "not all of these".
  */
 @Value(staticConstructor = "of")
-public class Nogood implements Stored {
+public class Nogood implements Stored, Transcribable {
 	List<Posting> literals;
 
 	@Override
@@ -29,6 +32,16 @@ public class Nogood implements Stored {
 	@Override
 	public Stream<Term<?>> terms() {
 		return literals.toJavaStream().flatMap(Posting::terms);
+	}
+
+	/** Every literal transcribed wrapped — the posting rows answer for themselves. */
+	@Override
+	public Fiber<Stored> rename(Renaming renaming) {
+		return literals.foldLeft(
+						Fiber.<List<Posting>> done(List.empty()),
+						(acc, literal) -> acc.flatMap(renamed ->
+								literal.rename(renaming).map(renamed::append)))
+				.map(renamed -> Nogood.of(renamed));
 	}
 
 	@Override
