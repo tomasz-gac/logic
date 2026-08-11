@@ -93,7 +93,7 @@ public final class Propagation {
 	 * must already be registered) and queues its first examination — the owning
 	 * store's {@code stated} hook decides everything decidable at statement time.
 	 */
-	public static Goal activate(Stored item) {
+	static Goal activate(Stored item) {
 		return s -> enqueue(s.withStored(item), new Agenda.Stated(item));
 	}
 
@@ -108,7 +108,7 @@ public final class Propagation {
 	 * from its key and replays an answer's delta.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public static Goal absorb(Absorbable<?> factor) {
+	static Goal absorb(Absorbable<?> factor) {
 		return p -> {
 			if (factor.isEmpty()) {
 				return Cont.just(p);

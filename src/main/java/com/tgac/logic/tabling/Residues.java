@@ -8,7 +8,7 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
-import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
@@ -44,7 +44,7 @@ import lombok.Value;
  * from a package by {@link #ofRelevant} (call side, the key citizen) or
  * {@link #ofAll} (answer side, walking + slot canonicalization), and
  * leaves by {@link #restate} — imposing itself under a renaming, each
- * factor riding {@code Propagation.absorb}.
+ * factor riding {@code Statement.absorb}.
  */
 @Value
 public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
@@ -243,7 +243,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * live call vars ({@code Renaming.restating}); answer delivery renames it
 	 * onto the instantiation's fresh holes ({@code Renaming.minting}, unseeded
 	 * locals minting — the existential). Statement stays the driver's: each
-	 * factor rides {@code Propagation.absorb}.
+	 * factor rides {@code Statement.absorb}.
 	 */
 	public Goal restate(Renaming renaming) {
 		Goal restated = Goal.success();
@@ -256,7 +256,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	/** One factor's imposition: rename runs in the goal's fiber, absorb states it. */
 	private static <S extends Projectable<S>> Goal imposed(Projectable<S> factor, Renaming renaming) {
 		return pkg -> Cont.suspend(k -> factor.rename(renaming)
-				.flatMap(renamed -> Propagation.absorb(renamed).apply(pkg).apply(k)));
+				.flatMap(renamed -> Statement.absorb(renamed).apply(pkg).apply(k)));
 	}
 
 	@Override

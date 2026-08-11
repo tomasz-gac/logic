@@ -8,6 +8,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.goals.Goal;
@@ -152,17 +153,18 @@ public class LatticeStoreTest {
 
 	/** A parked constraint: once its variable grounds, even passes, odd fails. */
 	private static Goal evenO(Unifiable<Integer> x) {
-		return s -> Propagation.activate(
-						Propagator.of(FlatConstraints.class, "even",
-								Collections.<Term<?>> singletonList(x),
-								(watched, pkg) -> {
-									Term<?> w = pkg.walk(watched.get(0));
-									if (!w.isVal()) {
-										return Verdict.keep();
-									}
-									return ((Integer) w.get()) % 2 == 0 ? Verdict.subsumed() : Verdict.fail();
-								}))
-				.apply(s.getStores().containsKey(FlatConstraints.class) ? s : s.withStore(FlatConstraints.empty()));
+		return Statement.stated(
+				Propagator.of(FlatConstraints.class, "even",
+						Collections.<Term<?>> singletonList(x),
+						(watched, pkg) -> {
+							Term<?> w = pkg.walk(watched.get(0));
+							if (!w.isVal()) {
+								return Verdict.keep();
+							}
+							return ((Integer) w.get()) % 2 == 0 ? Verdict.subsumed() : Verdict.fail();
+						}),
+				s -> s.getStores().containsKey(FlatConstraints.class) ? s : s.withStore(FlatConstraints.empty()),
+				p -> false);
 	}
 
 	@Test

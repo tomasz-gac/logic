@@ -92,6 +92,15 @@ public interface Statement extends Goal, Bounded {
 	}
 
 	/**
+	 * {@link #absorb} declaring NO surface — fine where the statement is
+	 * consumed for its imposition alone (tabling replay); wrong as a nogood
+	 * literal, whose reify wall reads the declared terms.
+	 */
+	static Statement absorb(Absorbable<?> factor) {
+		return new Absorption(factor, List.empty());
+	}
+
+	/**
 	 * The conjunction of statements is a statement (each succeeds at most
 	 * once, chokepoint-only — the class is closed under ∧); doomed when any
 	 * part is.
