@@ -34,15 +34,31 @@ and why agenda order and scheduler choice can never change the answer set.
 
 ## 2. The driver: `Propagation`
 
-Public surface — three goal-shaped, mode-oblivious entries (drain in flight →
-work appends; otherwise the call is the outermost trigger and drains to
-quiescence):
+Public surface — three mode-oblivious imposition doors plus the parking
+facade (drain in flight → work appends; otherwise the call is the outermost
+trigger and drains to quiescence). The doors CONSTRUCT the statement
+vocabulary: each returns a `Posting` — the chokepoint's vocabulary lifted
+to `Goal`, where `apply` IS the imposition (the goal-shaped bodies are
+package-private):
 
 ```java
-Propagation.resolve(Prefix)                    // these bindings hold
-Propagation.activate(Stored)                   // this store item was stated
+Propagation.resolve(Prefix)      // these bindings hold        → Posting
+Propagation.activate(Stored)     // this store item was stated → Posting
+Propagation.absorb(Absorbable)   // this whole factor arrives  → Posting
 Propagation.suspend(watched, ripe, body)       // run body once ripe
 ```
+
+`Posting` is the one public imposition API and the kernel's capability
+line: a raw `Goal` can do anything to a `Package`; a `Posting` can only
+talk to the chokepoint. The same value is a conjunct in a program, a
+literal in a nogood, and a store front door's return type (`dom`, `leq`,
+`addo`, `x.unifies` — `UnifyGoal` is `resolve`'s single-unification face:
+mint the prefix, resolve it). Postings are `Bounded` by taxonomy —
+order 1 by construction, `doomed(Package)` the optional eager 0 — compose
+under ∧ (`Posting.all`), and survive naming (`named` keeps the face,
+labels outside identity). `activate`'s overload carries the owning
+store's registration and doom check; `absorb`'s declares the factor's
+watched surface.
 
 - **`Prefix`** — a delta of bindings, mintable only by the unifier
   (`MiniKanren.unifyPrefix`, a collecting Extender — born valid, O(delta)) or

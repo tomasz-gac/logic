@@ -1,13 +1,14 @@
 # The nogood store — "not this" over literals, with "either-or" as its sibling
 
 **STATUS: STAGES 1–2 BUILT (August 2026, the `note-store` branch:
-`Literal`, `Nogood`, `Verification`, `Nogoods`, seventeen receipts plus
+`Posting`, `Nogood`, `Verification`, `Nogoods`, twenty-four receipts plus
 the laws-kit union-meet claim). The names are RATIFIED IMPORTS from
 CP-SAT (the human's call, August 2026): a nogood is Stallman &
 Sussman's record — "NOT all these simultaneously" — generalized; a
 literal follows lazy clause generation's extension to constraint
-literals; `Verification` keeps its working name. `notin`, `exclude`,
-`either` remain placeholders until their stages build. This doc
+literals; `Verification` keeps its working name; `Posting` is the
+vocabulary lifted to `Goal` (the human's lift, August 2026). `either`
+remains a placeholder until its stage builds. This doc
 supersedes its own earlier kernel: the cargo-typed store (parameterized
 by a `Semilattice & PartialOrder` cargo) was the wrong seat for the
 algebra — the value-level pair is how STORES answer, behind their
@@ -54,39 +55,51 @@ kernel crossed, and Neq is the proof the mechanism suffices: its
 only the substitution factor — trial-unification-fails = refuted, empty
 delta = entailed, delta = the survivors.
 
-## 2. Literals — the statement vocabulary, closed
+## 2. Postings — the chokepoint vocabulary, closed, lifted to Goal
 
-A literal's content is a constraint, stated as data the chokepoint
-already understands:
+`Posting extends Goal, Bounded`: applying one IS the imposition, so
+the same value is a conjunct in a program and a literal in a nogood —
+stores return statements from their front doors (every FD door does:
+`dom`, `leq`, `addo`, …, `x.unifies` itself) and `Exclusion` requires
+them; no adapter layer exists. THE CHOKEPOINT CONSTRUCTS ITS OWN
+VOCABULARY — Propagation's three doors are the constructors, each row
+holding its content DIRECTLY, equality the content's own:
 
-    Literal.bind(lhs, rhs)          // a unification literal; Prefix-shaped
-                                    // at imposition time — the unifier
-                                    // stays the only Prefix mint
-    Literal.state(actuals, maker)   // a constraint statement as a
-                                    // call-value — (actuals, template):
-                                    // arguments as terms plus the owning
-                                    // store's item maker (custody)
-    Literal.absorb(actuals, maker)  // a whole Absorbable factor as a
-                                    // call-value — the factor row;
-                                    // FiniteDomain.in is its first builder
+    Propagation.resolve(prefix)      // the bulk binding load (Resolution);
+                                     // UnifyGoal is its single-unification
+                                     // face — mint the prefix, resolve it
+    Propagation.activate(item)       // a stated item (Activation); overload
+                                     // adds the owning store's registration
+                                     // and doom check
+    Propagation.absorb(factor)       // a whole factor (Absorption); overload
+                                     // declares its watched surface
 
-The statement literal is the (actuals, template) shape natively: the
-item is generated at construction, identity delegates to the GENERATED
-item (lawful under the named-schema contract — the maker is excluded),
-and a renaming regenerates the item at the renamed actuals — so
-transcription never needs the item's structure, `Stored` never widens,
-and the crossings stay generic (see docs/notes/transcription-generifies.md).
-The maker reads its variables through the actuals it is handed, never
-lexical capture; ground data may close over. The literal's actuals are
-a DECLARED SURFACE — what the general watermark detector will check
-maker bodies against when it lands.
+The capability line this draws is the design's second product: a raw
+`Goal` can do anything to a `Package`; a `Posting` can only talk to
+the chokepoint (the imposition bodies are package-private — the safe
+front door is the only door). Postings compose and stay statements:
+`Posting.all` (conjunction is a statement — closed under ∧, doomed
+when any part is), `named` (tracing rides the one `NamedGoal` seam,
+the label stays OUTSIDE identity so literal comparison sees through
+presentation), `Posting.bind` as the delegating alias for
+`Constraints.unify`.
 
-Three constructors, closed. (The factor row was reserved for the
-sealed-Condition negation in the gated tail and arrived early — the
-negation of an FD box needs it.) A program is not a literal — **negation of literals can never become
-negation of programs**, structurally rather than by a runtime pin. What
-`exclude` negates is `¬(c₁ ∧ … ∧ cₙ)` over atomic constraint literals:
-one clause, the SAT-shaped fragment, nothing more.
+The 0-or-1 taxonomy lands here as `Bounded`: a posting succeeds at
+most once, so its order is never computed — 1 by construction, with
+`doomed(Package)` as the optional eager 0 under partial knowledge (a
+trust surface: store lookups, never trials; never claim doom later
+knowledge could lift — `UnifyGoal` derives its doom from the dynamic
+trial it already priced with). Doors stop writing order functions;
+branchers keep pricing themselves. Implementing the interface is
+claiming the imposition law (§4) — the laws kit checks constructors,
+not calls. The declared surface is `terms()` — an item answers with
+its own, a factor declares alongside, and the reify wall reads it.
+
+A program is not a statement — **negation of statements can never
+become negation of programs**, structurally rather than by a runtime
+pin: the constructors are the whole vocabulary. What `exclude` negates
+is `¬(c₁ ∧ … ∧ cₙ)` over atomic constraint statements: one clause, the
+SAT-shaped fragment, nothing more.
 
 A statement literal **asserts residence after landing**:
 `Package.withStored` silently no-ops on an unregistered store and the
@@ -212,10 +225,10 @@ The store is negative-only — every nogood is `¬(conjunction)`, the
 verdict reading fixed, no polarity field anywhere. The two products
 that motivated a polarity flag separate cleanly:
 
-- **"Not this"** is this store: `notin` the singleton case, `exclude`
-  the forbidden combination. Irreducible — there is no literal
-  constructor for a complement; negation exists only as the trial's
-  reading.
+- **"Not this"** is this store: `exclude(dom(x, box))` the singleton
+  case, `exclude` over several statements the forbidden combination.
+  Irreducible — there is no statement constructor for a complement;
+  negation exists only as the trial's reading.
 - **"Either-or" is a SIBLING store** (its own stage), sharing the trial
   machinery with the straight verdict reading. A single-alternative
   positive nogood is just the package — the front door collapses it;
@@ -259,13 +272,20 @@ and the rulings from the pass stand:
 ## 8. Products and the staged build
 
 ```java
-Exclusion.notin(x, box)                     // ¬(x ∈ B): one literal
-Exclusion.exclude(FiniteDomain.in(x, boxA), // ¬(x∈A ∧ y∈B): the
-        FiniteDomain.in(y, boxB))           // forbidden combination
-Exclusion.exclude(Literal.bind(x, lval(3))) // x ≠ 3: Neq's degenerate shape
+Exclusion.exclude(dom(x, box))                 // ¬(x ∈ B): the negated box
+Exclusion.exclude(dom(x, boxA), dom(y, boxB))  // ¬(x∈A ∧ y∈B): the forbidden combination
+Exclusion.exclude(x.unifies(3), y.unifies(4))  // Neq's record shape, no sugar
 ```
 
-1. **The verification core — BUILT**: `Literal`, `Nogood`,
+The direction is the human's ruling (August 2026), completed by the
+Posting arc: `Exclusion.exclude` is the one store-agnostic door and
+itself returns a Posting (a stated nogood — exclusions nest and
+compose); stores need NO wrappers at all, because their front doors
+already return statements and negation is just handing them to
+`exclude`. A user store slots in by posting through Propagation's
+doors like everyone else; `Exclusion` never learns store names.
+
+1. **The verification core — BUILT**: `Posting`, `Nogood`,
    `Verification`, the residence guard, seven receipts including the
    jointness and orphaned-statement pins.
 2. **The store slice — BUILT**: the `ConstraintStore` faces; `normalize`
@@ -277,7 +297,10 @@ Exclusion.exclude(Literal.bind(x, lval(3))) // x ≠ 3: Neq's degenerate shape
    equality over the settled base (§5's first bullet — the
    drain-observation seam was not taken), and the laws-kit tests live
    with the laws kit.
-3. **The front doors**: `notin`/`exclude` compiling to literals.
+3. **The front doors — BUILT**: `Exclusion.exclude` store-agnostic and
+   Posting-returning; every FD door a statement (`in`/`notin`
+   dissolved — excluding a `dom` is the negated box); four receipts
+   including negated unification.
    (`FiniteDomain.in`, the FD factor builder, arrived with stage 2.)
 4. **Nogoods ride tabling**: the `Projectable` face under §7's rulings.
 5. **The sibling**: `either` on the shared trial, straight reading,

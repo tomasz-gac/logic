@@ -1,13 +1,18 @@
 # Transcription generifies over (actuals, template); the algebra stays store-owned
 
 - **status**: argued — derived in the nogood-store drawing board (August
-  2026), with the literal reshape as its first built instance
+  2026). The first built instance (maker-based statement rows) was
+  since REMOVED: the statement vocabulary went direct-held, so the
+  claim now rests on `Propagator.watching` alone and regeneration,
+  when the tabling stage needs it, comes from the store-owned rename
+  or re-earns the maker shape through this note's kill-check — not
+  before
 - **evidence held**: derived — `Propagator.watching` (re-instantiation
   over different terms, positional body, name-carried identity); the
   rebuildable-propagators fix (data copies, closures rebuild
   positionally); single-sorted stores (project = split + canonical
-  rename over Term-keyed content); `Literal.state` as a call-value
-  (actuals, template) with identity on the generated item
+  rename over Term-keyed content); the maker-based statement row
+  (built then removed — direct-held won at the vocabulary layer)
 - **imports**: (actuals, template) — the glossary's call-value; the
   named-schema contract (a propagator IS its name over its terms,
   equality excludes the body)

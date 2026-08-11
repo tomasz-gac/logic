@@ -89,8 +89,11 @@ Small, local, well-tested changes elsewhere don't need to ask.
 Key **seams** (the places behaviour is hooked):
 - `goals/NamedGoal` — the tracing hook. A named goal reports box-model ports when a tracer
   is seeded. Zero cost otherwise.
-- `constraints/Propagation` — the chokepoint (`resolve`/`activate`), the agenda
-  drain, and the revision router: where constraint stores are composed.
+- `constraints/Propagation` — the chokepoint (`resolve`/`activate`/`absorb` —
+  the three doors, each a `Posting` constructor), the agenda drain, and the
+  revision router: where constraint stores are composed. `Posting` is the
+  one public imposition API: a raw `Goal` can do anything to a `Package`, a
+  `Posting` can only talk to the chokepoint.
 - `functional`'s `FiberStep` — the single step interpreter all schedulers share.
 
 ---
@@ -207,8 +210,8 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 - `docs/design/nogood-store.md` — STAGES 1–2 BUILT (Aug 2026; names
   ratified imports from CP-SAT): the nogood store — `Nogood` = "NOT all
   these literals simultaneously" (Neq's record shape, store-wide),
-  `Literal` (bind | state | absorb) the closed chokepoint vocabulary as
-  call-values, `Nogoods` the store; verification = sequential scratch
+  `Posting` (resolve | activate | absorb) the closed chokepoint
+  vocabulary, `Nogoods` the store; verification = sequential scratch
   imposition read three ways (fail = refuted, unchanged = crossed off,
   new = owed); the direction analysis + imposition law; settled base;
   no polarity — `either` as sibling, composition replaces mixing; the
