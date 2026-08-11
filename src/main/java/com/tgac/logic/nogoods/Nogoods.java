@@ -5,7 +5,8 @@ package com.tgac.logic.nogoods;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.store.Absorbable;
+import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -14,8 +15,14 @@ import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.Unknown;
 import com.tgac.logic.unification.Term;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +43,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @EqualsAndHashCode
 @RequiredArgsConstructor(staticName = "of")
-final class Nogoods implements Absorbable<Nogoods> {
+final class Nogoods implements Projectable<Nogoods> {
 	public static final Nogoods EMPTY = Nogoods.of(LinkedHashSet.empty());
 	private final LinkedHashSet<Nogood> nogoods;
 
@@ -48,6 +55,45 @@ final class Nogoods implements Absorbable<Nogoods> {
 	@Override
 	public Nogoods meet(Nogoods other) {
 		return Nogoods.of(nogoods.addAll(other.nogoods));
+	}
+
+	/** Nogood containment directly — the order the union-meet derives. */
+	@Override
+	public boolean leq(Nogoods other) {
+		return nogoods.containsAll(other.nogoods);
+	}
+
+	/**
+	 * Lossless factoring: a nogood goes to the covered half iff every name it
+	 * touches, deeply, is supplied — compound at the crossings, never
+	 * distributed (nogood-store.md §7). {@code _1 ∧ _2 = this}.
+	 */
+	@Override
+	public Tuple2<Nogoods, Nogoods> split(java.util.List<LVar<?>> vars) {
+		Set<Unknown<?>> covered = new HashSet<>(vars);
+		LinkedHashSet<Nogood> in = LinkedHashSet.empty();
+		LinkedHashSet<Nogood> out = LinkedHashSet.empty();
+		for (Nogood nogood : nogoods) {
+			boolean fits = nogood.terms()
+					.flatMap(MiniKanren::namesIn)
+					.allMatch(covered::contains);
+			if (fits) {
+				in = in.add(nogood);
+			} else {
+				out = out.add(nogood);
+			}
+		}
+		return Tuple.of(Nogoods.of(in), Nogoods.of(out));
+	}
+
+	/** Every nogood transcribed wrapped — literal by literal, items re-instantiated. */
+	@Override
+	public Fiber<Nogoods> rename(Renaming renaming) {
+		return nogoods.foldLeft(
+						Fiber.<LinkedHashSet<Nogood>> done(LinkedHashSet.empty()),
+						(acc, nogood) -> acc.flatMap(renamed ->
+								Transcription.nogood(nogood, renaming).map(renamed::add)))
+				.map(Nogoods::of);
 	}
 
 	@Override

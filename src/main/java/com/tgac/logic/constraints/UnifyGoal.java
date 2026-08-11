@@ -12,16 +12,15 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unifiable;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class UnifyGoal<T> implements Posting {
-	Unifiable<T> u;
-	Unifiable<T> v;
+public class UnifyGoal<T> implements Posting {
+	Term<T> u;
+	Term<T> v;
 	boolean noCheck;
 
 	@Override
