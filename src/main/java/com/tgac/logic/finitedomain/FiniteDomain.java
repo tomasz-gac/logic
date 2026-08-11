@@ -382,7 +382,8 @@ public class FiniteDomain {
 		Unifiable<T> to;
 
 		@Override
-		public Cont<Package, Nothing> apply(Package s) {
+		public Cont<Package, Nothing> apply(Package pkg) {
+			Package s = FiniteDomainConstraints.register(pkg);
 			return dom(to, from.asVar()
 					.flatMap(l -> FiniteDomainConstraints.<T> getDom(s, l))
 					.orElse(() -> s.walk(from).asVal()
