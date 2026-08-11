@@ -119,12 +119,12 @@ public class NeqProjectionTest {
 				.project(slots(varOf(x))).get();
 
 		Unifiable<Integer> fresh = lvar();
-		assertThat(Statement.absorb(keyed.rename(Renaming.restating(targets(fresh))).get())
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(targets(fresh))).get())
 				.and(Constraints.unify(fresh, lval(5)))
 				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> fresh2 = lvar();
-		assertThat(Statement.absorb(keyed.rename(Renaming.restating(targets(fresh2))).get())
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(targets(fresh2))).get())
 				.and(Constraints.unify(fresh2, lval(6)))
 				.solve(fresh2, TestSchedulers.factory())
 				.count()).isEqualTo(1);
@@ -140,14 +140,14 @@ public class NeqProjectionTest {
 
 		Unifiable<Integer> f = lvar();
 		Unifiable<Integer> g = lvar();
-		assertThat(Statement.absorb(keyed.rename(Renaming.restating(targets(f, g))).get())
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(targets(f, g))).get())
 				.and(Constraints.unify(f, lval(3)))
 				.and(Constraints.unify(g, lval(3)))
 				.solve(f, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		Unifiable<Integer> f2 = lvar();
 		Unifiable<Integer> g2 = lvar();
-		assertThat(Statement.absorb(keyed.rename(Renaming.restating(targets(f2, g2))).get())
+		assertThat(Propagation.absorb(keyed.rename(Renaming.restating(targets(f2, g2))).get())
 				.and(Constraints.unify(f2, lval(3)))
 				.and(Constraints.unify(g2, lval(4)))
 				.solve(f2, TestSchedulers.factory())
@@ -196,11 +196,11 @@ public class NeqProjectionTest {
 		Unifiable<Integer> x = lvar();
 		NeqConstraints neq = store(record(varOf(x), lval(5)));
 
-		assertThat(Statement.absorb(neq)
+		assertThat(Propagation.absorb(neq)
 				.and(Constraints.unify(x, lval(5)))
 				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(0);
-		assertThat(Statement.absorb(neq)
+		assertThat(Propagation.absorb(neq)
 				.and(Constraints.unify(x, lval(6)))
 				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(1);
@@ -212,11 +212,11 @@ public class NeqProjectionTest {
 		// already violate dies at absorption, not at some later wake
 		Unifiable<Integer> x = lvar();
 		assertThat(Constraints.unify(x, lval(5))
-				.and(Statement.absorb(store(record(varOf(x), lval(5)))))
+				.and(Propagation.absorb(store(record(varOf(x), lval(5)))))
 				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 		assertThat(Constraints.unify(x, lval(6))
-				.and(Statement.absorb(store(record(varOf(x), lval(5)))))
+				.and(Propagation.absorb(store(record(varOf(x), lval(5)))))
 				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}

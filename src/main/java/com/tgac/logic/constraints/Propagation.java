@@ -31,6 +31,7 @@ import io.vavr.collection.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 /**
@@ -93,7 +94,18 @@ public final class Propagation {
 	 * must already be registered) and queues its first examination — the owning
 	 * store's {@code stated} hook decides everything decidable at statement time.
 	 */
-	static Goal activate(Stored item) {
+	public static Statement activate(Stored item) {
+		return new Statement.Activation(item, UnaryOperator.identity(), p -> false);
+	}
+
+	/** {@link #activate} with the owning store's registration and doom check. */
+	public static Statement activate(Stored item, UnaryOperator<Package> registration,
+			Predicate<Package> doomed) {
+		return new Statement.Activation(item, registration, doomed);
+	}
+
+	/** The imposition body behind the {@link #activate} constructors. */
+	static Goal activation(Stored item) {
 		return s -> enqueue(s.withStored(item), new Agenda.Stated(item));
 	}
 
@@ -108,7 +120,18 @@ public final class Propagation {
 	 * from its key and replays an answer's delta.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	static Goal absorb(Absorbable<?> factor) {
+	public static Statement absorb(Absorbable<?> factor) {
+		return new Statement.Absorption(factor, List.empty());
+	}
+
+	/** {@link #absorb} declaring the factor's watched surface alongside. */
+	public static Statement absorb(Absorbable<?> factor, List<Term<?>> terms) {
+		return new Statement.Absorption(factor, terms);
+	}
+
+	/** The imposition body behind the {@link #absorb} constructors. */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	static Goal absorption(Absorbable<?> factor) {
 		return p -> {
 			if (factor.isEmpty()) {
 				return Cont.just(p);

@@ -4,17 +4,20 @@ package com.tgac.logic.constraints;
 // ABOUTME: imposition — a binding, a stated item, or an absorbed factor. Closed.
 
 import com.tgac.functional.category.Nothing;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.NamedGoal;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.goals.optimizer.Bounded;
-import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.goals.optimizer.Optimizer;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
@@ -63,41 +66,20 @@ public interface Statement extends Goal, Bounded {
 		return doomed(p) ? 0 : 1;
 	}
 
-	/** {@code lhs = rhs}: a unification statement, Prefix-shaped at imposition time. */
+	/** {@code lhs = rhs}: a unification statement — {@link Constraints#unify}. */
 	static <T> Statement bind(Unifiable<T> lhs, Unifiable<T> rhs) {
-		return new Binding<>(lhs, rhs);
+		return Constraints.unify(lhs, rhs);
 	}
 
-	/** A stored item through the statement entry; the owning store reacts in its {@code stated}. */
-	static Statement stated(Stored item) {
-		return new Activation(item, UnaryOperator.identity(), p -> false);
+	/** Naming preserves the statement face; the label stays outside identity. */
+	@Override
+	default Statement named(String name) {
+		return named(p -> name);
 	}
 
-	/**
-	 * {@link #stated} with the owning store's registration (an unregistered
-	 * store would drop the item silently) and its doom check.
-	 */
-	static Statement stated(Stored item, UnaryOperator<Package> registration,
-			Predicate<Package> doomed) {
-		return new Activation(item, registration, doomed);
-	}
-
-	/**
-	 * A whole factor through the bulk statement entry, which registers the
-	 * resident store itself. The factor cannot name its watched surface
-	 * generically, so the terms are declared alongside.
-	 */
-	static Statement absorb(Absorbable<?> factor, List<Term<?>> terms) {
-		return new Absorption(factor, terms);
-	}
-
-	/**
-	 * {@link #absorb} declaring NO surface — fine where the statement is
-	 * consumed for its imposition alone (tabling replay); wrong as a nogood
-	 * literal, whose reify wall reads the declared terms.
-	 */
-	static Statement absorb(Absorbable<?> factor) {
-		return new Absorption(factor, List.empty());
+	@Override
+	default Statement named(Function<Package, String> label) {
+		return new Named(this, NamedGoal.of(label, this));
 	}
 
 	/**
@@ -114,29 +96,6 @@ public interface Statement extends Goal, Bounded {
 		return new AllOf(List.of(statements), doomed);
 	}
 
-	@Value
-	class Binding<T> implements Statement {
-		Unifiable<T> lhs;
-		Unifiable<T> rhs;
-
-		@Override
-		public Cont<Package, Nothing> apply(Package pkg) {
-			return Constraints.unify(lhs, rhs).apply(pkg);
-		}
-
-		@Override
-		public Stream<Term<?>> terms() {
-			return Stream.concat(
-					MiniKanren.namesIn(lhs).map(name -> (Term<?>) name),
-					MiniKanren.namesIn(rhs).map(name -> (Term<?>) name));
-		}
-
-		@Override
-		public String toString() {
-			return lhs + " = " + rhs;
-		}
-	}
-
 	/**
 	 * The stated item held directly — equality is the item's own (lawful
 	 * under the named-schema contract); registration and pricing are the
@@ -149,7 +108,7 @@ public interface Statement extends Goal, Bounded {
 		private final UnaryOperator<Package> registration;
 		private final Predicate<Package> doomCheck;
 
-		private Activation(Stored item, UnaryOperator<Package> registration,
+		Activation(Stored item, UnaryOperator<Package> registration,
 				Predicate<Package> doomCheck) {
 			this.item = item;
 			this.registration = registration;
@@ -158,7 +117,7 @@ public interface Statement extends Goal, Bounded {
 
 		@Override
 		public Cont<Package, Nothing> apply(Package pkg) {
-			return Propagation.activate(item).and(landed())
+			return Propagation.activation(item).and(landed())
 					.apply(registration.apply(pkg));
 		}
 
@@ -202,14 +161,14 @@ public interface Statement extends Goal, Bounded {
 		private final Absorbable<?> factor;
 		private final List<Term<?>> declared;
 
-		private Absorption(Absorbable<?> factor, List<Term<?>> declared) {
+		Absorption(Absorbable<?> factor, List<Term<?>> declared) {
 			this.factor = factor;
 			this.declared = declared;
 		}
 
 		@Override
 		public Cont<Package, Nothing> apply(Package pkg) {
-			return Propagation.absorb(factor).apply(pkg);
+			return Propagation.absorption(factor).apply(pkg);
 		}
 
 		@Override
@@ -220,6 +179,59 @@ public interface Statement extends Goal, Bounded {
 		@Override
 		public String toString() {
 			return "absorb(" + factor + ")";
+		}
+	}
+
+	/**
+	 * A named statement: tracing rides the wrapped {@link NamedGoal}, the
+	 * statement face delegates, and IDENTITY IS THE INNER STATEMENT'S — the
+	 * label is presentation, not content, so nogood literal comparison and
+	 * dedup see through it.
+	 */
+	@Getter
+	@EqualsAndHashCode(of = "inner")
+	class Named implements Statement {
+		private final Statement inner;
+		private final NamedGoal named;
+
+		Named(Statement inner, NamedGoal named) {
+			this.inner = inner;
+			this.named = named;
+		}
+
+		@Override
+		public Cont<Package, Nothing> apply(Package pkg) {
+			return named.apply(pkg);
+		}
+
+		@Override
+		public Fiber<Goal> accept(Optimizer optimizer) {
+			return named.accept(optimizer);
+		}
+
+		@Override
+		public Stream<Term<?>> terms() {
+			return inner.terms();
+		}
+
+		@Override
+		public boolean doomed(Package p) {
+			return inner.doomed(p);
+		}
+
+		@Override
+		public long answers(Substitutions s) {
+			return inner.answers(s);
+		}
+
+		@Override
+		public long answers(Package p) {
+			return inner.answers(p);
+		}
+
+		@Override
+		public String toString() {
+			return named.toString();
 		}
 	}
 

@@ -153,7 +153,7 @@ public class LatticeStoreTest {
 
 	/** A parked constraint: once its variable grounds, even passes, odd fails. */
 	private static Goal evenO(Unifiable<Integer> x) {
-		return Statement.stated(
+		return Propagation.activate(
 				Propagator.of(FlatConstraints.class, "even",
 						Collections.<Term<?>> singletonList(x),
 						(watched, pkg) -> {

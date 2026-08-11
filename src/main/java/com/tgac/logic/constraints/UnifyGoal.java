@@ -9,16 +9,17 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class UnifyGoal<T> implements Goal, Bounded {
+class UnifyGoal<T> implements Statement {
 	Unifiable<T> u;
 	Unifiable<T> v;
 	boolean noCheck;
@@ -43,5 +44,17 @@ class UnifyGoal<T> implements Goal, Bounded {
 	@Override
 	public long answers(Substitutions s) {
 		return MiniKanren.unifyPrefix(s, u, v).get().isDefined() ? 1 : 0;
+	}
+
+	@Override
+	public boolean doomed(Package p) {
+		return answers(p.substitution()) == 0;
+	}
+
+	@Override
+	public Stream<Term<?>> terms() {
+		return Stream.concat(
+				MiniKanren.namesIn(u).map(name -> (Term<?>) name),
+				MiniKanren.namesIn(v).map(name -> (Term<?>) name));
 	}
 }

@@ -206,7 +206,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	 * live entry it meets to bottom.
 	 */
 	public Statement impose(Term<?> target, L value) {
-		return Statement.stated(new Imposition<>(getClass(), target, value),
+		return Propagation.activate(new Imposition<>(getClass(), target, value),
 				p -> p.getStores().containsKey(getClass()) ? p
 						: p.withStore(create(LinkedHashMap.empty(), HashSet.empty())),
 				p -> doomedAt(p, target, value));

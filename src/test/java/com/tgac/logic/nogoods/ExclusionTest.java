@@ -47,6 +47,19 @@ public class ExclusionTest {
 	}
 
 	@Test
+	public void excludeNegatesUnificationDirectly() {
+		// unifies IS a statement, so ¬(x=3 ∧ y=4) needs no bind sugar
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+
+		Goal g = exclude(x.unifies(3), y.unifies(4))
+				.and(x.unifies(3))
+				.and(y.unifies(4));
+
+		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
+	}
+
+	@Test
 	public void excludingADomCarvesTheBoxOutOfALabelledDomain() {
 		Unifiable<Long> x = lvar();
 

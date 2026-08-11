@@ -81,7 +81,7 @@ public class FiniteDomain {
 	 * re-examining the same parked object (constraint-kernel.md).
 	 */
 	private static Statement fdStatement(Propagator item, Predicate<Package> doomed) {
-		return Statement.stated(item, FiniteDomainConstraints::register, doomed);
+		return Propagation.activate(item, FiniteDomainConstraints::register, doomed);
 	}
 
 	@SuppressWarnings("unchecked")

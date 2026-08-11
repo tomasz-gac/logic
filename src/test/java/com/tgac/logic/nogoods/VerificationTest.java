@@ -3,6 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The verification core against Neq's own semantics: refuted discards,
 // ABOUTME: entailed fails, survivors keep their original literals, bindings thread.
 
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Statement;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -102,7 +103,7 @@ public class VerificationTest {
 		};
 
 		assertThatThrownBy(() -> Verification.imposed(
-				Statement.stated(orphan), Package.empty()).get())
+				Propagation.activate(orphan), Package.empty()).get())
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -111,9 +112,9 @@ public class VerificationTest {
 		// one named schema over the same terms, two bodies: identity lives on
 		// the item (the named-schema contract), and the statement follows it
 		Term<?> x = lvar();
-		Statement first = Statement.stated(
+		Statement first = Propagation.activate(
 				Propagator.of(Store.class, "same-schema", Array.of(x), (watched, pkg) -> null));
-		Statement second = Statement.stated(
+		Statement second = Propagation.activate(
 				Propagator.of(Store.class, "same-schema", Array.of(x), (watched, pkg) -> null));
 
 		assertThat(first).isEqualTo(second);

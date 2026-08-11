@@ -22,21 +22,21 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Constraints {
 
-	public static <T> Goal unify(Unifiable<T> u, Unifiable<T> v) {
+	public static <T> Statement unify(Unifiable<T> u, Unifiable<T> v) {
 		return UnifyGoal.of(u, v, false)
 				.named(pkg -> pkg.format(u) + " ≣ " + pkg.format(v));
 	}
 
-	public static <T> Goal unifyNc(Unifiable<T> u, Unifiable<T> v) {
+	public static <T> Statement unifyNc(Unifiable<T> u, Unifiable<T> v) {
 		return UnifyGoal.of(u, v, true)
 				.named(pkg -> pkg.format(u) + " ≣_nc " + pkg.format(v));
 	}
 
-	public static <T> Goal unify(Unifiable<T> u, T v) {
+	public static <T> Statement unify(Unifiable<T> u, T v) {
 		return unify(u, LVal.lval(v));
 	}
 
-	public static <T> Goal unifyNc(Unifiable<T> u, T v) {
+	public static <T> Statement unifyNc(Unifiable<T> u, T v) {
 		return unifyNc(u, LVal.lval(v));
 	}
 

@@ -8,6 +8,7 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
@@ -256,7 +257,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	/** One factor's imposition: rename runs in the goal's fiber, absorb states it. */
 	private static <S extends Projectable<S>> Goal imposed(Projectable<S> factor, Renaming renaming) {
 		return pkg -> Cont.suspend(k -> factor.rename(renaming)
-				.flatMap(renamed -> Statement.absorb(renamed).apply(pkg).apply(k)));
+				.flatMap(renamed -> Propagation.absorb(renamed).apply(pkg).apply(k)));
 	}
 
 	@Override
