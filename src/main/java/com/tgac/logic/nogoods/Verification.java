@@ -5,9 +5,12 @@ package com.tgac.logic.nogoods;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.Statement;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Packaged;
+import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.AccessLevel;
@@ -137,6 +140,25 @@ public final class Verification {
 	 * optimization, buying earliness on the delay side.
 	 */
 	private static boolean unchanged(Package before, Package after) {
-		return before == after || before.equals(after);
+		return before == after
+				|| before.equals(after)
+				|| before.substitution().equals(after.substitution())
+						&& knowledge(before).equals(knowledge(after));
+	}
+
+	/**
+	 * An empty store is not knowledge: an imposition whose only trace is the
+	 * REGISTRATION of a store it then left empty (the inner exclusion of a
+	 * double negation discarding its nogood against a Nogoods-stripped
+	 * scratch) has proven its content already holds — reading the empty
+	 * container as change would keep the literal owed forever and let ground
+	 * violations render silently.
+	 */
+	// TODO(the human, August 2026): further investigation owed — whether other
+	// bookkeeping shapes should be invisible to this comparison, and whether
+	// knowledge comparison belongs on Package once more clients appear.
+	private static LinkedHashMap<Class<? extends Packaged>, Packaged> knowledge(Package p) {
+		return p.getStores().filter(entry -> !(entry._2 instanceof ConstraintStore
+				&& ((ConstraintStore) entry._2).isEmpty()));
 	}
 }
