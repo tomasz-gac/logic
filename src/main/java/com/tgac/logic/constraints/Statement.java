@@ -13,6 +13,8 @@ import com.tgac.logic.goals.NamedGoal;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.goals.optimizer.Optimizer;
+import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -21,6 +23,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Value;
@@ -151,6 +154,39 @@ public interface Statement extends Goal, Bounded {
 		@Override
 		public String toString() {
 			return "state(" + item + ")";
+		}
+	}
+
+	/**
+	 * A resolved prefix held directly — the bulk binding load through the
+	 * chokepoint ({@code UnifyGoal} is its single-unification face: mint the
+	 * prefix, resolve it). Equality is the prefix's own.
+	 */
+	@Getter
+	@EqualsAndHashCode(of = "prefix")
+	class Resolution implements Statement {
+		private final Prefix prefix;
+
+		Resolution(Prefix prefix) {
+			this.prefix = prefix;
+		}
+
+		@Override
+		public Cont<Package, Nothing> apply(Package pkg) {
+			return Propagation.resolution(prefix).apply(pkg);
+		}
+
+		@Override
+		public Stream<Term<?>> terms() {
+			return StreamSupport.stream(prefix.bindings().spliterator(), false)
+					.flatMap(binding -> Stream.concat(
+							Stream.of((Term<?>) binding._1),
+							MiniKanren.namesIn(binding._2).map(name -> (Term<?>) name)));
+		}
+
+		@Override
+		public String toString() {
+			return prefix.toString();
 		}
 	}
 

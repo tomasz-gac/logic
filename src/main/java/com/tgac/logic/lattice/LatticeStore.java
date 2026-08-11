@@ -242,7 +242,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 							upd -> {
 								Package updated = s.putStore(upd.factor());
 								return upd.inferred().stream()
-										.map(Propagation::resolve)
+										.<Goal> map(Propagation::resolve)
 										.reduce(Goal.success(), Goal::and)
 										.apply(updated);
 							}));

@@ -74,7 +74,12 @@ public final class Propagation {
 	 * rather than a refusal. Raw {@code MiniKanren.unify} bypasses
 	 * all constraint processing and is legitimate only inside the unifier itself.
 	 */
-	public static Goal resolve(Prefix prefix) {
+	public static Statement resolve(Prefix prefix) {
+		return new Statement.Resolution(prefix);
+	}
+
+	/** The imposition body behind {@link #resolve} — the bulk binding load. */
+	static Goal resolution(Prefix prefix) {
 		return p -> {
 			Watermark.check(p, prefix);
 			if (prefix.isEmpty()) {
@@ -119,7 +124,6 @@ public final class Propagation {
 	 * between (the two run inside one drain). How tabling seeds a master
 	 * from its key and replays an answer's delta.
 	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
 	public static Statement absorb(Absorbable<?> factor) {
 		return new Statement.Absorption(factor, List.empty());
 	}
