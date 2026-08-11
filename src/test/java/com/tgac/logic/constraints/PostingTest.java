@@ -1,6 +1,6 @@
 package com.tgac.logic.constraints;
 
-// ABOUTME: Statement is the chokepoint vocabulary lifted to Goal: apply IS the
+// ABOUTME: Posting is the chokepoint vocabulary lifted to Goal: apply IS the
 // ABOUTME: imposition, and Bounded's order is the 0-or-1 taxonomy with the doom bit.
 
 import com.tgac.logic.TestSchedulers;
@@ -19,10 +19,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
 
-public class StatementTest {
+public class PostingTest {
 
 	@Test
-	public void aStatementAppliesAsAPlainGoal() {
+	public void aPostingAppliesAsAPlainGoal() {
 		// the lift: the same value FD hands to exclusion is a conjunct
 		Unifiable<Long> x = lvar();
 
@@ -40,10 +40,10 @@ public class StatementTest {
 	}
 
 	@Test
-	public void aStatementPricesAtOne() {
+	public void aPostingPricesAtOne() {
 		// blind or sighted with nothing against it: one success, ever
 		Unifiable<Long> x = lvar();
-		Statement in = FiniteDomain.dom(x, EnumeratedDomain.range(0L, 5L));
+		Posting in = FiniteDomain.dom(x, EnumeratedDomain.range(0L, 5L));
 
 		assertThat(in.answers(Package.empty().substitution())).isEqualTo(1L);
 		assertThat(in.answers(Package.empty())).isEqualTo(1L);
@@ -58,8 +58,8 @@ public class StatementTest {
 						dom(x, EnumeratedDomain.range(0L, 5L)).apply(Package.empty()))
 				.get().get(0);
 
-		Statement doomed = FiniteDomain.dom(x, EnumeratedDomain.range(6L, 9L));
-		Statement alive = FiniteDomain.dom(x, EnumeratedDomain.range(3L, 9L));
+		Posting doomed = FiniteDomain.dom(x, EnumeratedDomain.range(6L, 9L));
+		Posting alive = FiniteDomain.dom(x, EnumeratedDomain.range(3L, 9L));
 
 		assertThat(doomed.answers(live)).isZero();
 		assertThat(alive.answers(live)).isEqualTo(1L);

@@ -1,7 +1,7 @@
 package com.tgac.logic.constraints;
 
-// ABOUTME: The chokepoint's statement vocabulary lifted to Goal: apply IS the
-// ABOUTME: imposition — a binding, a stated item, or an absorbed factor. Closed.
+// ABOUTME: Knowledge injection as a Goal — the chokepoint's posting vocabulary:
+// ABOUTME: apply IS the imposition; a binding, a stated item, or an absorbed factor.
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
@@ -29,25 +29,25 @@ import lombok.Getter;
 import lombok.Value;
 
 /**
- * What knowledge may enter a package, as a GOAL: applying a statement imposes
+ * What knowledge may enter a package, as a GOAL: applying a posting imposes
  * it through the chokepoint, so the same value is a conjunct in a program and
  * a literal in a nogood. The constructors are the whole vocabulary — one per
  * chokepoint door, holding the imposed content DIRECTLY (the item a store
  * would post, the factor it would meet) — so a store's front door returns the
- * statement and no adapter layer exists. A program is not a statement:
- * negation of statements never becomes negation of programs. Implementing
+ * posting and no adapter layer exists. A program is not a posting:
+ * negation of postings never becomes negation of programs. Implementing
  * this interface is claiming the imposition law (idempotent, monotone, at
  * most one success, chokepoint-only); the laws kit checks constructors, not
  * calls.
  *
- * <p>The 0-or-1 taxonomy lands here as {@link Bounded}: a statement succeeds
+ * <p>The 0-or-1 taxonomy lands here as {@link Bounded}: a posting succeeds
  * at most once, so its order is never computed — it is 1 by construction,
  * with {@link #doomed} as the optional eager 0 under partial knowledge
  * (failure found at pricing is failure forever — monotone).
  */
-public interface Statement extends Goal, Bounded {
+public interface Posting extends Goal, Bounded {
 
-	/** Every term this statement speaks about — the declared surface. */
+	/** Every term this posting speaks about — the declared surface. */
 	Stream<Term<?>> terms();
 
 	/**
@@ -69,33 +69,33 @@ public interface Statement extends Goal, Bounded {
 		return doomed(p) ? 0 : 1;
 	}
 
-	/** {@code lhs = rhs}: a unification statement — {@link Constraints#unify}. */
-	static <T> Statement bind(Unifiable<T> lhs, Unifiable<T> rhs) {
+	/** {@code lhs = rhs}: a unification posting — {@link Constraints#unify}. */
+	static <T> Posting bind(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return Constraints.unify(lhs, rhs);
 	}
 
-	/** Naming preserves the statement face; the label stays outside identity. */
+	/** Naming preserves the posting face; the label stays outside identity. */
 	@Override
-	default Statement named(String name) {
+	default Posting named(String name) {
 		return named(p -> name);
 	}
 
 	@Override
-	default Statement named(Function<Package, String> label) {
+	default Posting named(Function<Package, String> label) {
 		return new Named(this, NamedGoal.of(label, this));
 	}
 
 	/**
-	 * The conjunction of statements is a statement (each succeeds at most
+	 * The conjunction of postings is a posting (each succeeds at most
 	 * once, chokepoint-only — the class is closed under ∧); doomed when any
 	 * part is.
 	 */
-	static Statement all(Statement... statements) {
+	static Posting all(Posting... statements) {
 		return new AllOf(List.of(statements), p -> false);
 	}
 
 	/** {@link #all} with a joint doom check the parts alone cannot see. */
-	static Statement all(Predicate<Package> doomed, Statement... statements) {
+	static Posting all(Predicate<Package> doomed, Posting... statements) {
 		return new AllOf(List.of(statements), doomed);
 	}
 
@@ -106,7 +106,7 @@ public interface Statement extends Goal, Bounded {
 	 */
 	@Getter
 	@EqualsAndHashCode(of = "item")
-	class Activation implements Statement {
+	class Activation implements Posting {
 		private final Stored item;
 		private final UnaryOperator<Package> registration;
 		private final Predicate<Package> doomCheck;
@@ -164,7 +164,7 @@ public interface Statement extends Goal, Bounded {
 	 */
 	@Getter
 	@EqualsAndHashCode(of = "prefix")
-	class Resolution implements Statement {
+	class Resolution implements Posting {
 		private final Prefix prefix;
 
 		Resolution(Prefix prefix) {
@@ -193,7 +193,7 @@ public interface Statement extends Goal, Bounded {
 	/** The absorbed factor held directly — equality is the factor's own. */
 	@Getter
 	@EqualsAndHashCode(of = "factor")
-	class Absorption implements Statement {
+	class Absorption implements Posting {
 		private final Absorbable<?> factor;
 		private final List<Term<?>> declared;
 
@@ -219,18 +219,18 @@ public interface Statement extends Goal, Bounded {
 	}
 
 	/**
-	 * A named statement: tracing rides the wrapped {@link NamedGoal}, the
-	 * statement face delegates, and IDENTITY IS THE INNER STATEMENT'S — the
+	 * A named posting: tracing rides the wrapped {@link NamedGoal}, the
+	 * posting face delegates, and IDENTITY IS THE INNER STATEMENT'S — the
 	 * label is presentation, not content, so nogood literal comparison and
 	 * dedup see through it.
 	 */
 	@Getter
 	@EqualsAndHashCode(of = "inner")
-	class Named implements Statement {
-		private final Statement inner;
+	class Named implements Posting {
+		private final Posting inner;
 		private final NamedGoal named;
 
-		Named(Statement inner, NamedGoal named) {
+		Named(Posting inner, NamedGoal named) {
 			this.inner = inner;
 			this.named = named;
 		}
@@ -272,8 +272,8 @@ public interface Statement extends Goal, Bounded {
 	}
 
 	@Value
-	class AllOf implements Statement {
-		List<Statement> parts;
+	class AllOf implements Posting {
+		List<Posting> parts;
 		Predicate<Package> jointDoom;
 
 		@Override
@@ -288,7 +288,7 @@ public interface Statement extends Goal, Bounded {
 
 		@Override
 		public Stream<Term<?>> terms() {
-			return parts.toJavaStream().flatMap(Statement::terms);
+			return parts.toJavaStream().flatMap(Posting::terms);
 		}
 
 		@Override

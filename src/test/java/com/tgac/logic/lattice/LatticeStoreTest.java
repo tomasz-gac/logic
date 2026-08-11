@@ -8,7 +8,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.goals.Goal;

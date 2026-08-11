@@ -6,7 +6,7 @@ package com.tgac.logic.nogoods;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
@@ -82,14 +82,14 @@ public final class Verification {
 	 * nogood is violated; otherwise the surviving literals, entailed ones
 	 * crossed off.
 	 */
-	static Fiber<Option<List<Statement>>> trial(
-			List<Statement> pending,
-			List<Statement> survivors,
+	static Fiber<Option<List<Posting>>> trial(
+			List<Posting> pending,
+			List<Posting> survivors,
 			Package scratch) {
 		if (pending.isEmpty()) {
 			return Fiber.done(Option.of(survivors));
 		}
-		Statement literal = pending.head();
+		Posting literal = pending.head();
 		return imposed(literal, scratch).flatMap(worlds -> {
 			if (worlds.isEmpty()) {
 				return Fiber.done(Option.none());
@@ -116,7 +116,7 @@ public final class Verification {
 	 * (arbitrary goals, may spawn). Empty = the run stayed silent: the
 	 * imposition failed.
 	 */
-	static Fiber<List<Package>> imposed(Statement literal, Package scratch) {
+	static Fiber<List<Package>> imposed(Posting literal, Package scratch) {
 		return Exhaustion.collected(literal.apply(scratch))
 				.map(List::ofAll);
 	}
@@ -155,8 +155,8 @@ public final class Verification {
 	 * violations render silently.
 	 */
 	// TODO(the human, August 2026): further investigation owed — whether other
-	// bookkeeping shapes should be invisible to this comparison, and whether
-	// knowledge comparison belongs on Package once more clients appear.
+	//   bookkeeping shapes should be invisible to this comparison, and whether
+	//   knowledge comparison belongs on Package once more clients appear.
 	private static LinkedHashMap<Class<? extends Packaged>, Packaged> knowledge(Package p) {
 		return p.getStores().filter(entry -> !(entry._2 instanceof ConstraintStore
 				&& ((ConstraintStore) entry._2).isEmpty()));

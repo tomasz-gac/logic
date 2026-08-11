@@ -4,7 +4,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: "NOT all these literals simultaneously" — through the statement entry.
 
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import io.vavr.collection.List;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Exclusion {
 
-	public static Statement exclude(Statement... literals) {
+	public static Posting exclude(Posting... literals) {
 		return Propagation.activate(Nogood.of(List.of(literals)), Nogoods::register, p -> false);
 	}
 }

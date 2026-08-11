@@ -10,7 +10,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
@@ -46,7 +46,7 @@ public class TrialEdgeTest {
 	public void doubleNegationDoesNotNarrowEagerly() {
 		// ¬¬(x ∈ 0..4) must not become x ∈ 0..4 in the FD store
 		Unifiable<Long> x = lvar();
-		Statement inner = exclude(dom(x, EnumeratedDomain.range(0L, 5L)));
+		Posting inner = exclude(dom(x, EnumeratedDomain.range(0L, 5L)));
 
 		Goal g = dom(x, EnumeratedDomain.range(0L, 10L))
 				.and(exclude(inner));

@@ -11,7 +11,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
@@ -198,14 +198,14 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	}
 
 	/**
-	 * Statement-position imposition as the chokepoint's own statement: an
+	 * Posting-position imposition as the chokepoint's own statement: an
 	 * {@link Imposition} item through the statement entry, consumed by this
 	 * store's {@code stated} — the routing lives with the store, not at the
 	 * call site. Doomed under partial knowledge exactly when the value cannot
 	 * stand against the live state: a ground target the value refuses, or a
 	 * live entry it meets to bottom.
 	 */
-	public Statement impose(Term<?> target, L value) {
+	public Posting impose(Term<?> target, L value) {
 		return Propagation.activate(new Imposition<>(getClass(), target, value),
 				p -> p.getStores().containsKey(getClass()) ? p
 						: p.withStore(create(LinkedHashMap.empty(), HashSet.empty())),
@@ -225,7 +225,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	}
 
 	/**
-	 * Statement-position re-examination of this store's own watchers of
+	 * Posting-position re-examination of this store's own watchers of
 	 * {@code x}: the live store drains its cascade (a fiber — long cascades
 	 * stay fairly stepped) and the collapses it yields re-enter through the
 	 * chokepoint like any other inferred bindings.

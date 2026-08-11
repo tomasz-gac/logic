@@ -3,7 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The user front door: exclude states one nogood over literals;
 // ABOUTME: excluding a dom statement is the negated box — no second door exists.
 
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
@@ -26,7 +26,7 @@ public class ExclusionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Goal g = exclude(Statement.bind(x, lval(3)), Statement.bind(y, lval(4)))
+		Goal g = exclude(Posting.bind(x, lval(3)), Posting.bind(y, lval(4)))
 				.and(x.unifies(3))
 				.and(y.unifies(4));
 
@@ -38,7 +38,7 @@ public class ExclusionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Goal g = exclude(Statement.bind(x, lval(3)), Statement.bind(y, lval(4)))
+		Goal g = exclude(Posting.bind(x, lval(3)), Posting.bind(y, lval(4)))
 				.and(x.unifies(3))
 				.and(y.unifies(5));
 

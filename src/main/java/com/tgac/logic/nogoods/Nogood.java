@@ -3,7 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: One nogood: NOT all these literals simultaneously — Neq's record shape
 // ABOUTME: with literals as the pairs. Born as its escape list; nothing converts.
 
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
@@ -19,7 +19,7 @@ import lombok.Value;
  */
 @Value(staticConstructor = "of")
 public class Nogood implements Stored {
-	List<Statement> literals;
+	List<Posting> literals;
 
 	@Override
 	public Class<? extends Store> getStoreClass() {
@@ -28,7 +28,7 @@ public class Nogood implements Stored {
 
 	@Override
 	public Stream<Term<?>> terms() {
-		return literals.toJavaStream().flatMap(Statement::terms);
+		return literals.toJavaStream().flatMap(Posting::terms);
 	}
 
 	@Override

@@ -3,7 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: Lattice laws for the nogood store: meet is nogood union, so more
 // ABOUTME: nogoods = lower — claimed for the coverage gate.
 
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
@@ -27,10 +27,10 @@ public class NogoodsLawsTest {
 
 	private static final Unifiable<Integer> X = lvar();
 	private static final Unifiable<Integer> Y = lvar();
-	private static final Nogood X_APART = Nogood.of(List.of(Statement.bind(X, lval(1))));
-	private static final Nogood Y_APART = Nogood.of(List.of(Statement.bind(Y, lval(2))));
+	private static final Nogood X_APART = Nogood.of(List.of(Posting.bind(X, lval(1))));
+	private static final Nogood Y_APART = Nogood.of(List.of(Posting.bind(Y, lval(2))));
 	private static final Nogood NOT_BOTH = Nogood.of(List.of(
-			Statement.bind(X, lval(1)), Statement.bind(Y, lval(2))));
+			Posting.bind(X, lval(1)), Posting.bind(Y, lval(2))));
 
 	@Test
 	public void nogoodUnionIsAMeetSemilattice() {

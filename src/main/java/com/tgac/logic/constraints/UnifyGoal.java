@@ -19,7 +19,7 @@ import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class UnifyGoal<T> implements Statement {
+class UnifyGoal<T> implements Posting {
 	Unifiable<T> u;
 	Unifiable<T> v;
 	boolean noCheck;

@@ -4,7 +4,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: wrapped into Revision, revise is normalize by another trigger.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Revision;

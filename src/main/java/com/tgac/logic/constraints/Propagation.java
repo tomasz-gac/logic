@@ -74,8 +74,8 @@ public final class Propagation {
 	 * rather than a refusal. Raw {@code MiniKanren.unify} bypasses
 	 * all constraint processing and is legitimate only inside the unifier itself.
 	 */
-	public static Statement resolve(Prefix prefix) {
-		return new Statement.Resolution(prefix);
+	public static Posting resolve(Prefix prefix) {
+		return new Posting.Resolution(prefix);
 	}
 
 	/** The imposition body behind {@link #resolve} — the bulk binding load. */
@@ -99,14 +99,14 @@ public final class Propagation {
 	 * must already be registered) and queues its first examination — the owning
 	 * store's {@code stated} hook decides everything decidable at statement time.
 	 */
-	public static Statement activate(Stored item) {
-		return new Statement.Activation(item, UnaryOperator.identity(), p -> false);
+	public static Posting activate(Stored item) {
+		return new Posting.Activation(item, UnaryOperator.identity(), p -> false);
 	}
 
 	/** {@link #activate} with the owning store's registration and doom check. */
-	public static Statement activate(Stored item, UnaryOperator<Package> registration,
+	public static Posting activate(Stored item, UnaryOperator<Package> registration,
 			Predicate<Package> doomed) {
-		return new Statement.Activation(item, registration, doomed);
+		return new Posting.Activation(item, registration, doomed);
 	}
 
 	/** The imposition body behind the {@link #activate} constructors. */
@@ -124,13 +124,13 @@ public final class Propagation {
 	 * between (the two run inside one drain). How tabling seeds a master
 	 * from its key and replays an answer's delta.
 	 */
-	public static Statement absorb(Absorbable<?> factor) {
-		return new Statement.Absorption(factor, List.empty());
+	public static Posting absorb(Absorbable<?> factor) {
+		return new Posting.Absorption(factor, List.empty());
 	}
 
 	/** {@link #absorb} declaring the factor's watched surface alongside. */
-	public static Statement absorb(Absorbable<?> factor, List<Term<?>> terms) {
-		return new Statement.Absorption(factor, terms);
+	public static Posting absorb(Absorbable<?> factor, List<Term<?>> terms) {
+		return new Posting.Absorption(factor, terms);
 	}
 
 	/** The imposition body behind the {@link #absorb} constructors. */

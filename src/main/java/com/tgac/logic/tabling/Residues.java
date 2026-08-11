@@ -9,7 +9,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
@@ -45,7 +45,7 @@ import lombok.Value;
  * from a package by {@link #ofRelevant} (call side, the key citizen) or
  * {@link #ofAll} (answer side, walking + slot canonicalization), and
  * leaves by {@link #restate} — imposing itself under a renaming, each
- * factor riding {@code Statement.absorb}.
+ * factor riding {@code Posting.absorb}.
  */
 @Value
 public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
@@ -243,8 +243,8 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * primitive: master seeding renames the key's conjunct back onto the
 	 * live call vars ({@code Renaming.restating}); answer delivery renames it
 	 * onto the instantiation's fresh holes ({@code Renaming.minting}, unseeded
-	 * locals minting — the existential). Statement stays the driver's: each
-	 * factor rides {@code Statement.absorb}.
+	 * locals minting — the existential). Posting stays the driver's: each
+	 * factor rides {@code Posting.absorb}.
 	 */
 	public Goal restate(Renaming renaming) {
 		Goal restated = Goal.success();

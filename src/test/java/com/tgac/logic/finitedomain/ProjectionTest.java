@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;

@@ -10,7 +10,7 @@ import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.constraints.Statement;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
@@ -43,7 +43,7 @@ public class FiniteDomain {
 
 	/** The membership {@code u ∈ d} through the store's imposition door. */
 	@SuppressWarnings("unchecked")
-	public static <T> Statement dom(Unifiable<T> u, Domain<T> d) {
+	public static <T> Posting dom(Unifiable<T> u, Domain<T> d) {
 		return FiniteDomainConstraints.empty().impose(u, (Domain<Object>) d);
 	}
 
@@ -76,11 +76,11 @@ public class FiniteDomain {
 	}
 
 	/**
-	 * Statement-time entry: the propagator watching its terms as a statement —
+	 * Posting-time entry: the propagator watching its terms as a statement —
 	 * parked in the FD store at imposition, first examination queued, wakes
 	 * re-examining the same parked object (constraint-kernel.md).
 	 */
-	private static Statement fdStatement(Propagator item, Predicate<Package> doomed) {
+	private static Posting fdPosting(Propagator item, Predicate<Package> doomed) {
 		return Propagation.activate(item, FiniteDomainConstraints::register, doomed);
 	}
 
@@ -110,27 +110,27 @@ public class FiniteDomain {
 		}
 	}
 
-	public static <T> Statement leq(Unifiable<T> less, Unifiable<T> more) {
-		return fdStatement(leqProp(less, more),
+	public static <T> Posting leq(Unifiable<T> less, Unifiable<T> more) {
+		return fdPosting(leqProp(less, more),
 				p -> cmpOrder(p.substitution(), less, more, c -> c <= 0) == 0);
 	}
 
-	public static <T> Statement lss(Unifiable<T> less, Unifiable<T> more) {
-		return Statement.all(
+	public static <T> Posting lss(Unifiable<T> less, Unifiable<T> more) {
+		return Posting.all(
 				p -> cmpOrder(p.substitution(), less, more, c -> c < 0) == 0,
-				fdStatement(leqProp(less, more), p -> false),
+				fdPosting(leqProp(less, more), p -> false),
 				separate(less, more));
 	}
 
-	public static <T> Statement gtr(Unifiable<T> more, Unifiable<T> less) {
-		return Statement.all(
+	public static <T> Posting gtr(Unifiable<T> more, Unifiable<T> less) {
+		return Posting.all(
 				p -> cmpOrder(p.substitution(), more, less, c -> c > 0) == 0,
-				fdStatement(leqProp(less, more), p -> false),
+				fdPosting(leqProp(less, more), p -> false),
 				separate(more, less));
 	}
 
-	public static <T> Statement geq(Unifiable<T> more, Unifiable<T> less) {
-		return fdStatement(leqProp(less, more),
+	public static <T> Posting geq(Unifiable<T> more, Unifiable<T> less) {
+		return fdPosting(leqProp(less, more),
 				p -> cmpOrder(p.substitution(), more, less, c -> c >= 0) == 0);
 	}
 
@@ -159,16 +159,16 @@ public class FiniteDomain {
 						VarWithDomain.of(mor.getUnifiable(), moreDom))));
 	}
 
-	public static <T> Statement addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
+	public static <T> Posting addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return addoFD(a, b, c);
 	}
 
-	public static <T> Statement subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
+	public static <T> Posting subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return addoFD(c, b, a);
 	}
 
-	static <T> Statement addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return fdStatement(prop("add",
+	static <T> Posting addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
+		return fdPosting(prop("add",
 				Array.of(a, b, rhs),
 				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
@@ -209,16 +209,16 @@ public class FiniteDomain {
 						VarWithDomain.of(u.getUnifiable(), ui))));
 	}
 
-	public static <T> Statement multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
+	public static <T> Posting multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
 		return mulFD(a, b, c);
 	}
 
-	public static <T> Statement divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {
+	public static <T> Posting divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {
 		return multo(result, divisor, divided);
 	}
 
-	static <T> Statement mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return fdStatement(prop("mul",
+	static <T> Posting mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
+		return fdPosting(prop("mul",
 				Array.of(a, b, rhs),
 				FiniteDomain.<T> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
@@ -303,8 +303,8 @@ public class FiniteDomain {
 				maxResult(Arithmetic::div, wdPerm)));
 	}
 
-	public static <T> Statement separate(Unifiable<T> l, Unifiable<T> r) {
-		return fdStatement(separateProp(l, r), p -> {
+	public static <T> Posting separate(Unifiable<T> l, Unifiable<T> r) {
+		return fdPosting(separateProp(l, r), p -> {
 			Term<?> lw = p.substitution().walk(l);
 			Term<?> rw = p.substitution().walk(r);
 			return lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get().equals(rw.get());
@@ -365,7 +365,7 @@ public class FiniteDomain {
 				.orElseThrow(IllegalStateException::new);
 	}
 
-	public static <T> Statement copyDomain(Unifiable<T> from, Unifiable<T> to) {
+	public static <T> Posting copyDomain(Unifiable<T> from, Unifiable<T> to) {
 		return new CopyDomain<>(from, to);
 	}
 
@@ -375,7 +375,7 @@ public class FiniteDomain {
 	 * source is read from the state, so the statement carries only its ends.
 	 */
 	@Value
-	static class CopyDomain<T> implements Statement {
+	static class CopyDomain<T> implements Posting {
 		Unifiable<T> from;
 		Unifiable<T> to;
 
