@@ -1,7 +1,6 @@
 package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.finitedomain.FiniteDomain.addo;
-import static com.tgac.logic.finitedomain.FiniteDomain.copyDomain;
 import static com.tgac.logic.finitedomain.FiniteDomain.divo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.multo;
@@ -10,6 +9,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.functional.fibers.schedulers.UnfairBreadthFirstScheduler;
 import com.tgac.logic.Utils;
+import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
@@ -213,9 +213,10 @@ public class MultiplicationTest {
 						Tuple.of(2, 2, 4));
 	}
 
-	public static <T> Goal divoWithRest(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> rest, Unifiable<T> result) {
+	public static <T> Goal divoWithRest(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> rest, Unifiable<T> result,
+			Domain<T> width) {
 		Unifiable<T> tmp = lvar();
-		return copyDomain(divided, tmp)
+		return dom(tmp, width)
 				.and(divo(divided, divisor, tmp))
 				.and(addo(tmp, rest, result))
 				.named(divided + " / " + divisor + " = " + result + ", % " + rest);
@@ -232,7 +233,7 @@ public class MultiplicationTest {
 				.and(dom(divisor, Singleton.of(3)))
 				.and(dom(result, Singleton.of(-3)))
 				.and(dom(rest, Interval.of(-2, 2)))
-				.and(divoWithRest(divided, divisor, rest, result))
+				.and(divoWithRest(divided, divisor, rest, result, Interval.of(-15, 15)))
 				.solve(lval(Tuple.of(divided, divisor, rest, result)), UnfairBreadthFirstScheduler::of)
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get, Term::get)));

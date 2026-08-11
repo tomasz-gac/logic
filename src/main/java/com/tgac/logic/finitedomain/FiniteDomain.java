@@ -367,48 +367,4 @@ public class FiniteDomain {
 				.orElseThrow(IllegalStateException::new);
 	}
 
-	public static <T> Posting copyDomain(Unifiable<T> from, Unifiable<T> to) {
-		return new CopyDomain<>(from, to);
-	}
-
-	/**
-	 * One-shot statement-position copy: {@code to} takes {@code from}'s LIVE
-	 * domain (or its ground value as a singleton) at imposition time — the
-	 * source is read from the state, so the statement carries only its ends.
-	 */
-	@Value
-	static class CopyDomain<T> implements Posting {
-		Unifiable<T> from;
-		Unifiable<T> to;
-
-		@Override
-		public Cont<Package, Nothing> apply(Package pkg) {
-			Package s = FiniteDomainConstraints.register(pkg);
-			return dom(to, from.asVar()
-					.flatMap(l -> FiniteDomainConstraints.<T> getDom(s, l))
-					.orElse(() -> s.walk(from).asVal()
-							.map(Arithmetic::ofCasted)
-							.map(Singleton::of))
-					.getOrElse(() -> Singleton.of(Arithmetic.ofCasted(from.get()))))
-					.apply(s);
-		}
-
-		@Override
-		public Stream<Term<?>> terms() {
-			return Stream.of(from, to);
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public Fiber<Posting> rename(Renaming renaming) {
-			return renaming.apply(from)
-					.flatMap(f -> renaming.apply(to)
-							.map(t -> new CopyDomain<>((Unifiable<T>) f, (Unifiable<T>) t)));
-		}
-
-		@Override
-		public String toString() {
-			return "copyDom(" + from + ", " + to + ")";
-		}
-	}
 }

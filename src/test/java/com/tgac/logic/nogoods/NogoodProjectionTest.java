@@ -80,6 +80,25 @@ public class NogoodProjectionTest {
 	}
 
 	@Test
+	public void aResolutionLiteralCrossesAsItsBinds() {
+		// the checked mint is lineage-local; unification is its portable spelling
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> z = lvar();
+
+		com.tgac.logic.constraints.Posting resolved = com.tgac.logic.constraints.Propagation.resolve(
+				com.tgac.logic.unification.Prefix.binding(
+								com.tgac.logic.goals.Package.empty().substitution(),
+								(LVar<?>) x.asVar().get(),
+								com.tgac.logic.unification.LVal.lval(3))
+						.get());
+
+		Nogoods viaResolution = store(over(resolved)).rename(toHole(x, 0)).get();
+		Nogoods viaBind = store(over(z.unifies(3))).rename(toHole(z, 0)).get();
+
+		assertThat(viaResolution).isEqualTo(viaBind);
+	}
+
+	@Test
 	public void aNogoodCrossesTheTabledCallAndReplaysAtTheCaller() {
 		Tabled<Unifiable<Integer>> notThree = Tabling.define(x ->
 				exclude(x.unifies(3)));

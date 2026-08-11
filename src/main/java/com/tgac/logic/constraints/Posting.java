@@ -209,11 +209,25 @@ public interface Posting extends Goal, Bounded {
 							MiniKanren.namesIn(binding._2).map(name -> (Term<?>) name)));
 		}
 
-		/** A prefix is a live-lineage delta; its canonical crossing is undesigned. */
+		/**
+		 * A prefix is bindings, so it crosses as the conjunction of its
+		 * binds — each pair re-keyed; the checked mint is lineage-local and
+		 * unification is its portable spelling, re-imposed through the
+		 * unifier on arrival.
+		 */
 		@Override
+		@SuppressWarnings("unchecked")
 		public Fiber<Posting> rename(Renaming renaming) {
-			throw new IllegalStateException(
-					"a resolved prefix cannot cross the boundary: " + prefix);
+			return List.ofAll(prefix.bindings()).foldLeft(
+							Fiber.<List<Posting>> done(List.empty()),
+							(acc, binding) -> acc.flatMap(binds ->
+									renaming.apply((Term<?>) binding._1)
+											.flatMap(lhs -> renaming.apply(binding._2)
+													.map(rhs -> binds.append(UnifyGoal.of(
+															(Term<Object>) lhs, (Term<Object>) rhs, false))))))
+					.map(binds -> binds.size() == 1
+							? binds.head()
+							: Posting.all(binds.toJavaArray(Posting[]::new)));
 		}
 
 		@Override

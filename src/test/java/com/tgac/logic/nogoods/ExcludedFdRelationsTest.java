@@ -5,7 +5,6 @@ package com.tgac.logic.nogoods;
 
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.addo;
-import static com.tgac.logic.finitedomain.FiniteDomain.copyDomain;
 import static com.tgac.logic.finitedomain.FiniteDomain.divo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.geq;
@@ -218,21 +217,6 @@ public class ExcludedFdRelationsTest {
 				.and(exclude(separate(x, y)));
 
 		assertThat(answers(g, x)).containsExactly(2L);
-	}
-
-	@Test
-	public void excludedCopyDomainDecidesAtGround() {
-		Unifiable<Long> from = lvar();
-		Unifiable<Long> to = lvar();
-		assertThat(count(from.unifies(3L).and(to.unifies(3L))
-				.and(exclude(copyDomain(from, to))), from))
-				.isZero();
-
-		Unifiable<Long> f = lvar();
-		Unifiable<Long> t = lvar();
-		assertThat(count(f.unifies(3L).and(t.unifies(5L))
-				.and(exclude(copyDomain(f, t))), f))
-				.isEqualTo(1);
 	}
 
 	@Test
