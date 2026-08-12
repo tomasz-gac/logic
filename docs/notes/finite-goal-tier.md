@@ -19,7 +19,8 @@
   revisit with the suspensions-as-factors line)
 - **links**: nogood-store.md §2 (the built conjunctive tier) and §6
   (either — `any`-as-posting's home), negation-over-finite-goals.md
-  (tabling reframed as finitization evidence),
+  (tabling reframed as finitization evidence), sealed-table-zip.md
+  (the any-of-alls carrier and its seal asymmetry),
   condition.md §8.3 (the imposition spectrum `any` lands on),
   docs/reference/optimizer.md (the order algebra the tier makes exact)
 
@@ -84,6 +85,15 @@ diverging, and the strand refusal is its error value). Negation then
 composes as types: `not : FiniteGoal → FiniteGoal`, so negation of a
 recursive goal is `not ∘ table` — the whole of
 negation-over-finite-goals.md as one composition.
+
+And the function's output has a CARRIER (the human's zip, August
+2026): a sealed table folds into one either-record —
+any(all(answer₁'s literals), all(answer₂'s literals), …) — a
+FiniteGoal VALUE built from the posting vocabulary, consumed in one
+branch by the either store instead of forking per answer. `not` is De
+Morgan on that tree, closed in the fragment. See sealed-table-zip.md
+for the seal asymmetry (the zip cannot stream; the negation can) and
+the fork-vs-data trade.
 
 ## The naming family — RESOLVED for the conjunctive slice
 

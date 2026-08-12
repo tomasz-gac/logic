@@ -36,16 +36,20 @@ door know about `Database`. Extracting along that seam gives core a
 row-set store fed by materialized rows, and pldb keeps its index-backed
 source on the same store, losing nothing.
 
-Three consumers want the core form. Directly, as positive membership
+Two consumers want the core form, both as positive membership
 (Support GAC): weighted TCLP's delivery — a level set IS a posted row
-set ("emit as level-set constraints" is the pipeline's last stage);
-and pldb itself. Under negation, through the Nogoods store — the human's
-stipulation (August 2026): NO negative row-set store gets built, the
-Nogoods store is the negative face. Negation over finite goals posts ONE
-nogood stating the positive membership constraint over the sealed answer
-set (¬(args ∈ answers) = every row excluded), and learned nogoods take
-the same shape. The co-store slot lattice-store §4 reserves is filled
-by this composition, not by a sibling store.
+set ("emit as level-set constraints" is the pipeline's last stage) —
+and pldb itself. NEGATION LEFT THIS CHAIN (the human's two-component
+inversion, August 2026): `not(g)` posts one nogood per answer, the
+answer's delta read as bind + factor literals, so it needs no store —
+see negation-over-finite-goals.md. The compact form here (ONE nogood
+stating the positive membership constraint, ¬(args ∈ answers)) remains
+the recorded optimization should the per-answer form measure too slow
+on wide tables, and the standing stipulation is unchanged either way:
+NO negative row-set store gets built — the Nogoods store is the
+negative face, and the co-store slot lattice-store §4 reserves is
+filled by composition, not by a sibling store. Learned nogoods keep
+the same composition.
 
 ## The one real design decision: residence
 
