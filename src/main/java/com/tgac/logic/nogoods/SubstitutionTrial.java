@@ -73,10 +73,20 @@ final class SubstitutionTrial implements Posting.Visitor<Option<SubstitutionTria
 				MiniKanren.unifyPrefixUnsafe(subs, bind.getU(), bind.getV()) :
 				MiniKanren.unifyPrefix(subs, bind.getU(), bind.getV()))
 				.get();
+		// the equality can NEVER hold: unification failure is monotone under
+		// binding growth (a structural clash stays a clash in every extension
+		// of these substitutions), so the forbidden conjunction is refuted
+		// FOREVER, not just for this state — the nogood discharges
 		if (!minted.isDefined()) {
 			return Option.of(Outcome.refuted());
 		}
 		Prefix residual = minted.get();
+		// an EMPTY residual is not the trial passing — it means the equality
+		// already holds, so the literal is entailed and crosses off. The
+		// branch-failing verdict lives one level up: a nogood whose EVERY
+		// literal crossed off is violated (Neq's "empty = violated"), and
+		// that fold — none of the callers' survivors left — is where
+		// "unchanged subs" turns into Revision.fail
 		return Option.of(residual.isEmpty() ?
 				Outcome.entailed(subs) :
 				Outcome.owed(Propagation.resolve(residual), residual.appliedTo(subs)));
@@ -131,6 +141,10 @@ final class SubstitutionTrial implements Posting.Visitor<Option<SubstitutionTria
 		Substitutions current = subs;
 		List<Posting> remainders = List.empty();
 		for (Posting part : all.getParts()) {
+			// a part with no substitution-level reading (a stated item, a
+			// factor) makes the WHOLE composite answer none: the package
+			// trial takes the entire literal, conservatively — mixed
+			// composites forgo the fast steps of their binding parts
 			Option<Outcome> stepped = step(part, current);
 			if (!stepped.isDefined()) {
 				return Option.none();
