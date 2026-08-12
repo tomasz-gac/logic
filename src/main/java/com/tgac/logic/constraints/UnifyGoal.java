@@ -7,8 +7,6 @@ import static com.tgac.functional.category.Nothing.nothing;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.MiniKanren;
@@ -20,7 +18,7 @@ import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-class UnifyGoal<T> implements Posting {
+public class UnifyGoal<T> implements Posting {
 	Term<T> u;
 	Term<T> v;
 	boolean noCheck;
@@ -53,11 +51,8 @@ class UnifyGoal<T> implements Posting {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public Fiber<Posting> rename(Renaming renaming) {
-		return renaming.apply(u)
-				.flatMap(ru -> renaming.apply(v)
-						.map(rv -> UnifyGoal.of((Term<T>) ru, (Term<T>) rv, noCheck)));
+	public <R> R accept(Posting.Visitor<R> visitor) {
+		return visitor.visit(this);
 	}
 
 	@Override

@@ -6,9 +6,7 @@ package com.tgac.logic.constraints;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Absorbable;
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Goal;
@@ -55,6 +53,13 @@ public interface Posting extends Goal, Bounded {
 	Stream<Term<?>> terms();
 
 	/**
+	 * The one dispatch over the closed vocabulary: consumers implement a
+	 * {@link Visitor} instead of widening this interface — a new row must
+	 * extend the visitor, so every consumer hears of it at compile time.
+	 */
+	<R> R accept(Visitor<R> visitor);
+
+	/**
 	 * This posting under changed names — the crossing keeps every row WRAPPED
 	 * (nogood-store.md §7): terms rename through the {@link Renaming}, ground
 	 * data rides unchanged, items re-instantiate over the renamed terms
@@ -63,7 +68,30 @@ public interface Posting extends Goal, Bounded {
 	 * store-generic and carry. Content that cannot transcribe refuses loudly
 	 * with its name — the boundary never crosses knowledge silently.
 	 */
-	Fiber<Posting> rename(Renaming renaming);
+	default Fiber<Posting> rename(Renaming renaming) {
+		return accept(new Renamer(renaming));
+	}
+
+	/**
+	 * One method per closed row. {@link Named} unwraps by default — the label
+	 * is presentation, and a consumer that cares about it overrides.
+	 */
+	interface Visitor<R> {
+
+		R visit(UnifyGoal<?> unification);
+
+		R visit(Resolution resolution);
+
+		R visit(Activation activation);
+
+		R visit(Absorption absorption);
+
+		R visit(AllOf all);
+
+		default R visit(Named named) {
+			return named.getInner().accept(this);
+		}
+	}
 
 	/**
 	 * Provably failing under the current partial knowledge? A TRUST SURFACE
@@ -167,13 +195,8 @@ public interface Posting extends Goal, Bounded {
 		}
 
 		@Override
-		public Fiber<Posting> rename(Renaming renaming) {
-			if (!(item instanceof Transcribable)) {
-				throw new IllegalStateException(
-						"stated item cannot cross the boundary: " + item);
-			}
-			return ((Transcribable) item).rename(renaming)
-					.map(renamed -> Propagation.activate(renamed, registration, p -> false));
+		public <R> R accept(Visitor<R> visitor) {
+			return visitor.visit(this);
 		}
 
 		@Override
@@ -209,25 +232,9 @@ public interface Posting extends Goal, Bounded {
 							MiniKanren.namesIn(binding._2).map(name -> (Term<?>) name)));
 		}
 
-		/**
-		 * A prefix is bindings, so it crosses as the conjunction of its
-		 * binds — each pair re-keyed; the checked mint is lineage-local and
-		 * unification is its portable spelling, re-imposed through the
-		 * unifier on arrival.
-		 */
 		@Override
-		@SuppressWarnings("unchecked")
-		public Fiber<Posting> rename(Renaming renaming) {
-			return List.ofAll(prefix.bindings()).foldLeft(
-							Fiber.<List<Posting>> done(List.empty()),
-							(acc, binding) -> acc.flatMap(binds ->
-									renaming.apply((Term<?>) binding._1)
-											.flatMap(lhs -> renaming.apply(binding._2)
-													.map(rhs -> binds.append(UnifyGoal.of(
-															(Term<Object>) lhs, (Term<Object>) rhs, false))))))
-					.map(binds -> binds.size() == 1
-							? binds.head()
-							: Posting.all(binds.toJavaArray(Posting[]::new)));
+		public <R> R accept(Visitor<R> visitor) {
+			return visitor.visit(this);
 		}
 
 		@Override
@@ -259,17 +266,8 @@ public interface Posting extends Goal, Bounded {
 		}
 
 		@Override
-		public Fiber<Posting> rename(Renaming renaming) {
-			if (!(factor instanceof Projectable)) {
-				throw new IllegalStateException(
-						"absorbed factor cannot cross the boundary: " + factor);
-			}
-			return ((Projectable<?>) factor).rename(renaming)
-					.flatMap(renamed -> declared.foldLeft(
-									Fiber.<List<Term<?>>> done(List.empty()),
-									(acc, term) -> acc.flatMap(terms ->
-											renaming.apply(term).map(terms::append)))
-							.map(terms -> Propagation.absorb(renamed, terms)));
+		public <R> R accept(Visitor<R> visitor) {
+			return visitor.visit(this);
 		}
 
 		@Override
@@ -325,10 +323,9 @@ public interface Posting extends Goal, Bounded {
 			return inner.answers(p);
 		}
 
-		/** Labels are presentation; canonical data crosses bare. */
 		@Override
-		public Fiber<Posting> rename(Renaming renaming) {
-			return inner.rename(renaming);
+		public <R> R accept(Visitor<R> visitor) {
+			return visitor.visit(this);
 		}
 
 		@Override
@@ -357,14 +354,9 @@ public interface Posting extends Goal, Bounded {
 			return parts.toJavaStream().flatMap(Posting::terms);
 		}
 
-		/** Parts transcribe wrapped; the joint doom resets to the safe default. */
 		@Override
-		public Fiber<Posting> rename(Renaming renaming) {
-			return parts.foldLeft(
-							Fiber.<List<Posting>> done(List.empty()),
-							(acc, part) -> acc.flatMap(renamed ->
-									part.rename(renaming).map(renamed::append)))
-					.map(renamed -> Posting.all(renamed.toJavaArray(Posting[]::new)));
+		public <R> R accept(Visitor<R> visitor) {
+			return visitor.visit(this);
 		}
 
 		@Override
