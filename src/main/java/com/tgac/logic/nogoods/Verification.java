@@ -7,8 +7,10 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.UnifyGoal;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.goals.Packaged;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.List;
@@ -44,12 +46,48 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Verification {
 
+	/** Steps at the substitution level — no package trial will be needed. */
+	private static final Posting.Visitor<Boolean> BINDING_SHAPED = new Posting.Visitor<Boolean>() {
+		@Override
+		public Boolean visit(UnifyGoal<?> unification) {
+			return true;
+		}
+
+		@Override
+		public Boolean visit(Posting.Resolution resolution) {
+			return true;
+		}
+
+		@Override
+		public Boolean visit(Posting.Activation activation) {
+			return false;
+		}
+
+		@Override
+		public Boolean visit(Posting.Absorption absorption) {
+			return false;
+		}
+
+		@Override
+		public Boolean visit(Posting.AllOf all) {
+			return all.getParts().forAll(part -> part.accept(this));
+		}
+	};
+
 	/**
 	 * Every nogood re-verified against the state: none = some nogood is violated,
-	 * the branch fails; otherwise the kept list — survivors simplified,
-	 * satisfied nogoods absent.
+	 * the branch fails; otherwise the kept list — survivors simplified to their
+	 * remainders, satisfied nogoods absent.
+	 *
+	 * <p>A store whose every literal is binding-shaped verifies at the
+	 * SUBSTITUTION level — synchronous, no scratch package, no settle: both
+	 * hard verdicts are monotone under binding growth, so pending agenda items
+	 * can only convert owed into decided later, the delay-safe direction.
 	 */
 	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
+		if (nogoods.forAll(n -> n.getLiterals().forAll(l -> l.accept(BINDING_SHAPED)))) {
+			return Fiber.done(bindingVerify(nogoods, state.substitution()));
+		}
 		// evaluation and comparison both need quiescence: the caller may sit
 		// mid-drain, so the base COMPLETES the pending items first (runs are
 		// search and stay with the real drain). A settle failure means the
@@ -62,6 +100,35 @@ public final class Verification {
 						(acc, nogood) -> acc.flatMap(kept -> kept.isDefined() ?
 								verificationStep(settled.get(), kept.get(), nogood) :
 								Fiber.done(kept))));
+	}
+
+	/** The whole store at the substitution level: Neq's verifyAndSimplify re-homed. */
+	private static Option<List<Nogood>> bindingVerify(List<Nogood> nogoods, Substitutions subs) {
+		List<Nogood> kept = List.empty();
+		for (Nogood nogood : nogoods) {
+			Substitutions scratch = subs;
+			List<Posting> survivors = List.empty();
+			boolean refuted = false;
+			for (Posting literal : nogood.getLiterals()) {
+				SubstitutionTrial.Outcome outcome = SubstitutionTrial.step(literal, scratch).get();
+				if (outcome.isRefuted()) {
+					refuted = true;
+					break;
+				}
+				scratch = outcome.getGrown();
+				if (!outcome.isEntailed()) {
+					survivors = survivors.append(outcome.getRemainder());
+				}
+			}
+			if (refuted) {
+				continue;
+			}
+			if (survivors.isEmpty()) {
+				return Option.none();
+			}
+			kept = kept.append(Nogood.of(survivors));
+		}
+		return Option.of(kept);
 	}
 
 	/** One nogood against the state: the kept list grown by the nogood's verdict. */
@@ -90,6 +157,20 @@ public final class Verification {
 			return Fiber.done(Option.of(survivors));
 		}
 		Posting literal = pending.head();
+		Option<SubstitutionTrial.Outcome> fast = SubstitutionTrial.step(literal, scratch.substitution());
+		if (fast.isDefined()) {
+			SubstitutionTrial.Outcome outcome = fast.get();
+			if (outcome.isRefuted()) {
+				return Fiber.done(Option.none());
+			}
+			// store factors deliberately do NOT hear these bindings: staleness
+			// only shifts verdicts toward "owed", the delay-safe direction
+			return outcome.isEntailed() ?
+					trial(pending.tail(), survivors,
+							Package.of(outcome.getGrown(), scratch.getStores())) :
+					trial(pending.tail(), survivors.append(outcome.getRemainder()),
+							Package.of(outcome.getGrown(), scratch.getStores()));
+		}
 		return imposed(literal, scratch).flatMap(worlds -> {
 			if (worlds.isEmpty()) {
 				return Fiber.done(Option.none());

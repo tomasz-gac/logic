@@ -59,29 +59,35 @@ public class VerificationTest {
 	}
 
 	@Test
-	public void anEntailedPostingIsCrossedOffAndSurvivorsKeepTheirOriginals() {
-		// y already holds its half; only the x half is still owed
+	public void anEntailedLiteralIsCrossedOffAndSurvivorsSimplifyToRemainders() {
+		// y already holds its half; the x half survives SIMPLIFIED — the
+		// residual prefix as a Resolution literal (Neq's remainder rewrite,
+		// the human's inheritance ruling, Aug 2026)
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Package state = given(Posting.bind(y, lval(2)));
-		Posting stillOwed = Posting.bind(x, lval(1));
 
-		Option<List<Nogood>> verdict = verified(state, stillOwed, Posting.bind(y, lval(2)));
+		Option<List<Nogood>> verdict = verified(state,
+				Posting.bind(x, lval(1)), Posting.bind(y, lval(2)));
 
 		Nogood survivor = verdict.get().head();
-		assertThat(survivor.getLiterals()).containsExactly(stillOwed);
+		assertThat(survivor.getLiterals()).hasSize(1);
+		assertThat(survivor.getLiterals().head()).isInstanceOf(Posting.Resolution.class);
+		assertThat(survivor.getLiterals().head().terms()
+				.anyMatch(t -> t == x.asVar().get())).isTrue();
 	}
 
 	@Test
-	public void anUndecidedNogoodSurvivesWhole() {
+	public void anUndecidedNogoodSurvivesWithBothRemainders() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Posting first = Posting.bind(x, lval(1));
-		Posting second = Posting.bind(y, lval(2));
 
-		Option<List<Nogood>> verdict = verified(Package.empty(), first, second);
+		Option<List<Nogood>> verdict = verified(Package.empty(),
+				Posting.bind(x, lval(1)), Posting.bind(y, lval(2)));
 
-		assertThat(verdict.get().head().getLiterals()).containsExactly(first, second);
+		List<Posting> survivors = verdict.get().head().getLiterals();
+		assertThat(survivors).hasSize(2);
+		assertThat(survivors).allMatch(l -> l instanceof Posting.Resolution);
 	}
 
 	@Test
@@ -132,6 +138,10 @@ public class VerificationTest {
 
 		Option<List<Nogood>> verdict = verified(state, alias, Posting.bind(y, lval(2)));
 
-		assertThat(verdict.get().head().getLiterals()).containsExactly(alias);
+		// one survivor: the alias simplified to its residual (y's binding);
+		// the y = 2 literal read entailed THROUGH the threading and crossed off
+		List<Posting> survivors = verdict.get().head().getLiterals();
+		assertThat(survivors).hasSize(1);
+		assertThat(survivors.head()).isInstanceOf(Posting.Resolution.class);
 	}
 }

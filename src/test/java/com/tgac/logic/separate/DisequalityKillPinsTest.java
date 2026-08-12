@@ -85,7 +85,7 @@ public class DisequalityKillPinsTest {
 
 		assertThat(answers(viaExclude, a2)).isEqualTo(answers(viaSeparate, a1));
 		assertThat(steps(viaSeparate, a1)).isEqualTo(1_202L);
-		assertThat(steps(viaExclude, a2)).isEqualTo(4_016L);
+		assertThat(steps(viaExclude, a2)).isEqualTo(1_210L);
 	}
 
 	// ---- shape 2: distincto over n vars, labelled (quadratic record load) ----
@@ -115,13 +115,7 @@ public class DisequalityKillPinsTest {
 		assertThat(viaSeparate.solve(vs1.get(0), TestSchedulers.factory()).count()).isEqualTo(24L);
 		assertThat(viaExclude.solve(vs2.get(0), TestSchedulers.factory()).count()).isEqualTo(24L);
 		assertThat(steps(viaSeparate, vs1.get(0))).isEqualTo(1_597L);
-		// FINDING (Aug 2026): the exclude side varies ACROSS JVM runs under the
-		// deterministic driver — sampled {18269, 18685, 19309} — so some loop
-		// in the package-trial path iterates in identity-hash order. The
-		// bind fast path replaces that path; re-measure after it lands and
-		// either the variance dies with the code or it gets root-caused then.
-		// An exact pin is owed here.
-		assertThat(steps(viaExclude, vs2.get(0))).isBetween(17_500L, 20_500L);
+		assertThat(steps(viaExclude, vs2.get(0))).isEqualTo(1_645L);
 	}
 
 	// ---- shape 3: rembero (recursion + records) ----
@@ -154,7 +148,7 @@ public class DisequalityKillPinsTest {
 				.map(Object::toString).sorted().collect(Collectors.toList());
 		assertThat(a2).isEqualTo(a1);
 		assertThat(steps(viaSeparate, out1)).isEqualTo(218L);
-		assertThat(steps(viaExclude, out2)).isEqualTo(436L);
+		assertThat(steps(viaExclude, out2)).isEqualTo(232L);
 	}
 
 	// ---- shape 4: the labelled carve (revise-heavy veto) ----
@@ -170,6 +164,6 @@ public class DisequalityKillPinsTest {
 
 		assertThat(answers(viaExclude, x2)).isEqualTo(answers(viaSeparate, x1));
 		assertThat(steps(viaSeparate, x1)).isEqualTo(118L);
-		assertThat(steps(viaExclude, x2)).isEqualTo(456L);
+		assertThat(steps(viaExclude, x2)).isEqualTo(126L);
 	}
 }
