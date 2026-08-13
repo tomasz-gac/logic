@@ -118,8 +118,13 @@ public final class Verification {
 	 * B's forbidden as entailed against it. Binding-shaped survivors only, so
 	 * every trial is Done and the assumption is exact; a mutual pair keeps its
 	 * later copy — head checks against kept AND pending, Neq's own tie-break.
+	 *
+	 * <p>Any trial answering with a real fiber claims nothing: {@code
+	 * Fiber.get} on a non-Done fiber would silently ground it on a side
+	 * engine, so the guard turns a broken shape assumption into a kept
+	 * nogood — wider, never wrong.
 	 */
-	private static List<Nogood> pruneSubsumed(List<Nogood> nogoods, Package base) {
+	static List<Nogood> pruneSubsumed(List<Nogood> nogoods, Package base) {
 		List<Nogood> kept = List.empty();
 		List<Nogood> pending = nogoods;
 		while (!pending.isEmpty()) {
@@ -133,9 +138,15 @@ public final class Verification {
 	}
 
 	private static boolean subsumed(Nogood nogood, List<Nogood> others, Package base) {
-		Package assumed = Trial.trial(nogood.getForbidden(), base).get().getGrown();
-		return others.exists(other ->
-				Trial.trial(other.getForbidden(), assumed).get().isEntailed());
+		Fiber<Trial.Outcome> assumption = Trial.trial(nogood.getForbidden(), base);
+		if (!assumption.isDone() || assumption.get().getGrown() == null) {
+			return false;
+		}
+		Package assumed = assumption.get().getGrown();
+		return others.exists(other -> {
+			Fiber<Trial.Outcome> trial = Trial.trial(other.getForbidden(), assumed);
+			return trial.isDone() && trial.get().isEntailed();
+		});
 	}
 
 	private static Fiber<Option<List<Nogood>>> fold(List<Nogood> nogoods, Package base) {

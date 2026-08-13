@@ -10,6 +10,8 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tgac.logic.finitedomain.FiniteDomain;
+import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Store;
 import com.tgac.logic.lattice.Propagator;
@@ -34,6 +36,19 @@ public class VerificationTest {
 	private static Option<List<Nogood>> verified(Package state, Posting... literals) {
 		return Verification.verify(List.of(Nogood.of(literals.length == 1 ?
 				literals[0] : Posting.all(literals))), state).get();
+	}
+
+	@Test
+	public void subsumptionClaimsNothingWhenTheTrialIsNotDone() {
+		// a store-shaped forbidden answers its trial with a real fiber, not
+		// Fiber.done — pruning must claim nothing rather than ground the
+		// trial on a side engine: the duplicate survives, wider never wrong
+		Unifiable<Long> x = lvar();
+		Nogood first = Nogood.of(FiniteDomain.dom(x, EnumeratedDomain.range(0L, 6L)));
+		Nogood second = Nogood.of(FiniteDomain.dom(x, EnumeratedDomain.range(0L, 6L)));
+
+		List<Nogood> kept = Verification.pruneSubsumed(List.of(first, second), Package.empty());
+		assertThat(kept).containsExactly(first, second);
 	}
 
 	@Test
