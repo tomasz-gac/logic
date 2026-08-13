@@ -1,6 +1,6 @@
 package com.tgac.logic.nogoods;
 
-// ABOUTME: Nogoods' boundary faces: split keeps wholly-named nogoods, rename
+// ABOUTME: NogoodConstraints' boundary faces: split keeps wholly-named nogoods, rename
 // ABOUTME: transcribes literals wrapped, and nogoods cross tabled calls whole.
 
 import com.tgac.logic.TestSchedulers;
@@ -26,8 +26,8 @@ import org.junit.Test;
 
 public class NogoodProjectionTest {
 
-	private static Nogoods store(Nogood... nogoods) {
-		return Nogoods.of(LinkedHashSet.of(nogoods));
+	private static NogoodConstraints store(Nogood... nogoods) {
+		return NogoodConstraints.of(LinkedHashSet.of(nogoods));
 	}
 
 	private static Nogood over(com.tgac.logic.constraints.Posting... literals) {
@@ -47,9 +47,9 @@ public class NogoodProjectionTest {
 		Unifiable<Integer> y = lvar();
 		Nogood aboutX = over(x.unifies(3));
 		Nogood aboutXY = over(x.unifies(1), y.unifies(2));
-		Nogoods whole = store(aboutX, aboutXY);
+		NogoodConstraints whole = store(aboutX, aboutXY);
 
-		io.vavr.Tuple2<Nogoods, Nogoods> parts = whole.split(
+		io.vavr.Tuple2<NogoodConstraints, NogoodConstraints> parts = whole.split(
 				Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()));
 
 		assertThat(parts._1.getNogoods()).containsExactly(aboutX);
@@ -62,8 +62,8 @@ public class NogoodProjectionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> z = lvar();
 
-		Nogoods a = store(over(x.unifies(3))).rename(toHole(x, 0)).get();
-		Nogoods b = store(over(z.unifies(3))).rename(toHole(z, 0)).get();
+		NogoodConstraints a = store(over(x.unifies(3))).rename(toHole(x, 0)).get();
+		NogoodConstraints b = store(over(z.unifies(3))).rename(toHole(z, 0)).get();
 
 		assertThat(a).isEqualTo(b);
 	}
@@ -73,9 +73,9 @@ public class NogoodProjectionTest {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> z = lvar();
 
-		Nogoods a = store(over(dom(x, EnumeratedDomain.range(0L, 5L))))
+		NogoodConstraints a = store(over(dom(x, EnumeratedDomain.range(0L, 5L))))
 				.rename(toHole(x, 0)).get();
-		Nogoods b = store(over(dom(z, EnumeratedDomain.range(0L, 5L))))
+		NogoodConstraints b = store(over(dom(z, EnumeratedDomain.range(0L, 5L))))
 				.rename(toHole(z, 0)).get();
 
 		assertThat(a).isEqualTo(b);
@@ -94,8 +94,8 @@ public class NogoodProjectionTest {
 								com.tgac.logic.unification.LVal.lval(3))
 						.get());
 
-		Nogoods viaResolution = store(over(resolved)).rename(toHole(x, 0)).get();
-		Nogoods viaBind = store(over(z.unifies(3))).rename(toHole(z, 0)).get();
+		NogoodConstraints viaResolution = store(over(resolved)).rename(toHole(x, 0)).get();
+		NogoodConstraints viaBind = store(over(z.unifies(3))).rename(toHole(z, 0)).get();
 
 		assertThat(viaResolution).isEqualTo(viaBind);
 	}

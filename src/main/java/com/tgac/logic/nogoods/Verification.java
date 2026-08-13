@@ -202,7 +202,7 @@ public final class Verification {
 	/**
 	 * An empty store is not knowledge: an imposition whose only trace is the
 	 * REGISTRATION of a store it then left empty (the inner exclusion of a
-	 * double negation discarding its nogood against a Nogoods-stripped
+	 * double negation discarding its nogood against a NogoodConstraints-stripped
 	 * scratch) has proven its content already holds — reading the empty
 	 * container as change would keep the literal owed forever and let ground
 	 * violations render silently.

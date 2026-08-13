@@ -22,7 +22,7 @@ import io.vavr.collection.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
 
-public class NogoodsTest {
+public class NogoodConstraintsTest {
 
 	private static Goal held(Posting... literals) {
 		return Exclusion.exclude(literals);

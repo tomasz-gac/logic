@@ -12,17 +12,16 @@ import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.LinkedHashSet;
-import io.vavr.collection.List;
 import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-@LawsFor(Nogoods.class)
-public class NogoodsLawsTest {
+@LawsFor(NogoodConstraints.class)
+public class NogoodConstraintsLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(NogoodsLawsTest.class);
+		LawCoverage.verifyClaimsExercised(NogoodConstraintsLawsTest.class);
 	}
 
 	private static final Unifiable<Integer> X = lvar();
@@ -34,11 +33,11 @@ public class NogoodsLawsTest {
 
 	@Test
 	public void nogoodUnionIsAMeetSemilattice() {
-		java.util.List<Nogoods> samples = Arrays.asList(
-				Nogoods.of(LinkedHashSet.empty()),
-				Nogoods.of(LinkedHashSet.of(X_APART)),
-				Nogoods.of(LinkedHashSet.of(Y_APART, NOT_BOTH)),
-				Nogoods.of(LinkedHashSet.of(X_APART, NOT_BOTH)));
+		java.util.List<NogoodConstraints> samples = Arrays.asList(
+				NogoodConstraints.of(LinkedHashSet.empty()),
+				NogoodConstraints.of(LinkedHashSet.of(X_APART)),
+				NogoodConstraints.of(LinkedHashSet.of(Y_APART, NOT_BOTH)),
+				NogoodConstraints.of(LinkedHashSet.of(X_APART, NOT_BOTH)));
 		SemilatticeLaws.checkLeqReversesAccumulation(samples);
 	}
 }

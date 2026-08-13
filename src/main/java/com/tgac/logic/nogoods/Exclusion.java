@@ -5,7 +5,6 @@ package com.tgac.logic.nogoods;
 
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Posting;
-import io.vavr.collection.List;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -22,7 +21,7 @@ public final class Exclusion {
 
 	public static Posting exclude(Posting... literals) {
 		Posting forbidden = literals.length == 1 ? literals[0] : Posting.all(literals);
-		return Propagation.activate(Nogood.of(forbidden), Nogoods::register,
+		return Propagation.activate(Nogood.of(forbidden), NogoodConstraints::register,
 				p -> bornViolated(forbidden, p));
 	}
 

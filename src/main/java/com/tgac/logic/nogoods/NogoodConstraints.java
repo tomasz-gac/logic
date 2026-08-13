@@ -49,8 +49,8 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @EqualsAndHashCode
 @RequiredArgsConstructor(staticName = "of")
-final class Nogoods implements Projectable<Nogoods> {
-	public static final Nogoods EMPTY = Nogoods.of(LinkedHashSet.empty());
+final class NogoodConstraints implements Projectable<NogoodConstraints> {
+	public static final NogoodConstraints EMPTY = NogoodConstraints.of(LinkedHashSet.empty());
 	private final LinkedHashSet<Nogood> nogoods;
 
 	public static Package register(Package a) {
@@ -59,13 +59,13 @@ final class Nogoods implements Projectable<Nogoods> {
 
 	/** More nogoods = more known: meet is union; wholesale re-verification keeps it exact. */
 	@Override
-	public Nogoods meet(Nogoods other) {
-		return Nogoods.of(nogoods.addAll(other.nogoods));
+	public NogoodConstraints meet(NogoodConstraints other) {
+		return NogoodConstraints.of(nogoods.addAll(other.nogoods));
 	}
 
 	/** Nogood containment directly — the order the union-meet derives. */
 	@Override
-	public boolean leq(Nogoods other) {
+	public boolean leq(NogoodConstraints other) {
 		return nogoods.containsAll(other.nogoods);
 	}
 
@@ -75,7 +75,7 @@ final class Nogoods implements Projectable<Nogoods> {
 	 * distributed (nogood-store.md §7). {@code _1 ∧ _2 = this}.
 	 */
 	@Override
-	public Tuple2<Nogoods, Nogoods> split(java.util.List<LVar<?>> vars) {
+	public Tuple2<NogoodConstraints, NogoodConstraints> split(java.util.List<LVar<?>> vars) {
 		Set<Unknown<?>> covered = new HashSet<>(vars);
 		LinkedHashSet<Nogood> in = LinkedHashSet.empty();
 		LinkedHashSet<Nogood> out = LinkedHashSet.empty();
@@ -89,17 +89,17 @@ final class Nogoods implements Projectable<Nogoods> {
 				out = out.add(nogood);
 			}
 		}
-		return Tuple.of(Nogoods.of(in), Nogoods.of(out));
+		return Tuple.of(NogoodConstraints.of(in), NogoodConstraints.of(out));
 	}
 
 	/** Every nogood transcribed wrapped — literal by literal, items re-instantiated. */
 	@Override
-	public Fiber<Nogoods> rename(Renaming renaming) {
+	public Fiber<NogoodConstraints> rename(Renaming renaming) {
 		return nogoods.foldLeft(
 						Fiber.<LinkedHashSet<Nogood>> done(LinkedHashSet.empty()),
 						(acc, nogood) -> acc.flatMap(renamed ->
 								nogood.rename(renaming).map(item -> renamed.add((Nogood) item))))
-				.map(Nogoods::of);
+				.map(NogoodConstraints::of);
 	}
 
 	@Override
@@ -109,12 +109,12 @@ final class Nogoods implements Projectable<Nogoods> {
 
 	@Override
 	public ConstraintStore remove(Stored c) {
-		return Nogoods.of(nogoods.remove((Nogood) c));
+		return NogoodConstraints.of(nogoods.remove((Nogood) c));
 	}
 
 	@Override
 	public ConstraintStore prepend(Stored c) {
-		return Nogoods.of(nogoods.add((Nogood) c));
+		return NogoodConstraints.of(nogoods.add((Nogood) c));
 	}
 
 	@Override
@@ -129,7 +129,7 @@ final class Nogoods implements Projectable<Nogoods> {
 
 	@Override
 	public Fiber<Revision> normalize(Package state) {
-		return Verification.verify(nogoods.toList(), state.withoutStore(Nogoods.class))
+		return Verification.verify(nogoods.toList(), state.withoutStore(NogoodConstraints.class))
 				.map(kept -> kept.isDefined() ?
 						revisedTo(LinkedHashSet.ofAll(kept.get())) :
 						Revision.fail());
@@ -138,7 +138,7 @@ final class Nogoods implements Projectable<Nogoods> {
 	private Revision revisedTo(LinkedHashSet<Nogood> kept) {
 		return kept.equals(nogoods) ?
 				Revision.unchanged() :
-				Revision.updated(Nogoods.of(kept));
+				Revision.updated(NogoodConstraints.of(kept));
 	}
 
 	@Override

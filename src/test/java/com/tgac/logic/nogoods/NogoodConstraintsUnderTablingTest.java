@@ -1,6 +1,6 @@
 package com.tgac.logic.nogoods;
 
-// ABOUTME: Nogoods through the tabling machinery: caller nogoods key the call,
+// ABOUTME: NogoodConstraints through the tabling machinery: caller nogoods key the call,
 // ABOUTME: equal keys share, body locals ride as witnesses, recursion carries them.
 
 import com.tgac.logic.TestSchedulers;
@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
 
-public class NogoodsUnderTablingTest {
+public class NogoodConstraintsUnderTablingTest {
 
 	private static Tabled<Unifiable<Long>> zeroToFour() {
 		return Tabling.define(x -> dom(x, EnumeratedDomain.range(0L, 5L)));
