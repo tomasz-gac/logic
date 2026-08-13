@@ -42,21 +42,16 @@ public class DisjunctionConstraintsTest {
 	}
 
 	@Test
-	public void aStoreVetoedAlternativeStaysOwedAndTheAnswerSaysSo() {
+	public void aStoreVetoedAlternativeDiesAtTheGroundFloor() {
 		// the fast path is store-blind by the ruled tradeoff: ¬(x=1) lives
-		// in the nogood store, so the binding-shaped disjunct cannot see
-		// the veto and stays owed — the answer is CONDITIONAL and carries
-		// both residuals, sound and wider; eager cross-store discharge is
-		// the doomed-seam's future earliness, not tier one
+		// in the nogood store, so the disjunct stays owed in residence —
+		// but enforcement expands it at the ground floor, the vetoed branch
+		// dies against the nogood, and the survivor delivers decided
 		Unifiable<Integer> x = lvar();
 		Goal g = anyOf(x.unifies(1), x.unifies(2))
 				.and(exclude(x.unifies(1)));
 
-		List<String> rendered = g.solve(x, TestSchedulers.factory())
-				.map(Object::toString)
-				.collect(Collectors.toList());
-		assertThat(rendered).hasSize(1);
-		assertThat(rendered.get(0)).contains("∨").contains("¬");
+		assertThat(answers(g, x)).containsExactly(2);
 	}
 
 	@Test
@@ -112,16 +107,13 @@ public class DisjunctionConstraintsTest {
 	}
 
 	@Test
-	public void anUndecidedDisjunctRendersAsResidual() {
-		// no knowledge decides it: the answer is conditional and must say so
+	public void anUndecidedDisjunctEnumeratesAtTheGroundFloor() {
+		// no knowledge decides it: enforcement expands the alternatives as
+		// a Conde of impositions — answer-set parity with the conde
+		// spelling, the store a pure optimization
 		Unifiable<Integer> x = lvar();
-		List<String> rendered = anyOf(x.unifies(1), x.unifies(2))
-				.solve(x, TestSchedulers.factory())
-				.map(Object::toString)
-				.collect(Collectors.toList());
-
-		assertThat(rendered).hasSize(1);
-		assertThat(rendered.get(0)).contains("∨").contains("≡");
+		assertThat(answers(anyOf(x.unifies(1), x.unifies(2)), x))
+				.containsExactly(1, 2);
 	}
 
 	@Test

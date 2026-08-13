@@ -11,6 +11,7 @@ import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
+import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
@@ -91,9 +92,19 @@ final class DisjunctionConstraints implements Absorbable<DisjunctionConstraints>
 		return c instanceof Disjunct && disjuncts.contains((Disjunct) c);
 	}
 
+	/**
+	 * The ground floor expands what propagation left undecided: every
+	 * resident disjunct — output-related or not, an off-answer disjunct can
+	 * be unsatisfiable in truth — becomes a Conde of its alternatives'
+	 * impositions. Each branch imposes one alternative, which the next
+	 * normalize reads as entailed and discharges; branches whose
+	 * alternative cannot stand die here. Decided answers, conde parity.
+	 */
 	@Override
 	public <T> Goal enforce(Term<T> x) {
-		return Goal.success();
+		return disjuncts.foldLeft(Goal.success(),
+				(g, disjunct) -> g.and(Conde.of(
+						disjunct.getAlternatives().map(Goal.class::cast))));
 	}
 
 	@Override
@@ -144,25 +155,32 @@ final class DisjunctionConstraints implements Absorbable<DisjunctionConstraints>
 	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package s) {
 		List<Stored> residuals = List.empty();
 		for (Disjunct disjunct : disjuncts) {
-			java.util.List<Term<?>> names = disjunct.terms()
-					.map(term -> (Term<?>) s.substitution().walkAll(term))
-					.flatMap(MiniKanren::namesIn)
-					.map(name -> (Term<?>) name)
-					.collect(Collectors.toList());
+			java.util.List<Term<?>> names = getDisjunctNames(s, disjunct);
 			boolean rendered = !names.isEmpty() && names.stream()
 					.allMatch(name -> renameSubstitutions.walk(name) != name);
 			if (!rendered) {
 				continue;
 			}
-			Map<Unknown<?>, Term<?>> display = names.stream()
-					.flatMap(MiniKanren::namesIn)
-					.collect(Collectors.toMap(Function.identity(), renameSubstitutions::walk,
-							(first, same) -> first,
-							LinkedHashMap::new));
-			residuals = residuals.append((Stored) disjunct.rename(Renaming.of(display)).get());
+			Map<Unknown<?>, Term<?>> display = getRenameMapping(renameSubstitutions, names);
+			residuals = residuals.append(disjunct.rename(Renaming.of(display)).get());
 		}
 		return residuals.isEmpty() ?
 				unifiable :
 				Constrained.of(unifiable, residuals);
+	}
+
+	private static Map<Unknown<?>, Term<?>> getRenameMapping(Substitutions renameSubstitutions, java.util.List<Term<?>> names) {
+		return names.stream()
+				.flatMap(MiniKanren::namesIn)
+				.collect(Collectors.toMap(Function.identity(), renameSubstitutions::walk,
+						(first, same) -> first,
+						LinkedHashMap::new));
+	}
+
+	private static java.util.List<Term<?>> getDisjunctNames(Package s, Disjunct disjunct) {
+		return disjunct.terms()
+				.map(term -> s.substitution().walkAll(term))
+				.flatMap(MiniKanren::namesIn)
+				.collect(Collectors.toList());
 	}
 }

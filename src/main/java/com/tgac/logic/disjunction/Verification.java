@@ -83,15 +83,16 @@ public final class Verification {
 	private static Fiber<Fold> foldOne(Disjunct disjunct, Package base) {
 		return disjunct.getAlternatives().foldLeft(
 						Fiber.done(Option.of(List.<Posting> empty())),
-						(acc, alternative) -> acc.flatMap(survivors -> !survivors.isDefined() ?
-								Fiber.done(survivors) :
-								Trial.trial(alternative, base).map(outcome ->
-										outcome.isEntailed() ?
-												Option.<List<Posting>> none() :
-												outcome.isRefuted() ?
-														survivors :
-														Option.of(survivors.get()
-																.append(outcome.getRemainder())))))
+						(acc, alternative) -> acc.flatMap(survivors ->
+								!survivors.isDefined() ?
+										Fiber.done(survivors) :
+										Trial.trial(alternative, base).map(outcome ->
+												outcome.isEntailed() ?
+														Option.none() :
+														outcome.isRefuted() ?
+																survivors :
+																Option.of(survivors.get()
+																		.append(outcome.getRemainder())))))
 				.map(survivors -> {
 					if (!survivors.isDefined()) {
 						return Fold.DISCHARGED;
