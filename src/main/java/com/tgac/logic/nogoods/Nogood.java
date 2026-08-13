@@ -5,6 +5,7 @@ package com.tgac.logic.nogoods;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.UnifyGoal;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Store;
@@ -21,9 +22,52 @@ import lombok.Value;
  * for {@code ¬(l₁ ∧ … ∧ lₙ)}). The store-level conjunction of many nogoods
  * is the package's; a nogood only ever says "not this".
  */
-@Value(staticConstructor = "of")
+@Value
 public class Nogood implements Stored, Transcribable {
 	Posting forbidden;
+
+	/**
+	 * The forbidden conjunct is held FLAT: ∧ is associative, so nested
+	 * {@code all}s are one conjunction — flattening at the envelope makes
+	 * structural equality match semantic equality (dedup and cross-lineage
+	 * key comparison would otherwise miss same-content nogoods that differ
+	 * only in nesting) and keeps the trial's fast-path partition shallow.
+	 * Labels unwrap on the way (presentation, outside identity).
+	 */
+	public static Nogood of(Posting forbidden) {
+		List<Posting> flat = forbidden.accept(FLATTEN);
+		return new Nogood(flat.size() == 1 ?
+				flat.head() :
+				Posting.all(flat.toJavaArray(Posting[]::new)));
+	}
+
+	private static final Posting.Visitor<List<Posting>> FLATTEN =
+			new Posting.Visitor<List<Posting>>() {
+				@Override
+				public List<Posting> visit(UnifyGoal<?> unification) {
+					return List.of(unification);
+				}
+
+				@Override
+				public List<Posting> visit(Posting.Resolution resolution) {
+					return List.of(resolution);
+				}
+
+				@Override
+				public List<Posting> visit(Posting.Activation activation) {
+					return List.of(activation);
+				}
+
+				@Override
+				public List<Posting> visit(Posting.Absorption absorption) {
+					return List.of(absorption);
+				}
+
+				@Override
+				public List<Posting> visit(Posting.AllOf all) {
+					return all.getParts().flatMap(part -> part.accept(this)).toList();
+				}
+			};
 
 	@Override
 	public Class<? extends Store> getStoreClass() {

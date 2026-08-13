@@ -29,6 +29,24 @@ public class NogoodsTest {
 	}
 
 	@Test
+	public void nestedConjunctsFlattenAtTheEnvelope() {
+		// ∧ is associative: ¬(a ∧ (b ∧ c)) IS ¬(a ∧ b ∧ c) — the envelope
+		// normalizes, so structural equality matches semantic equality and
+		// nested binds keep the fast-path partition
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		Unifiable<Integer> c = lvar();
+		Posting pa = Posting.bind(a, lval(1));
+		Posting pb = Posting.bind(b, lval(2));
+		Posting pc = Posting.bind(c, lval(3));
+
+		Nogood nested = Nogood.of(Posting.all(pa, Posting.all(pb, pc)));
+		Nogood flat = Nogood.of(Posting.all(pa, pb, pc));
+
+		assertThat(nested).isEqualTo(flat);
+	}
+
+	@Test
 	public void aViolatedNogoodFailsTheBranch() {
 		Unifiable<Integer> x = lvar();
 
