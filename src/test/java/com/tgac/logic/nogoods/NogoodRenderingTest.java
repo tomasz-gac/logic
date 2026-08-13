@@ -35,7 +35,7 @@ public class NogoodRenderingTest {
 		Unifiable<Integer> x = lvar();
 
 		assertThat(rendered(exclude(x.unifies(3)), x))
-				.containsExactly("_.0 : ¬(_.0 ≣ {3})");
+				.containsExactly("_.0 : ¬(_.0 ≡ {3})");
 	}
 
 	@Test
@@ -48,8 +48,8 @@ public class NogoodRenderingTest {
 
 		assertThat(answers).hasSize(1);
 		assertThat(answers.get(0))
-				.contains("_.0 ≣ {3}")
-				.contains("_.1 ≣ {4}")
+				.contains("_.0 ≡ {3}")
+				.contains("_.1 ≡ {4}")
 				.contains("¬(");
 	}
 
@@ -90,7 +90,7 @@ public class NogoodRenderingTest {
 		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> out = lval(Tuple.of(x, y));
 
 		assertThat(rendered(exclude(x.unifies(y)), out))
-				.containsExactly("{(_.0, _.1)} : ¬(_.0 ≣ _.1)");
+				.containsExactly("{(_.0, _.1)} : ¬(_.0 ≡ _.1)");
 	}
 
 	@Test
@@ -100,7 +100,7 @@ public class NogoodRenderingTest {
 		Unifiable<Integer> y = lvar();
 
 		assertThat(rendered(notThree.apply(y), y))
-				.containsExactly("_.0 : ¬(_.0 ≣ {3})");
+				.containsExactly("_.0 : ¬(_.0 ≡ {3})");
 	}
 
 	@Test

@@ -45,7 +45,7 @@ public class Logic {
 				Matche.llist((a, d) ->
 						unify(both, LList.of(a, res))
 								.and(defer(() -> appendo(d, second, res)))))
-				.named(s -> formatLList(s, first) + " ++ " + formatLList(s, second) + " ≣ " + formatLList(s, both));
+				.named(s -> formatLList(s, first) + " ++ " + formatLList(s, second) + " ≡ " + formatLList(s, both));
 	}
 
 	public static <T> String formatLList(Unifiable<LList<T>> first) {

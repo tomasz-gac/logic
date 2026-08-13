@@ -63,7 +63,7 @@ public class Disequality {
 						separate(a, x)
 								.and(unify(out, LList.of(a, res)))
 								.and(Goal.defer(() -> rembero(d, x, res)))))))
-				.named(pkg -> pkg.format(x) + " ⊄ " + Logic.formatLList(pkg, ls) + " ≣ " + pkg.format(out));
+				.named(pkg -> pkg.format(x) + " ⊄ " + Logic.formatLList(pkg, ls) + " ≡ " + pkg.format(out));
 	}
 
 	public static <A> Goal distincto(Unifiable<LList<A>> distinct) {

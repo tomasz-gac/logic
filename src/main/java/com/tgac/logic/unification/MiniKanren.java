@@ -144,7 +144,7 @@ public class MiniKanren {
 		// that the type system cannot catch when it is nested inside a value
 		if (l.asReified().isDefined() || r.asReified().isDefined()) {
 			throw new IllegalStateException(
-					"Reified terms cannot re-enter unification: " + l + " ≣ " + r);
+					"Reified terms cannot re-enter unification: " + l + " ≡ " + r);
 		}
 
 		// it's important to return the same object when l equals r

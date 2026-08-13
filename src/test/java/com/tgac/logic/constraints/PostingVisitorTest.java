@@ -65,7 +65,7 @@ public class PostingVisitorTest {
 	@Test
 	public void namedUnwrapsByDefaultAndAnOverrideSeesIt() {
 		// a BARE unification wrapped once — x.unifies(3) itself is already
-		// Named (the ≣ trace label), which the row test above sees through
+		// Named (the ≡ trace label), which the row test above sees through
 		Unifiable<Integer> x = lvar();
 		Posting labelled = UnifyGoal.of(x, lval(3), false).named("the bind");
 

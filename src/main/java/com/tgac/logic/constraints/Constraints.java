@@ -24,12 +24,12 @@ public class Constraints {
 
 	public static <T> Posting unify(Unifiable<T> u, Unifiable<T> v) {
 		return UnifyGoal.of(u, v, false)
-				.named(pkg -> pkg.format(u) + " ≣ " + pkg.format(v));
+				.named(pkg -> pkg.format(u) + " ≡ " + pkg.format(v));
 	}
 
 	public static <T> Posting unifyNc(Unifiable<T> u, Unifiable<T> v) {
 		return UnifyGoal.of(u, v, true)
-				.named(pkg -> pkg.format(u) + " ≣_nc " + pkg.format(v));
+				.named(pkg -> pkg.format(u) + " ≡_nc " + pkg.format(v));
 	}
 
 	public static <T> Posting unify(Unifiable<T> u, T v) {
