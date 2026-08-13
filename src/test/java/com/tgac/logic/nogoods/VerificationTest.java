@@ -129,6 +129,25 @@ public class VerificationTest {
 	}
 
 	@Test
+	public void aMixedConjunctCrossesOffItsEntailedBindPart() {
+		// x = 3 already holds, so the bind part crosses off and the survivor
+		// is the dom part ALONE — per-part granularity through the package
+		// trial, not the whole conjunct kept as a blob
+		Unifiable<Integer> x = lvar();
+		Unifiable<Long> y = lvar();
+		Package state = given(Posting.bind(x, lval(3)));
+
+		Option<List<Nogood>> verdict = verified(state,
+				Posting.bind(x, lval(3)),
+				com.tgac.logic.finitedomain.FiniteDomain.dom(y,
+						com.tgac.logic.finitedomain.domains.EnumeratedDomain.range(2L, 5L)));
+
+		Posting survivor = verdict.get().head().getForbidden();
+		assertThat(survivor).isNotInstanceOf(Posting.AllOf.class);
+		assertThat(survivor.terms().anyMatch(t -> t == y.asVar().get())).isTrue();
+	}
+
+	@Test
 	public void bindingsThreadAcrossPostingsSharingVariables() {
 		// x is 2; imposing x = y binds y to 2, so y = 2 is then entailed and
 		// crosses off — the jointness of Neq's whole-record trial

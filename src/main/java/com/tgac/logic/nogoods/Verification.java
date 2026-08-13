@@ -101,7 +101,7 @@ public final class Verification {
 			return Fiber.done(bindingKept);
 		}
 		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
-				Fiber.<Option<List<Nogood>>> done(Option.none()) :
+				Fiber.done(Option.none()) :
 				byShape._2.foldLeft(
 								Fiber.done(Option.of(List.<Nogood> empty())),
 								(acc, nogood) -> acc.flatMap(kept -> kept.isDefined() ?
@@ -127,25 +127,15 @@ public final class Verification {
 		return Option.of(kept);
 	}
 
-	/** One package-shaped nogood against the settled state. */
+	/** One package-shaped nogood: the trial visitor's verdict, verdict-mapped. */
 	private static Fiber<Option<List<Nogood>>> verificationStep(
 			Package state, List<Nogood> kept, Nogood nogood) {
-		Posting forbidden = nogood.getForbidden();
-		// the package trial, whole-posting: imposing the forbidden conjunct on
-		// the scratch and reading the run — FAILS = refuted, discard; changes
-		// NOTHING = the whole conjunction already holds, violated; NEW
-		// knowledge = still owed, kept as its original self. A fork reads
-		// conservatively (owed). Per-part granularity for mixed conjuncts
-		// arrives with the trial visitor owning the package fallback.
-		return imposed(forbidden, state).map(worlds -> {
-			if (worlds.isEmpty()) {
-				return Option.of(kept);
-			}
-			if (worlds.size() == 1 && unchanged(state, worlds.head())) {
-				return Option.none();
-			}
-			return Option.of(kept.append(nogood));
-		});
+		return PackageTrial.trial(nogood.getForbidden(), state).map(outcome ->
+				outcome.isRefuted() ?
+						Option.of(kept) :
+						outcome.isEntailed() ?
+								Option.none() :
+								Option.of(kept.append(Nogood.of(outcome.getRemainder()))));
 	}
 
 	/**
@@ -178,7 +168,7 @@ public final class Verification {
 	 * order) remains available as a drift-immune refinement — pure
 	 * optimization, buying earliness on the delay side.
 	 */
-	private static boolean unchanged(Package before, Package after) {
+	static boolean unchanged(Package before, Package after) {
 		return before == after
 				|| before.equals(after)
 				|| before.substitution().equals(after.substitution())
