@@ -43,6 +43,26 @@ public class TrialEdgeTest {
 	}
 
 	@Test
+	public void aStoreVetoedBindStaysOwedAndDischargesAtTheGroundFloor() {
+		// the substitution trial is store-blind: ¬(x=3) with resident
+		// x ∈ 5..8 stays OWED (the package trial would discharge it at first
+		// examination through the FD veto) — kept wider, never wrong: every
+		// labelled value refutes the bind branch-wise and the full answer
+		// set delivers. The eager discharge is the doomed(Package) seam's
+		// future earliness, not a soundness need
+		Unifiable<Long> x = lvar();
+
+		java.util.List<Long> answers = dom(x, EnumeratedDomain.range(5L, 9L))
+				.and(exclude(x.unifies(3L)))
+				.solve(x, TestSchedulers.factory())
+				.map(Term::get)
+				.sorted()
+				.collect(java.util.stream.Collectors.toList());
+
+		assertThat(answers).containsExactly(5L, 6L, 7L, 8L);
+	}
+
+	@Test
 	public void doubleNegationDoesNotNarrowEagerly() {
 		// ¬¬(x ∈ 0..4) must not become x ∈ 0..4 in the FD store
 		Unifiable<Long> x = lvar();

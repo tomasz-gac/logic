@@ -22,8 +22,15 @@ import lombok.Value;
  * SUBSTITUTIONS — no package copy, no workforce claim. Exact on both hard
  * verdicts (unification failure and entailment are monotone under binding
  * growth, so neither can be lifted by pending agenda items or store
- * reactions); everything it cannot see errs toward OWED, the delay-safe
- * direction. The remainder is the revalidated delta itself, resolved — a
+ * reactions — and entailment has no veto surface left: the bindings
+ * already stand, so the package imposition would be a no-op resolve).
+ * Everything it cannot see errs toward OWED, the delay-safe direction:
+ * a store veto the package trial would discharge on (a bind against a
+ * disjoint resident domain) keeps the nogood wider until the ground
+ * floor discharges it at labelling, and a pending item that dooms the
+ * branch is the real drain's report instead of an early one here.
+ * Eager discharge, if earliness is ever worth buying, belongs on the
+ * doomed(Package) seam — store lookups, never store trials. The remainder is the revalidated delta itself, resolved — a
  * literal simplifies into the prefix posting and shrinks monotonically
  * across re-verifications (Neq's record behavior under its real name).
  * Literals holding store content answer {@code none}: the package trial
