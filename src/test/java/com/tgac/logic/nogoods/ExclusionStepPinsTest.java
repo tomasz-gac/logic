@@ -23,6 +23,8 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.List;
@@ -106,6 +108,58 @@ public class ExclusionStepPinsTest {
 		// 4 vars over 1..4 all-different: 4! = 24 assignments
 		assertThat(g.solve(vars.get(0), TestSchedulers.factory()).count()).isEqualTo(24L);
 		assertThat(steps(g, vars.get(0))).isEqualTo(1_645L);
+	}
+
+	// ---- shape 2b: all-different at scale (the load regimes) ----
+
+	@Test
+	public void scaledAllDifferent() {
+		// 6 vars over 1..6: 15 resident nogoods, 720 answers — the regime
+		// where wholesale re-verification and the subsumption sweep are
+		// both quadratic in the store. Baseline (the restored record store,
+		// measured at this substrate and deleted again): 63119 — the small-
+		// shape ~3% gap is fixed overhead, not a scaling factor (0.2% here)
+		Array<Unifiable<Integer>> vars = Array.fill(6, LVar::lvar);
+		Goal g = Goal.success();
+		for (int i = 0; i < vars.size(); i++) {
+			for (int j = i + 1; j < vars.size(); j++) {
+				g = g.and(exclude(vars.get(i).unifies(vars.get(j))));
+			}
+		}
+		for (Unifiable<Integer> v : vars) {
+			g = g.and(FiniteDomain.dom(v, dom(1, 2, 3, 4, 5, 6)));
+		}
+
+		assertThat(g.solve(vars.get(0), TestSchedulers.factory()).count()).isEqualTo(720L);
+		assertThat(steps(g, vars.get(0))).isEqualTo(63_239L);
+	}
+
+	// ---- shape 2c: subsumption-heavy (the sweep's cost and its benefit) ----
+
+	@Test
+	public void subsumptionHeavy() {
+		// nine joint nogoods over a 3x3 corner, then three singles that
+		// subsume a row each: the store must end minimal (3 nogoods) and
+		// the sweep's O(n^2) trials are what this count carries. Baseline
+		// (the restored record store, same sweep semantics): 346 — the
+		// widest measured gap (~28%), joint registration pays the most
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> p = lvar();
+		Goal g = unify(p, lval(Tuple.of(x, y)));
+		for (int i = 1; i <= 3; i++) {
+			for (int j = 1; j <= 3; j++) {
+				g = g.and(exclude(p.unifies(lval(Tuple.of(lval(i), lval(j))))));
+			}
+		}
+		for (int i = 1; i <= 3; i++) {
+			g = g.and(exclude(x.unifies(i)));
+		}
+		g = g.and(FiniteDomain.dom(x, dom(1, 2, 3, 4, 5, 6)))
+				.and(FiniteDomain.dom(y, dom(1, 2, 3, 4, 5, 6)));
+
+		assertThat(g.solve(x, TestSchedulers.factory()).count()).isEqualTo(18L);
+		assertThat(steps(g, x)).isEqualTo(442L);
 	}
 
 	// ---- shape 3: rembero (recursion + nogoods) ----
