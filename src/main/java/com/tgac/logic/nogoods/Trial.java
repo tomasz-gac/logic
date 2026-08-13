@@ -90,7 +90,11 @@ final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		// an EMPTY residual is not the trial passing — the literal is
 		// entailed and crosses off; the branch-failing verdict (no survivors
 		// left = violated) is the caller's fold
-		return Fiber.done(resolved(minted.get(), scratch.substitution()));
+		Prefix residual = minted.get();
+		return Fiber.done(residual.isEmpty() ?
+				Outcome.entailed(scratch) :
+				Outcome.owed(Propagation.resolve(residual),
+						withSubstitutions(residual.appliedTo(scratch.substitution()))));
 	}
 
 	/**
@@ -124,13 +128,6 @@ final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 						residuals.head() :
 						Posting.all(residuals.toJavaArray(Posting[]::new)),
 				withSubstitutions(current)));
-	}
-
-	private Outcome resolved(Prefix residual, Substitutions subs) {
-		return residual.isEmpty() ?
-				Outcome.entailed(scratch) :
-				Outcome.owed(Propagation.resolve(residual),
-						withSubstitutions(residual.appliedTo(subs)));
 	}
 
 	/**
