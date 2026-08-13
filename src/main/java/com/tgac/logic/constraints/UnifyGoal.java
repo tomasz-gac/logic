@@ -8,6 +8,7 @@ import static com.tgac.functional.category.Nothing.nothing;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.NamedGoal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
@@ -53,6 +54,13 @@ public class UnifyGoal<T> implements Posting {
 	@Override
 	public <R> R accept(Posting.Visitor<R> visitor) {
 		return visitor.visit(this);
+	}
+
+	/** The label pattern {@link NamedGoal} renders with, against the empty state. */
+	@Override
+	public String toString() {
+		Package empty = Package.empty();
+		return empty.format(u) + " = " + empty.format(v);
 	}
 
 	@Override

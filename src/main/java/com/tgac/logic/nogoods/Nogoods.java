@@ -4,6 +4,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: wrapped into Revision, revise is normalize by another trigger.
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
@@ -21,6 +22,7 @@ import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
+import io.vavr.collection.List;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.EqualsAndHashCode;
@@ -148,26 +150,52 @@ final class Nogoods implements Projectable<Nogoods> {
 	}
 
 	/**
-	 * Stage wall: a nogood still live about the rendered term is an expressed
-	 * infinity this stage cannot render — refuse loudly rather than deliver
-	 * an answer with its condition silently dropped.
+	 * A nogood still live about the rendered term is an expressed infinity:
+	 * it ATTACHES to the answer as a residual through {@link Constrained} —
+	 * expressed, never dropped — displayed through the postings' own
+	 * toString. Literals about unrendered names prune from the DISPLAY copy
+	 * (Neq's purify convention: display-only, the store unaffected); a nogood
+	 * whose every literal pruned stays invisible, as it always was.
 	 */
 	@Override
+	@SuppressWarnings("unchecked")
 	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package s) {
 		// renameSubstitutions is the answer's canonical seed: a live name it
 		// binds is part of the rendered answer
+		List<Stored> residuals = List.empty();
 		for (Nogood nogood : nogoods) {
-			nogood.terms()
-					.map(term -> s.substitution().walkAll(term))
-					.flatMap(MiniKanren::namesIn)
-					.filter(name -> renameSubstitutions.walk((Term<?>) name) != name)
-					.findFirst()
-					.ifPresent(name -> {
-						throw new IllegalStateException(
-								"unresolved nogood " + nogood + " about rendered " + name
-										+ ": rendering conditional answers is not built at this stage");
+			List<Posting> kept = literals(nogood)
+					.filter(literal -> {
+						java.util.List<Term<?>> names = literal.terms()
+								.map(term -> (Term<?>) s.substitution().walkAll(term))
+								.flatMap(MiniKanren::namesIn)
+								.map(name -> (Term<?>) name)
+								.collect(java.util.stream.Collectors.toList());
+						return !names.isEmpty() && names.stream()
+								.allMatch(name -> renameSubstitutions.walk(name) != name);
 					});
+			if (kept.isEmpty()) {
+				continue;
+			}
+			java.util.Map<Unknown<?>, Term<?>> display = new java.util.LinkedHashMap<>();
+			kept.toJavaStream()
+					.flatMap(Posting::terms)
+					.map(term -> (Term<?>) s.substitution().walkAll(term))
+					.flatMap(MiniKanren::namesIn)
+					.forEach(name -> display.put(name, renameSubstitutions.walk((Term<?>) name)));
+			Nogood pruned = Nogood.of(kept.size() == 1 ?
+					kept.head() :
+					Posting.all(kept.toJavaArray(Posting[]::new)));
+			residuals = residuals.append((Stored) pruned.rename(Renaming.of(display)).get());
 		}
-		return unifiable;
+		return residuals.isEmpty() ?
+				unifiable :
+				Constrained.of(unifiable, residuals);
+	}
+
+	private static List<Posting> literals(Nogood nogood) {
+		return nogood.getForbidden() instanceof Posting.AllOf ?
+				((Posting.AllOf) nogood.getForbidden()).getParts() :
+				List.of(nogood.getForbidden());
 	}
 }

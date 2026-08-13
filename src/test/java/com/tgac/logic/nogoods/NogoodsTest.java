@@ -115,16 +115,20 @@ public class NogoodsTest {
 	}
 
 	@Test
-	public void aLiveNogoodAboutARenderedTermRefusesToRenderSilently() {
-		// both literals stay owed; the answer would carry the nogood's condition
-		// invisibly — the stage wall refuses instead
+	public void aLiveNogoodAboutARenderedTermAttachesAsAResidual() {
+		// both literals stay owed; the condition rides the answer VISIBLY
+		// through the carrier — expressed, never dropped (the old wall's
+		// refusal, upgraded to rendering). y is unrendered: its literal
+		// prunes from the display, Neq's purify convention
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
 		Goal g = held(Posting.bind(x, lval(1)), Posting.bind(y, lval(2)));
 
-		assertThatThrownBy(() -> g.solve(x, TestSchedulers.factory()).count())
-				.isInstanceOf(IllegalStateException.class);
+		java.util.List<String> answers = g.solve(x, TestSchedulers.factory())
+				.map(Object::toString)
+				.collect(java.util.stream.Collectors.toList());
+		assertThat(answers).containsExactly("_.0 : ¬(_.0 = {1})");
 	}
 
 	@Test
