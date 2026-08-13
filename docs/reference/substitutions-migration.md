@@ -129,14 +129,49 @@ an O(n) chain-step lookup rebuilds the 2s→20s regression class at the
 representation level.
 
 So: the INTERFACE ships (step A makes backing swappable in principle); no
-second implementation ships without a benchmark. The interesting candidate is
-the **adaptive representation** (Clojure's move: array-map under ~8–16
-entries, promote to HAMT above) — it captures the small-subst win where Byrd
-is right (fresh branches, which dominate a BFS frontier) without betraying
-deep derivations. Decision procedure: a benchmark pitting HAMT / assoc /
-adaptive on BOTH workload shapes (many small branches vs one deep derivation),
-settled by numbers the way `SchedulerEquivalenceTest` settles scheduler
-questions. Until then, vavr `HashMap` is the one implementation.
+second implementation ships without a benchmark. Candidates, ranked by
+expected payoff-per-risk against this engine's access pattern (insert-only,
+monotone within a branch, read-dominated, identity keys):
+
+1. **Birth-indexed radix trie.** The key fact the HAMT wastes: `LVar` carries
+   a dense monotone `long birth`, so substitution keys are secretly ordinals.
+   A bitmapped radix trie indexed by birth needs no hashing (lookup = radix
+   descent on the long); binding a fresh variable is a tail append
+   (fresh vars always hold the maximum id — the PersistentVector tail trick
+   makes that amortized O(1)); and vars born together share leaf nodes, so
+   the temporal locality of unification becomes spatial locality, which
+   identity hashing actively destroys today. Structurally the right shape,
+   not a tuned wrong one.
+2. **Hash-consing terms.** Orthogonal to the map: intern immutable terms so
+   structural equality becomes pointer equality — cheaper deep-walks, prefix
+   minting, and nogood dedup. The intern table is the only new machinery.
+3. **CHAMP (the Capsule library).** A strictly-better-constants HAMT swap:
+   payload/sub-node separation for cache locality, canonical structure giving
+   O(size) equality with early exit and cached hashes. The equality win lands
+   beyond `walk`: `Verification.unchanged` compares whole packages per trial.
+   Capsule's transients fit the agenda drain — a single-threaded window where
+   batch-mutate-then-freeze is safe even in a BFS engine.
+4. **Chain-flattening on extend.** When minting a new version, rebind walked
+   var→var chains to their representative — persistent, denotation-preserving
+   path compression. Named hazard: it changes STRUCTURAL equality between
+   same-denotation substitutions, and `Verification.unchanged` compares
+   structurally — flattened-vs-not reads "changed" (the false-owed direction:
+   safe, but it erodes the classifier). Gate on that interaction.
+
+The earlier candidate stands alongside these: the **adaptive
+representation** (Clojure's move: array-map under ~8–16 entries, promote
+above) captures the small-subst win where Byrd is right (fresh branches,
+which dominate a BFS frontier) without betraying deep derivations — though
+the birth-radix trie's tail node captures much of the same win natively.
+Not worth touching: the package's stores map (2–4 entries), Nogoods'
+LinkedHashSet, vavr Lists in fold positions.
+
+Decision procedure: a benchmark pitting the candidates on BOTH workload
+shapes (many small branches vs one deep derivation), settled by numbers the
+way `SchedulerEquivalenceTest` settles scheduler questions. The step pins
+are blind here — every candidate changes nanoseconds per step, not steps —
+so the gate is wall-clock. Until then, vavr `HashMap` is the one
+implementation.
 
 ## 6. Order and sizing
 
