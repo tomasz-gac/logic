@@ -104,8 +104,8 @@ final class DisjunctionConstraints implements Absorbable<DisjunctionConstraints>
 					if (!result.isDefined()) {
 						return Revision.fail();
 					}
-					LinkedHashSet<Disjunct> kept = LinkedHashSet.ofAll(result.get()._1);
-					List<Posting> units = result.get()._2;
+					LinkedHashSet<Disjunct> kept = LinkedHashSet.ofAll(result.get().getKept());
+					List<Posting> units = result.get().getUnits();
 					if (kept.equals(disjuncts) && units.isEmpty()) {
 						return Revision.unchanged();
 					}

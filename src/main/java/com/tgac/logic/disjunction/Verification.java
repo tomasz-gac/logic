@@ -8,7 +8,6 @@ import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.goals.Package;
-import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -44,8 +43,7 @@ public final class Verification {
 	 * quiescence there, and a settle failure dooms the branch on the same
 	 * items.
 	 */
-	public static Fiber<Option<Tuple2<List<Disjunct>, List<Posting>>>> verify(
-			List<Disjunct> disjuncts, Package state) {
+	public static Fiber<Option<Verified>> verify(List<Disjunct> disjuncts, Package state) {
 		Tuple2<List<Disjunct>, List<Disjunct>> byShape = disjuncts.partition(
 				d -> d.getAlternatives().forAll(Trial::bindingShaped));
 		return fold(byShape._1, state).flatMap(binding -> {
@@ -58,32 +56,27 @@ public final class Verification {
 			return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
 					Fiber.done(Option.none()) :
 					fold(byShape._2, settled.get()).map(packaged ->
-							packaged.map(p -> Tuple.of(
-									binding.get()._1.appendAll(p._1),
-									binding.get()._2.appendAll(p._2)))));
+							packaged.map(binding.get()::mergedWith)));
 		});
 	}
 
-	private static Fiber<Option<Tuple2<List<Disjunct>, List<Posting>>>> fold(
-			List<Disjunct> pending, Package base) {
+	/** The verify result: the disjuncts that stay resident, the survivors to impose. */
+	@Value
+	public static class Verified {
+		List<Disjunct> kept;
+		List<Posting> units;
+
+		Verified mergedWith(Verified other) {
+			return new Verified(kept.appendAll(other.kept), units.appendAll(other.units));
+		}
+	}
+
+	private static Fiber<Option<Verified>> fold(List<Disjunct> pending, Package base) {
 		return pending.foldLeft(
-				Fiber.done(Option.of(Tuple.of(List.<Disjunct> empty(), List.<Posting> empty()))),
-				(acc, disjunct) -> acc.flatMap(state -> !state.isDefined() ?
-						Fiber.done(state) :
-						foldOne(disjunct, base).map(fold -> {
-							if (fold.isFailed()) {
-								return Option.none();
-							}
-							if (fold.getUnit() != null) {
-								return Option.of(Tuple.of(state.get()._1,
-										state.get()._2.append(fold.getUnit())));
-							}
-							if (fold.getKept() != null) {
-								return Option.of(Tuple.of(state.get()._1.append(fold.getKept()),
-										state.get()._2));
-							}
-							return state;
-						})));
+				Fiber.done(Option.of(new Verified(List.empty(), List.empty()))),
+				(acc, disjunct) -> acc.flatMap(verified -> !verified.isDefined() ?
+						Fiber.done(verified) :
+						foldOne(disjunct, base).map(fold -> fold.addedTo(verified.get()))));
 	}
 
 	/** One disjunct's fold: refuted eliminated, entailed discharges, owed shrinks. */
@@ -121,5 +114,19 @@ public final class Verification {
 		Disjunct kept;
 		Posting unit;
 		boolean failed;
+
+		/** One disjunct's verdict lands in the accumulator; failure poisons it. */
+		Option<Verified> addedTo(Verified acc) {
+			if (failed) {
+				return Option.none();
+			}
+			if (unit != null) {
+				return Option.of(new Verified(acc.getKept(), acc.getUnits().append(unit)));
+			}
+			if (kept != null) {
+				return Option.of(new Verified(acc.getKept().append(kept), acc.getUnits()));
+			}
+			return Option.of(acc);
+		}
 	}
 }
