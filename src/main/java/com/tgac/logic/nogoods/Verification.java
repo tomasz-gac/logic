@@ -13,6 +13,7 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.goals.Packaged;
 import io.vavr.collection.LinkedHashMap;
+import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.AccessLevel;
@@ -79,27 +80,34 @@ public final class Verification {
 	 * the branch fails; otherwise the kept list — survivors simplified to their
 	 * remainders, satisfied nogoods absent.
 	 *
-	 * <p>A store whose every literal is binding-shaped verifies at the
-	 * SUBSTITUTION level — synchronous, no scratch package, no settle: both
-	 * hard verdicts are monotone under binding growth, so pending agenda items
-	 * can only convert owed into decided later, the delay-safe direction.
+	 * <p>Dispatch is PER NOGOOD, and so is the settle: binding-shaped nogoods
+	 * verify synchronously against the raw base (both hard verdicts are
+	 * monotone under binding growth, so pending agenda items can only convert
+	 * owed into decided later — the delay-safe direction, and a violation
+	 * here fails the branch before any settle is paid). Only the
+	 * package-shaped residue settles the base — evaluation and comparison
+	 * need quiescence there, so the pending ITEMS complete on the copy (runs
+	 * are search and stay with the real drain); a settle failure means the
+	 * branch is doomed on the same items, deterministically.
 	 */
 	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
-		if (nogoods.forAll(n -> n.getForbidden().accept(BINDING_SHAPED))) {
-			return Fiber.done(bindingVerify(nogoods, state.substitution()));
+		Tuple2<List<Nogood>, List<Nogood>> byShape =
+				nogoods.partition(n -> n.getForbidden().accept(BINDING_SHAPED));
+		Option<List<Nogood>> bindingKept = bindingVerify(byShape._1, state.substitution());
+		if (!bindingKept.isDefined()) {
+			return Fiber.done(Option.none());
 		}
-		// evaluation and comparison both need quiescence: the caller may sit
-		// mid-drain, so the base COMPLETES the pending items first (runs are
-		// search and stay with the real drain). A settle failure means the
-		// branch is doomed on the same items, deterministically — report the
-		// veto now and spare the real drain the recomputation
+		if (byShape._2.isEmpty()) {
+			return Fiber.done(bindingKept);
+		}
 		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
-				Fiber.done(Option.none()) :
-				nogoods.foldLeft(
-						Fiber.done(Option.of(List.empty())),
-						(acc, nogood) -> acc.flatMap(kept -> kept.isDefined() ?
-								verificationStep(settled.get(), kept.get(), nogood) :
-								Fiber.done(kept))));
+				Fiber.<Option<List<Nogood>>> done(Option.none()) :
+				byShape._2.foldLeft(
+								Fiber.done(Option.of(List.<Nogood> empty())),
+								(acc, nogood) -> acc.flatMap(kept -> kept.isDefined() ?
+										verificationStep(settled.get(), kept.get(), nogood) :
+										Fiber.done(kept)))
+						.map(packagedKept -> packagedKept.map(bindingKept.get()::appendAll)));
 	}
 
 	/** The whole store at the substitution level: Neq's verifyAndSimplify re-homed. */
@@ -119,20 +127,10 @@ public final class Verification {
 		return Option.of(kept);
 	}
 
-	/** One nogood against the state: the kept list grown by the nogood's verdict. */
+	/** One package-shaped nogood against the settled state. */
 	private static Fiber<Option<List<Nogood>>> verificationStep(
 			Package state, List<Nogood> kept, Nogood nogood) {
 		Posting forbidden = nogood.getForbidden();
-		Option<SubstitutionTrial.Outcome> fast =
-				SubstitutionTrial.step(forbidden, state.substitution());
-		if (fast.isDefined()) {
-			SubstitutionTrial.Outcome outcome = fast.get();
-			return Fiber.done(outcome.isRefuted() ?
-					Option.of(kept) :
-					outcome.isEntailed() ?
-							Option.none() :
-							Option.of(kept.append(Nogood.of(outcome.getRemainder()))));
-		}
 		// the package trial, whole-posting: imposing the forbidden conjunct on
 		// the scratch and reading the run — FAILS = refuted, discard; changes
 		// NOTHING = the whole conjunction already holds, violated; NEW
