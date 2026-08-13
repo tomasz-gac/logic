@@ -73,6 +73,30 @@ refutes, only then scan for a replacement. Most revises touch nothing.
 The same scheme is nogood-store §9's named mitigation on the negative
 side.
 
+## The Condition correspondence (banked, commits to nothing)
+
+The human spotted it from the delivery side: a clause here is a
+Condition wearing imposition clothes. Piece by piece — clause ↔
+Condition, alternative ↔ region (an answer's delta; Residues and
+Posting lists are the SAME content across the restate crossing, the
+Projectable equivalence), discharge-on-entailed ↔ finality reaching 1,
+alternative elimination ↔ a region dying, clause subsumption ↔ ⊕'s
+absorption. The load-bearing difference is GROWTH DIRECTION: a
+Condition in the cell grows (⊕ adds regions as answers arrive — a
+weakening disjunction, anti-monotone, illegal as resident constraint
+knowledge); a clause in the store only shrinks (alternatives die,
+never join). They are one object on the two sides of the seal — a
+Condition becomes admissible as a clause exactly when it stops
+growing, and the zip is that conversion operator, the seal its
+license. Second, smaller difference: Condition's absorption judges
+regions against EACH OTHER (the internal order); the clause trial
+judges alternatives against THE WORLD (entailed/refuted on live
+state) — the same three-way classification lattice-three-way.md
+banked from its third witness. Per that note's discipline, this
+correspondence is an observation, not a refactor: any unification is
+step 8 on structures that are not closed (the store has no code, the
+trial's laws (#116) are unwritten), so it waits behind the same gate.
+
 ## The kill
 
 If real workloads — the zip consumptions, the pldb joins, the
