@@ -6,8 +6,6 @@ package com.tgac.logic.disjunction;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Renaming;
@@ -21,11 +19,8 @@ import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unknown;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
-import io.vavr.control.Option;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -34,7 +29,6 @@ import java.util.stream.Collectors;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Value;
 
 /**
  * A bag of disjuncts, held conjunctively — every disjunct must be satisfied,
@@ -104,7 +98,8 @@ final class DisjunctionConstraints implements Absorbable<DisjunctionConstraints>
 
 	@Override
 	public Fiber<Revision> normalize(Package state) {
-		return folded(state.withoutStore(DisjunctionConstraints.class))
+		return Verification.verify(disjuncts.toList(),
+						state.withoutStore(DisjunctionConstraints.class))
 				.map(result -> {
 					if (!result.isDefined()) {
 						return Revision.fail();
@@ -136,90 +131,6 @@ final class DisjunctionConstraints implements Absorbable<DisjunctionConstraints>
 	@Override
 	public Fiber<Revision> stated(Stored item, Package state) {
 		return normalize(state);
-	}
-
-	/** One disjunct's fold: refuted eliminated, entailed discharges, owed shrinks. */
-	private static Fiber<Fold> foldOne(Disjunct disjunct, Package base) {
-		return disjunct.getAlternatives().foldLeft(
-						Fiber.done(Option.of(List.<Posting> empty())),
-						(acc, alternative) -> acc.flatMap(survivors -> !survivors.isDefined() ?
-								Fiber.done(survivors) :
-								Trial.trial(alternative, base).map(outcome ->
-										outcome.isEntailed() ?
-												Option.<List<Posting>> none() :
-												outcome.isRefuted() ?
-														survivors :
-														Option.of(survivors.get()
-																.append(outcome.getRemainder())))))
-				.map(survivors -> {
-					if (!survivors.isDefined()) {
-						return Fold.DISCHARGED;
-					}
-					List<Posting> left = survivors.get();
-					if (left.isEmpty()) {
-						return Fold.FAILED;
-					}
-					if (left.size() == 1) {
-						return new Fold(null, left.head(), false);
-					}
-					return new Fold(new Disjunct(left), null, false);
-				});
-	}
-
-	@Value
-	private static class Fold {
-		static final Fold DISCHARGED = new Fold(null, null, false);
-		static final Fold FAILED = new Fold(null, null, true);
-		Disjunct kept;
-		Posting unit;
-		boolean failed;
-	}
-
-	/**
-	 * Dispatch is PER DISJUNCT, the nogood store's own split: disjuncts whose
-	 * every alternative is binding-shaped fold synchronously against the raw
-	 * base; the packaged residue settles first — evaluation needs quiescence
-	 * there, and a settle failure dooms the branch on the same items.
-	 */
-	private Fiber<Option<Tuple2<List<Disjunct>, List<Posting>>>> folded(Package base) {
-		Tuple2<List<Disjunct>, List<Disjunct>> byShape = disjuncts.toList().partition(
-				d -> d.getAlternatives().forAll(Trial::bindingShaped));
-		return foldAll(byShape._1, base).flatMap(binding -> {
-			if (!binding.isDefined()) {
-				return Fiber.done(Option.none());
-			}
-			if (byShape._2.isEmpty()) {
-				return Fiber.done(binding);
-			}
-			return Propagation.settled(base).flatMap(settled -> !settled.isDefined() ?
-					Fiber.done(Option.none()) :
-					foldAll(byShape._2, settled.get()).map(packaged ->
-							packaged.map(p -> Tuple.of(
-									binding.get()._1.appendAll(p._1),
-									binding.get()._2.appendAll(p._2)))));
-		});
-	}
-
-	private static Fiber<Option<Tuple2<List<Disjunct>, List<Posting>>>> foldAll(
-			List<Disjunct> pending, Package base) {
-		return pending.foldLeft(
-				Fiber.done(Option.of(Tuple.of(List.<Disjunct> empty(), List.<Posting> empty()))),
-				(acc, disjunct) -> acc.flatMap(state -> !state.isDefined() ?
-						Fiber.done(state) :
-						foldOne(disjunct, base).map(fold -> {
-							if (fold.isFailed()) {
-								return Option.none();
-							}
-							if (fold.getUnit() != null) {
-								return Option.of(Tuple.of(state.get()._1,
-										state.get()._2.append(fold.getUnit())));
-							}
-							if (fold.getKept() != null) {
-								return Option.of(Tuple.of(state.get()._1.append(fold.getKept()),
-										state.get()._2));
-							}
-							return state;
-						})));
 	}
 
 	/**
