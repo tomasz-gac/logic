@@ -48,7 +48,7 @@ public final class Prefix {
 	 * The asserted reading of the prefix trichotomy against a live package: a pair
 	 * for a still-open variable re-targets its walked representative; one bound to
 	 * the same value is dropped; one bound to a DIFFERENT value is a contradiction
-	 * — none. (Disequality's record verification reads the same trichotomy with the
+	 * — none. (a disequality trial reads the same trichotomy with the
 	 * opposite polarity, over structural re-unification rather than equality — see
 	 * the Step 3 consolidation note in the capability doc.)
 	 */

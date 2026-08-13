@@ -101,7 +101,7 @@ final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	 * RE-UNIFICATION per pair, not the agenda's equality trichotomy
 	 * ({@code Prefix.revalidate} reads bound-vs-open as contradiction — right
 	 * for a Bind item, fatally wrong here: the trial asks whether the
-	 * EQUALITY can still hold, Disequality's own reading of the same pairs).
+	 * EQUALITY can still hold, disequality's own reading of the same pairs).
 	 */
 	@Override
 	public Fiber<Outcome> visit(Posting.Resolution resolution) {

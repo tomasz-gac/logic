@@ -1,6 +1,7 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.Utils.collect;
 import static com.tgac.logic.finitedomain.FiniteDomain.addo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
@@ -16,7 +17,6 @@ import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
-import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
@@ -262,7 +262,7 @@ public class FiniteDomainTest {
 						.and(dom(a, Interval.of(0, 5)))
 						.and(dom(b, Interval.of(0, 5)))
 						.and(dom(c, Interval.of(-5, 10)))
-						.and(Disequality.separate(str, lval("123")))
+						.and(exclude(str.unifies(lval("123"))))
 						.solve(lval(Tuple.of(a, b, c, str)), TestSchedulers.factory())
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get, Function.identity())));
