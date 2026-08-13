@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 public final class Exclusion {
 
 	public static Posting exclude(Posting... literals) {
-		return Propagation.activate(Nogood.of(List.of(literals)), Nogoods::register, p -> false);
+		Posting forbidden = literals.length == 1 ? literals[0] : Posting.all(literals);
+		return Propagation.activate(Nogood.of(forbidden), Nogoods::register, p -> false);
 	}
 }

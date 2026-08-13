@@ -32,7 +32,8 @@ public class VerificationTest {
 	}
 
 	private static Option<List<Nogood>> verified(Package state, Posting... literals) {
-		return Verification.verify(List.of(Nogood.of(List.of(literals))), state).get();
+		return Verification.verify(List.of(Nogood.of(literals.length == 1 ?
+				literals[0] : Posting.all(literals))), state).get();
 	}
 
 	@Test
@@ -71,9 +72,8 @@ public class VerificationTest {
 				Posting.bind(x, lval(1)), Posting.bind(y, lval(2)));
 
 		Nogood survivor = verdict.get().head();
-		assertThat(survivor.getLiterals()).hasSize(1);
-		assertThat(survivor.getLiterals().head()).isInstanceOf(Posting.Resolution.class);
-		assertThat(survivor.getLiterals().head().terms()
+		assertThat(survivor.getForbidden()).isInstanceOf(Posting.Resolution.class);
+		assertThat(survivor.getForbidden().terms()
 				.anyMatch(t -> t == x.asVar().get())).isTrue();
 	}
 
@@ -85,9 +85,10 @@ public class VerificationTest {
 		Option<List<Nogood>> verdict = verified(Package.empty(),
 				Posting.bind(x, lval(1)), Posting.bind(y, lval(2)));
 
-		List<Posting> survivors = verdict.get().head().getLiterals();
-		assertThat(survivors).hasSize(2);
-		assertThat(survivors).allMatch(l -> l instanceof Posting.Resolution);
+		Posting forbidden = verdict.get().head().getForbidden();
+		assertThat(forbidden).isInstanceOf(Posting.AllOf.class);
+		assertThat(((Posting.AllOf) forbidden).getParts())
+				.allMatch(l -> l instanceof Posting.Resolution);
 	}
 
 	@Test
@@ -140,8 +141,7 @@ public class VerificationTest {
 
 		// one survivor: the alias simplified to its residual (y's binding);
 		// the y = 2 literal read entailed THROUGH the threading and crossed off
-		List<Posting> survivors = verdict.get().head().getLiterals();
-		assertThat(survivors).hasSize(1);
-		assertThat(survivors.head()).isInstanceOf(Posting.Resolution.class);
+		assertThat(verdict.get().head().getForbidden())
+				.isInstanceOf(Posting.Resolution.class);
 	}
 }

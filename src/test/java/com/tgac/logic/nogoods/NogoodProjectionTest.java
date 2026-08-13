@@ -31,7 +31,9 @@ public class NogoodProjectionTest {
 	}
 
 	private static Nogood over(com.tgac.logic.constraints.Posting... literals) {
-		return Nogood.of(io.vavr.collection.List.of(literals));
+		return Nogood.of(literals.length == 1 ?
+				literals[0] :
+				com.tgac.logic.constraints.Posting.all(literals));
 	}
 
 	private static Renaming toHole(Unifiable<?> var, int slot) {

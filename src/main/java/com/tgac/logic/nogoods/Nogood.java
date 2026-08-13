@@ -1,7 +1,7 @@
 package com.tgac.logic.nogoods;
 
-// ABOUTME: One nogood: NOT all these literals simultaneously — Neq's record shape
-// ABOUTME: with literals as the pairs. Born as its escape list; nothing converts.
+// ABOUTME: One nogood: NOT this posting — the Stored envelope that routes a
+// ABOUTME: forbidden conjunct to the Nogoods store; the ∧ lives in Posting.all.
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Posting;
@@ -15,14 +15,15 @@ import java.util.stream.Stream;
 import lombok.Value;
 
 /**
- * {@code ¬(p₁ ∧ … ∧ pₙ)}: at least one literal must fail to hold. Read as its
- * escape list directly — each literal is one escape, the four moves consume
- * them in place. The store-level conjunction of many nogoods is the package's;
- * a nogood only ever says "not all of these".
+ * {@code ¬(forbidden)}: the envelope only says "this posting belongs to the
+ * Nogoods store and is read negatively" — the conjunction, its jointness and
+ * its literal granularity all live in the posting itself ({@link Posting#all}
+ * for {@code ¬(l₁ ∧ … ∧ lₙ)}). The store-level conjunction of many nogoods
+ * is the package's; a nogood only ever says "not this".
  */
 @Value(staticConstructor = "of")
 public class Nogood implements Stored, Transcribable {
-	List<Posting> literals;
+	Posting forbidden;
 
 	@Override
 	public Class<? extends Store> getStoreClass() {
@@ -31,21 +32,17 @@ public class Nogood implements Stored, Transcribable {
 
 	@Override
 	public Stream<Term<?>> terms() {
-		return literals.toJavaStream().flatMap(Posting::terms);
+		return forbidden.terms();
 	}
 
-	/** Every literal transcribed wrapped — the posting rows answer for themselves. */
+	/** The posting transcribes itself wrapped; the envelope follows. */
 	@Override
 	public Fiber<Stored> rename(Renaming renaming) {
-		return literals.foldLeft(
-						Fiber.<List<Posting>> done(List.empty()),
-						(acc, literal) -> acc.flatMap(renamed ->
-								literal.rename(renaming).map(renamed::append)))
-				.map(renamed -> Nogood.of(renamed));
+		return forbidden.rename(renaming).map(Nogood::of);
 	}
 
 	@Override
 	public String toString() {
-		return literals.mkString("¬(", " ∧ ", ")");
+		return "¬(" + forbidden + ")";
 	}
 }

@@ -27,9 +27,9 @@ public class NogoodsLawsTest {
 
 	private static final Unifiable<Integer> X = lvar();
 	private static final Unifiable<Integer> Y = lvar();
-	private static final Nogood X_APART = Nogood.of(List.of(Posting.bind(X, lval(1))));
-	private static final Nogood Y_APART = Nogood.of(List.of(Posting.bind(Y, lval(2))));
-	private static final Nogood NOT_BOTH = Nogood.of(List.of(
+	private static final Nogood X_APART = Nogood.of(Posting.bind(X, lval(1)));
+	private static final Nogood Y_APART = Nogood.of(Posting.bind(Y, lval(2)));
+	private static final Nogood NOT_BOTH = Nogood.of(Posting.all(
 			Posting.bind(X, lval(1)), Posting.bind(Y, lval(2))));
 
 	@Test

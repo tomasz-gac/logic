@@ -85,7 +85,7 @@ public final class Verification {
 	 * can only convert owed into decided later, the delay-safe direction.
 	 */
 	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
-		if (nogoods.forAll(n -> n.getLiterals().forAll(l -> l.accept(BINDING_SHAPED)))) {
+		if (nogoods.forAll(n -> n.getForbidden().accept(BINDING_SHAPED))) {
 			return Fiber.done(bindingVerify(nogoods, state.substitution()));
 		}
 		// evaluation and comparison both need quiescence: the caller may sit
@@ -106,27 +106,15 @@ public final class Verification {
 	private static Option<List<Nogood>> bindingVerify(List<Nogood> nogoods, Substitutions subs) {
 		List<Nogood> kept = List.empty();
 		for (Nogood nogood : nogoods) {
-			Substitutions scratch = subs;
-			List<Posting> survivors = List.empty();
-			boolean refuted = false;
-			for (Posting literal : nogood.getLiterals()) {
-				SubstitutionTrial.Outcome outcome = SubstitutionTrial.step(literal, scratch).get();
-				if (outcome.isRefuted()) {
-					refuted = true;
-					break;
-				}
-				scratch = outcome.getGrown();
-				if (!outcome.isEntailed()) {
-					survivors = survivors.append(outcome.getRemainder());
-				}
-			}
-			if (refuted) {
+			SubstitutionTrial.Outcome outcome =
+					SubstitutionTrial.step(nogood.getForbidden(), subs).get();
+			if (outcome.isRefuted()) {
 				continue;
 			}
-			if (survivors.isEmpty()) {
+			if (outcome.isEntailed()) {
 				return Option.none();
 			}
-			kept = kept.append(Nogood.of(survivors));
+			kept = kept.append(Nogood.of(outcome.getRemainder()));
 		}
 		return Option.of(kept);
 	}
@@ -134,59 +122,31 @@ public final class Verification {
 	/** One nogood against the state: the kept list grown by the nogood's verdict. */
 	private static Fiber<Option<List<Nogood>>> verificationStep(
 			Package state, List<Nogood> kept, Nogood nogood) {
-		return trial(nogood.getLiterals(), List.empty(), state)
-				.map(delta -> !delta.isDefined() ?
-						Option.of(kept) :
-						delta.get().isEmpty() ?
-								Option.none() :
-								Option.of(kept.append(Nogood.of(delta.get()))));
-	}
-
-	/**
-	 * The nogood's literals imposed sequentially on the scratch: none = an
-	 * imposition failed, the forbidden conjunction is refuted — the nogood is
-	 * subsumed fully by the state; empty = every literal already holds — the
-	 * nogood is violated; otherwise the surviving literals, entailed ones
-	 * crossed off.
-	 */
-	static Fiber<Option<List<Posting>>> trial(
-			List<Posting> pending,
-			List<Posting> survivors,
-			Package scratch) {
-		if (pending.isEmpty()) {
-			return Fiber.done(Option.of(survivors));
-		}
-		Posting literal = pending.head();
-		Option<SubstitutionTrial.Outcome> fast = SubstitutionTrial.step(literal, scratch.substitution());
+		Posting forbidden = nogood.getForbidden();
+		Option<SubstitutionTrial.Outcome> fast =
+				SubstitutionTrial.step(forbidden, state.substitution());
 		if (fast.isDefined()) {
 			SubstitutionTrial.Outcome outcome = fast.get();
-			if (outcome.isRefuted()) {
-				return Fiber.done(Option.none());
-			}
-			// store factors deliberately do NOT hear these bindings: staleness
-			// only shifts verdicts toward "owed", the delay-safe direction
-			return outcome.isEntailed() ?
-					trial(pending.tail(), survivors,
-							Package.of(outcome.getGrown(), scratch.getStores())) :
-					trial(pending.tail(), survivors.append(outcome.getRemainder()),
-							Package.of(outcome.getGrown(), scratch.getStores()));
+			return Fiber.done(outcome.isRefuted() ?
+					Option.of(kept) :
+					outcome.isEntailed() ?
+							Option.none() :
+							Option.of(kept.append(Nogood.of(outcome.getRemainder()))));
 		}
-		return imposed(literal, scratch).flatMap(worlds -> {
+		// the package trial, whole-posting: imposing the forbidden conjunct on
+		// the scratch and reading the run — FAILS = refuted, discard; changes
+		// NOTHING = the whole conjunction already holds, violated; NEW
+		// knowledge = still owed, kept as its original self. A fork reads
+		// conservatively (owed). Per-part granularity for mixed conjuncts
+		// arrives with the trial visitor owning the package fallback.
+		return imposed(forbidden, state).map(worlds -> {
 			if (worlds.isEmpty()) {
-				return Fiber.done(Option.none());
+				return Option.of(kept);
 			}
-			if (worlds.size() > 1) {
-				// the imposition woke something that forked: no single world
-				// to thread. Conservative on both counts — the literal stays
-				// owed (never a false cross-off) and later literals verify
-				// against the unthreaded scratch (missed jointness only ever
-				// keeps more)
-				return trial(pending.tail(), survivors.append(literal), scratch);
+			if (worlds.size() == 1 && unchanged(state, worlds.head())) {
+				return Option.none();
 			}
-			Package grown = worlds.head();
-			return unchanged(scratch, grown) ?
-					trial(pending.tail(), survivors, scratch) :
-					trial(pending.tail(), survivors.append(literal), grown);
+			return Option.of(kept.append(nogood));
 		});
 	}
 
