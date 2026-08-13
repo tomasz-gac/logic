@@ -3,8 +3,9 @@ package com.tgac.logic.separate;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.LogicTest.runStream;
 import static com.tgac.logic.goals.Goal.defer;
-import static com.tgac.logic.separate.Disequality.rembero;
-import static com.tgac.logic.separate.Disequality.separate;
+import static com.tgac.logic.goals.Logic.rembero;
+import static com.tgac.logic.goals.Logic.distincto;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,19 +24,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import lombok.experimental.ExtensionMethod;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 @SuppressWarnings("unchecked")
-@ExtensionMethod(Disequality.class)
 public class SeparateTest {
 
 	@Test
 	public void shouldUnifyWithConstraints() {
 		Unifiable<Integer> out = lvar();
 		List<Integer> result = LogicTest.runStream(out,
-						separate(out, lval(2)),
+						exclude(out.unifies(lval(2))),
 						Constraints.unify(out, lval(3)))
 				.map(Term::get)
 				.collect(Collectors.toList());
@@ -46,7 +45,7 @@ public class SeparateTest {
 	public void shouldNotUnifyWithConstraints() {
 		Unifiable<Integer> out = lvar();
 		Assertions.assertThat(LogicTest.runStream(out,
-						separate(out, lval(2)),
+						exclude(out.unifies(lval(2))),
 						Constraints.unify(out, lval(2))))
 				.isEmpty();
 	}
@@ -56,7 +55,7 @@ public class SeparateTest {
 		Unifiable<Integer> out = lvar();
 		Assertions.assertThat(LogicTest.runStream(out,
 						Constraints.unify(out, lval(2)),
-						separate(out, lval(2))))
+						exclude(out.unifies(lval(2)))))
 				.isEmpty();
 	}
 
@@ -65,7 +64,7 @@ public class SeparateTest {
 		Unifiable<Integer> out = lvar();
 		Assertions.assertThat(LogicTest.runStream(out, Logic.<Integer, Integer, Tuple2<Unifiable<Integer>, Unifiable<Integer>>> exist((x, y, p) ->
 								p.unifies(Tuple.of(x, out))
-										.and(separate(p, lval(Tuple.of(lval(3), lval(2)))))
+										.and(exclude(p.unifies(lval(Tuple.of(lval(3), lval(2))))))
 										.and(x.unifies(3))
 										.and(out.unifies(3))))
 						.map(Term::get))
@@ -79,7 +78,7 @@ public class SeparateTest {
 						LogicTest.runStream(out,
 								Logic.<Integer, Integer, Tuple2<Unifiable<Integer>, Unifiable<Integer>>> exist((x, y, p) ->
 										p.unifies(Tuple.of(x, out))
-												.and(separate(p, lval(Tuple.of(lval(3), lval(2)))))
+												.and(exclude(p.unifies(lval(Tuple.of(lval(3), lval(2))))))
 												.and(x.unifies(3))
 												.and(out.unifies(2)))))
 				.isEmpty();
@@ -123,21 +122,18 @@ public class SeparateTest {
 								Integer, Integer, Integer> exist((a, d, dummy, x, y) ->
 								u.unifies(LList.of(a, LList.of(lval(Tuple.of(y, x)), d)))
 										.and(Constraints.unify(a, lval(Tuple.of(x, y))))
-										.and(separate(x, lval(3)))
-										.and(separate(y, lval(2)))
-										.and(separate(a, lval(Tuple.of(lval(7), lval(8)))))
-										.and(separate(dummy, lval(5)))))
+										.and(exclude(x.unifies(lval(3))))
+										.and(exclude(y.unifies(lval(2))))
+										.and(exclude(a.unifies(lval(Tuple.of(lval(7), lval(8))))))
+										.and(exclude(dummy.unifies(lval(5))))))
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
-		// {({(_.0, _.1)}, {(_.1, _.0)} . _.2)} : (_.0 ≠ {3}) || (_.1 ≠ {2}) || (_.1 ≠ {8} && _.0 ≠ {7})
+		// {({(_.0, _.1)}, {(_.1, _.0)} . _.2)} : ¬(_.0 ≡ {3}) ∧ ¬(_.1 ≡ {2}) ∧ ¬(_.1 ≡ {8} ∧ _.0 ≡ {7})
 		assertThat(result)
 				.contains("{({(_.0, _.1)}, {(_.1, _.0)} . _.2)}")
-				.contains("(_.0 ≠ {3})")
-				.contains("(_.1 ≠ {2})")
-				.contains("_.1 ≠ {8}")
-				.contains("_.0 ≠ {7}")
-				.contains("||")
-				.contains("&&");
+				.contains("¬(_.0 ≡ {3})")
+				.contains("¬(_.1 ≡ {2})")
+				.contains("¬(_.1 ≡ {8} ∧ _.0 ≡ {7})");
 	}
 
 	@Test
@@ -145,14 +141,14 @@ public class SeparateTest {
 		Unifiable<Integer> u = lvar();
 		String result = LogicTest.runStream(u,
 						Logic.<Integer, Integer, Integer> exist((x, y, z) ->
-								separate(u, lval(3))
-										.and(separate(x, lval(2)))
-										.and(separate(y, lval(2)))
-										.and(separate(z, lval(2)))))
+								exclude(u.unifies(lval(3)))
+										.and(exclude(x.unifies(lval(2))))
+										.and(exclude(y.unifies(lval(2))))
+										.and(exclude(z.unifies(lval(2))))))
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
 		assertThat(result)
-				.isEqualTo("_.0 : (_.0 ≠ {3})");
+				.isEqualTo("_.0 : ¬(_.0 ≡ {3})");
 	}
 
 	@Test
@@ -161,16 +157,16 @@ public class SeparateTest {
 		String result = LogicTest.runStream(u,
 						Logic.<Tuple2<Unifiable<Integer>, Unifiable<Integer>>, Integer, Integer> exist((p, y, z) ->
 								// p cannot be (3, 2)
-								separate(p, lval(Tuple.of(lval(3), lval(2))))
+								exclude(p.unifies(lval(Tuple.of(lval(3), lval(2)))))
 										// p is y, z so y ≠ 3 && z ≠ 2
 										.and(p.unifies(Tuple.of(y, z)))
 										.and(u.unifies(p))
 										// y ≠ 3 is more general than (y ≠ 3 && z ≠ 2)
-										.and(separate(y, lval(3)))))
+										.and(exclude(y.unifies(lval(3))))))
 				.map(Object::toString)
 				.collect(Collectors.joining("\n"));
 		assertThat(result)
-				.isEqualTo("{(_.0, _.1)} : (_.0 ≠ {3})");
+				.isEqualTo("{(_.0, _.1)} : ¬(_.0 ≡ {3})");
 	}
 
 	static <A> Goal removo(Unifiable<LList<A>> with, Unifiable<LList<A>> without, Unifiable<A> item) {
@@ -181,7 +177,7 @@ public class SeparateTest {
 								.and(defer(() -> removo(d, without, item)))))
 				.or(Logic.<A, LList<A>, LList<A>> exist((a, d, res) ->
 						with.unifies(LList.of(a, d))
-								.and(separate(a, item))
+								.and(exclude(a.unifies(item)))
 								.and(without.unifies(LList.of(a, res)))
 								.and(defer(() -> removo(d, res, item)))));
 	}
@@ -234,7 +230,7 @@ public class SeparateTest {
 				.or(Logic.<LList<A>> exist(res ->
 						rembero(with, item, res)
 								.and(with.unifies(res).and(res.unifies(without))
-										.or(with.separate(res)
+										.or(exclude(with.unifies(res))
 												.and(defer(() -> removeAllo(res, without, item)))))));
 	}
 
@@ -259,15 +255,15 @@ public class SeparateTest {
 
 		List<?> result = LogicTest.runStream(
 						LList.ofAll(x, y, z),
-						x.separate(y),
-						x.separate(z),
+						exclude(x.unifies(y)),
+						exclude(x.unifies(z)),
 
-						y.separate(z),
+						exclude(y.unifies(z)),
 						x.unifies(1))
 				.collect(Collectors.toList());
 		// one solution: x = 1, with y and z still open under the disequalities
 		assertThat(result).hasSize(1);
-		assertThat(result.toString()).contains("{1}").contains("≠");
+		assertThat(result.toString()).contains("{1}").contains("¬");
 	}
 
 	@Test
@@ -277,23 +273,23 @@ public class SeparateTest {
 		assertThat(LogicTest.runStream(r,
 						Logic.<LList<Integer>> exist(l ->
 								l.unifies(LList.ofAll(1, 2))
-										.and(Disequality.distincto(r))))
+										.and(distincto(r))))
 				.limit(5)
 				.map(Objects::toString)
 				.collect(Collectors.toList()))
 				.containsExactly(
 						"{()}",
 						"{(_.0)}",
-						"{(_.0, _.1)} : (_.0 ≠ _.1)",
-						"{(_.0, _.1, _.2)} : (_.0 ≠ _.1) || (_.0 ≠ _.2) || (_.1 ≠ _.2)",
-						"{(_.0, _.1, _.2, _.3)} : (_.0 ≠ _.1) || (_.0 ≠ _.2) || (_.0 ≠ _.3) || (_.2 ≠ _.3) || (_.1 ≠ _.2) || (_.1 ≠ _.3)");
+						"{(_.0, _.1)} : ¬(_.0 ≡ _.1)",
+						"{(_.0, _.1, _.2)} : ¬(_.0 ≡ _.1) ∧ ¬(_.0 ≡ _.2) ∧ ¬(_.1 ≡ _.2)",
+						"{(_.0, _.1, _.2, _.3)} : ¬(_.0 ≡ _.1) ∧ ¬(_.0 ≡ _.2) ∧ ¬(_.0 ≡ _.3) ∧ ¬(_.1 ≡ _.2) ∧ ¬(_.1 ≡ _.3) ∧ ¬(_.2 ≡ _.3)");
 	}
 
 	@Test
 	public void shouldReturnFromSingleGoalThatSucceeds() {
 		Unifiable<Integer> x = lvar();
 		List<Integer> results = Utils.collect(Goal.condu(
-						x.separate(x),
+						exclude(x.unifies(x)),
 						x.unifies(1).or(x.unifies(2)),
 						x.unifies(3))
 				.solve(x, TestSchedulers.factory())
@@ -323,7 +319,7 @@ public class SeparateTest {
 	public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
 		Unifiable<Integer> x = lvar();
 		List<Integer> results = Goal.conda(
-						x.separate(x),
+						exclude(x.unifies(x)),
 						x.unifies(1).or(x.unifies(2)),
 						x.unifies(3))
 				.solve(x, TestSchedulers.factory())

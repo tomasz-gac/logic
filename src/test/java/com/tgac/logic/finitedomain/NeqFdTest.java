@@ -1,6 +1,7 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -8,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
-import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.util.stream.Collectors;
@@ -29,7 +29,7 @@ public class NeqFdTest {
 		Unifiable<Long> x = lvar();
 
 		assertThat(dom(x, EnumeratedDomain.range(1L, 11L))        // {1..10}
-				.and(Disequality.separate(x, lval(5L)))
+				.and(exclude(x.unifies(lval(5L))))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList()))
@@ -42,7 +42,7 @@ public class NeqFdTest {
 		Unifiable<Long> x = lvar();
 
 		assertThat(dom(x, EnumeratedDomain.range(4L, 6L))         // {4,5}
-				.and(Disequality.separate(x, lval(5L)))
+				.and(exclude(x.unifies(lval(5L))))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList()))
@@ -54,7 +54,7 @@ public class NeqFdTest {
 		Unifiable<Long> x = lvar();
 
 		long count = dom(x, EnumeratedDomain.range(5L, 6L))       // {5} exactly
-				.and(Disequality.separate(x, lval(5L)))
+				.and(exclude(x.unifies(lval(5L))))
 				.solve(x, TestSchedulers.factory())
 				.count();
 
@@ -65,7 +65,7 @@ public class NeqFdTest {
 	public void disequalityStatedBeforeTheDomainStaysCorrect() {
 		Unifiable<Long> x = lvar();
 
-		assertThat(Disequality.separate(x, lval(5L))
+		assertThat(exclude(x.unifies(lval(5L)))
 				.and(dom(x, EnumeratedDomain.range(1L, 11L)))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
@@ -78,7 +78,7 @@ public class NeqFdTest {
 	public void nonArithmeticDisequalityKeepsItsRecord() {
 		Unifiable<String> s = lvar();
 
-		assertThat(Disequality.separate(s, lval("no"))
+		assertThat(exclude(s.unifies(lval("no")))
 				.and(Constraints.unify(s, lval("yes")))
 				.solve(s, TestSchedulers.factory())
 				.map(Term::get)

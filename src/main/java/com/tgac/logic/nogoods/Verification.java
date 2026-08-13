@@ -99,14 +99,43 @@ public final class Verification {
 			if (!bindingKept.isDefined()) {
 				return Fiber.done(Option.none());
 			}
+			Option<List<Nogood>> minimal = bindingKept.map(kept -> pruneSubsumed(kept, state));
 			if (byShape._2.isEmpty()) {
-				return Fiber.done(bindingKept);
+				return Fiber.done(minimal);
 			}
 			return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
 					Fiber.done(Option.none()) :
 					fold(byShape._2, settled.get())
-							.map(packagedKept -> packagedKept.map(bindingKept.get()::appendAll)));
+							.map(packagedKept -> packagedKept.map(minimal.get()::appendAll)));
 		});
+	}
+
+	/**
+	 * Cross-nogood subsumption, Neq's removeSubsumed under the trial: ¬F_B
+	 * subsumes ¬F_A whenever F_A implies F_B, witnessed by ASSUMING A's
+	 * forbidden (the trial's own grown package — every survivor here is owed,
+	 * so the assumption is exactly its residual bindings applied) and reading
+	 * B's forbidden as entailed against it. Binding-shaped survivors only, so
+	 * every trial is Done and the assumption is exact; a mutual pair keeps its
+	 * later copy — head checks against kept AND pending, Neq's own tie-break.
+	 */
+	private static List<Nogood> pruneSubsumed(List<Nogood> nogoods, Package base) {
+		List<Nogood> kept = List.empty();
+		List<Nogood> pending = nogoods;
+		while (!pending.isEmpty()) {
+			Nogood head = pending.head();
+			pending = pending.tail();
+			if (!subsumed(head, kept.appendAll(pending), base)) {
+				kept = kept.append(head);
+			}
+		}
+		return kept;
+	}
+
+	private static boolean subsumed(Nogood nogood, List<Nogood> others, Package base) {
+		Package assumed = Trial.trial(nogood.getForbidden(), base).get().getGrown();
+		return others.exists(other ->
+				Trial.trial(other.getForbidden(), assumed).get().isEntailed());
 	}
 
 	private static Fiber<Option<List<Nogood>>> fold(List<Nogood> nogoods, Package base) {

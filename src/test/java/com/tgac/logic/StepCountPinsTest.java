@@ -3,6 +3,7 @@ package com.tgac.logic;
 // ABOUTME: Step-count pins per vision workload: exact reduction counts under the
 // ABOUTME: deterministic BFS driver — a changed count is a decision, not drift.
 
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -17,7 +18,6 @@ import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
-import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
 import com.tgac.logic.unification.LList;
@@ -77,11 +77,11 @@ public class StepCountPinsTest {
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		Goal pairs = unify(menu, LList.ofAll(1, 2, 3, 4, 5))
-				.and(Disequality.separate(a, b))
+				.and(exclude(a.unifies(b)))
 				.and(Logic.membero(a, menu))
 				.and(Logic.membero(b, menu));
 
-		assertThat(steps(pairs, a)).isEqualTo(1_202);
+		assertThat(steps(pairs, a)).isEqualTo(1_210);
 	}
 
 	/** FD lane: propagation and labelling through a ring step. */

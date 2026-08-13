@@ -22,6 +22,19 @@ public final class Exclusion {
 
 	public static Posting exclude(Posting... literals) {
 		Posting forbidden = literals.length == 1 ? literals[0] : Posting.all(literals);
-		return Propagation.activate(Nogood.of(forbidden), Nogoods::register, p -> false);
+		return Propagation.activate(Nogood.of(forbidden), Nogoods::register,
+				p -> bornViolated(forbidden, p));
+	}
+
+	/**
+	 * The doom check, UnifyGoal's dynamic-pricing pattern: a nogood whose
+	 * forbidden conjunct is already ENTAILED is born violated — failure found
+	 * at pricing is failure forever (entailment is monotone under binding
+	 * growth). Binding-shaped conjuncts answer synchronously (the trial is
+	 * Done by construction); anything else claims nothing.
+	 */
+	private static boolean bornViolated(Posting forbidden, com.tgac.logic.goals.Package p) {
+		com.tgac.functional.fibers.Fiber<Trial.Outcome> trial = Trial.trial(forbidden, p);
+		return trial.isDone() && trial.get().isEntailed();
 	}
 }

@@ -1,8 +1,8 @@
 package com.tgac.logic.debug;
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.goals.Goal.defer;
-import static com.tgac.logic.separate.Disequality.separate;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -88,7 +88,7 @@ public class TraceCompositionTest {
 	public void tracingDoesNotChangeConstraintResults() {
 		Rec rec = new Rec();
 		Unifiable<Integer> out = lvar();
-		Goal g = separate(out, lval(2)).and(Constraints.unify(out, lval(3))).named("constrained");
+		Goal g = exclude(out.unifies(lval(2))).and(Constraints.unify(out, lval(3))).named("constrained");
 
 		List<Integer> traced = g.solve(out, rec).map(Term::get).collect(Collectors.toList());
 

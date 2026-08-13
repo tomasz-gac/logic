@@ -11,6 +11,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.functional.reflection.Types;
+import com.tgac.logic.nogoods.Exclusion;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
@@ -67,6 +68,30 @@ public class Logic {
 						Matche.llist((_0, lTail) -> matche(rhs, Matche.llist((_1, rTail) ->
 								defer(() -> sameLengtho(lTail, rTail)))))))
 				.named(s -> "len(" + formatLList(s, lhs) + ") = len(" + formatLList(s, rhs) + ")");
+	}
+
+	/** {@code out} is {@code ls} with the first {@code x} removed; later elements differ from {@code x}. */
+	public static <T> Goal rembero(Unifiable<LList<T>> ls, Unifiable<T> x, Unifiable<LList<T>> out) {
+		return Matche.matche(ls, Matche.llist(() -> unify(out, LList.empty())))
+				.or(Matche.matche(ls, Matche.llist((a, d) ->
+						unify(x, a)
+								.and(unify(out, d)))))
+				.or(Matche.matche(ls, Matche.llist((a, d) -> Logic.<LList<T>> exist(res ->
+						Exclusion.exclude(a.unifies(x))
+								.and(unify(out, LList.of(a, res)))
+								.and(Goal.defer(() -> rembero(d, x, res)))))))
+				.named(pkg -> pkg.format(x) + " ⊄ " + Logic.formatLList(pkg, ls) + " ≡ " + pkg.format(out));
+	}
+
+	/** Every pair of elements differs — pairwise exclusions, no forking. */
+	public static <A> Goal distincto(Unifiable<LList<A>> distinct) {
+		return Matche.matche(distinct,
+						Matche.llist(() -> Goal.success()),
+						Matche.llist(a -> Goal.success()),
+						Matche.llist((a, b, d) -> Exclusion.exclude(a.unifies(b))
+								.and(Goal.defer(() -> distincto(LList.of(a, d))))
+								.and(Goal.defer(() -> distincto(LList.of(b, d))))))
+				.named(pkg -> "distincto(" + Logic.formatLList(pkg, distinct) + ")");
 	}
 
 	public static <A> Goal membero(Unifiable<A> x, Unifiable<LList<A>> lst) {

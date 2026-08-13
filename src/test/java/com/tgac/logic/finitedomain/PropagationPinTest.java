@@ -1,6 +1,7 @@
 package com.tgac.logic.finitedomain;
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.finitedomain.FiniteDomain.leq;
 import static com.tgac.logic.unification.LVal.lval;
@@ -11,7 +12,6 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
@@ -36,7 +36,7 @@ public class PropagationPinTest {
 		Unifiable<Long> x = lvar();
 
 		// the intersection {1,2} ∩ {1} collapses to a Singleton, which binds x mid-search
-		Goal g = Disequality.separate(x, lval(1L))
+		Goal g = exclude(x.unifies(lval(1L)))
 				.and(dom(x, EnumeratedDomain.range(1L, 3L)))       // x ∈ {1,2}
 				.and(Goal.condu(
 						dom(x, EnumeratedDomain.range(1L, 2L)),    // ∩ → {1}: collapse-binds, violates x ≠ 1

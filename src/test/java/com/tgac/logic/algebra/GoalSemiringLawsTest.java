@@ -4,6 +4,7 @@ package com.tgac.logic.algebra;
 // ABOUTME: multiset Eq for DERIVATIONS, set Eq for ANSWERS (the dedup quotient).
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -16,7 +17,6 @@ import com.tgac.functional.algebra.laws.SemiringLaws;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.GoalSemirings;
 import com.tgac.logic.goals.Logic;
-import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
 import java.util.Arrays;
@@ -45,7 +45,7 @@ public class GoalSemiringLawsTest {
 			Logic.membero(X, LList.ofAll(1, 2, 3)),
 			// two derivations of one answer — separates the quotients
 			unify(X, lval(1)).or(unify(X, lval(1))),
-			Logic.membero(X, LList.ofAll(1, 2, 3)).and(Disequality.separate(X, lval(2))));
+			Logic.membero(X, LList.ofAll(1, 2, 3)).and(exclude(X.unifies(lval(2)))));
 
 	private static List<String> answers(Goal g) {
 		return g.solve(X, TestSchedulers.factory()).map(Object::toString).sorted().collect(Collectors.toList());

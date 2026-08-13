@@ -1,8 +1,8 @@
 package com.tgac.logic.aggregate;
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.separate.Disequality.separate;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -113,7 +113,7 @@ public class AggregateTest {
 		// or as two records denotes the same set with different record counts
 		Unifiable<Integer> n = lvar();
 
-		Goal g = Aggregate.count((Unifiable<Integer> x) -> separate(x, lval(3)), n);
+		Goal g = Aggregate.count((Unifiable<Integer> x) -> exclude(x.unifies(lval(3))), n);
 
 		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
 				.isInstanceOf(IllegalStateException.class)
@@ -141,7 +141,7 @@ public class AggregateTest {
 		Goal g = Aggregate.count((Unifiable<Integer> x) ->
 				Goal.defer(() -> {
 					Unifiable<Integer> y = lvar();
-					return x.unifies(1).and(separate(y, lval(3)));
+					return x.unifies(1).and(exclude(y.unifies(lval(3))));
 				}), n);
 
 		assertThat(g.solve(n, TestSchedulers.factory()).findFirst().get().get())
@@ -275,7 +275,7 @@ public class AggregateTest {
 		Unifiable<LList<Integer>> result = lvar();
 
 		Goal g = Aggregate.findall((Unifiable<Integer> x) ->
-						x.unifies(2).or(x.unifies(3)).or(x.unifies(4)).and(separate(x, lval(3))),
+						x.unifies(2).or(x.unifies(3)).or(x.unifies(4)).and(exclude(x.unifies(lval(3)))),
 				result);
 
 		List<Integer> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
@@ -324,7 +324,7 @@ public class AggregateTest {
 		Unifiable<Integer> n = lvar();
 
 		Goal g = Aggregate.count((Unifiable<Integer> x) ->
-				separate(y, lval(1)).and(x.unifies(1)), n);
+				exclude(y.unifies(lval(1))).and(x.unifies(1)), n);
 
 		assertThatThrownBy(() -> g.solve(n, TestSchedulers.factory()).count())
 				.isInstanceOf(IllegalStateException.class)

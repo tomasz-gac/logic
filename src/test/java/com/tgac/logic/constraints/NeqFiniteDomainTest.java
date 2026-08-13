@@ -1,6 +1,7 @@
 package com.tgac.logic.constraints;
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -8,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.util.List;
@@ -28,7 +28,7 @@ public class NeqFiniteDomainTest {
 
 		// x in {0, 1, 2} and x != 1  ->  {0, 2}
 		Goal g = dom(x, EnumeratedDomain.range(0L, 3L))
-				.and(Disequality.separate(x, lval(1L)));
+				.and(exclude(x.unifies(lval(1L))));
 
 		List<Long> result = g.solve(x, TestSchedulers.factory())
 				.map(Term::get)
@@ -42,7 +42,7 @@ public class NeqFiniteDomainTest {
 		Unifiable<Long> x = lvar();
 
 		// same query, stores added in the other order
-		Goal g = Disequality.separate(x, lval(1L))
+		Goal g = exclude(x.unifies(lval(1L)))
 				.and(dom(x, EnumeratedDomain.range(0L, 3L)));
 
 		List<Long> result = g.solve(x, TestSchedulers.factory())

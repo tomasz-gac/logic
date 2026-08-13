@@ -4,6 +4,7 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: kills segments by sorting, FD constrain-first cuts branch spawns.
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -15,7 +16,6 @@ import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -49,7 +49,7 @@ public class BoundedSweepTest {
 		Unifiable<Long> x = lvar(), y = lvar();
 		assertThat(order(FiniteDomain.dom(x, EnumeratedDomain.range(0L, 9L)))).isEqualTo(1);
 		assertThat(order(FiniteDomain.leq(x, y))).isEqualTo(1);
-		assertThat(order(Disequality.separate(x, y))).isEqualTo(1);
+		assertThat(order(exclude(x.unifies(y)))).isEqualTo(1);
 		assertThat(order(Goal.success())).isEqualTo(1);
 		assertThat(order(Goal.failure())).isEqualTo(0);
 	}
@@ -120,7 +120,7 @@ public class BoundedSweepTest {
 				FiniteDomain.dom(lval(5L), EnumeratedDomain.range(0L, 3L)),
 				FiniteDomain.leq(lval(5L), lval(2L)),
 				FiniteDomain.<Long> separate(lval(1L), lval(1L)),
-				Disequality.<Long> separate(lval(1L), lval(1L))};
+				exclude(lval(1L).unifies(lval(1L)))};
 		for (Goal deadPost : dead) {
 			Unifiable<Long> x = lvar();
 			AtomicLong planned = new AtomicLong();

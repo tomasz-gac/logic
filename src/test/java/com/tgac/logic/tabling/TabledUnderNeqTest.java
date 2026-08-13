@@ -4,6 +4,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: answers, and replay by copy — canonical across caller lineages.
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -11,7 +12,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.separate.Disequality;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -34,7 +34,7 @@ public class TabledUnderNeqTest {
 		// and the consumer's own binding meets it
 		Tabled<Tuple1<Unifiable<Integer>>> notOne =
 				Tabling.define(args -> args.apply(x ->
-						Disequality.separate(x, lval(1))));
+						exclude(x.unifies(lval(1)))));
 
 		Unifiable<Integer> y = lvar();
 		assertThat(notOne.apply(Tuple.of(y))
@@ -57,7 +57,7 @@ public class TabledUnderNeqTest {
 		Package p = Package.empty().withStore(Table.empty());
 
 		Unifiable<Integer> x = lvar();
-		List<Integer> constrained = Disequality.separate(x, lval(2))
+		List<Integer> constrained = exclude(x.unifies(lval(2)))
 				.and(gen.apply(Tuple.of(x)))
 				.solveFrom(p, x, BreadthFirstScheduler::new)
 				.map(Term::<Integer>get)
@@ -82,13 +82,13 @@ public class TabledUnderNeqTest {
 		Package p = Package.empty().withStore(Table.empty());
 
 		Unifiable<Integer> u = lvar();
-		assertThat(Disequality.separate(u, lval(5))
+		assertThat(exclude(u.unifies(lval(5)))
 				.and(gen.apply(Tuple.of(u)))
 				.solveFrom(p, u, BreadthFirstScheduler::new)
 				.count()).isEqualTo(2);
 
 		Unifiable<Integer> v = lvar();
-		assertThat(Disequality.separate(v, lval(5))
+		assertThat(exclude(v.unifies(lval(5)))
 				.and(gen.apply(Tuple.of(v)))
 				.solveFrom(p, v, BreadthFirstScheduler::new)
 				.count()).isEqualTo(2);
@@ -102,7 +102,7 @@ public class TabledUnderNeqTest {
 		// the same conditional answer never couple to each other
 		Tabled<Tuple1<Unifiable<Integer>>> notOne =
 				Tabling.define(args -> args.apply(x ->
-						Disequality.separate(x, lval(1))));
+						exclude(x.unifies(lval(1)))));
 
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
