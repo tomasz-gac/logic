@@ -10,7 +10,6 @@ import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.UnifyGoal;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.goals.Packaged;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.Tuple2;
@@ -93,49 +92,34 @@ public final class Verification {
 	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
 		Tuple2<List<Nogood>, List<Nogood>> byShape =
 				nogoods.partition(n -> n.getForbidden().accept(BINDING_SHAPED));
-		Option<List<Nogood>> bindingKept = bindingVerify(byShape._1, state.substitution());
-		if (!bindingKept.isDefined()) {
-			return Fiber.done(Option.none());
-		}
-		if (byShape._2.isEmpty()) {
-			return Fiber.done(bindingKept);
-		}
-		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
-				Fiber.done(Option.none()) :
-				byShape._2.foldLeft(
-								Fiber.done(Option.of(List.<Nogood> empty())),
-								(acc, nogood) -> acc.flatMap(kept -> kept.isDefined() ?
-										verificationStep(settled.get(), kept.get(), nogood) :
-										Fiber.done(kept)))
-						.map(packagedKept -> packagedKept.map(bindingKept.get()::appendAll)));
+		// the binding subset's trials are Fiber.done by construction, so this
+		// fold composes eagerly and the whole pass stays inside the current
+		// step — the sync gate survives as a property, not a second code path
+		return fold(byShape._1, state).flatMap(bindingKept -> {
+			if (!bindingKept.isDefined()) {
+				return Fiber.done(Option.none());
+			}
+			if (byShape._2.isEmpty()) {
+				return Fiber.done(bindingKept);
+			}
+			return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
+					Fiber.done(Option.none()) :
+					fold(byShape._2, settled.get())
+							.map(packagedKept -> packagedKept.map(bindingKept.get()::appendAll)));
+		});
 	}
 
-	/** The whole store at the substitution level: Neq's verifyAndSimplify re-homed. */
-	private static Option<List<Nogood>> bindingVerify(List<Nogood> nogoods, Substitutions subs) {
-		List<Nogood> kept = List.empty();
-		for (Nogood nogood : nogoods) {
-			SubstitutionTrial.Outcome outcome =
-					SubstitutionTrial.step(nogood.getForbidden(), subs).get();
-			if (outcome.isRefuted()) {
-				continue;
-			}
-			if (outcome.isEntailed()) {
-				return Option.none();
-			}
-			kept = kept.append(Nogood.of(outcome.getRemainder()));
-		}
-		return Option.of(kept);
-	}
-
-	/** One package-shaped nogood: the trial visitor's verdict, verdict-mapped. */
-	private static Fiber<Option<List<Nogood>>> verificationStep(
-			Package state, List<Nogood> kept, Nogood nogood) {
-		return PackageTrial.trial(nogood.getForbidden(), state).map(outcome ->
-				outcome.isRefuted() ?
-						Option.of(kept) :
-						outcome.isEntailed() ?
-								Option.none() :
-								Option.of(kept.append(Nogood.of(outcome.getRemainder()))));
+	private static Fiber<Option<List<Nogood>>> fold(List<Nogood> nogoods, Package base) {
+		return nogoods.foldLeft(
+				Fiber.done(Option.of(List.empty())),
+				(acc, nogood) -> acc.flatMap(kept -> kept.isDefined() ?
+						Trial.trial(nogood.getForbidden(), base).map(outcome ->
+								outcome.isRefuted() ?
+										Option.of(kept.get()) :
+										outcome.isEntailed() ?
+												Option.<List<Nogood>> none() :
+												Option.of(kept.get().append(Nogood.of(outcome.getRemainder())))) :
+						Fiber.done(kept)));
 	}
 
 	/**
