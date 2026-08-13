@@ -16,7 +16,7 @@
   entry — "table constraint" next to tabling's "table" in core is a
   collision, the gate settles the core store's name before the move
 - **links**: negation-over-finite-goals.md (consumer under negation),
-  lattice-store.md §4/§10 (the co-store slot — filled by Nogoods
+  lattice-store.md §4/§10 (the co-store slot — filled by NogoodConstraints
   composition per the stipulation, not by a sibling store),
   weighted-tclp.md §5
   (positive-face consumer: emit as level sets), condition.md (a learned
@@ -46,7 +46,7 @@ see negation-over-finite-goals.md. The compact form here (ONE nogood
 stating the positive membership constraint, ¬(args ∈ answers)) remains
 the recorded optimization should the per-answer form measure too slow
 on wide tables, and the standing stipulation is unchanged either way:
-NO negative row-set store gets built — the Nogoods store is the
+NO negative row-set store gets built — the NogoodConstraints store is the
 negative face, and the co-store slot lattice-store §4 reserves is
 filled by composition, not by a sibling store. Learned nogoods keep
 the same composition.
@@ -63,7 +63,7 @@ residence decides who owes Projectable and transcription faces
 (package-resident core store owes them, boundary-resident pldb store
 does not).
 
-## The Nogoods relation
+## The NogoodConstraints relation
 
 Two compilations of the same negative knowledge, both nogoods: per-answer
 (one nogood per row, bind literals) and compact (one nogood, one statement

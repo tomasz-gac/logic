@@ -163,7 +163,7 @@ representation** (Clojure's move: array-map under ~8–16 entries, promote
 above) captures the small-subst win where Byrd is right (fresh branches,
 which dominate a BFS frontier) without betraying deep derivations — though
 the birth-radix trie's tail node captures much of the same win natively.
-Not worth touching: the package's stores map (2–4 entries), Nogoods'
+Not worth touching: the package's stores map (2–4 entries), NogoodConstraints'
 LinkedHashSet, vavr Lists in fold positions.
 
 Decision procedure: a benchmark pitting the candidates on BOTH workload

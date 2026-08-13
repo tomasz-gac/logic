@@ -14,7 +14,7 @@ tier built once over the abstraction, and the cross-store doctrine.
 `nogood-store.md` — negative-only nogoods over literals, Neq the
 degenerate bind case, `either` the disjunctive sibling; the human's
 stipulation stands: no negative row-set store, exclusion composes
-through Nogoods. Read that first — it is the version that survived
+through NogoodConstraints. Read that first — it is the version that survived
 the comprehension veto.)
 Status: DESIGN. Sequencing is §9 — the extraction happens INSIDE #61,
 per the second-implementation rule; nothing here is speculative build.

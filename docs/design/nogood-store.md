@@ -1,7 +1,7 @@
 # The nogood store — "not this" over literals, with "either-or" as its sibling
 
 **STATUS: STAGES 1–2 BUILT (August 2026, the `note-store` branch:
-`Posting`, `Nogood`, `Verification`, `Nogoods`, twenty-four receipts plus
+`Posting`, `Nogood`, `Verification`, `NogoodConstraints`, twenty-four receipts plus
 the laws-kit union-meet claim). The names are RATIFIED IMPORTS from
 CP-SAT (the human's call, August 2026): a nogood is Stallman &
 Sussman's record — "NOT all these simultaneously" — generalized; a
@@ -132,6 +132,18 @@ constraint. (Neq's record-shrinkage is cargo-internal: its trial emits
 its own remainder in its own language; nothing is read out of anyone's
 store.) A `Projectable`-based extraction at the nogood's `terms()` may
 return later with a better view; it is deliberately not tier zero.
+
+The one lawful rewrite is the binding rows' own: a forbidden
+unification simplifies into its RESIDUAL PREFIX — the trial minted it
+itself through the unifier, no store was consulted, and the residual
+shrinks monotonically under binding growth. That is Neq's
+simplification inherited whole; "never rewriting" above is the rule for
+store-shaped literals, whose only lawful fates are entailed (dropped),
+refuted (nogood discharged), or owed as their ORIGINAL selves. The
+trial also prunes ACROSS nogoods — ¬F_B subsumes ¬F_A when F_A implies
+F_B, witnessed by assuming A's forbidden (the trial's grown package)
+and reading B's as entailed against it; Neq's removeSubsumed under the
+trial, binding-shaped survivors only.
 
 ## 4. The direction analysis and the imposition law
 
@@ -302,15 +314,18 @@ doors like everyone else; `Exclusion` never learns store names.
    dissolved — excluding a `dom` is the negated box); four receipts
    including negated unification.
    (`FiniteDomain.in`, the FD factor builder, arrived with stage 2.)
-4. **Nogoods ride tabling**: the `Projectable` face under §7's rulings.
+4. **NogoodConstraints ride tabling**: the `Projectable` face under §7's rulings.
 5. **The sibling**: `either` on the shared trial, straight reading,
    the agreement move, labelling leftovers as a `Conde` of impositions.
 6. **Gated tail**: the ¬ operator (§8.5 — a sealed conjunct's region is
    factors plus bindings, literal-shaped already: the fragment extends
    by sealing, never by admitting programs); clause learning (§8.6 —
-   learned nogoods are nogoods); the Neq re-seat, last, as hygiene — its
-   verification is already this design's trial, so the re-seat is
-   representation alignment only.
+   learned nogoods are nogoods); the Neq re-seat — DONE (August 2026),
+   and as a kill, not a re-seat: the `separate` package is deleted
+   outright, `rembero`/`distincto` live in `Logic` over `exclude`,
+   disequality renders as `¬(… ≡ …)`, and the step pins hold within
+   ~3-7% of the record store's final counts (the ledger lives in
+   `ExclusionStepPinsTest`).
 
 ## 9. Risks, named
 

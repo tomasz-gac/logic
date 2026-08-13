@@ -58,7 +58,7 @@ joined by `all`. The law: **absorb(restate(F)) ≡ F**, modulo normalize
 (the imposition law's idempotence clause licenses the modulo) —
 restate is imposition's inverse, checkable in the laws kit. Per store
 it is near-dictation: a lattice store restates as one `Imposition` per
-entry plus one `stated(propagator)` per parked propagator; Nogoods as
+entry plus one `stated(propagator)` per parked propagator; NogoodConstraints as
 one `stated(nogood)` each; the Substitutions floor already speaks it
 (a Prefix crosses as binds — Resolution.rename today).
 

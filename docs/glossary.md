@@ -71,7 +71,7 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **labelling** — enumerate remaining domain values as branches at answer time; deferred materialization's endpoint — the finite door's mechanism. *(finitedomain/)*
 - [x] **enforce** — the FINITE exit: per-answer commit at the end of a branch, where compressed branching expands — FD labels, projections fail if unrun; the branch's own seal. *(ConstraintStore)*
 - [x] **narrowing wake** — constraint bodies wake when domains shrink, not only on bindings. *(CLAUDE.md landmines)*
-- [~] **trial unification** — Neq's check: try the forbidden unification on the side and observe. *(separate/)*
+- [x] **trial unification** — the trial's check, inherited from Neq: try the forbidden unification on the side and observe. *(nogoods/Trial)*
 
 ## 4. Algebra and capabilities
 
@@ -146,10 +146,10 @@ rating pass can stop at any section boundary and still be useful.
 - [~] **the Projectable equivalence** — resident-in-a-store and riding-as-a-value are one object: the crossings are lossless conversion operators (no retraction; relocate the imposition point instead). *(condition.md §8.3)*
 - [x] **nogood** ⋯import — the record: "NOT all these literals simultaneously" (CP-SAT: Stallman & Sussman's dependency-directed record, generalized); Neq's record shape, store-wide. Retires *note / escape / four moves*. *(nogood-store §1)*
 - [x] **Posting (resolve | activate | absorb)** — knowledge injection as a Goal, constructed only by Propagation's doors: apply imposes through the chokepoint, order ≤1 with the doom bit, closed under ∧. A Goal can do anything to a Package; a Posting only posts. Retires *Statement* and *Literal* as type names; "literal" survives as the role word. *(nogood-store §2, constraint-kernel §2)*
-- [x] **Nogoods** — the store: nogoods held conjunctively, union meet, normalize = re-verification against the settled state. Retires *NoteStore\<V\>* (the cargo-typed kernel this design superseded); *polarity* retired with it — the store is negative-only, composition replaces polarity mixing. *(nogood-store §§1,6)*
+- [x] **NogoodConstraints** — the store: nogoods held conjunctively, union meet, normalize = re-verification against the settled state. Retires *NoteStore\<V\>* (the cargo-typed kernel this design superseded); *polarity* retired with it — the store is negative-only, composition replaces polarity mixing. *(nogood-store §§1,6)*
 - [~] **scratch-copy check (excursion)** — impose a nogood's literals sequentially on a scratch package and read each three ways: fails = refuted/discard, unchanged = entailed/crossed off, new knowledge = still owed. *(nogood-store §§1,3)*
 - [~] **agreement move (lift)** — what ALL surviving alternatives agree on holds now; needs an opt-in join; hull joins sound; the deduction forking can never make. The either-sibling's feature. *(nogood-store §6)*
-- [~] **co-store** — the negative-box configuration (Neq generalized: forbid boxes instead of points); filled by Nogoods composition per the human's stipulation — no negative sibling store gets built. *(nogood-store / lattice-store §4)*
+- [~] **co-store** — the negative-box configuration (Neq generalized: forbid boxes instead of points); filled by NogoodConstraints composition per the human's stipulation — no negative sibling store gets built. *(nogood-store / lattice-store §4)*
 - [~] **Neq = ¬Condition** — a record set is a negated DNF (records are clauses); FD+Neq are the finite–cofinite complement-closed pair. *(condition.md §8.5)*
 - [~] **constructive negation** ⋯import — negation computed as the complement of a SEALED answer region, delivered as constraints; "negation is the ultimate outside reader". *(condition.md §8.5)*
 - [~] **clause learning / tabling the failures** ⋯import — a learned nogood is "⊥ GIVEN R"; ¬R is a co-store clause; nogoods are born at 1 and stream; the fair scheduler prunes the frontier instead of backjumping. *(condition.md §8.6)*

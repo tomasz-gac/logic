@@ -11,7 +11,7 @@ tests.
 1. **TDD.** Write a failing test first, watch it fail, then make it pass. For a bug, first
    write a test that reproduces it.
 2. **The test suite is your safety net.** `mvn test` must end in `BUILD SUCCESS`. Never
-   commit or merge with a red suite. Count today: ~553 tests. If the count drops, you
+   commit or merge with a red suite. Count today: ~640 tests. If the count drops, you
    deleted or emptied a test — don't.
 3. **Test output must be pristine.** No `System.out.println` in tests or in `src/main`.
    Assert results; don't print them. (One intentional exception is documented below.)
@@ -48,7 +48,7 @@ tests.
 ## STOP and ask the human before touching
 
 These are subtle and easy to break silently:
-- **the constraint core** (`constraints/`, `finitedomain/`, `separate/`, `projection/`) — see
+- **the constraint core** (`constraints/`, `finitedomain/`, `nogoods/`, `projection/`) — see
   the composition limitation below;
 - **tabling** (`tabling/`) — parked-continuation scheduling, easy to deadlock;
 - **the fiber/scheduler substrate** in `functional`.
@@ -71,15 +71,15 @@ Small, local, well-tested changes elsewhere don't need to ask.
   `UnfairBreadthFirst`. All are drivers over `FiberStep`; they differ only in which frame
   they step next.
 - **Constraint stores** implement `ConstraintStore` (`constraints/store/`):
-  `FiniteDomainConstraints`, `NeqConstraints` (disequality), the `LatticeStore`
-  family. The driver (`constraints/Propagation`) speaks to them through two triggers — `revise`
+  `FiniteDomainConstraints`, `NogoodConstraints` (forbidden conjunctions; disequality is
+  its one-literal case), the `LatticeStore` family. The driver (`constraints/Propagation`) speaks to them through two triggers — `revise`
   (bindings arrived; the store's COMPLETE reaction: custody, own watchers, own
   cascade) and `stated` (your item was stated) — each answered by a
   `Fiber<Revision>` (own factor + consequences; fiber so long cascades stay fairly
   stepped — see `functional`'s `Worklist`). How a store
   computes it is its own business: FD administers its own propagators (now
-  `finitedomain`-private: Propagator/Verdict/Update), Neq re-verifies its
-  records wholesale; `constraints/store/Watches` is the shared chain matcher.
+  `finitedomain`-private: Propagator/Verdict/Update), NogoodConstraints re-verifies its
+  nogoods wholesale through the trial; `constraints/store/Watches` is the shared chain matcher.
   SUSPENSIONS are NOT a store: they are Propagation's own first-class
   citizens — the driver parks them (its private `Suspensions` holder, an
   inert transport), ripens them after bindings, and splices their bodies
@@ -110,8 +110,8 @@ Key **seams** (the places behaviour is hooked):
   store-internal (`finitedomain`'s private toolkit) — the framework owns parking, so
   `keep` is default-safe and evaporation is unrepresentable. The equal-domain check in
   `finitedomain/DomainUpdate` is the termination guard of wake-on-narrowing — do not
-  remove it. Raw `MiniKanren.unify` is legitimate only inside the unifier and for
-  Disequality's trial unification. Use a plain `Store` for transport (Table pattern).
+  remove it. Raw `MiniKanren.unify` is legitimate only inside the unifier — the nogood
+  trial mints through `unifyPrefix` like every other caller. Use a plain `Store` for transport (Table pattern).
   Constraint bodies wake on narrowing too — they must tolerate any mix of wide/ground
   args (see the mulIntervals sign-guard lesson).
   Details: `docs/reference/constraint-kernel.md`.
@@ -211,7 +211,7 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   ratified imports from CP-SAT): the nogood store — `Nogood` = "NOT all
   these literals simultaneously" (Neq's record shape, store-wide),
   `Posting` (resolve | activate | absorb) the closed chokepoint
-  vocabulary, `Nogoods` the store; verification = sequential scratch
+  vocabulary, `NogoodConstraints` the store; verification = sequential scratch
   imposition read three ways (fail = refuted, unchanged = crossed off,
   new = owed); the direction analysis + imposition law; settled base;
   no polarity — `either` as sibling, composition replaces mixing; the
