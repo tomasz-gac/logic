@@ -6,25 +6,29 @@ package com.tgac.logic.nogoods;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
-import com.tgac.logic.unification.LVar;
-import com.tgac.logic.unification.Unknown;
 import com.tgac.logic.unification.Term;
+import com.tgac.logic.unification.Unknown;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -158,39 +162,49 @@ final class Nogoods implements Projectable<Nogoods> {
 	 * whose every literal pruned stays invisible, as it always was.
 	 */
 	@Override
-	@SuppressWarnings("unchecked")
 	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package s) {
 		// renameSubstitutions is the answer's canonical seed: a live name it
 		// binds is part of the rendered answer
 		List<Stored> residuals = List.empty();
 		for (Nogood nogood : nogoods) {
-			List<Posting> kept = literals(nogood)
-					.filter(literal -> {
-						java.util.List<Term<?>> names = literal.terms()
-								.map(term -> (Term<?>) s.substitution().walkAll(term))
-								.flatMap(MiniKanren::namesIn)
-								.map(name -> (Term<?>) name)
-								.collect(java.util.stream.Collectors.toList());
-						return !names.isEmpty() && names.stream()
-								.allMatch(name -> renameSubstitutions.walk(name) != name);
-					});
+			List<Posting> kept = getUnboundNames(renameSubstitutions, s, nogood);
 			if (kept.isEmpty()) {
 				continue;
 			}
-			java.util.Map<Unknown<?>, Term<?>> display = new java.util.LinkedHashMap<>();
-			kept.toJavaStream()
-					.flatMap(Posting::terms)
-					.map(term -> (Term<?>) s.substitution().walkAll(term))
-					.flatMap(MiniKanren::namesIn)
-					.forEach(name -> display.put(name, renameSubstitutions.walk((Term<?>) name)));
+			Map<Unknown<?>, Term<?>> display = renameKept(renameSubstitutions, s, kept);
 			Nogood pruned = Nogood.of(kept.size() == 1 ?
 					kept.head() :
 					Posting.all(kept.toJavaArray(Posting[]::new)));
-			residuals = residuals.append((Stored) pruned.rename(Renaming.of(display)).get());
+			residuals = residuals.append(pruned.rename(Renaming.of(display)).get());
 		}
 		return residuals.isEmpty() ?
 				unifiable :
 				Constrained.of(unifiable, residuals);
+	}
+
+	private static List<Posting> getUnboundNames(Substitutions renameSubstitutions, Package s, Nogood nogood) {
+		return literals(nogood)
+				.filter(literal -> {
+					java.util.List<Term<?>> names = literal.terms()
+							.map(term -> (Term<?>) s.substitution().walkAll(term))
+							.flatMap(MiniKanren::namesIn)
+							.map(name -> (Term<?>) name)
+							.collect(Collectors.toList());
+					return !names.isEmpty() && names.stream()
+							.allMatch(name -> renameSubstitutions.walk(name) != name);
+				});
+	}
+
+	private static Map<Unknown<?>, Term<?>> renameKept(Substitutions renameSubstitutions, Package s, List<Posting> kept) {
+		return kept.toJavaStream()
+				.flatMap(Posting::terms)
+				.map(term -> (Term<?>) s.substitution().walkAll(term))
+				.flatMap(MiniKanren::namesIn)
+				// one name may appear in several kept literals; walk(name) is
+				// deterministic, so both occurrences agree — first wins
+				.collect(Collectors.toMap(Function.identity(), renameSubstitutions::walk,
+						(first, same) -> first,
+						LinkedHashMap::new));
 	}
 
 	private static List<Posting> literals(Nogood nogood) {

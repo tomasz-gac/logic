@@ -128,7 +128,7 @@ public class NogoodsTest {
 		java.util.List<String> answers = g.solve(x, TestSchedulers.factory())
 				.map(Object::toString)
 				.collect(java.util.stream.Collectors.toList());
-		assertThat(answers).containsExactly("_.0 : ¬(_.0 = {1})");
+		assertThat(answers).containsExactly("_.0 : ¬(_.0 ≣ {1})");
 	}
 
 	@Test

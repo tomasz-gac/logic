@@ -60,7 +60,7 @@ public class UnifyGoal<T> implements Posting {
 	@Override
 	public String toString() {
 		Package empty = Package.empty();
-		return empty.format(u) + " = " + empty.format(v);
+		return empty.format(u) + " ≣ " + empty.format(v);
 	}
 
 	@Override
