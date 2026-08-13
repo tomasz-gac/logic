@@ -10,6 +10,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Exhaustion;
@@ -38,7 +39,7 @@ public class TrialEdgeTest {
 								.apply(Package.empty()))
 				.get().get(0);
 
-		io.vavr.collection.List<Package> worlds = Verification.imposed(y.unifies(5), state).get();
+		io.vavr.collection.List<Package> worlds = Trial.imposed(y.unifies(5), state).get();
 		assertThat(worlds).hasSize(2);
 	}
 

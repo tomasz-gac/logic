@@ -3,7 +3,9 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The user front door for negative knowledge: exclude states one nogood —
 // ABOUTME: "NOT all these literals simultaneously" — through the statement entry.
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -33,7 +35,7 @@ public final class Exclusion {
 	 * Done by construction); anything else claims nothing.
 	 */
 	private static boolean bornViolated(Posting forbidden, com.tgac.logic.goals.Package p) {
-		com.tgac.functional.fibers.Fiber<Trial.Outcome> trial = Trial.trial(forbidden, p);
+		Fiber<Trial.Outcome> trial = Trial.trial(forbidden, p);
 		return trial.isDone() && trial.get().isEntailed();
 	}
 }

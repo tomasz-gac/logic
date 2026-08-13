@@ -4,6 +4,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: entailed fails, survivors keep their original literals, bindings thread.
 
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -28,7 +29,7 @@ public class VerificationTest {
 	private static Package given(Posting... literals) {
 		Package state = Package.empty();
 		for (Posting literal : literals) {
-			state = Verification.imposed(literal, state).get().head();
+			state = Trial.imposed(literal, state).get().head();
 		}
 		return state;
 	}
@@ -124,7 +125,7 @@ public class VerificationTest {
 			}
 		};
 
-		assertThatThrownBy(() -> Verification.imposed(
+		assertThatThrownBy(() -> Trial.imposed(
 				Propagation.activate(orphan), Package.empty()).get())
 				.isInstanceOf(IllegalStateException.class);
 	}

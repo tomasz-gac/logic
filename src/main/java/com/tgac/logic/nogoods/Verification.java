@@ -5,13 +5,9 @@ package com.tgac.logic.nogoods;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.UnifyGoal;
-import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Packaged;
-import io.vavr.collection.LinkedHashMap;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -46,34 +42,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Verification {
 
-	/** Steps at the substitution level — no package trial will be needed. */
-	private static final Posting.Visitor<Boolean> BINDING_SHAPED = new Posting.Visitor<Boolean>() {
-		@Override
-		public Boolean visit(UnifyGoal<?> unification) {
-			return true;
-		}
-
-		@Override
-		public Boolean visit(Posting.Resolution resolution) {
-			return true;
-		}
-
-		@Override
-		public Boolean visit(Posting.Activation activation) {
-			return false;
-		}
-
-		@Override
-		public Boolean visit(Posting.Absorption absorption) {
-			return false;
-		}
-
-		@Override
-		public Boolean visit(Posting.AllOf all) {
-			return all.getParts().forAll(part -> part.accept(this));
-		}
-	};
-
 	/**
 	 * Every nogood re-verified against the state: none = some nogood is violated,
 	 * the branch fails; otherwise the kept list — survivors simplified to their
@@ -91,7 +59,7 @@ public final class Verification {
 	 */
 	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
 		Tuple2<List<Nogood>, List<Nogood>> byShape =
-				nogoods.partition(n -> n.getForbidden().accept(BINDING_SHAPED));
+				nogoods.partition(n -> Trial.bindingShaped(n.getForbidden()));
 		// the binding subset's trials are Fiber.done by construction, so this
 		// fold composes eagerly and the whole pass stays inside the current
 		// step — the sync gate survives as a property, not a second code path
@@ -162,56 +130,4 @@ public final class Verification {
 						Fiber.done(kept)));
 	}
 
-	/**
-	 * The worlds the imposition delivered, grounded through the protocol
-	 * home ({@link Exhaustion#collected}): a fresh workforce claim, so
-	 * completion is honest even when the imposition wakes suspension bodies
-	 * (arbitrary goals, may spawn). Empty = the run stayed silent: the
-	 * imposition failed.
-	 */
-	static Fiber<List<Package>> imposed(Posting literal, Package scratch) {
-		return Exhaustion.collected(literal.apply(scratch))
-				.map(List::ofAll);
-	}
-
-	/**
-	 * Sound because every piece of solver knowledge lives IN the package —
-	 * substitutions, factors, parked suspensions, tables — so an imposition
-	 * that added knowledge necessarily perturbs the structure, and equality
-	 * witnesses "nothing new". Errs only toward "changed" (bookkeeping
-	 * growth, representation drift), the conservative direction — a missed
-	 * entailment only delays: nogoods re-verify on every revise and the
-	 * ground floor decides by answer time. If solver knowledge ever lives
-	 * outside the Package, this classifier is where that breaks silently.
-	 *
-	 * <p>Exactness at the points this runs rests on the imposition law
-	 * (idempotent normalization, the ground floor, no silent swallowing —
-	 * the logic laws kit's claims): verification runs on post-drain
-	 * packages, quiescent hence normalized, so an entailed imposition
-	 * cannot drift. Per-factor mutual leq (each store's own Absorbable
-	 * order) remains available as a drift-immune refinement — pure
-	 * optimization, buying earliness on the delay side.
-	 */
-	static boolean unchanged(Package before, Package after) {
-		return before == after
-				|| before.equals(after)
-				|| before.substitution().equals(after.substitution())
-						&& knowledge(before).equals(knowledge(after));
-	}
-
-	/**
-	 * An empty store is not knowledge: an imposition whose only trace is the
-	 * REGISTRATION of a store it then left empty (the inner exclusion of a
-	 * double negation discarding its nogood against a NogoodConstraints-stripped
-	 * scratch) has proven its content already holds — reading the empty
-	 * container as change would keep the literal owed forever and let ground
-	 * violations render silently.
-	 */
-	// TODO(the human, August 2026): further investigation owed — whether other
-	//   bookkeeping shapes should be invisible to this comparison, and whether
-	//   knowledge comparison belongs on Package once more clients appear.
-	private static LinkedHashMap<Class<? extends Packaged>, Packaged> knowledge(Package p) {
-		return p.getStores().filter(entry -> !(entry._2 instanceof ConstraintStore
-				&& ((ConstraintStore) entry._2).isEmpty()));
-	}
 }

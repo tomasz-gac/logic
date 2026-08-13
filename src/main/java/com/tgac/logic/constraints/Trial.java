@@ -1,13 +1,14 @@
-package com.tgac.logic.nogoods;
+package com.tgac.logic.constraints;
 
-// ABOUTME: The whole trial as ONE visitor: unification rows step fast at the
+// ABOUTME: The shared trial as ONE visitor: unification rows step fast at the
 // ABOUTME: substitution level, store rows impose on the scratch, conjuncts thread.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.UnifyGoal;
+import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.goals.Packaged;
+import io.vavr.collection.LinkedHashMap;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
@@ -36,7 +37,7 @@ import lombok.Value;
  * out of a factor. A CONJUNCT threads its parts through the growing scratch,
  * so a mixed nogood crosses off its decided parts at part granularity.
  */
-final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
+public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 
 	private final Package scratch;
 
@@ -44,13 +45,45 @@ final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		this.scratch = scratch;
 	}
 
-	static Fiber<Outcome> trial(Posting forbidden, Package scratch) {
-		return forbidden.accept(new Trial(scratch));
+	public static Fiber<Outcome> trial(Posting literal, Package scratch) {
+		return literal.accept(new Trial(scratch));
+	}
+
+	/** Steps at the substitution level — no package trial will be needed. */
+	private static final Posting.Visitor<Boolean> BINDING_SHAPED = new Posting.Visitor<Boolean>() {
+		@Override
+		public Boolean visit(UnifyGoal<?> unification) {
+			return true;
+		}
+
+		@Override
+		public Boolean visit(Posting.Resolution resolution) {
+			return true;
+		}
+
+		@Override
+		public Boolean visit(Posting.Activation activation) {
+			return false;
+		}
+
+		@Override
+		public Boolean visit(Posting.Absorption absorption) {
+			return false;
+		}
+
+		@Override
+		public Boolean visit(Posting.AllOf all) {
+			return all.getParts().forAll(part -> part.accept(this));
+		}
+	};
+
+	public static boolean bindingShaped(Posting literal) {
+		return literal.accept(BINDING_SHAPED);
 	}
 
 	/** Refuted: {@code remainder == null} and not entailed. */
 	@Value
-	static class Outcome {
+	public static class Outcome {
 		Posting remainder;
 		Package grown;
 		boolean entailed;
@@ -67,7 +100,7 @@ final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 			return new Outcome(remainder, grown, false);
 		}
 
-		boolean isRefuted() {
+		public boolean isRefuted() {
 			return remainder == null && !entailed;
 		}
 	}
@@ -155,7 +188,7 @@ final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	 * with the scratch unthreaded (missed jointness only ever keeps more).
 	 */
 	private Fiber<Outcome> imposed(Posting literal) {
-		return Verification.imposed(literal, scratch).map(worlds -> {
+		return imposed(literal, scratch).map(worlds -> {
 			if (worlds.isEmpty()) {
 				return Outcome.refuted();
 			}
@@ -163,7 +196,7 @@ final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 				return Outcome.owed(literal, scratch);
 			}
 			Package grown = worlds.head();
-			return Verification.unchanged(scratch, grown) ?
+			return unchanged(scratch, grown) ?
 					Outcome.entailed(grown) :
 					Outcome.owed(literal, grown);
 		});
@@ -192,5 +225,58 @@ final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 					outcome.isEntailed() ? remainders : remainders.append(outcome.getRemainder()),
 					outcome.getGrown());
 		});
+	}
+
+	/**
+	 * The worlds the imposition delivered, grounded through the protocol
+	 * home ({@link Exhaustion#collected}): a fresh workforce claim, so
+	 * completion is honest even when the imposition wakes suspension bodies
+	 * (arbitrary goals, may spawn). Empty = the run stayed silent: the
+	 * imposition failed.
+	 */
+	public static Fiber<List<Package>> imposed(Posting literal, Package scratch) {
+		return Exhaustion.collected(literal.apply(scratch))
+				.map(List::ofAll);
+	}
+
+	/**
+	 * Sound because every piece of solver knowledge lives IN the package —
+	 * substitutions, factors, parked suspensions, tables — so an imposition
+	 * that added knowledge necessarily perturbs the structure, and equality
+	 * witnesses "nothing new". Errs only toward "changed" (bookkeeping
+	 * growth, representation drift), the conservative direction — a missed
+	 * entailment only delays: stores re-verify on every revise and the
+	 * ground floor decides by answer time. If solver knowledge ever lives
+	 * outside the Package, this classifier is where that breaks silently.
+	 *
+	 * <p>Exactness at the points this runs rests on the imposition law
+	 * (idempotent normalization, the ground floor, no silent swallowing —
+	 * the logic laws kit's claims): verification runs on post-drain
+	 * packages, quiescent hence normalized, so an entailed imposition
+	 * cannot drift. Per-factor mutual leq (each store's own Absorbable
+	 * order) remains available as a drift-immune refinement — pure
+	 * optimization, buying earliness on the delay side.
+	 */
+	static boolean unchanged(Package before, Package after) {
+		return before == after
+				|| before.equals(after)
+				|| before.substitution().equals(after.substitution())
+						&& knowledge(before).equals(knowledge(after));
+	}
+
+	/**
+	 * An empty store is not knowledge: an imposition whose only trace is the
+	 * REGISTRATION of a store it then left empty (the inner exclusion of a
+	 * double negation discarding its nogood against a NogoodConstraints-stripped
+	 * scratch) has proven its content already holds — reading the empty
+	 * container as change would keep the literal owed forever and let ground
+	 * violations render silently.
+	 */
+	// TODO(the human, August 2026): further investigation owed — whether other
+	//   bookkeeping shapes should be invisible to this comparison, and whether
+	//   knowledge comparison belongs on Package once more clients appear.
+	private static LinkedHashMap<Class<? extends Packaged>, Packaged> knowledge(Package p) {
+		return p.getStores().filter(entry -> !(entry._2 instanceof ConstraintStore
+				&& ((ConstraintStore) entry._2).isEmpty()));
 	}
 }
