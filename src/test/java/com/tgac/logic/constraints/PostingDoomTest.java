@@ -41,6 +41,20 @@ public class PostingDoomTest {
 	}
 
 	@Test
+	public void fluentAndStaysInTheVocabulary() {
+		// Posting.and(Posting...) overloads Goal.and(Goal...) — more specific,
+		// so the result stays in the vocabulary and the trial's joint doom
+		// sees through the chain
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Posting joint = x.unifies(1).and(x.unifies(2));
+		assertThat(joint.doomed(Package.empty())).isTrue();
+
+		Posting three = x.unifies(1).and(y.unifies(2), x.unifies(1));
+		assertThat(three.doomed(Package.empty())).isFalse();
+	}
+
+	@Test
 	public void aJointlyContradictedConjunctionIsDoomed() {
 		// the parts are individually fine; only the threaded trial sees the clash
 		Unifiable<Integer> x = lvar();

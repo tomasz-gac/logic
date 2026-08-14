@@ -115,6 +115,20 @@ public interface Posting extends Goal, Bounded {
 		return doomed(p) ? 0 : 1;
 	}
 
+	/**
+	 * Fluent ∧ inside the vocabulary: the class is closed under conjunction,
+	 * so a Posting conjoined with Postings is a Posting. Overloads
+	 * {@link Goal#and} by specificity — all-Posting arguments stay here,
+	 * any plain Goal in the mix falls back to the Goal combinator, where
+	 * the result rightly stops being a Posting.
+	 */
+	default Posting and(Posting... others) {
+		Posting[] parts = new Posting[others.length + 1];
+		parts[0] = this;
+		System.arraycopy(others, 0, parts, 1, others.length);
+		return all(parts);
+	}
+
 	/** {@code lhs = rhs}: a unification posting — {@link Constraints#unify}. */
 	static <T> Posting bind(Unifiable<T> lhs, Unifiable<T> rhs) {
 		return Constraints.unify(lhs, rhs);
