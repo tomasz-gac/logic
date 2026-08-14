@@ -131,10 +131,28 @@ correspondence is an observation, not a refactor: any unification is
 step 8 on structures that are not closed (the store has no code, the
 trial's laws (#116) are unwritten), so it waits behind the same gate.
 
-## The kill
+## The verdict (measured, Aug 2026 — both poles)
 
-If real workloads — the zip consumptions, the pldb joins, the
-scheduling shapes — never present products where constraints decide
-most alternatives before labelling, the store never earns its carrying
-cost and stays a design. The benchmark exists to answer exactly this,
-against the one workload already known to have hurt.
+The kill criterion was real, and it fired on exactly half the
+instrument. SO 70288953 ported whole (strips via addo, happens-beforo
+chains, the non-overlap clause), both spellings raced:
+
+- **Bare same-space, no chains** (the pole the kill named): residence
+  LOSES 4.35× — 224,215 steps against conde's ~51,500 at n=5. No
+  external knowledge decides an alternative before labelling, so the
+  store pays wholesale re-verification (packaged partition, scratch
+  impositions, no watched literals) the whole way, and the ground
+  floor expands the same product anyway. Deferral without
+  decidability is overhead.
+- **Job-shop 3×3** (chains propagate windows into the disjuncts —
+  the 2021 question's REAL shape, happens-beforo included): residence
+  completes in 274,078 steps (~0.6s); the conde lane DOES NOT FINISH
+  in minutes — the 2021 blowup reproduced verbatim, then dissolved.
+
+The claim, sharpened by measurement: the store pays exactly when
+clauses get DECIDED before labelling, and the deciders are the
+problem's other constraints propagating into the disjuncts. Bare
+combinatorial cores stay conde's (or wait for the shelved machinery:
+watched literals for the carrying cost, the agreement move for
+propagation FROM undecided clauses). The 2021 problem itself sits on
+the winning side — because it always had the chains.

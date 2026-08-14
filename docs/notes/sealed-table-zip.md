@@ -83,6 +83,16 @@ natural first cut (Closed zips, Streaming forks).
 
 ## The streaming question (the human's, August 2026)
 
+Benchmark input (Aug 2026, disjunction-store-pays-in-products § the
+verdict): the store decides clauses fast when other constraints
+propagate into them (job-shop: conde DNF vs 0.6s resident) and pays
+4.35× overhead when nothing decides alternatives before the ground
+floor. For the zip this cuts both ways: zipped answer sets consumed
+under further constraints sit on the winning side; zipped sets the
+caller merely enumerates sit on the losing one. The measurement below
+should stratify by exactly this.
+
+
 The zip reopens a settled assumption: streaming-early tabling is no
 longer a clear win in either direction. Depending on the disjunctive
 store's speed, waiting for the seal and emitting one record could
