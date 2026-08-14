@@ -75,6 +75,37 @@ side.
 
 ## The Condition correspondence (banked, commits to nothing)
 
+REFINED (Aug 14, the human's DNF/CNF probe): the normal form is named
+by the OUTERMOST connective — Condition is DNF (∨ across the regions
+vector, ∧ inside each Residues), the store is CNF (∧ across clause
+membership, ∨ inside each Disjunct). In a general semiring only
+⊕-of-⊗ exists as a normal form (⊗ distributes over ⊕, never the
+reverse), so the GENERAL-SEMIRING CITIZEN IS CONDITION'S SHAPE; the
+CNF store is a Boolean-and-weightless specialization, licensed by the
+capability wall (no Propagation door touches SemiringStore, so no
+posting can carry weight). Subsumption therefore runs opposite to the
+first instinct: the store cannot subsume Condition; pushed onto
+weights, the store drifts Condition-ward (the weighted fold's
+summands are sum-of-products bookkeeping arriving in the clause).
+
+The architecture rule underneath, proven by the zip's shape: EACH
+VALUE FORM HOLDS ONLY ITS CHEAP ACCUMULATION DIRECTION and pushes the
+expensive one into the operational layer. Condition holds ⊕ in-value
+(orConjunct — the antichain insert both its operations reduce to: or
+inserts the operand's regions, and inserts the pairwise meets, i.e.
+distributivity performed then re-summed) and delegates ⊗ to the
+package (restate + propagation; Condition.and's double loop exists
+for the algebra's laws, not the hot path). The store holds ⊗ in-value
+(posting a clause is an append) and delegates ⊕ to the trial and the
+ground floor. Neither value runs its own distribution on a hot path —
+and the zip CONVERTS NOTHING (the human's correction): a sealed
+Condition enters the store level by level, verbatim — outer ∨ into
+clause membership by associativity (Disjunct.of's flattening), inner
+∧ into Posting.all, factors into absorb, bindings into resolutions.
+Composition, not conversion; the exponential wall exists only for
+whoever insists on one normal form across the nesting, and nobody
+does.
+
 The human spotted it from the delivery side: a clause here is a
 Condition wearing imposition clothes. Piece by piece — clause ↔
 Condition, alternative ↔ region (an answer's delta; Residues and

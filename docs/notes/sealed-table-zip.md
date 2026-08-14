@@ -9,14 +9,23 @@
   folding a sealed answer set into one disjunctive record — glossary
   entry owed if it sticks
 - **obligations**: (1) the either store's design pass must cover the
-  zip and the mode carve, not just the user door; (2) Projectable on
-  the either store — required for TCLP input compatibility (zipped
-  consumption must key and cross the way replayed answers do) BEFORE
-  any streaming-vs-zip comparison is meaningful; (3) the measurement,
-  trigger-gated (the human's framing, August 2026): only if we ever
-  decide to drop streaming — race drip-per-answer replay against
-  wait-for-seal + one-record emit on real workloads; no scheduling and
-  no promised speedup before (2) lands
+  zip and the mode carve, not just the user door — PARTLY MET (Aug 14):
+  DisjunctionConstraints shipped and the zip's construction is now
+  fully derivable from shipped pieces, see the mechanical spec below;
+  (2) Projectable on the store — required for TCLP input compatibility
+  (zipped consumption must key and cross the way replayed answers do)
+  BEFORE any streaming-vs-zip comparison is meaningful; (3) the
+  measurement, trigger-gated (the human's framing, August 2026): only
+  if we ever decide to drop streaming — race drip-per-answer replay
+  against wait-for-seal + one-record emit on real workloads; no
+  scheduling and no promised speedup before (2) lands; (4) when built,
+  the flattened clause owes CROSS-ANSWER absorption: each answer's
+  Condition is an antichain internally, but flattening across answers
+  can admit dominated alternatives (answer A's region covered by
+  B's) — harmless (conde replay has the same redundancy; discharge
+  catches some) but it is orConjunct's job done late on the store
+  side, and the first concrete payer for the deferred
+  alternative-subsumption dual
 - **links**: condition.md §8.3 (the imposition spectrum this extends),
   nogood-store.md §6 (the either sibling), finite-goal-tier.md (the
   tree this materializes), negation-over-finite-goals.md (the De
@@ -78,3 +87,21 @@ store's speed, waiting for the seal and emitting one record could
 beat dripping answers as they arise — but the comparison is only
 honest once obligation (2) holds, and it stays unscheduled until a
 real decision to drop streaming puts it on the table.
+
+## The mechanical spec (Aug 14 — every piece shipped)
+
+The nested disjunction — over answers, then over each answer's
+Condition regions — collapses into ONE flat clause by ∨-associativity,
+and Disjunct.of's flattening already performs the collapse:
+
+    anyOf( answers.flatMap(answer ->
+        answer.condition.regions.map(region ->
+            Posting.all( answer's binding delta as resolutions
+                       ++ region.factors.map(Posting::absorb) ))) )
+
+all through the caller-namespace renaming first — replay is rename ∘
+absorb, per answer-region instead of per fork. Consuming a CONDITIONAL
+answer is automatically correct: choosing an alternative imposes the
+delta AND the region it was proven under. Nothing converts
+representation at any level: outer ∨ → clause membership, inner ∧ →
+Posting.all, factors → absorb, bindings → resolutions.
