@@ -72,7 +72,7 @@ Viterbi absorb; counting and provenance do not.
 
 ## The boundary (the scratch-sum counterexample)
 
-Counting semiring: x≡1 ∧ anyOf(x≡1, y≡2) ∧ y≡3. At verification the
+Counting semiring: x≡1 ∧ any(x≡1, y≡2) ∧ y≡3. At verification the
 first alternative entails, y≡2 is owed; scratch-running it succeeds
 against the PRESENT and a sum 1 ⊕ 1 = 2 discharges — then y≡3 kills the
 y≡2 derivation and the true count is 1. Owed means compatible-now; the
@@ -117,7 +117,7 @@ The trigger is LOUD by type, not by memory (checked Aug 14, the
 human's guard ruling): a weight-shaped alternative is UNREPRESENTABLE
 today — `Stored.getStoreClass()` returns `Class<? extends Store>` and
 SemiringStore is not a Store; Absorption holds Absorbable, which
-SemiringStore is not either. A runtime guard in anyOf cannot even be
+SemiringStore is not either. A runtime guard in any cannot even be
 written, let alone reached. The crossing therefore cannot arrive
 silently: it must WIDEN A TYPE (SemiringStore becoming a Store, or
 weight going first-class in Package), and the FIRST ACT of whoever

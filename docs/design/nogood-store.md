@@ -7,7 +7,7 @@ CP-SAT (the human's call, August 2026): a nogood is Stallman &
 Sussman's record — "NOT all these simultaneously" — generalized; a
 literal follows lazy clause generation's extension to constraint
 literals; `Verification` keeps its working name; `Posting` is the
-vocabulary lifted to `Goal` (the human's lift, August 2026). `anyOf`
+vocabulary lifted to `Goal` (the human's lift, August 2026). `any`
 remains a placeholder until its stage builds. This doc
 supersedes its own earlier kernel: the cargo-typed store (parameterized
 by a `Semilattice & PartialOrder` cargo) was the wrong seat for the
@@ -248,7 +248,7 @@ that motivated a polarity flag separate cleanly:
 
 Composition replaces polarity mixing: a nogood is a `Stored`, so a
 nogood-statement is a literal, so an either-alternative can CONTAIN an
-exclusion — `anyOf(exclude(p), q)` is `¬p ∨ q`, an implication
+exclusion — `any(exclude(p), q)` is `¬p ∨ q`, an implication
 between constraints, by plain nesting. Both stores stay pure; the
 algebra comes from stacking them. The agreement move (what all
 surviving alternatives agree on holds now — the GAC precedent) is the
@@ -268,7 +268,7 @@ and the rulings from the pass stand:
   split stay wrapped as unit nogoods.
 - **Distribution un-builds the feature downstream**: delivery streams
   per conjunct and each conjunct restates as its own consumer branch —
-  the forks `anyOf` exists to avoid. An exclusion never explores under
+  the forks `any` exists to avoid. An exclusion never explores under
   EITHER representation — negative boxes denote infinite regions, never
   label; their finite exit is parasitic on a positive generator (veto,
   not generation) — so distributing one buys only duplicate delivery
@@ -317,7 +317,7 @@ doors like everyone else; `Exclusion` never learns store names.
 4. **NogoodConstraints ride tabling**: the `Projectable` face under §7's rulings.
 5. **The sibling — BUILT** (August 2026, branch disjunctive-store):
    `DisjunctionConstraints` on the shared trial, straight reading;
-   `Disjunct` the envelope, `anyOf` the door; unit propagation via the
+   `Disjunct` the envelope, `any` the door; unit propagation via the
    revision's always-ripe suspension, discharge = absorption, the
    ground floor enumerates leftovers as a `Conde` of impositions. The
    agreement move remains future (union-entailment's dual).

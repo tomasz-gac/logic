@@ -39,7 +39,7 @@ Fork ⟷ resident data was the imposition spectrum for CONSTRAINTS
 consumer of a sealed table forks per answer — the answer set's ∨
 spent as search branching. With the disjunction store (nogoods' sibling:
 a resident alternative of postings), a sealed table folds into ONE
-disjunct — anyOf(all(answer₁'s literals), all(answer₂'s literals), …),
+disjunct — any(all(answer₁'s literals), all(answer₂'s literals), …),
 each alternative the answer's delta read as literals, the SAME
 transcription negation uses — and consumption stays in one branch.
 Unit propagation crosses off alternatives as they refute; the last
@@ -94,7 +94,7 @@ The nested disjunction — over answers, then over each answer's
 Condition regions — collapses into ONE flat clause by ∨-associativity,
 and Disjunct.of's flattening already performs the collapse:
 
-    anyOf( answers.flatMap(answer ->
+    any( answers.flatMap(answer ->
         answer.condition.regions.map(region ->
             Posting.all( answer's binding delta as resolutions
                        ++ region.factors.map(Posting::absorb) ))) )

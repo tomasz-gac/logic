@@ -361,11 +361,11 @@ public interface Posting extends Goal, Bounded {
 			// applies exactly as the flat Goal conjunction would — head
 			// direct, rest flatMapped, no frame for the envelope itself
 			if (parts.isEmpty()) {
-				return Goal.success().apply(pkg);
+				return Cont.just(pkg);
 			}
 			Cont<Package, Nothing> acc = parts.head().apply(pkg);
 			for (Posting rest : parts.tail()) {
-				acc = acc.flatMap(rest::apply);
+				acc = acc.flatMap(rest);
 			}
 			return acc;
 		}

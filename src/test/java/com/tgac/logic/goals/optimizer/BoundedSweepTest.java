@@ -122,7 +122,7 @@ public class BoundedSweepTest {
 				FiniteDomain.leq(lval(5L), lval(2L)),
 				FiniteDomain.<Long> separate(lval(1L), lval(1L)),
 				exclude(lval(1L).unifies(lval(1L))),
-				Disjunction.anyOf(lval(1L).unifies(lval(2L)), lval(3L).unifies(lval(4L)))};
+				Disjunction.any(lval(1L).unifies(lval(2L)), lval(3L).unifies(lval(4L)))};
 		for (Goal deadPost : dead) {
 			Unifiable<Long> x = lvar();
 			AtomicLong planned = new AtomicLong();

@@ -3,7 +3,7 @@ package com.tgac.logic.disjunction;
 // ABOUTME: The disjunction store's receipts: unit propagation imposes the last
 // ABOUTME: survivor, entailment discharges, all-refuted fails, leftovers render.
 
-import static com.tgac.logic.disjunction.Disjunction.anyOf;
+import static com.tgac.logic.disjunction.Disjunction.any;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -35,7 +35,7 @@ public class DisjunctionConstraintsTest {
 		// the same branch, no fork
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Goal g = anyOf(x.unifies(1), y.unifies(5))
+		Goal g = any(x.unifies(1), y.unifies(5))
 				.and(x.unifies(3));
 
 		assertThat(answers(g, y)).containsExactly(5);
@@ -48,7 +48,7 @@ public class DisjunctionConstraintsTest {
 		// but enforcement expands it at the ground floor, the vetoed branch
 		// dies against the nogood, and the survivor delivers decided
 		Unifiable<Integer> x = lvar();
-		Goal g = anyOf(x.unifies(1), x.unifies(2))
+		Goal g = any(x.unifies(1), x.unifies(2))
 				.and(exclude(x.unifies(1)));
 
 		assertThat(answers(g, x)).containsExactly(2);
@@ -61,7 +61,7 @@ public class DisjunctionConstraintsTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Goal g = x.unifies(1)
-				.and(anyOf(x.unifies(1), y.unifies(2)));
+				.and(any(x.unifies(1), y.unifies(2)));
 
 		List<String> rendered = g.solve(y, TestSchedulers.factory())
 				.map(Object::toString)
@@ -73,33 +73,38 @@ public class DisjunctionConstraintsTest {
 	public void allAlternativesRefutedFailsTheBranch() {
 		Unifiable<Integer> x = lvar();
 		Goal g = x.unifies(3)
-				.and(anyOf(x.unifies(1), x.unifies(2)));
+				.and(any(x.unifies(1), x.unifies(2)));
 
 		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
 	}
 
 	@Test
 	public void aSingleAlternativeIsThePostingItself() {
-		// anyOf(a) is a born-unit: the door returns the posting, nothing
+		// any(a) is a born-unit: the door returns the posting, nothing
 		// is ever stored
 		Unifiable<Integer> x = lvar();
-		assertThat(answers(anyOf(x.unifies(5)), x)).containsExactly(5);
+		assertThat(answers(any(x.unifies(5)), x)).containsExactly(5);
 	}
 
 	@Test
-	public void anEmptyDisjunctionRefusesLoudly() {
-		assertThatThrownBy(Disjunction::anyOf)
-				.isInstanceOf(IllegalArgumentException.class);
+	public void anEmptyDisjunctionIsADeadBranchNotAnError() {
+		// no disjuncts = nothing can satisfy "at least one": the branch is
+		// dead, priced 0 — a program folding user data into a chain of ors
+		// deserves failure, not an exception
+		Unifiable<Integer> x = lvar();
+		Goal g = x.unifies(1).and(any());
+		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
+		assertThat(any().answers(com.tgac.logic.goals.Package.empty())).isZero();
 	}
 
 	@Test
 	public void nestedAnyOfFlattens() {
-		// ∨ is associative: anyOf(a, anyOf(b, c)) is one three-way
+		// ∨ is associative: any(a, any(b, c)) is one three-way
 		// disjunct, so two binding refutations still leave a working unit
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
-		Goal g = anyOf(x.unifies(1), anyOf(y.unifies(2), z.unifies(3)))
+		Goal g = any(x.unifies(1), any(y.unifies(2), z.unifies(3)))
 				.and(x.unifies(9))
 				.and(y.unifies(7));
 
@@ -113,7 +118,7 @@ public class DisjunctionConstraintsTest {
 		// spelling (same solution set; discharge keeps the enumeration
 		// minimal, so the multiset may be smaller by the subsumed answers)
 		Unifiable<Integer> x = lvar();
-		assertThat(answers(anyOf(x.unifies(1), x.unifies(2)), x))
+		assertThat(answers(any(x.unifies(1), x.unifies(2)), x))
 				.containsExactly(1, 2);
 	}
 
@@ -123,7 +128,7 @@ public class DisjunctionConstraintsTest {
 		// a contradicting resident domain refutes; the survivor unit-imposes
 		Unifiable<Long> x = lvar();
 		Goal g = dom(x, EnumeratedDomain.range(0L, 6L))
-				.and(anyOf(dom(x, EnumeratedDomain.range(1L, 2L)),
+				.and(any(dom(x, EnumeratedDomain.range(1L, 2L)),
 						dom(x, EnumeratedDomain.range(7L, 9L))));
 
 		assertThat(answers(g, x)).containsExactly(1L);
