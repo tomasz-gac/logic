@@ -133,15 +133,34 @@ second implementation ships without a benchmark. Candidates, ranked by
 expected payoff-per-risk against this engine's access pattern (insert-only,
 monotone within a branch, read-dominated, identity keys):
 
+0. **Birth as the hash, in today's HAMT.** `LVar` overrides no `hashCode`,
+   so the HAMT hashes by JVM identity hash. `(int) birth` is contract-legal
+   (equality is identity, birth unique and final) and buys three things:
+   collision-free hashing up to 2^32 births (the HAMT at its theoretical
+   best, no collision buckets); a field read instead of the identity-hash
+   native call; and — the qualitative one — cross-JVM determinism: map
+   structure and iteration become a pure function of execution order,
+   retiring the identity-hash variance class (the all-different pin's
+   {18269, 18685, 19309}, the joint-literal display-order flips). Costs one
+   deterministic renegotiation of any hash-order-sensitive pin. Composes
+   with every candidate below and is the baseline any new structure must
+   beat.
 1. **Birth-indexed radix trie.** The key fact the HAMT wastes: `LVar` carries
-   a dense monotone `long birth`, so substitution keys are secretly ordinals.
-   A bitmapped radix trie indexed by birth needs no hashing (lookup = radix
-   descent on the long); binding a fresh variable is a tail append
-   (fresh vars always hold the maximum id — the PersistentVector tail trick
-   makes that amortized O(1)); and vars born together share leaf nodes, so
-   the temporal locality of unification becomes spatial locality, which
-   identity hashing actively destroys today. Structurally the right shape,
-   not a tuned wrong one.
+   a monotone `long birth`, so substitution keys are secretly ordinals —
+   though SPARSE per package, not dense: sibling branches mint interleaved,
+   so under disjunction each package's key set is a gappy subset of the
+   global range, gappier as fan-out grows, and nondeterministic schedulers
+   vary which births a branch gets (identity only — reification
+   canonicalizes by walk order, so answers never see it). A bitmapped radix
+   trie tolerates the gaps (bitmap zeros, not spine); binding a fresh
+   variable is still a tail append even under interleaving (a fresh var's
+   birth exceeds everything THIS package has seen — the siblings' higher
+   births live in the siblings' packages; the PersistentVector tail trick
+   makes it amortized O(1)); but the third claim — vars born together share
+   leaf nodes, temporal locality becoming spatial — degrades in proportion
+   to the interleave factor, i.e. exactly in the default-BFS regime. The
+   benchmark should measure per-package occupancy under BFS fan-out, not
+   assume it. Structurally the right shape, not a tuned wrong one.
 2. **Hash-consing terms.** Orthogonal to the map: intern immutable terms so
    structural equality becomes pointer equality — cheaper deep-walks, prefix
    minting, and nogood dedup. The intern table is the only new machinery.
