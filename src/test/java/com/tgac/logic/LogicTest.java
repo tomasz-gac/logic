@@ -396,8 +396,9 @@ public class LogicTest {
 				Logic.membero(x, lst))
 				.map(Term::get)
 				.collect(Collectors.toList());
+		// no emission-order guarantee across schedulers or JVM hash layouts
 		assertThat(xs)
-				.containsExactly(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+				.containsExactlyInAnyOrder(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
 	}
 
 	static <A> Goal lists(Unifiable<LList<A>> lists) {
