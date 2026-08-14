@@ -95,11 +95,14 @@ public interface Posting extends Goal, Bounded {
 
 	/**
 	 * Provably failing under the current partial knowledge? A TRUST SURFACE
-	 * like every bound: store lookups, never store trials, and never claim
-	 * doom that later knowledge could lift.
+	 * like every bound: never claim doom that later knowledge could lift.
+	 * The default IS the trial's oracle — refuted-if-Done, which mechanizes
+	 * "store lookups, never store trials": a store-shaped trial is not Done
+	 * and claims nothing. Doors refine with their own cheap checks
+	 * (registration-time store lookups, the exclusion's entailed dual).
 	 */
 	default boolean doomed(Package p) {
-		return false;
+		return Trial.doomed(this, p);
 	}
 
 	@Override
@@ -346,7 +349,9 @@ public interface Posting extends Goal, Bounded {
 
 		@Override
 		public boolean doomed(Package p) {
-			return jointDoom.test(p) || parts.exists(part -> part.doomed(p));
+			// the threaded trial sees JOINT contradictions the parts alone cannot
+			return jointDoom.test(p) || parts.exists(part -> part.doomed(p))
+					|| Trial.doomed(this, p);
 		}
 
 		@Override

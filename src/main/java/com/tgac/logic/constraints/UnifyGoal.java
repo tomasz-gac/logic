@@ -47,11 +47,6 @@ public class UnifyGoal<T> implements Posting {
 	}
 
 	@Override
-	public boolean doomed(Package p) {
-		return answers(p.substitution()) == 0;
-	}
-
-	@Override
 	public <R> R accept(Posting.Visitor<R> visitor) {
 		return visitor.visit(this);
 	}
