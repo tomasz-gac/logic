@@ -12,9 +12,11 @@
   zip and the mode carve, not just the user door — PARTLY MET (Aug 14):
   DisjunctionConstraints shipped and the zip's construction is now
   fully derivable from shipped pieces, see the mechanical spec below;
-  (2) Projectable on the store — required for TCLP input compatibility
-  (zipped consumption must key and cross the way replayed answers do)
-  BEFORE any streaming-vs-zip comparison is meaningful; (3) the
+  (2) MET (Aug 2026, disjunctive-store branch): the Projectable face
+  shipped with three tabling receipts — disjuncts ride answers, decide
+  at the consumer, enumerate at the caller's ground floor, and key the
+  call; the zip has no remaining prerequisite besides deciding to
+  build it; (3) the
   measurement, trigger-gated (the human's framing, August 2026): only
   if we ever decide to drop streaming — race drip-per-answer replay
   against wait-for-seal + one-record emit on real workloads; no

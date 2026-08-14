@@ -319,8 +319,9 @@ doors like everyone else; `Exclusion` never learns store names.
    `DisjunctionConstraints` on the shared trial, straight reading;
    `Disjunct` the envelope, `any` the door; unit propagation via the
    revision's always-ripe suspension, discharge = absorption, the
-   ground floor enumerates leftovers as a `Conde` of impositions. The
-   agreement move remains future (union-entailment's dual).
+   ground floor enumerates leftovers as a `Conde` of impositions;
+   Projectable — disjuncts cross tabling by the nogood store's rules.
+   The agreement move remains future (union-entailment's dual).
 6. **Gated tail**: the ¬ operator (§8.5 — a sealed conjunct's region is
    factors plus bindings, literal-shaped already: the fragment extends
    by sealing, never by admitting programs); clause learning (§8.6 —
