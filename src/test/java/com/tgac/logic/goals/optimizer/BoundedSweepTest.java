@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.disjunction.Disjunction;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
@@ -120,7 +121,8 @@ public class BoundedSweepTest {
 				FiniteDomain.dom(lval(5L), EnumeratedDomain.range(0L, 3L)),
 				FiniteDomain.leq(lval(5L), lval(2L)),
 				FiniteDomain.<Long> separate(lval(1L), lval(1L)),
-				exclude(lval(1L).unifies(lval(1L)))};
+				exclude(lval(1L).unifies(lval(1L))),
+				Disjunction.anyOf(lval(1L).unifies(lval(2L)), lval(3L).unifies(lval(4L)))};
 		for (Goal deadPost : dead) {
 			Unifiable<Long> x = lvar();
 			AtomicLong planned = new AtomicLong();

@@ -81,6 +81,20 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		return literal.accept(BINDING_SHAPED);
 	}
 
+	/**
+	 * The trial as doom oracle: a posting whose trial answers refuted can
+	 * never hold — refutation is monotone under binding growth, so failure
+	 * found at pricing is failure forever. Only a Done trial may claim doom
+	 * (running a suspending trial here would ground it on a side engine);
+	 * anything else claims nothing, the delay-safe direction. The dual
+	 * reading — entailed-if-Done — is the exclusion door's born-violated
+	 * check, the same guard on the opposite verdict.
+	 */
+	public static boolean doomed(Posting literal, Package p) {
+		Fiber<Outcome> trial = trial(literal, p);
+		return trial.isDone() && trial.get().isRefuted();
+	}
+
 	/** Refuted: {@code remainder == null} and not entailed. */
 	@Value
 	public static class Outcome {
