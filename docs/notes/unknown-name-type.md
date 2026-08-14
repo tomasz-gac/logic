@@ -1,16 +1,24 @@
 # Names get one type; privilege belongs to Prefix
 
-- **status**: argued — derivation in conversation (Aug 5); nothing built
+- **status**: argued — derivation in conversation (Aug 5); naming
+  refined in conversation (Aug 14, out of the disjunctive store's
+  entailment discussions); nothing built
 - **evidence held**: derivation; the seed inventory below (every crossing
   operation as one walk under one map shape); the reifyS receipt (the
   var→hole map already exists inside reification, legal today only because
   holes sit on the value side)
 - **imports**: Substitutions, Prefix, chokepoint, Renaming, the crossings,
   Hole, LVar; substitutions-migration Steps A–C (kind-tagged decompose).
-  The interface name is a PLACEHOLDER pending adoption: candidates Unknown /
-  Var / Symbol; this note writes `Unknown`.
+  The name is RATIFIED (Aug 14): the supertype is **Name** — the word
+  the engine's own prose already uses unanimously ("every touched
+  name", "a name it binds", `namesIn`, renamings map names). `Unknown`
+  was ruled out by the flip below (a Hole is not unknown); Symbol /
+  Something / Bound were the human's other candidates. This note still
+  writes `Unknown` where it refers to the existing code symbol; the
+  rename ships with the build.
 - **obligations**:
-  1. Adopt the name (glossary entry on ratification).
+  1. DONE (Aug 14): the name is Name; glossary entry added on
+     ratification. `Hole → Any` rides along as the member rename.
   2. The asVar audit: classify every `asVar()` call site as "live var
      required" (unifier extend, occurs check, Prefix minting) or "any name"
      (walk's key chase, the renaming scans, isGround's leaf test). The audit
@@ -32,10 +40,35 @@
 
 ## The claim
 
-`LVar` and `Hole` are the same kind of thing — a NAME for something not yet
-determined — distinguished only by which world names it: live (identity) or
-canonical (position). Give them one supertype, `Unknown<T> extends Term<T>`,
-and key `Substitutions` by it. Two consequences:
+`LVar` and `Hole` are the same kind of thing — an IDENTITY that stands
+for a value without being one — distinguished by which world names it:
+live (identity) or canonical (position). Give them one supertype and key
+`Substitutions` by it. Two consequences below; first, the Aug 14
+refinement of what the two members actually MEAN.
+
+## The state-vs-answer flip (why "Unknown" is the wrong supertype)
+
+The original claim said "a name for something not yet determined" —
+right for `LVar`, wrong for `Hole`. The two members sit on opposite
+sides of the certification line that reification IS:
+
+- `LVar`, state position — EPISTEMIC: genuinely not yet determined;
+  tomorrow it may be bound or constrained. "Unknown" describes it.
+- `Hole`, answer position — ONTIC: the solve CERTIFIED that nothing
+  constrains this name, so it denotes ANY value — the strongest claim,
+  not the vaguest. It is not unknown; it is known to be unconstrained,
+  with `_.N` identity, and two Anys can unify with each other through
+  `instantiate`. `Hole → Any` is the member-level rename candidate
+  riding alongside the supertype rename.
+
+Generality in answer position is strength (a free name asserts the
+whole value line as solutions — answers are symbolic representations of
+infinities); generality in state position is ignorance. One supertype
+must not bake either reading in — which kills "Unknown" (bakes the
+epistemic side) and favors a position-neutral word: an identity, a
+name. This flip is also load-bearing for the disjunctive store's
+discharge rule (entailment domination reads answer-position holes as
+∀ — the subsumption proof needs exactly this semantics).
 
 **One engine.** Every crossing operation becomes walkAll under an
 `Unknown→Term` seed:
