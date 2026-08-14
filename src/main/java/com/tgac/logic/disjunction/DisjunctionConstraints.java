@@ -6,8 +6,8 @@ package com.tgac.logic.disjunction;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.store.Absorbable;
 import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
@@ -15,16 +15,21 @@ import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Stored;
+import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unknown;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.EqualsAndHashCode;
@@ -51,7 +56,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @EqualsAndHashCode
 @RequiredArgsConstructor(staticName = "of")
-final class DisjunctionConstraints implements Absorbable<DisjunctionConstraints> {
+final class DisjunctionConstraints implements Projectable<DisjunctionConstraints> {
 	public static final DisjunctionConstraints EMPTY =
 			DisjunctionConstraints.of(LinkedHashSet.empty());
 	private final LinkedHashSet<Disjunct> disjuncts;
@@ -64,6 +69,39 @@ final class DisjunctionConstraints implements Absorbable<DisjunctionConstraints>
 	@Override
 	public DisjunctionConstraints meet(DisjunctionConstraints other) {
 		return DisjunctionConstraints.of(disjuncts.addAll(other.disjuncts));
+	}
+
+	/**
+	 * Lossless factoring, the nogood store's rule: a disjunct goes to the
+	 * covered half iff every name it touches, deeply, is supplied —
+	 * compound at the crossings, never distributed. {@code _1 ∧ _2 = this}.
+	 */
+	@Override
+	public Tuple2<DisjunctionConstraints, DisjunctionConstraints> split(java.util.List<LVar<?>> vars) {
+		Set<Unknown<?>> covered = new HashSet<>(vars);
+		LinkedHashSet<Disjunct> in = LinkedHashSet.empty();
+		LinkedHashSet<Disjunct> out = LinkedHashSet.empty();
+		for (Disjunct disjunct : disjuncts) {
+			boolean fits = disjunct.terms()
+					.flatMap(MiniKanren::namesIn)
+					.allMatch(covered::contains);
+			if (fits) {
+				in = in.add(disjunct);
+			} else {
+				out = out.add(disjunct);
+			}
+		}
+		return Tuple.of(DisjunctionConstraints.of(in), DisjunctionConstraints.of(out));
+	}
+
+	/** Every disjunct transcribed wrapped — alternative by alternative. */
+	@Override
+	public Fiber<DisjunctionConstraints> rename(Renaming renaming) {
+		return disjuncts.foldLeft(
+						Fiber.<LinkedHashSet<Disjunct>> done(LinkedHashSet.empty()),
+						(acc, disjunct) -> acc.flatMap(renamed ->
+								disjunct.rename(renaming).map(item -> renamed.add((Disjunct) item))))
+				.map(DisjunctionConstraints::of);
 	}
 
 	/** Disjunct containment directly — the order the union-meet derives. */
