@@ -95,7 +95,7 @@ public class StepCountPinsTest {
 				.and(FiniteDomain.addo(from, lval(1), to)
 						.or(unify(from, lval(5)).and(unify(to, lval(1)))));
 
-		assertThat(steps(doors, from)).isEqualTo(215);
+		assertThat(steps(doors, from)).isEqualTo(213);
 	}
 
 	/** Tabling + TCLP lane: the ring closure — recursion under live domains. */
@@ -113,6 +113,6 @@ public class StepCountPinsTest {
 														.or(unify(prev, lval(5)).and(unify(room, lval(1)))))))));
 		Unifiable<Integer> room = lvar();
 
-		assertThat(steps(reachable.apply(Tuple.of(room)), room)).isEqualTo(801);
+		assertThat(steps(reachable.apply(Tuple.of(room)), room)).isEqualTo(791);
 	}
 }

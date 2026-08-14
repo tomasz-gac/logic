@@ -358,7 +358,16 @@ public interface Posting extends Goal, Bounded {
 
 		@Override
 		public Cont<Package, Nothing> apply(Package pkg) {
-			return parts.foldLeft(Goal.success(), Goal::and).apply(pkg);
+			// applies exactly as the flat Goal conjunction would — head
+			// direct, rest flatMapped, no frame for the envelope itself
+			if (parts.isEmpty()) {
+				return Goal.success().apply(pkg);
+			}
+			Cont<Package, Nothing> acc = parts.head().apply(pkg);
+			for (Posting rest : parts.tail()) {
+				acc = acc.flatMap(rest::apply);
+			}
+			return acc;
 		}
 
 		@Override

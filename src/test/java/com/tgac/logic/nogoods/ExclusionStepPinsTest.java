@@ -174,7 +174,7 @@ public class ExclusionStepPinsTest {
 		List<String> results = g.solve(out, TestSchedulers.factory())
 				.map(Object::toString).sorted().collect(Collectors.toList());
 		assertThat(results).containsExactly("{({1}, {3}, {2}, {4})}");
-		assertThat(steps(g, out)).isEqualTo(244L);
+		assertThat(steps(g, out)).isEqualTo(240L);
 	}
 
 	// ---- shape 4: the labelled carve (revise-heavy veto) ----
@@ -186,6 +186,6 @@ public class ExclusionStepPinsTest {
 				.and(exclude(x.unifies(3)));
 
 		assertThat(answers(g, x)).containsExactly(0, 1, 2, 4, 5);
-		assertThat(steps(g, x)).isEqualTo(126L);
+		assertThat(steps(g, x)).isEqualTo(124L);
 	}
 }
