@@ -109,8 +109,9 @@ public class DisjunctionConstraintsTest {
 	@Test
 	public void anUndecidedDisjunctEnumeratesAtTheGroundFloor() {
 		// no knowledge decides it: enforcement expands the alternatives as
-		// a Conde of impositions — answer-set parity with the conde
-		// spelling, the store a pure optimization
+		// a Conde of impositions — denotational parity with the conde
+		// spelling (same solution set; discharge keeps the enumeration
+		// minimal, so the multiset may be smaller by the subsumed answers)
 		Unifiable<Integer> x = lvar();
 		assertThat(answers(anyOf(x.unifies(1), x.unifies(2)), x))
 				.containsExactly(1, 2);

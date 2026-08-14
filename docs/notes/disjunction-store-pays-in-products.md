@@ -19,7 +19,10 @@
   space), `stripo` via addo, non-overlap as ONE disjunct per pair —
   raced against today's conde spelling; success = the same-space n=10
   case tractable, cost tracking undecided clauses instead of forked
-  worlds; (2) fold the verdict back here and into sealed-table-zip's
+  worlds, ANSWERS COMPARED UP TO SUBSUMPTION — the store's claim is
+  denotational parity (same solution set as regions, minimally
+  enumerated: discharge does not manufacture conde's subsumed
+  answers), never multiset equality; (2) fold the verdict back here and into sealed-table-zip's
   streaming question.
 - **links**: sealed-table-zip.md (the tabling consumer of the same
   store; its obligation (1) names the design pass this note's economics

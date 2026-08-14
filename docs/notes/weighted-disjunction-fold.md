@@ -112,3 +112,15 @@ TRIGGER: weighted TCLP ships the weight↔posting crossing (#88 / weight
 ⊗ Condition) — the moment weights become expressible where postings
 live, the shipped store's unconditional correctness expires and this
 design comes off the shelf.
+
+The trigger is LOUD by type, not by memory (checked Aug 14, the
+human's guard ruling): a weight-shaped alternative is UNREPRESENTABLE
+today — `Stored.getStoreClass()` returns `Class<? extends Store>` and
+SemiringStore is not a Store; Absorption holds Absorbable, which
+SemiringStore is not either. A runtime guard in anyOf cannot even be
+written, let alone reached. The crossing therefore cannot arrive
+silently: it must WIDEN A TYPE (SemiringStore becoming a Store, or
+weight going first-class in Package), and the FIRST ACT of whoever
+widens it is the runtime guard in the disjunction door — refuse
+weight-carrying alternatives until this note's fold ships. That
+obligation transfers to the crossing's builder by this sentence.

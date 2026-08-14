@@ -98,7 +98,9 @@ final class DisjunctionConstraints implements Absorbable<DisjunctionConstraints>
 	 * be unsatisfiable in truth — becomes a Conde of its alternatives'
 	 * impositions. Each branch imposes one alternative, which the next
 	 * normalize reads as entailed and discharges; branches whose
-	 * alternative cannot stand die here. Decided answers, conde parity.
+	 * alternative cannot stand die here. Decided answers; denotational
+	 * parity with conde — the same solution set, minimally enumerated
+	 * (discharge does not manufacture conde's subsumed answers).
 	 */
 	@Override
 	public <T> Goal enforce(Term<T> x) {
