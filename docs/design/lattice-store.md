@@ -12,7 +12,7 @@ theorems that license what the store family promises, the speculation
 tier built once over the abstraction, and the cross-store doctrine.
 (August 2026: the co-store pitch is RESTATED AND EXTENDED in
 `nogood-store.md` — negative-only nogoods over literals, Neq the
-degenerate bind case, `either` the disjunctive sibling; the human's
+degenerate bind case, `DisjunctionConstraints` the disjunctive sibling; the human's
 stipulation stands: no negative row-set store, exclusion composes
 through NogoodConstraints. Read that first — it is the version that survived
 the comprehension veto.)

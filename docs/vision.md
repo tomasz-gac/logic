@@ -365,7 +365,7 @@ and a gated tail; each step lands on a green suite:
   design conversation (the nogood-store pass + the naming session), then
   stage 1 (notin/exclude ships), stage 2 (nogoods ride tabling),
   suspensions-as-conditions (reuses the watermark; closes the last
-  refuse-loudly wall; the aggregate rider lands here), stage 3 (`either`
+  refuse-loudly wall; the aggregate rider lands here), stage 3 (`DisjunctionConstraints`
   — or-without-forking, the scratch check, the agreement move).
 - **Wave 3 — real data (3+4+3)**: FactSource seam, SQL source, external
   fibers (elaborated, with per-phase falsifiable proofs, as

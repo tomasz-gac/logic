@@ -1,4 +1,4 @@
-# A sealed table consumes as ONE either-record — replay on the imposition spectrum
+# A sealed table consumes as ONE disjunct — replay on the imposition spectrum
 
 - **status**: argued — the human's design (August 2026), no code
 - **evidence held**: derivation; the pieces rest on shipped machinery
@@ -6,9 +6,9 @@
   deltas through the posting rows' own rename; the trial's straight
   verdict reading is the sibling's, per nogood-store §6)
 - **imports**: none new; "zip" is the human's conversational name for
-  folding a sealed answer set into one disjunctive record — glossary
+  folding a sealed answer set into one Disjunct — glossary
   entry owed if it sticks
-- **obligations**: (1) the either store's design pass must cover the
+- **obligations**: (1) the disjunction store's design pass must cover the
   zip and the mode carve, not just the user door — PARTLY MET (Aug 14):
   DisjunctionConstraints shipped and the zip's construction is now
   fully derivable from shipped pieces, see the mechanical spec below;
@@ -27,7 +27,7 @@
   side, and the first concrete payer for the deferred
   alternative-subsumption dual
 - **links**: condition.md §8.3 (the imposition spectrum this extends),
-  nogood-store.md §6 (the either sibling), finite-goal-tier.md (the
+  nogood-store.md §6 (the disjunction sibling), finite-goal-tier.md (the
   tree this materializes), negation-over-finite-goals.md (the De
   Morgan dual), star-tabling.md (wait-mode — the natural zip site),
   tabled-constraints.md (replay as it stands)
@@ -37,9 +37,9 @@
 Fork ⟷ resident data was the imposition spectrum for CONSTRAINTS
 (condition.md §8.3); table replay sits on the same dial. Today a
 consumer of a sealed table forks per answer — the answer set's ∨
-spent as search branching. With the either store (nogoods' sibling:
+spent as search branching. With the disjunction store (nogoods' sibling:
 a resident alternative of postings), a sealed table folds into ONE
-record — either(all(answer₁'s literals), all(answer₂'s literals), …),
+disjunct — anyOf(all(answer₁'s literals), all(answer₂'s literals), …),
 each alternative the answer's delta read as literals, the SAME
 transcription negation uses — and consumption stays in one branch.
 Unit propagation crosses off alternatives as they refute; the last
@@ -49,7 +49,7 @@ hull of the remaining answers propagates before any commitment —
 GAC's trick generalized to whole answer deltas.
 
 The dual shapes, side by side: positive consumption = one
-either-record (∨ as data, zero forks until labelling); negative
+disjunct (∨ as data, zero forks until labelling); negative
 consumption = n nogoods (∧ of ¬, zero forks ever). Both single-branch;
 the table's disjunction pays as propagation instead of search.
 
@@ -71,7 +71,7 @@ Streaming-mode consumers keep the fork replay.
 
 ## The trade, and who decides
 
-An either-record binds nothing until propagation prunes it to one
+A disjunct binds nothing until propagation prunes it to one
 alternative or labelling expands it. Generate-and-test wins (the test
 prunes alternatives before anything forks); generation-driven programs
 starve until labelling. Fork-vs-zip is therefore the OPTIMIZER's

@@ -64,7 +64,7 @@ The postings can even STREAM: each answer's nogood is sound the moment
 the answer arrives — the complement only strengthens as the set grows —
 so the seal gates `not(g)`'s COMPLETION, not its posting. The positive
 dual cannot stream (a growing disjunction weakens): see
-sealed-table-zip.md for the asymmetry and the either-record it licenses.
+sealed-table-zip.md for the asymmetry and the Disjunct it licenses.
 
 ## The v1 boundary: what each answer shape contributes
 

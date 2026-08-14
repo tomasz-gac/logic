@@ -10,7 +10,7 @@
   words
 - **obligations**: (1) the cheapest kill — a spike typing ONE
   combinator (`any` as posting) and negating through it; requires the
-  either store, already §6's next stage; (2) the three-tier
+  disjunction store, already §6's next stage; (2) the three-tier
   practicality question — covariant combinator overloads, wrapper
   preservation (`named`, `Bounded`) at the middle tier — prototype
   before committing; (3) the naming family (below); (4) the standing
@@ -61,7 +61,7 @@ already tolerates it (now receipted).
   preservation). Heavier; no named consumer yet.
 - **`any` as posting** — no fork: post a resident disjunctive record,
   "one of these postings holds", unit-propagating as alternatives
-  die. This IS the either store of nogood-store §6, and under it `any`
+  die. This IS the disjunction store of nogood-store §6, and under it `any`
   stays a `Posting` (posting once, order 1) — the
   imposition-spectrum doctrine landing in the API, and the recommended
   first cut. The middle tier waits for a consumer that needs typed
@@ -87,10 +87,10 @@ recursive goal is `not ∘ table` — the whole of
 negation-over-finite-goals.md as one composition.
 
 And the function's output has a CARRIER (the human's zip, August
-2026): a sealed table folds into one either-record —
+2026): a sealed table folds into one Disjunct —
 any(all(answer₁'s literals), all(answer₂'s literals), …) — a
 FiniteGoal VALUE built from the posting vocabulary, consumed in one
-branch by the either store instead of forking per answer. `not` is De
+branch by the disjunction store instead of forking per answer. `not` is De
 Morgan on that tree, closed in the fragment. See sealed-table-zip.md
 for the seal asymmetry (the zip cannot stream; the negation can) and
 the fork-vs-data trade.
@@ -103,5 +103,5 @@ Resolution posts bindings, an Activation posts an item, an Absorption
 posts a factor. The name returns to the ring it started in, now naming
 the whole lifted vocabulary; *Statement* and *Literal* retire as type
 names, "literal" stays the role word. Still open, with the tier: names
-for the tier itself, `any`, and the either record — one session when
+for the tier itself, `any`, and the Disjunct — one session when
 they build.

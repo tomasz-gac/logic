@@ -23,7 +23,7 @@
   ONLY after the base fold is created and measured; (3) per-alternative
   weight extraction and the store's access to ⊕ are the build's two
   open designs — the second is the first-class-weight decision point.
-- **links**: either-store-pays-in-products.md (the boolean store's
+- **links**: disjunction-store-pays-in-products.md (the boolean store's
   economics), condition.md §8 (weight ⊗ Condition — upgrade 1's home),
   weighted-tclp.md §4 (level sets — upgrade 2's home; the per-piece
   constancy shelf this note's boundary re-derives), semiring-inference.md,

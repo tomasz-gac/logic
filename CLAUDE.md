@@ -214,7 +214,7 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   vocabulary, `NogoodConstraints` the store; verification = sequential scratch
   imposition read three ways (fail = refuted, unchanged = crossed off,
   new = owed); the direction analysis + imposition law; settled base;
-  no polarity — `either` as sibling, composition replaces mixing; the
+  no polarity — `DisjunctionConstraints` as sibling, composition replaces mixing; the
   substrate condition.md §§8.3/8.5/8.6 land on.
 - `docs/design/lattice-store.md` — DESIGN: the generic store family —
   `LatticeStore<L>` (extracted inside #61), the co-store (Neq generalized

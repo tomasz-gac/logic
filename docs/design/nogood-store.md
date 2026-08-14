@@ -1,4 +1,4 @@
-# The nogood store — "not this" over literals, with "either-or" as its sibling
+# The nogood store — "not this" over literals, with the disjunction store as its sibling
 
 **STATUS: STAGES 1–2 BUILT (August 2026, the `note-store` branch:
 `Posting`, `Nogood`, `Verification`, `NogoodConstraints`, twenty-four receipts plus
@@ -7,7 +7,7 @@ CP-SAT (the human's call, August 2026): a nogood is Stallman &
 Sussman's record — "NOT all these simultaneously" — generalized; a
 literal follows lazy clause generation's extension to constraint
 literals; `Verification` keeps its working name; `Posting` is the
-vocabulary lifted to `Goal` (the human's lift, August 2026). `either`
+vocabulary lifted to `Goal` (the human's lift, August 2026). `anyOf`
 remains a placeholder until its stage builds. This doc
 supersedes its own earlier kernel: the cargo-typed store (parameterized
 by a `Semilattice & PartialOrder` cargo) was the wrong seat for the
@@ -241,14 +241,14 @@ that motivated a polarity flag separate cleanly:
   case, `exclude` over several statements the forbidden combination.
   Irreducible — there is no statement constructor for a complement;
   negation exists only as the trial's reading.
-- **"Either-or" is a SIBLING store** (its own stage), sharing the trial
+- **The disjunction store is a SIBLING** (its own stage), sharing the trial
   machinery with the straight verdict reading. A single-alternative
   positive nogood is just the package — the front door collapses it;
   positive nogoods earn residence only at width two or more.
 
 Composition replaces polarity mixing: a nogood is a `Stored`, so a
 nogood-statement is a literal, so an either-alternative can CONTAIN an
-exclusion — `either([state(nogood ¬p)], [q])` is `¬p ∨ q`, an implication
+exclusion — `anyOf(exclude(p), q)` is `¬p ∨ q`, an implication
 between constraints, by plain nesting. Both stores stay pure; the
 algebra comes from stacking them. The agreement move (what all
 surviving alternatives agree on holds now — the GAC precedent) is the
@@ -268,7 +268,7 @@ and the rulings from the pass stand:
   split stay wrapped as unit nogoods.
 - **Distribution un-builds the feature downstream**: delivery streams
   per conjunct and each conjunct restates as its own consumer branch —
-  the forks `either` exists to avoid. An exclusion never explores under
+  the forks `anyOf` exists to avoid. An exclusion never explores under
   EITHER representation — negative boxes denote infinite regions, never
   label; their finite exit is parasitic on a positive generator (veto,
   not generation) — so distributing one buys only duplicate delivery
@@ -315,8 +315,12 @@ doors like everyone else; `Exclusion` never learns store names.
    including negated unification.
    (`FiniteDomain.in`, the FD factor builder, arrived with stage 2.)
 4. **NogoodConstraints ride tabling**: the `Projectable` face under §7's rulings.
-5. **The sibling**: `either` on the shared trial, straight reading,
-   the agreement move, labelling leftovers as a `Conde` of impositions.
+5. **The sibling — BUILT** (August 2026, branch disjunctive-store):
+   `DisjunctionConstraints` on the shared trial, straight reading;
+   `Disjunct` the envelope, `anyOf` the door; unit propagation via the
+   revision's always-ripe suspension, discharge = absorption, the
+   ground floor enumerates leftovers as a `Conde` of impositions. The
+   agreement move remains future (union-entailment's dual).
 6. **Gated tail**: the ¬ operator (§8.5 — a sealed conjunct's region is
    factors plus bindings, literal-shaped already: the fragment extends
    by sealing, never by admitting programs); clause learning (§8.6 —
