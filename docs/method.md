@@ -65,6 +65,17 @@ move earns a place here after it has fired at least twice.
   method: normalize-at-meet died under "doesn't verifyAndSimplify already
   prune?"; the body-scope guard on Suspension died under "fires once".
   A proposal that survives deflation ships smaller and truer.
+  TIMING IS PART OF THE MOVE: a claimed payoff workload gets its
+  kill-check — prior art search plus the cheapest paper-disproof —
+  BEFORE code is ruled, presented alongside the pitch by whoever makes
+  the claim, not run after the build when challenged. A workload-fit
+  claim is a promise (perf-promise discipline applies). The specimen:
+  the disjunctive store was sold on scheduling, built for two days, and
+  the benchmark reversed the claim — the bare case came out 4.35×
+  WORSE, while constructive disjunction's mixed CLP record sat in the
+  literature the whole time, findable in an hour. Deflation delivered
+  after the build, narrated as the method working, is the failure mode
+  itself.
 - **The negative witness.** A theory that cannot say "this is NOT an
   instance" explains nothing. Kept deliberately: the optimizer's rewrite
   passes (no order to descend — mutual inverses oscillate), protocol

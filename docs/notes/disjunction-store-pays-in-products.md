@@ -155,4 +155,44 @@ problem's other constraints propagating into the disjuncts. Bare
 combinatorial cores stay conde's (or wait for the shelved machinery:
 watched literals for the carrying cost, the agreement move for
 propagation FROM undecided clauses). The 2021 problem itself sits on
-the winning side — because it always had the chains.
+the winning side — because it always had the chains. Caveat on the
+instrument: the losing pole is a UNIT-DURATION degenerate instance
+(the porter's imposition, not the 2021 formulation); a faithful
+variant would use varied durations.
+
+## The accounting (Aug 2026 — the human's adversarial pass, recorded)
+
+Is the store a real thing with a decisive workload, or a well-built
+dual? The honest ledger:
+
+- **The object is real at the architecture level**: a clause store
+  with unit propagation is the SAT/SMT/ASP/configurator engine — in
+  those systems it is the PRIMARY solver and problems arrive
+  clause-shaped. In CLP-family engines (ours), the same feature has a
+  name — constructive disjunction — and a known history of MIXED,
+  marginal payoff, which this benchmark independently reproduced.
+- **Authorization, the engine's driving slice, does NOT pay beyond
+  constants**: realistic policies leave k = 1–3 UNDECIDED clauses per
+  decision, so the conde gap is 2–8 answers versus 1. The store's one
+  structural contribution there is form, not scale: the compact
+  caveat is k clauses (a small CNF), which the conde-plus-Condition
+  path cannot produce — forked derivations land as 2^k DNF regions in
+  the cell — but at k = 2 that is four regions versus two clauses.
+  Real, trivial.
+- **The only candidate exponential is COMPOSITION**: caveated views
+  consuming caveated views (derived permissions, delegation chains,
+  lineage) — conde-style replay multiplies regions through layers
+  (c^d), residence keeps them factored (d clause-sets). Realistic
+  c = 2–3, d = 2–4 gives 8–80×: meaningful, not astronomical, and
+  UNPROVEN — it exists only if layered caveated views are how pldb
+  programs actually get written. Asserting it now would repeat the
+  scheduling overclaim; this note declines to.
+- **Verdict: deferred to pldb.** The store stands as ~250 laws-checked
+  lines on shared machinery — cheap to have built, semantically sound,
+  Projectable, with no demonstrated decisive workload. The engine
+  builds toward the FactSource/domain-layer slice because that is its
+  declared purpose, not to vindicate this store; the store rides along
+  at zero marginal cost and takes its real verdict there. Until then,
+  every optimization aimed at it (comparison fast path, watched
+  literals) stays parked on its trigger — no honing without a payoff
+  in evidence.
