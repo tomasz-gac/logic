@@ -46,18 +46,48 @@ public final class Verification {
 	public static Fiber<Option<Verified>> verify(List<Disjunct> disjuncts, Package state) {
 		Tuple2<List<Disjunct>, List<Disjunct>> byShape = disjuncts.partition(
 				d -> d.getAlternatives().forAll(Trial::bindingShaped));
-		return fold(byShape._1, state).flatMap(binding -> {
-			if (!binding.isDefined()) {
-				return Fiber.done(Option.none());
+		// the binding subset answers through the synchronous face — the sync
+		// gate is a typed code path, not an eagerness property
+		Option<Verified> binding = foldNow(byShape._1, state);
+		if (!binding.isDefined()) {
+			return Fiber.done(Option.none());
+		}
+		if (byShape._2.isEmpty()) {
+			return Fiber.done(binding);
+		}
+		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
+				Fiber.done(Option.none()) :
+				fold(byShape._2, settled.get()).map(packaged ->
+						packaged.map(binding.get()::mergedWith)));
+	}
+
+	/** The binding pass: every alternative answers now, the folds are loops. */
+	private static Option<Verified> foldNow(List<Disjunct> pending, Package base) {
+		Verified acc = new Verified(List.empty(), List.empty());
+		for (Disjunct disjunct : pending) {
+			Option<Verified> added = foldOneNow(disjunct, base).addedTo(acc);
+			if (!added.isDefined()) {
+				return Option.none();
 			}
-			if (byShape._2.isEmpty()) {
-				return Fiber.done(binding);
+			acc = added.get();
+		}
+		return Option.of(acc);
+	}
+
+	private static Fold foldOneNow(Disjunct disjunct, Package base) {
+		List<Posting> survivors = List.empty();
+		for (Posting alternative : disjunct.getAlternatives()) {
+			Trial.Outcome outcome = Trial.now(alternative, base)
+					.getOrElseThrow(() -> new IllegalStateException(
+							"the binding pass met a store-shaped alternative"));
+			if (outcome.isEntailed()) {
+				return Fold.DISCHARGED;
 			}
-			return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
-					Fiber.done(Option.none()) :
-					fold(byShape._2, settled.get()).map(packaged ->
-							packaged.map(binding.get()::mergedWith)));
-		});
+			if (!outcome.isRefuted()) {
+				survivors = survivors.append(outcome.getRemainder());
+			}
+		}
+		return folded(survivors);
 	}
 
 	/** The verify result: the disjuncts that stay resident, the survivors to impose. */
@@ -93,19 +123,20 @@ public final class Verification {
 																survivors :
 																Option.of(survivors.get()
 																		.append(outcome.getRemainder())))))
-				.map(survivors -> {
-					if (!survivors.isDefined()) {
-						return Fold.DISCHARGED;
-					}
-					List<Posting> left = survivors.get();
-					if (left.isEmpty()) {
-						return Fold.FAILED;
-					}
-					if (left.size() == 1) {
-						return new Fold(null, left.head(), false);
-					}
-					return new Fold(new Disjunct(left), null, false);
-				});
+				.map(survivors -> survivors.isDefined() ?
+						folded(survivors.get()) :
+						Fold.DISCHARGED);
+	}
+
+	/** The disjunct folds' shared terminal: empty fails, a singleton is a unit. */
+	private static Fold folded(List<Posting> survivors) {
+		if (survivors.isEmpty()) {
+			return Fold.FAILED;
+		}
+		if (survivors.size() == 1) {
+			return new Fold(null, survivors.head(), false);
+		}
+		return new Fold(new Disjunct(survivors), null, false);
 	}
 
 	@Value

@@ -79,11 +79,11 @@ public class TrialLawsTest {
 	}
 
 	private static Trial.Outcome outcomeOf(Posting literal, Package p) {
-		Fiber<Trial.Outcome> trial = Trial.trial(literal, p);
-		assertThat(trial.isDone())
-				.describedAs("binding-shaped trials are Done by construction")
+		io.vavr.control.Option<Trial.Outcome> now = Trial.now(literal, p);
+		assertThat(now.isDefined())
+				.describedAs("binding-shaped literals answer now")
 				.isTrue();
-		return new BreadthFirstScheduler<>(trial).get();
+		return now.get();
 	}
 
 	@Test

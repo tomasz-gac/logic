@@ -60,22 +60,20 @@ public final class Verification {
 	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
 		Tuple2<List<Nogood>, List<Nogood>> byShape =
 				nogoods.partition(n -> Trial.bindingShaped(n.getForbidden()));
-		// the binding subset's trials are Fiber.done by construction, so this
-		// fold composes eagerly and the whole pass stays inside the current
-		// step — the sync gate survives as a property, not a second code path
-		return fold(byShape._1, state).flatMap(bindingKept -> {
-			if (!bindingKept.isDefined()) {
-				return Fiber.done(Option.none());
-			}
-			Option<List<Nogood>> minimal = bindingKept.map(kept -> pruneSubsumed(kept, state));
-			if (byShape._2.isEmpty()) {
-				return Fiber.done(minimal);
-			}
-			return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
-					Fiber.done(Option.none()) :
-					fold(byShape._2, settled.get())
-							.map(packagedKept -> packagedKept.map(minimal.get()::appendAll)));
-		});
+		// the binding subset answers through the synchronous face — the sync
+		// gate is a typed code path, not an eagerness property
+		Option<List<Nogood>> bindingKept = foldNow(byShape._1, state);
+		if (!bindingKept.isDefined()) {
+			return Fiber.done(Option.none());
+		}
+		Option<List<Nogood>> minimal = bindingKept.map(kept -> pruneSubsumed(kept, state));
+		if (byShape._2.isEmpty()) {
+			return Fiber.done(minimal);
+		}
+		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
+				Fiber.done(Option.none()) :
+				fold(byShape._2, settled.get())
+						.map(packagedKept -> packagedKept.map(minimal.get()::appendAll)));
 	}
 
 	/**
@@ -87,10 +85,9 @@ public final class Verification {
 	 * every trial is Done and the assumption is exact; a mutual pair keeps its
 	 * later copy — head checks against kept AND pending, Neq's own tie-break.
 	 *
-	 * <p>Any trial answering with a real fiber claims nothing: {@code
-	 * Fiber.get} on a non-Done fiber would silently ground it on a side
-	 * engine, so the guard turns a broken shape assumption into a kept
-	 * nogood — wider, never wrong.
+	 * <p>A store-shaped literal claims nothing: the synchronous face answers
+	 * None, so a broken shape assumption turns into a kept nogood — wider,
+	 * never wrong.
 	 */
 	static List<Nogood> pruneSubsumed(List<Nogood> nogoods, Package base) {
 		List<Nogood> kept = List.empty();
@@ -106,15 +103,30 @@ public final class Verification {
 	}
 
 	private static boolean subsumed(Nogood nogood, List<Nogood> others, Package base) {
-		Fiber<Trial.Outcome> assumption = Trial.trial(nogood.getForbidden(), base);
-		if (!assumption.isDone() || assumption.getDone("Verification.subsumed").getGrown() == null) {
-			return false;
+		Option<Package> assumed = Trial.now(nogood.getForbidden(), base)
+				.map(Trial.Outcome::getGrown)
+				.filter(grown -> grown != null);
+		return assumed.isDefined() && others.exists(other ->
+				Trial.now(other.getForbidden(), assumed.get())
+						.map(Trial.Outcome::isEntailed)
+						.getOrElse(false));
+	}
+
+	/** The binding pass: every trial answers now, the fold is a plain loop. */
+	private static Option<List<Nogood>> foldNow(List<Nogood> nogoods, Package base) {
+		List<Nogood> kept = List.empty();
+		for (Nogood nogood : nogoods) {
+			Trial.Outcome outcome = Trial.now(nogood.getForbidden(), base)
+					.getOrElseThrow(() -> new IllegalStateException(
+							"the binding pass met a store-shaped nogood"));
+			if (outcome.isEntailed()) {
+				return Option.none();
+			}
+			if (!outcome.isRefuted()) {
+				kept = kept.append(Nogood.of(outcome.getRemainder()));
+			}
 		}
-		Package assumed = assumption.getDone("Verification.subsumed").getGrown();
-		return others.exists(other -> {
-			Fiber<Trial.Outcome> trial = Trial.trial(other.getForbidden(), assumed);
-			return trial.isDone() && trial.getDone("Verification.subsumed").isEntailed();
-		});
+		return Option.of(kept);
 	}
 
 	private static Fiber<Option<List<Nogood>>> fold(List<Nogood> nogoods, Package base) {

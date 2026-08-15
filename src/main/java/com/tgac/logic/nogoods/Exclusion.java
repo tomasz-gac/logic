@@ -3,7 +3,6 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The user front door for negative knowledge: exclude states one nogood —
 // ABOUTME: "NOT all these literals simultaneously" — through the statement entry.
 
-import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
@@ -31,11 +30,12 @@ public final class Exclusion {
 	 * The doom check, UnifyGoal's dynamic-pricing pattern: a nogood whose
 	 * forbidden conjunct is already ENTAILED is born violated — failure found
 	 * at pricing is failure forever (entailment is monotone under binding
-	 * growth). Binding-shaped conjuncts answer synchronously (the trial is
-	 * Done by construction); anything else claims nothing.
+	 * growth). Binding-shaped conjuncts answer through the synchronous face;
+	 * anything store-shaped claims nothing.
 	 */
 	private static boolean bornViolated(Posting forbidden, com.tgac.logic.goals.Package p) {
-		Fiber<Trial.Outcome> trial = Trial.trial(forbidden, p);
-		return trial.isDone() && trial.getDone("Exclusion.bornViolated").isEntailed();
+		return Trial.now(forbidden, p)
+				.map(Trial.Outcome::isEntailed)
+				.getOrElse(false);
 	}
 }

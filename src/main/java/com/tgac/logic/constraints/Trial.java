@@ -1,7 +1,7 @@
 package com.tgac.logic.constraints;
 
-// ABOUTME: The shared trial as ONE visitor: unification rows step fast at the
-// ABOUTME: substitution level, store rows impose on the scratch, conjuncts thread.
+// ABOUTME: The shared trial, one core with two faces: binding rows answer through
+// ABOUTME: the synchronous now(), store rows impose on the scratch, conjuncts thread.
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.ConstraintStore;
@@ -29,8 +29,9 @@ import lombok.Value;
  * direction: a store veto the imposition would discharge on keeps the nogood
  * wider until the ground floor, and eager discharge, if earliness is ever
  * worth buying, belongs on the doomed(Package) seam — store lookups, never
- * store trials. These rows answer {@code Fiber.done}: eager Done-composition
- * keeps whole binding chains inside the current step.
+ * store trials. These rows ARE the synchronous face ({@link #now}); the
+ * fiber lane wraps them in {@code Fiber.done}, so no consumer's
+ * synchronicity depends on how flatMap composes.
  *
  * <p>The STORE rows impose on the scratch and classify by the change
  * reading, keeping their ORIGINAL selves when owed — nothing is read back
@@ -84,15 +85,29 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	/**
 	 * The trial as doom oracle: a posting whose trial answers refuted can
 	 * never hold — refutation is monotone under binding growth, so failure
-	 * found at pricing is failure forever. Only a Done trial may claim doom
-	 * (running a suspending trial here would ground it on a side engine);
-	 * anything else claims nothing, the delay-safe direction. The dual
-	 * reading — entailed-if-Done — is the exclusion door's born-violated
-	 * check, the same guard on the opposite verdict.
+	 * found at pricing is failure forever. Only the synchronous face may
+	 * claim doom; a store-shaped literal claims nothing, the delay-safe
+	 * direction. The dual reading — entailed through the same face — is the
+	 * exclusion door's born-violated check, the same guard on the opposite
+	 * verdict.
 	 */
 	public static boolean doomed(Posting literal, Package p) {
-		Fiber<Outcome> trial = trial(literal, p);
-		return trial.isDone() && trial.getDone("Trial.doomed").isRefuted();
+		return now(literal, p)
+				.map(Outcome::isRefuted)
+				.getOrElse(false);
+	}
+
+	/**
+	 * The binding-shaped partition's synchronous face: a binding-shaped
+	 * literal ANSWERS NOW — the mintings ground walks, the conjunct fold is
+	 * a loop — and a store-shaped literal claims nothing. ONE implementation
+	 * of the binding rows lives here; the fiber lane wraps these outcomes in
+	 * {@code Fiber.done}, never recomputes them.
+	 */
+	public static Option<Outcome> now(Posting literal, Package scratch) {
+		return bindingShaped(literal) ?
+				Option.of(literal.accept(new Now(scratch))) :
+				Option.none();
 	}
 
 	/** Refuted: {@code remainder == null} and not entailed. */
@@ -120,69 +135,133 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Fiber<Outcome> visit(UnifyGoal<?> unification) {
-		UnifyGoal<Object> bind = (UnifyGoal<Object>) unification;
-		Option<Prefix> minted = (bind.isNoCheck() ?
-				MiniKanren.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
-				MiniKanren.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV()))
-				.ground();
-		// the equality can NEVER hold: unification failure is monotone under
-		// binding growth (a structural clash stays a clash in every extension
-		// of these substitutions), so the forbidden conjunction is refuted
-		// FOREVER, not just for this state — the nogood discharges
-		if (!minted.isDefined()) {
-			return Fiber.done(Outcome.refuted());
-		}
-		// an EMPTY residual is not the trial passing — the literal is
-		// entailed and crosses off; the branch-failing verdict (no survivors
-		// left = violated) is the caller's fold
-		Prefix residual = minted.get();
-		return Fiber.done(residual.isEmpty() ?
-				Outcome.entailed(scratch) :
-				Outcome.owed(Propagation.resolve(residual),
-						withSubstitutions(residual.appliedTo(scratch.substitution()))));
+		return Fiber.done(new Now(scratch).visit(unification));
+	}
+
+	@Override
+	public Fiber<Outcome> visit(Posting.Resolution resolution) {
+		return Fiber.done(new Now(scratch).visit(resolution));
 	}
 
 	/**
-	 * RE-UNIFICATION per pair, not the agenda's equality trichotomy
-	 * ({@code Prefix.revalidate} reads bound-vs-open as contradiction — right
-	 * for a Bind item, fatally wrong here: the trial asks whether the
-	 * EQUALITY can still hold, disequality's own reading of the same pairs).
+	 * The binding rows' one implementation. UNIFICATION rows answer at the
+	 * substitution level; a RESOLUTION re-unifies per pair, not the agenda's
+	 * equality trichotomy ({@code Prefix.revalidate} reads bound-vs-open as
+	 * contradiction — right for a Bind item, fatally wrong here: the trial
+	 * asks whether the EQUALITY can still hold, disequality's own reading of
+	 * the same pairs); a binding-shaped CONJUNCT threads its parts through
+	 * the growing scratch in a plain loop. Store rows are unreachable behind
+	 * the {@link #bindingShaped} gate.
 	 */
-	@Override
-	public Fiber<Outcome> visit(Posting.Resolution resolution) {
-		Substitutions current = scratch.substitution();
-		List<Posting> residuals = List.empty();
-		for (Tuple2<com.tgac.logic.unification.LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
-			@SuppressWarnings("unchecked")
-			Option<Prefix> minted = MiniKanren.unifyPrefix(current,
-					(Term<Object>) pair._1, (Term<Object>) pair._2).ground();
+	private static final class Now implements Posting.Visitor<Outcome> {
+
+		private final Package scratch;
+
+		Now(Package scratch) {
+			this.scratch = scratch;
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public Outcome visit(UnifyGoal<?> unification) {
+			UnifyGoal<Object> bind = (UnifyGoal<Object>) unification;
+			Option<Prefix> minted = (bind.isNoCheck() ?
+					MiniKanren.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
+					MiniKanren.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV()))
+					.ground();
+			// the equality can NEVER hold: unification failure is monotone under
+			// binding growth (a structural clash stays a clash in every extension
+			// of these substitutions), so the forbidden conjunction is refuted
+			// FOREVER, not just for this state — the nogood discharges
 			if (!minted.isDefined()) {
-				return Fiber.done(Outcome.refuted());
+				return Outcome.refuted();
 			}
+			// an EMPTY residual is not the trial passing — the literal is
+			// entailed and crosses off; the branch-failing verdict (no survivors
+			// left = violated) is the caller's fold
 			Prefix residual = minted.get();
-			if (!residual.isEmpty()) {
-				residuals = residuals.append(Propagation.resolve(residual));
-				current = residual.appliedTo(current);
+			return residual.isEmpty() ?
+					Outcome.entailed(scratch) :
+					Outcome.owed(Propagation.resolve(residual),
+							withSubstitutions(scratch, residual.appliedTo(scratch.substitution())));
+		}
+
+		@Override
+		public Outcome visit(Posting.Resolution resolution) {
+			Substitutions current = scratch.substitution();
+			List<Posting> residuals = List.empty();
+			for (Tuple2<com.tgac.logic.unification.LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
+				@SuppressWarnings("unchecked")
+				Option<Prefix> minted = MiniKanren.unifyPrefix(current,
+						(Term<Object>) pair._1, (Term<Object>) pair._2).ground();
+				if (!minted.isDefined()) {
+					return Outcome.refuted();
+				}
+				Prefix residual = minted.get();
+				if (!residual.isEmpty()) {
+					residuals = residuals.append(Propagation.resolve(residual));
+					current = residual.appliedTo(current);
+				}
 			}
+			if (residuals.isEmpty()) {
+				return Outcome.entailed(withSubstitutions(scratch, current));
+			}
+			return Outcome.owed(
+					residuals.size() == 1 ?
+							residuals.head() :
+							Posting.all(residuals.toJavaArray(Posting[]::new)),
+					withSubstitutions(scratch, current));
 		}
-		if (residuals.isEmpty()) {
-			return Fiber.done(Outcome.entailed(withSubstitutions(current)));
+
+		@Override
+		public Outcome visit(Posting.AllOf all) {
+			List<Posting> remainders = List.empty();
+			Package current = scratch;
+			for (Posting part : all.getParts()) {
+				Outcome outcome = part.accept(new Now(current));
+				if (outcome.isRefuted()) {
+					return Outcome.refuted();
+				}
+				if (!outcome.isEntailed()) {
+					remainders = remainders.append(outcome.getRemainder());
+				}
+				current = outcome.getGrown();
+			}
+			return assembled(remainders, current);
 		}
-		return Fiber.done(Outcome.owed(
-				residuals.size() == 1 ?
-						residuals.head() :
-						Posting.all(residuals.toJavaArray(Posting[]::new)),
-				withSubstitutions(current)));
+
+		@Override
+		public Outcome visit(Posting.Activation activation) {
+			throw notBindingShaped(activation);
+		}
+
+		@Override
+		public Outcome visit(Posting.Absorption absorption) {
+			throw notBindingShaped(absorption);
+		}
+
+		private static IllegalStateException notBindingShaped(Posting literal) {
+			return new IllegalStateException("now over a store-shaped literal: " + literal);
+		}
 	}
 
 	/**
 	 * Store factors deliberately do NOT hear these bindings: staleness only
 	 * shifts verdicts toward "owed", the delay-safe direction.
 	 */
-	private Package withSubstitutions(Substitutions grown) {
+	private static Package withSubstitutions(Package scratch, Substitutions grown) {
 		return Package.of(grown, scratch.getStores());
+	}
+
+	/** The conjunct folds' shared terminal: survivors re-conjoined or entailed. */
+	private static Outcome assembled(List<Posting> remainders, Package current) {
+		return remainders.isEmpty() ?
+				Outcome.entailed(current) :
+				Outcome.owed(remainders.size() == 1 ?
+						remainders.head() :
+						Posting.all(remainders.toJavaArray(Posting[]::new)),
+						current);
 	}
 
 	@Override
@@ -219,17 +298,14 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	/** Parts thread through the growing scratch; one refusal refutes the whole. */
 	@Override
 	public Fiber<Outcome> visit(Posting.AllOf all) {
-		return parts(all.getParts(), List.empty(), scratch);
+		return bindingShaped(all) ?
+				Fiber.done(new Now(scratch).visit(all)) :
+				parts(all.getParts(), List.empty(), scratch);
 	}
 
 	private static Fiber<Outcome> parts(List<Posting> pending, List<Posting> remainders, Package current) {
 		if (pending.isEmpty()) {
-			return Fiber.done(remainders.isEmpty() ?
-					Outcome.entailed(current) :
-					Outcome.owed(remainders.size() == 1 ?
-							remainders.head() :
-							Posting.all(remainders.toJavaArray(Posting[]::new)),
-							current));
+			return Fiber.done(assembled(remainders, current));
 		}
 		return trial(pending.head(), current).flatMap(outcome -> {
 			if (outcome.isRefuted()) {
