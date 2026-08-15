@@ -377,7 +377,7 @@ public class MiniKanrenTest {
 						.or(unify(x, y), unify(x, 3))
 						.or(unify(x, y), unify(x, 3), unify(y, 3))
 						.apply(Package.empty())
-						.map(s -> MiniKanren.reify(s.substitution(), lval(Tuple.of(x, y))).get()));
+						.map(s -> MiniKanren.reify(s.substitution(), lval(Tuple.of(x, y))).ground()));
 		Assertions.assertThat(result.get(0).get())
 				.isEqualTo(Tuple.of(lval(2), lval(2)));
 		Assertions.assertThat(result.get(1).get())

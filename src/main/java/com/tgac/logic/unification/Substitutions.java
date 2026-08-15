@@ -82,7 +82,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private static Option<Substitutions> unifyInto(Substitutions acc, Unknown<?> v, Term<?> t) {
-		return MiniKanren.unify(acc, (Term) v, (Term) t).get();
+		return MiniKanren.unify(acc, (Term) v, (Term) t).ground();
 	}
 
 	/**

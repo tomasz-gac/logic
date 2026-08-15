@@ -175,7 +175,8 @@ final class NogoodConstraints implements Projectable<NogoodConstraints> {
 			Nogood pruned = Nogood.of(kept.size() == 1 ?
 					kept.head() :
 					Posting.all(kept.toJavaArray(Posting[]::new)));
-			residuals = residuals.append(pruned.rename(Renaming.of(display)).get());
+			residuals = residuals.append(pruned.rename(Renaming.of(display))
+					.ground());
 		}
 		return residuals.isEmpty() ?
 				unifiable :

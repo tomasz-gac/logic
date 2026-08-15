@@ -126,7 +126,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		Option<Prefix> minted = (bind.isNoCheck() ?
 				MiniKanren.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
 				MiniKanren.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV()))
-				.get();
+				.ground();
 		// the equality can NEVER hold: unification failure is monotone under
 		// binding growth (a structural clash stays a clash in every extension
 		// of these substitutions), so the forbidden conjunction is refuted
@@ -157,7 +157,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		for (Tuple2<com.tgac.logic.unification.LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
 			@SuppressWarnings("unchecked")
 			Option<Prefix> minted = MiniKanren.unifyPrefix(current,
-					(Term<Object>) pair._1, (Term<Object>) pair._2).get();
+					(Term<Object>) pair._1, (Term<Object>) pair._2).ground();
 			if (!minted.isDefined()) {
 				return Fiber.done(Outcome.refuted());
 			}

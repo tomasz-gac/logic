@@ -14,11 +14,13 @@ import lombok.NoArgsConstructor;
 public class Utils {
 	public static <T, C extends Monad<Cont<?, Nothing>, T>> List<T> collect(C cnt) {
 		List<T> results = new ArrayList<>();
+		// ground(): this test utility may legitimately run inside an outer
+		// engine (nested pure collection) — the sanctioned door, not get()
 		cnt.<Cont<T, Nothing>> cast()
 				.run(v -> {
 					results.add(v);
 					return Nothing.nothing();
-				}).get();
+				}).ground();
 		return results;
 	}
 
