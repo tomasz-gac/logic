@@ -3,10 +3,8 @@ package com.tgac.logic.unification;
 // ABOUTME: The substitution factor as a first-class read-only view — what code scoped
 // ABOUTME: to shared knowledge (suspension conditions) may see: bindings, nothing else.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.MFiber;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
@@ -90,8 +88,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private static Option<Substitutions> unifyInto(Substitutions acc, Unknown<?> v, Term<?> t) {
-		MFiber<Substitutions> unified = MiniKanren.unify(acc, (Term) v, (Term) t);
-		return new BreadthFirstScheduler<>(unified.getFiber()).get();
+		return Unsafe.unify(acc, (Term) v, (Term) t);
 	}
 
 	/**

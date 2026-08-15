@@ -3,13 +3,13 @@ package com.tgac.logic.constraints;
 // ABOUTME: The shared trial as ONE visitor: unification rows step fast at the
 // ABOUTME: substitution level, store rows impose on the scratch, conjuncts thread.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import io.vavr.collection.LinkedHashMap;
+import com.tgac.logic.unification.Unsafe;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
@@ -124,10 +124,9 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	@SuppressWarnings("unchecked")
 	public Fiber<Outcome> visit(UnifyGoal<?> unification) {
 		UnifyGoal<Object> bind = (UnifyGoal<Object>) unification;
-		Option<Prefix> minted = new BreadthFirstScheduler<>((bind.isNoCheck() ?
-				MiniKanren.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
-				MiniKanren.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV()))
-				.getFiber()).get();
+		Option<Prefix> minted = bind.isNoCheck() ?
+				Unsafe.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
+				Unsafe.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV());
 		// the equality can NEVER hold: unification failure is monotone under
 		// binding growth (a structural clash stays a clash in every extension
 		// of these substitutions), so the forbidden conjunction is refuted
@@ -157,8 +156,8 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		List<Posting> residuals = List.empty();
 		for (Tuple2<com.tgac.logic.unification.LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
 			@SuppressWarnings("unchecked")
-			Option<Prefix> minted = new BreadthFirstScheduler<>(MiniKanren.unifyPrefix(current,
-					(Term<Object>) pair._1, (Term<Object>) pair._2).getFiber()).get();
+			Option<Prefix> minted = Unsafe.unifyPrefix(current,
+					(Term<Object>) pair._1, (Term<Object>) pair._2);
 			if (!minted.isDefined()) {
 				return Fiber.done(Outcome.refuted());
 			}

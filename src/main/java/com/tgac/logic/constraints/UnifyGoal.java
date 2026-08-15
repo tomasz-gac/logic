@@ -5,12 +5,12 @@ package com.tgac.logic.constraints;
 
 import static com.tgac.functional.category.Nothing.nothing;
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.NamedGoal;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.unification.Unsafe;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
@@ -44,7 +44,7 @@ public class UnifyGoal<T> implements Posting {
 	 */
 	@Override
 	public long answers(Substitutions s) {
-		return new BreadthFirstScheduler<>(MiniKanren.unifyPrefix(s, u, v).getFiber()).get().isDefined() ? 1 : 0;
+		return Unsafe.unifyPrefix(s, u, v).isDefined() ? 1 : 0;
 	}
 
 	@Override

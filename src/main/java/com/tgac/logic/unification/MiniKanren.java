@@ -8,7 +8,6 @@ import static com.tgac.functional.fibers.MFiber.none;
 import static com.tgac.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.Reference;
 import com.tgac.functional.fibers.Fiber;
@@ -126,7 +125,7 @@ public class MiniKanren {
 	 * trace shows arguments fully substituted rather than as raw variable names.
 	 */
 	public static String format(Substitutions s, Object o) {
-		return o instanceof Term ? new BreadthFirstScheduler<>(walkAll(s, (Term<?>) o)).get().toString() : String.valueOf(o);
+		return o instanceof Term ? Unsafe.walkAll(s, (Term<?>) o).toString() : String.valueOf(o);
 	}
 
 	private interface Extender {
