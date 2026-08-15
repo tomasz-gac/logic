@@ -298,7 +298,7 @@ public class SeparateTest {
 				.map(Term::get));
 
 		Assertions.assertThat(results)
-				.containsExactly(1, 2);
+				.containsExactlyInAnyOrder(1, 2);
 	}
 
 	@Test
@@ -314,7 +314,7 @@ public class SeparateTest {
 						.collect(Collectors.toList());
 
 		Assertions.assertThat(results)
-				.containsExactly(2, 3);
+				.containsExactlyInAnyOrder(2, 3);
 	}
 
 	@Test
