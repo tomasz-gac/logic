@@ -3,6 +3,7 @@ package com.tgac.logic.disjunction;
 // ABOUTME: The disjunction store: disjuncts held conjunctively, the straight fold
 // ABOUTME: on the shared trial — eliminate, discharge, fail empty, unit-impose.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
@@ -202,7 +203,7 @@ final class DisjunctionConstraints implements Projectable<DisjunctionConstraints
 				continue;
 			}
 			Map<Unknown<?>, Term<?>> display = getRenameMapping(renameSubstitutions, names);
-			residuals = residuals.append(disjunct.rename(Renaming.of(display)).get());
+			residuals = residuals.append(new BreadthFirstScheduler<>(disjunct.rename(Renaming.of(display))).get());
 		}
 		return residuals.isEmpty() ?
 				unifiable :
@@ -219,8 +220,7 @@ final class DisjunctionConstraints implements Projectable<DisjunctionConstraints
 
 	private static java.util.List<Term<?>> getDisjunctNames(Package s, Disjunct disjunct) {
 		return disjunct.terms()
-				.map(term -> s.substitution().walkAll(term))
-				.flatMap(MiniKanren::namesIn)
+				.flatMap(term -> s.substitution().namesIn(term))
 				.collect(Collectors.toList());
 	}
 }

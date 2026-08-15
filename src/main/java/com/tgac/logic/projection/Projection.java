@@ -3,6 +3,7 @@ package com.tgac.logic.projection;
 // ABOUTME: Projection goals: park a kernel suspension until deep-groundness, then
 // ABOUTME: run the body with the walked value. Suspensions are Propagation's own.
 
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.optimizer.Bounded;
@@ -29,7 +30,8 @@ public class Projection {
 		return Bounded.of(1, Propagation.suspend(
 				Collections.singletonList(x),
 				sub -> sub.isGround(x),
-				s -> f.apply((T) MiniKanren.walkAll(s.substitution(), x).get().get()).apply(s)));
+				s -> Cont.defer(() -> MiniKanren.walkAll(s.substitution(), x)
+						.map(w -> f.apply((T) w.get()).apply(s)))));
 	}
 
 	/** Two-variable projection, watched jointly. */
@@ -38,9 +40,9 @@ public class Projection {
 		return Bounded.of(1, Propagation.suspend(
 				Arrays.asList(v1, v2),
 				sub -> sub.isGround(v1) && sub.isGround(v2),
-				s -> f.apply(
-						s.substitution().walkAll(v1).get(),
-						s.substitution().walkAll(v2).get()).apply(s)));
+				s -> Cont.defer(() -> s.substitution().walkAll(v1)
+						.flatMap(w1 -> s.substitution().walkAll(v2)
+								.map(w2 -> f.apply(w1.get(), w2.get()).apply(s))))));
 	}
 
 	/** Three-variable projection, watched jointly. */
@@ -49,9 +51,9 @@ public class Projection {
 		return Bounded.of(1, Propagation.suspend(
 				Arrays.asList(v1, v2, v3),
 				sub -> sub.isGround(v1) && sub.isGround(v2) && sub.isGround(v3),
-				s -> f.apply(
-						s.substitution().walkAll(v1).get(),
-						s.substitution().walkAll(v2).get(),
-						s.substitution().walkAll(v3).get()).apply(s)));
+				s -> Cont.defer(() -> s.substitution().walkAll(v1)
+						.flatMap(w1 -> s.substitution().walkAll(v2)
+								.flatMap(w2 -> s.substitution().walkAll(v3)
+										.map(w3 -> f.apply(w1.get(), w2.get(), w3.get()).apply(s)))))));
 	}
 }

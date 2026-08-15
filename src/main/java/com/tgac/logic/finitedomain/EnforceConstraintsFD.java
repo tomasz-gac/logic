@@ -43,15 +43,14 @@ class EnforceConstraintsFD {
 	}
 
 	public static <T> Goal forceAns(Term<T> x) {
-		return s -> Fiber.done(s.walk(x))
+		return s -> Cont.defer(() -> Fiber.done(s.walk(x))
 				.map(v -> v.asVar()
 						.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv))
 						.map(d -> unifyWithAllDomainValues(x, d))
 						.orElse(() -> forceAnsAndRerunConstraintsIterable(v))
 						.orElse(() -> forceAnsAndRerunConstraintsLList(v))
 						.getOrElse(Goal::success))
-				.map(g -> g.apply(s))
-				.get();
+				.map(g -> g.apply(s)));
 	}
 
 	private static <T> Option<Goal> forceAnsAndRerunConstraintsLList(Term<T> v) {

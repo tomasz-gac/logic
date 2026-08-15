@@ -3,6 +3,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: Posting is the chokepoint vocabulary lifted to Goal: apply IS the
 // ABOUTME: imposition, and Bounded's order is the 0-or-1 taxonomy with the doom bit.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -54,9 +55,9 @@ public class PostingTest {
 		// the eager 0 under partial knowledge: the live domain is disjoint
 		// with the post — failure found at pricing is failure forever
 		Unifiable<Long> x = lvar();
-		Package live = Exhaustion.collected(
+		Package live = new BreadthFirstScheduler<>(Exhaustion.collected(
 						dom(x, EnumeratedDomain.range(0L, 5L)).apply(Package.empty()))
-				.get().get(0);
+				).get().get(0);
 
 		Posting doomed = FiniteDomain.dom(x, EnumeratedDomain.range(6L, 9L));
 		Posting alive = FiniteDomain.dom(x, EnumeratedDomain.range(3L, 9L));

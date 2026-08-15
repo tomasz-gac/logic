@@ -5,6 +5,7 @@ package com.tgac.logic.tabling;
 
 import static com.tgac.logic.unification.LVal.lval;
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Emitter;
@@ -185,7 +186,7 @@ public class Tabling {
 				.map(Table.class::cast)
 				.map(table -> {
 					Call key = Call.of(relation,
-							MiniKanren.reify(p.substitution(), argsTerm).get());
+							new BreadthFirstScheduler<>(MiniKanren.reify(p.substitution(), argsTerm)).get());
 					TableEntry<?> entry = table.getEntry(key);
 					// a sealed subsumer's count bounds the instance's emissions
 					// (subset property) — the same lookup reuse consumes through

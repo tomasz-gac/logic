@@ -3,6 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The trial's edges: a woken suspension may legally fork an imposition,
 // ABOUTME: and double negation decides at the ground floor without eager narrowing.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
@@ -31,15 +32,15 @@ public class TrialEdgeTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		Package state = Exhaustion.collected(
+		Package state = new BreadthFirstScheduler<>(Exhaustion.collected(
 						Propagation.suspend(
 										Collections.singletonList(y),
 										s -> s.walk(y).asVal().isDefined(),
 										x.unifies(1).or(x.unifies(2)))
 								.apply(Package.empty()))
-				.get().get(0);
+				).get().get(0);
 
-		io.vavr.collection.List<Package> worlds = Trial.imposed(y.unifies(5), state).get();
+		io.vavr.collection.List<Package> worlds = new BreadthFirstScheduler<>(Trial.imposed(y.unifies(5), state)).get();
 		assertThat(worlds).hasSize(2);
 	}
 

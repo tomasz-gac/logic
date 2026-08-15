@@ -36,6 +36,6 @@ public final class Exclusion {
 	 */
 	private static boolean bornViolated(Posting forbidden, com.tgac.logic.goals.Package p) {
 		Fiber<Trial.Outcome> trial = Trial.trial(forbidden, p);
-		return trial.isDone() && trial.get().isEntailed();
+		return trial.isDone() && trial.getDone("Exclusion.bornViolated").isEntailed();
 	}
 }

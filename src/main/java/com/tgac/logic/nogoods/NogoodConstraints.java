@@ -3,6 +3,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The nogood store's faces over the verification core: normalize is verify
 // ABOUTME: wrapped into Revision, revise is normalize by another trigger.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
@@ -175,8 +176,8 @@ final class NogoodConstraints implements Projectable<NogoodConstraints> {
 			Nogood pruned = Nogood.of(kept.size() == 1 ?
 					kept.head() :
 					Posting.all(kept.toJavaArray(Posting[]::new)));
-			residuals = residuals.append(pruned.rename(Renaming.of(display))
-					.ground());
+			residuals = residuals.append(new BreadthFirstScheduler<>(
+					pruned.rename(Renaming.of(display))).get());
 		}
 		return residuals.isEmpty() ?
 				unifiable :
@@ -187,8 +188,7 @@ final class NogoodConstraints implements Projectable<NogoodConstraints> {
 		return literals(nogood)
 				.filter(literal -> {
 					java.util.List<Term<?>> names = literal.terms()
-							.map(term -> (Term<?>) s.substitution().walkAll(term))
-							.flatMap(MiniKanren::namesIn)
+							.flatMap(term -> s.substitution().namesIn(term))
 							.map(name -> (Term<?>) name)
 							.collect(Collectors.toList());
 					return !names.isEmpty() && names.stream()
@@ -199,8 +199,7 @@ final class NogoodConstraints implements Projectable<NogoodConstraints> {
 	private static Map<Unknown<?>, Term<?>> renameKept(Substitutions renameSubstitutions, Package s, List<Posting> kept) {
 		return kept.toJavaStream()
 				.flatMap(Posting::terms)
-				.map(term -> (Term<?>) s.substitution().walkAll(term))
-				.flatMap(MiniKanren::namesIn)
+				.flatMap(term -> s.substitution().namesIn(term))
 				// one name may appear in several kept literals; walk(name) is
 				// deterministic, so both occurrences agree — first wins
 				.collect(Collectors.toMap(Function.identity(), renameSubstitutions::walk,

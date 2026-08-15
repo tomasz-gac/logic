@@ -3,6 +3,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: The shared trial as ONE visitor: unification rows step fast at the
 // ABOUTME: substitution level, store rows impose on the scratch, conjuncts thread.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.ConstraintStore;
 import com.tgac.logic.goals.Exhaustion;
@@ -92,7 +93,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	 */
 	public static boolean doomed(Posting literal, Package p) {
 		Fiber<Outcome> trial = trial(literal, p);
-		return trial.isDone() && trial.get().isRefuted();
+		return trial.isDone() && trial.getDone("Trial.doomed").isRefuted();
 	}
 
 	/** Refuted: {@code remainder == null} and not entailed. */
@@ -123,10 +124,10 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	@SuppressWarnings("unchecked")
 	public Fiber<Outcome> visit(UnifyGoal<?> unification) {
 		UnifyGoal<Object> bind = (UnifyGoal<Object>) unification;
-		Option<Prefix> minted = (bind.isNoCheck() ?
+		Option<Prefix> minted = new BreadthFirstScheduler<>((bind.isNoCheck() ?
 				MiniKanren.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
 				MiniKanren.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV()))
-				.ground();
+				.getFiber()).get();
 		// the equality can NEVER hold: unification failure is monotone under
 		// binding growth (a structural clash stays a clash in every extension
 		// of these substitutions), so the forbidden conjunction is refuted
@@ -156,8 +157,8 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		List<Posting> residuals = List.empty();
 		for (Tuple2<com.tgac.logic.unification.LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
 			@SuppressWarnings("unchecked")
-			Option<Prefix> minted = MiniKanren.unifyPrefix(current,
-					(Term<Object>) pair._1, (Term<Object>) pair._2).ground();
+			Option<Prefix> minted = new BreadthFirstScheduler<>(MiniKanren.unifyPrefix(current,
+					(Term<Object>) pair._1, (Term<Object>) pair._2).getFiber()).get();
 			if (!minted.isDefined()) {
 				return Fiber.done(Outcome.refuted());
 			}

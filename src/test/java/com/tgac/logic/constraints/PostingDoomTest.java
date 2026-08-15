@@ -3,6 +3,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: The vocabulary's default doom is the trial's oracle: refuted-if-Done
 // ABOUTME: claims doom, everything the trial cannot decide synchronously claims nothing.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,8 +17,8 @@ import org.junit.Test;
 public class PostingDoomTest {
 
 	private static Package bound(Unifiable<Integer> x, int value) {
-		return Trial.imposed(Posting.bind(x, lval(value)), Package.empty())
-				.get().head();
+		return new BreadthFirstScheduler<>(Trial.imposed(Posting.bind(x, lval(value)), Package.empty())
+				).get().head();
 	}
 
 	@Test

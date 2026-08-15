@@ -1,5 +1,6 @@
 package com.tgac.logic.finitedomain;
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.unification.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,12 +48,12 @@ public class ParametersTest {
 		Package pkg = Package.of(HashMap.empty(),
 				LinkedHashMap.of(FiniteDomainConstraints.class,
 						FiniteDomainConstraints.empty().prepend(constraint)));
-		Propagation.resolve(TestAccess.prefix(prefix))
+		new BreadthFirstScheduler<>(Propagation.resolve(TestAccess.prefix(prefix))
 				.apply(pkg)
 				.run(v -> {
 					box[0] = v;
 					return Nothing.nothing();
-				}).get();
+				})).get();
 		// processing a 10-association prefix completes without blowing the stack,
 		// and the substitutions are applied
 		assertThat(box[0]).isNotNull();

@@ -3,12 +3,20 @@ package com.tgac.logic.unification;
 // ABOUTME: The substitution factor as a first-class read-only view — what code scoped
 // ABOUTME: to shared knowledge (suspension conditions) may see: bindings, nothing else.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.algebra.Semilattice;
+import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.MFiber;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
 import java.util.ArrayDeque;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * A read-only view of the substitution — the shared factor of the package
@@ -82,7 +90,8 @@ public final class Substitutions implements Semilattice<Substitutions> {
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private static Option<Substitutions> unifyInto(Substitutions acc, Unknown<?> v, Term<?> t) {
-		return MiniKanren.unify(acc, (Term) v, (Term) t).ground();
+		MFiber<Substitutions> unified = MiniKanren.unify(acc, (Term) v, (Term) t);
+		return new BreadthFirstScheduler<>(unified.getFiber()).get();
 	}
 
 	/**
@@ -155,8 +164,33 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	}
 
 	/** The term deep-walked to its current bindings. */
-	public <T> Term<T> walkAll(Term<T> t) {
-		return MiniKanren.walkAll(this, t).get();
+	public <T> Fiber<Term<T>> walkAll(Term<T> t) {
+		return MiniKanren.walkAll(this, t);
+	}
+
+	/**
+	 * The unknowns still free in {@code t} under the current bindings —
+	 * {@link MiniKanren#namesIn}'s traversal taken through the walk, without
+	 * building the deep-walked copy.
+	 */
+	public Stream<Unknown<?>> namesIn(Term<?> t) {
+		ArrayDeque<Term<?>> work = new ArrayDeque<>();
+		work.push(t);
+		return StreamSupport.stream(new Spliterators.AbstractSpliterator<Unknown<?>>(
+				Long.MAX_VALUE, Spliterator.ORDERED | Spliterator.NONNULL) {
+			@Override
+			public boolean tryAdvance(Consumer<? super Unknown<?>> action) {
+				while (!work.isEmpty()) {
+					Term<?> current = walk(work.pop());
+					if (current.asUnknown().isDefined()) {
+						action.accept(current.asUnknown().get());
+						return true;
+					}
+					MiniKanren.members(current).forEach(members -> members.forEach(work::push));
+				}
+				return false;
+			}
+		}, false);
 	}
 
 	/**
@@ -166,9 +200,9 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	 */
 	public boolean isGround(Term<?> t) {
 		ArrayDeque<Term<?>> pending = new ArrayDeque<>();
-		pending.add(walkAll(t));
+		pending.add(t);
 		while (!pending.isEmpty()) {
-			Term<?> cur = pending.poll();
+			Term<?> cur = walk(pending.poll());
 			if (cur.asVar().isDefined()) {
 				return false;
 			}

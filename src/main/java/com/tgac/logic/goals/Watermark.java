@@ -83,8 +83,7 @@ public class Watermark implements Packaged {
 	}
 
 	private static void refuseOldFreeNames(Package pkg, Watermark watermark, Stream<Term<?>> terms) {
-		refuseIfAny(terms.map(term -> pkg.substitution().walkAll(term))
-				.flatMap(MiniKanren::namesIn)
+		refuseIfAny(terms.flatMap(term -> pkg.substitution().namesIn(term))
 				.filter(watermark::refuses)
 				.collect(Collectors.toCollection(LinkedHashSet::new)));
 	}

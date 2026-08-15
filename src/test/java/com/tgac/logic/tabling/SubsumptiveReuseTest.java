@@ -32,7 +32,7 @@ public class SubsumptiveReuseTest {
 	}
 
 	private static Reified<?> pattern(Object args) {
-		return MiniKanren.reify(Substitutions.empty(), lval(args)).get();
+		return new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(), lval(args))).get();
 	}
 
 	// ---- the matcher ----

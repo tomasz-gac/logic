@@ -3,6 +3,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: The doom law as seeded properties: doomed-at-pricing implies failure
 // ABOUTME: at every extension; the doors' refinements obey the same contract.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.disjunction.Disjunction.any;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.unification.LVal.lval;
@@ -72,7 +73,7 @@ public class DoomLawsTest {
 			Package p = from;
 			for (int i = 0; i < bindings; i++) {
 				List<Package> worlds =
-						Trial.imposed(Posting.bind(var(), lval(r.nextInt(3))), p).get();
+						new BreadthFirstScheduler<>(Trial.imposed(Posting.bind(var(), lval(r.nextInt(3))), p)).get();
 				if (!worlds.isEmpty()) {
 					p = worlds.head();
 				}
@@ -92,14 +93,14 @@ public class DoomLawsTest {
 				continue;
 			}
 			exercised++;
-			assertThat(Trial.imposed(literal, p).get())
+			assertThat(new BreadthFirstScheduler<>(Trial.imposed(literal, p)).get())
 					.describedAs("seed %d: doomed posting imposed successfully", seed)
 					.isEmpty();
 			Package grown = w.state(p, 2);
 			assertThat(literal.doomed(grown))
 					.describedAs("seed %d: doom lifted by growth", seed)
 					.isTrue();
-			assertThat(Trial.imposed(literal, grown).get())
+			assertThat(new BreadthFirstScheduler<>(Trial.imposed(literal, grown)).get())
 					.describedAs("seed %d: doomed posting imposed at extension", seed)
 					.isEmpty();
 		}

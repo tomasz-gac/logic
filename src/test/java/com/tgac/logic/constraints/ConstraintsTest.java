@@ -1,5 +1,6 @@
 package com.tgac.logic.constraints;
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.unification.LVal.lval;
 
 import com.tgac.functional.category.Nothing;
@@ -24,12 +25,12 @@ public class ConstraintsTest {
 		Cont<Package, Nothing> s = Constraints.unify(u, v)
 				.apply(Package.empty());
 		List<Integer> map = Utils.collect(s
-				.map(p -> Fiber.done(p.walk(v))
+				.map(p -> new BreadthFirstScheduler<>(Fiber.done(p.walk(v))
 						.map(v1 -> Utils.collect(Constraints.
 										reify(p, v1))
 								.stream()
 								.collect(Collectors.toList()).get(0).get())
-						.get()));
+						).get()));
 		Assertions.assertThat(map)
 				.containsExactly(1);
 	}

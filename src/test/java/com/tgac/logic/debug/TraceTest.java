@@ -1,5 +1,6 @@
 package com.tgac.logic.debug;
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -102,7 +103,7 @@ public class TraceTest {
 		Unifiable<Integer> x = lvar();
 
 		// the label walks x against the state, so it is rendered per port
-		Goal g = x.unifies(5).named(pkg -> "x=" + pkg.walk(x));
+		Goal g = x.unifies(5).named(pkg -> Fiber.done("x=" + pkg.walk(x)));
 		g.solve(x, recorder).count();
 
 		// at Exit x is bound, so the label shows the value, not the variable name

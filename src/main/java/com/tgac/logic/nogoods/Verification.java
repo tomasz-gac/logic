@@ -107,13 +107,13 @@ public final class Verification {
 
 	private static boolean subsumed(Nogood nogood, List<Nogood> others, Package base) {
 		Fiber<Trial.Outcome> assumption = Trial.trial(nogood.getForbidden(), base);
-		if (!assumption.isDone() || assumption.get().getGrown() == null) {
+		if (!assumption.isDone() || assumption.getDone("Verification.subsumed").getGrown() == null) {
 			return false;
 		}
-		Package assumed = assumption.get().getGrown();
+		Package assumed = assumption.getDone("Verification.subsumed").getGrown();
 		return others.exists(other -> {
 			Fiber<Trial.Outcome> trial = Trial.trial(other.getForbidden(), assumed);
-			return trial.isDone() && trial.get().isEntailed();
+			return trial.isDone() && trial.getDone("Verification.subsumed").isEntailed();
 		});
 	}
 

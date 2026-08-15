@@ -46,7 +46,9 @@ public class Logic {
 				Matche.llist((a, d) ->
 						unify(both, LList.of(a, res))
 								.and(defer(() -> appendo(d, second, res)))))
-				.named(s -> formatLList(s, first) + " ++ " + formatLList(s, second) + " ≡ " + formatLList(s, both));
+				.named(s -> formatLList(s, first).flatMap(f ->
+						formatLList(s, second).flatMap(sec ->
+								formatLList(s, both).map(b -> f + " ++ " + sec + " ≡ " + b))));
 	}
 
 	public static <T> String formatLList(Unifiable<LList<T>> first) {
@@ -55,11 +57,11 @@ public class Logic {
 				.getOrElse(() -> first.get().toString());
 	}
 
-	public static <T> String formatLList(Package s, Unifiable<LList<T>> first) {
-		Term<LList<T>> walked = s.substitution().walkAll(first);
-		return walked.asVar()
-				.map(v -> "[" + v + "]")
-				.getOrElse(() -> walked.get().toString());
+	public static <T> Fiber<String> formatLList(Package s, Unifiable<LList<T>> first) {
+		return s.substitution().walkAll(first)
+				.map(walked -> walked.asVar()
+						.map(v -> "[" + v + "]")
+						.getOrElse(() -> walked.get().toString()));
 	}
 
 	public static <A, B> Goal sameLengtho(Unifiable<LList<A>> lhs, Unifiable<LList<B>> rhs) {
@@ -67,7 +69,8 @@ public class Logic {
 				.or(matche(lhs,
 						Matche.llist((_0, lTail) -> matche(rhs, Matche.llist((_1, rTail) ->
 								defer(() -> sameLengtho(lTail, rTail)))))))
-				.named(s -> "len(" + formatLList(s, lhs) + ") = len(" + formatLList(s, rhs) + ")");
+				.named(s -> formatLList(s, lhs).flatMap(l ->
+						formatLList(s, rhs).map(r -> "len(" + l + ") = len(" + r + ")")));
 	}
 
 	/** {@code out} is {@code ls} with the first {@code x} removed; later elements differ from {@code x}. */
@@ -80,7 +83,8 @@ public class Logic {
 						Exclusion.exclude(a.unifies(x))
 								.and(unify(out, LList.of(a, res)))
 								.and(Goal.defer(() -> rembero(d, x, res)))))))
-				.named(pkg -> pkg.format(x) + " ⊄ " + Logic.formatLList(pkg, ls) + " ≡ " + pkg.format(out));
+				.named(pkg -> Logic.formatLList(pkg, ls).map(l ->
+						pkg.format(x) + " ⊄ " + l + " ≡ " + pkg.format(out)));
 	}
 
 	/** Every pair of elements differs — pairwise exclusions, no forking. */
@@ -91,14 +95,14 @@ public class Logic {
 						Matche.llist((a, b, d) -> Exclusion.exclude(a.unifies(b))
 								.and(Goal.defer(() -> distincto(LList.of(a, d))))
 								.and(Goal.defer(() -> distincto(LList.of(b, d))))))
-				.named(pkg -> "distincto(" + Logic.formatLList(pkg, distinct) + ")");
+				.named(pkg -> Logic.formatLList(pkg, distinct).map(l -> "distincto(" + l + ")"));
 	}
 
 	public static <A> Goal membero(Unifiable<A> x, Unifiable<LList<A>> lst) {
 		return matche(lst, Matche.llist((a, d) ->
 				unify(a, x)
 						.or(defer((() -> membero(x, d))))))
-				.named(s -> s.format(x) + " ⊂ " + formatLList(s, lst));
+				.named(s -> formatLList(s, lst).map(l -> s.format(x) + " ⊂ " + l));
 	}
 
 	public static Goal booleanGoal(
