@@ -46,7 +46,7 @@ public class EagerFlatMapBenchmarkTest {
 
 	private static final int WARMUP_ROUNDS = 2;
 	private static final int MEASURED_ROUNDS = 3;
-	private static final int BUDGET_ON = 512;
+	private static final int BUDGET_ON = 16;
 	private static final int BUDGET_OFF = 0;
 
 	@Test

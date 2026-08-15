@@ -52,20 +52,4 @@
 		</dependency>
 	</dependencies>
 
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<configuration>
-					<systemPropertyVariables>
-						<!-- tests pin the eager budget: calibration is the
-						     production default, determinism is the suite's -->
-						<fiber.eagerBudget>512</fiber.eagerBudget>
-					</systemPropertyVariables>
-				</configuration>
-			</plugin>
-		</plugins>
-	</build>
-
 </project>
