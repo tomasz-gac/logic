@@ -3,6 +3,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: The trial's laws as seeded properties: refuted is permanent, entailed
 // ABOUTME: is exact, the remainder preserves denotation, flattening is idempotent.
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -68,7 +69,7 @@ public class TrialLawsTest {
 			for (int i = 0; i < bindings; i++) {
 				Fiber<io.vavr.collection.List<Package>> imposed =
 						Trial.imposed(Posting.bind(var(), lval(r.nextInt(4))), p);
-				List<Package> worlds = imposed.ground();
+				List<Package> worlds = new BreadthFirstScheduler<>(imposed).get();
 				if (!worlds.isEmpty()) {
 					p = worlds.head();
 				}
@@ -82,7 +83,7 @@ public class TrialLawsTest {
 		assertThat(trial.isDone())
 				.describedAs("binding-shaped trials are Done by construction")
 				.isTrue();
-		return trial.ground();
+		return new BreadthFirstScheduler<>(trial).get();
 	}
 
 	@Test
@@ -120,7 +121,7 @@ public class TrialLawsTest {
 				continue;
 			}
 			exercised++;
-			List<Package> worlds = Trial.imposed(literal, p).ground();
+			List<Package> worlds = new BreadthFirstScheduler<>(Trial.imposed(literal, p)).get();
 			assertThat(worlds).describedAs("seed %d: entailed imposition delivers", seed)
 					.hasSize(1);
 			assertThat(worlds.head().substitution())
@@ -149,8 +150,8 @@ public class TrialLawsTest {
 				continue;
 			}
 			exercised++;
-			List<Package> viaLiteral = Trial.imposed(literal, p).ground();
-			List<Package> viaRemainder = Trial.imposed(outcome.getRemainder(), p).ground();
+			List<Package> viaLiteral = new BreadthFirstScheduler<>(Trial.imposed(literal, p)).get();
+			List<Package> viaRemainder = new BreadthFirstScheduler<>(Trial.imposed(outcome.getRemainder(), p)).get();
 			assertThat(viaRemainder.map(Package::substitution))
 					.describedAs("seed %d: remainder diverged from literal", seed)
 					.isEqualTo(viaLiteral.map(Package::substitution));

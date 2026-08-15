@@ -464,7 +464,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * {@link #defer} hook (docs/design/ambient-optimizer.md).
 	 */
 	default <T> Stream<Reified<T>> solve(Unifiable<T> out, Optimizer optimizer) {
-		return accept(optimizer).ground()
+		return new BreadthFirstScheduler<>(accept(optimizer)).get()
 				.solveFrom(Package.empty().putStore(OptimizerStore.of(optimizer)),
 						out, BreadthFirstScheduler::new);
 	}
