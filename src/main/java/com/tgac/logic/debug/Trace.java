@@ -88,7 +88,7 @@ public final class Trace {
 	}
 
 	public static Goal traced(String label, Goal goal, Tracer tracer) {
-		return pkg -> tracedCont(p -> Fiber.done(label), goal, tracer, pkg, Function.identity());
+		return pkg -> tracedCont(p -> label, goal, tracer, pkg, Function.identity());
 	}
 
 	/**
@@ -98,10 +98,10 @@ public final class Trace {
 	 * The label is rendered against the state at each port, so Call shows the
 	 * arguments as entered and Exit shows them walked to their solution bindings.
 	 */
-	public static Cont<Package, Nothing> tracedCont(Function<Package, Fiber<String>> label, Goal goal, Tracer tracer,
+	public static Cont<Package, Nothing> tracedCont(Function<Package, String> label, Goal goal, Tracer tracer,
 			Package entered, Function<Package, Package> restore) {
-		return k -> label.apply(entered).flatMap(callLabel -> {
-			tracer.onCall(callLabel, entered);
+		return k -> {
+			tracer.onCall(label.apply(entered), entered);
 			AtomicInteger exits = new AtomicInteger(0);
 			// TRACING IS OBSERVATION, NOT AGGREGATION: the box delivers
 			// INLINE - a planted delimiter here would batch deliveries until
@@ -112,24 +112,20 @@ public final class Trace {
 			// for suspension-free goals, early for suspended ones - a
 			// cosmetic trade a debugger accepts to avoid perturbing the
 			// computation it observes.
-			Fiber<Nothing> exploration = goal.apply(entered).apply(answer ->
-					label.apply(answer).flatMap(answerLabel -> {
-						if (exits.getAndIncrement() > 0) {
-							tracer.onRedo(answerLabel, answer);
-						}
-						tracer.onExit(answerLabel, answer);
-						return k.apply(restore.apply(answer));
-					}));
+			Fiber<Nothing> exploration = goal.apply(entered).apply(answer -> {
+				if (exits.getAndIncrement() > 0) {
+					tracer.onRedo(label.apply(answer), answer);
+				}
+				tracer.onExit(label.apply(answer), answer);
+				return k.apply(restore.apply(answer));
+			});
 			return exploration.flatMap(done -> {
 				if (exits.get() == 0) {
-					return label.apply(entered).map(failLabel -> {
-						tracer.onFail(failLabel, entered);
-						return done;
-					});
+					tracer.onFail(label.apply(entered), entered);
 				}
 				return Fiber.done(done);
 			});
-		});
+		};
 	}
 
 	/**

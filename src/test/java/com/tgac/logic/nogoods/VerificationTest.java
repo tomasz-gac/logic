@@ -3,7 +3,6 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The verification core against Neq's own semantics: refuted discards,
 // ABOUTME: entailed fails, survivors keep their original literals, bindings thread.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
@@ -30,14 +29,14 @@ public class VerificationTest {
 	private static Package given(Posting... literals) {
 		Package state = Package.empty();
 		for (Posting literal : literals) {
-			state = new BreadthFirstScheduler<>(Trial.imposed(literal, state)).get().head();
+			state = Trial.imposed(literal, state).ground().head();
 		}
 		return state;
 	}
 
 	private static Option<List<Nogood>> verified(Package state, Posting... literals) {
-		return new BreadthFirstScheduler<>(Verification.verify(List.of(Nogood.of(literals.length == 1 ?
-				literals[0] : Posting.all(literals))), state)).get();
+		return Verification.verify(List.of(Nogood.of(literals.length == 1 ?
+				literals[0] : Posting.all(literals))), state).ground();
 	}
 
 	@Test
@@ -126,8 +125,8 @@ public class VerificationTest {
 			}
 		};
 
-		assertThatThrownBy(() -> new BreadthFirstScheduler<>(Trial.imposed(
-				Propagation.activate(orphan), Package.empty())).get())
+		assertThatThrownBy(() -> Trial.imposed(
+				Propagation.activate(orphan), Package.empty()).ground())
 				.isInstanceOf(IllegalStateException.class);
 	}
 

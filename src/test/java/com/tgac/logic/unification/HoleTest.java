@@ -1,6 +1,5 @@
 package com.tgac.logic.unification;
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,7 +65,7 @@ public class HoleTest {
 		Unifiable<Integer> x = lvar();
 		Hole<Integer> hole = Hole.of(0);
 
-		assertThatThrownBy(() -> new BreadthFirstScheduler<>(MiniKanren.unify(Substitutions.empty(), x, hole).getFiber()).get())
+		assertThatThrownBy(() -> MiniKanren.unify(Substitutions.empty(), x, hole).ground())
 				.isInstanceOf(IllegalStateException.class);
 	}
 
@@ -75,9 +74,9 @@ public class HoleTest {
 		Unifiable<Object> x = lvar();
 		Unifiable<Object> smuggled = lval(Tuple.of(Hole.of(0), 1));
 
-		assertThatThrownBy(() -> new BreadthFirstScheduler<>(MiniKanren.unify(Substitutions.empty(), x, smuggled)
+		assertThatThrownBy(() -> MiniKanren.unify(Substitutions.empty(), x, smuggled)
 				.flatMap(s -> MiniKanren.unify(s, x, lval(Tuple.of(lvar(), 1))))
-				.getFiber()).get())
+				.ground())
 				.isInstanceOf(IllegalStateException.class);
 	}
 

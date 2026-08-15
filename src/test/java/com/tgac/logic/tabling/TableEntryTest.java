@@ -3,7 +3,6 @@ package com.tgac.logic.tabling;
 // ABOUTME: One entry's cache semantics under produce/emit: master selection is
 // ABOUTME: the claim CAS, deltas dedup by the cell's fold, duplicates are inert.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.unification.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -46,7 +45,7 @@ public class TableEntryTest {
 	}
 
 	private static void produced(TableEntry<Condition> entry, Reified<?>... answers) {
-		new BreadthFirstScheduler<>(production(entry, answers)).get();
+		production(entry, answers).ground();
 	}
 
 	/** A consumer past {@code cursor}, recording the completion it is handed. */
@@ -66,14 +65,14 @@ public class TableEntryTest {
 
 		// racing claimants are welcome: the CAS runs at the step, the first
 		// spawn wins, and the loser's body is never built
-		new BreadthFirstScheduler<>(Fiber.produce(entry.channel(), emit -> {
+		Fiber.produce(entry.channel(), emit -> {
 			ran.add("first");
 			return Fiber.done(Nothing.nothing());
-		})).get();
-		new BreadthFirstScheduler<>(Fiber.produce(entry.channel(), emit -> {
+		}).ground();
+		Fiber.produce(entry.channel(), emit -> {
 			ran.add("second");
 			return Fiber.done(Nothing.nothing());
-		})).get();
+		}).ground();
 
 		assertThat(ran).containsExactly("first");
 	}
@@ -123,7 +122,7 @@ public class TableEntryTest {
 
 		// no answers past the cursor, no master, no seal: the consumer parks,
 		// and a drive out of work refuses to end with it stranded
-		assertThatThrownBy(() -> new BreadthFirstScheduler<>(consuming(entry, 0, completions)).get())
+		assertThatThrownBy(() -> consuming(entry, 0, completions).ground())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("blocked")
 				// the entry's channel is named by its call, so the strand names it
@@ -140,7 +139,7 @@ public class TableEntryTest {
 		// the workforce drained, so the entry is complete: a late consumer
 		// gets the terminal EOF with the final fold - nothing is lost
 		List<AwaitResult<JoinMap<Reified<?>, Condition>>> completions = new ArrayList<>();
-		new BreadthFirstScheduler<>(consuming(entry, 0, completions)).get();
+		consuming(entry, 0, completions).ground();
 		assertThat(completions).hasSize(1);
 		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
 		assertThat(completions.get(0).isSealed()).isTrue();
@@ -152,12 +151,12 @@ public class TableEntryTest {
 		TableEntry<Condition> entry = entry();
 		List<AwaitResult<JoinMap<Reified<?>, Condition>>> completions = new ArrayList<>();
 
-		new BreadthFirstScheduler<>(Fiber.fork(Arrays.asList(
+		Fiber.fork(Arrays.asList(
 						consuming(entry, 0, completions),
 						consuming(entry, 0, completions),
 						consuming(entry, 0, completions)))
 				.flatMap(__ -> production(entry, answer(Tuple.of("charlie", "dave"))))
-				).get();
+				.ground();
 
 		assertThat(completions).hasSize(3);
 		assertThat(completions.get(0).getValue().size()).isEqualTo(1);
@@ -170,11 +169,11 @@ public class TableEntryTest {
 
 		// a consumer past the cache end waits for a SECOND ascent; the
 		// duplicate is an inert join, so only the seal ever completes it
-		new BreadthFirstScheduler<>(Fiber.detach(consuming(entry, 1, completions))
+		Fiber.detach(consuming(entry, 1, completions))
 				.flatMap(__ -> production(entry,
 						answer(Tuple.of("charlie", "dave")),
 						answer(Tuple.of("charlie", "dave"))))
-				).get();
+				.ground();
 
 		assertThat(completions).hasSize(1);
 		assertThat(completions.get(0).isSealed()).isTrue();

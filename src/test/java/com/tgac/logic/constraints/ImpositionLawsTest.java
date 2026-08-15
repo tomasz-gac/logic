@@ -3,7 +3,6 @@ package com.tgac.logic.constraints;
 // ABOUTME: The imposition law as seeded properties per store: idempotence,
 // ABOUTME: quiescent normalize is a fixpoint, no silent swallowing, ground decides.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.disjunction.Disjunction.any;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.unification.LVal.lval;
@@ -78,7 +77,7 @@ public class ImpositionLawsTest {
 		Package state(int impositions) {
 			Package p = Package.empty();
 			for (int i = 0; i < impositions; i++) {
-				List<Package> worlds = new BreadthFirstScheduler<>(Trial.imposed(literal(), p)).get();
+				List<Package> worlds = Trial.imposed(literal(), p).ground();
 				if (worlds.size() == 1) {
 					p = worlds.head();
 				}
@@ -96,12 +95,12 @@ public class ImpositionLawsTest {
 			World w = new World(seed);
 			Package p = w.state(2);
 			Posting literal = w.literal();
-			List<Package> once = new BreadthFirstScheduler<>(Trial.imposed(literal, p)).get();
+			List<Package> once = Trial.imposed(literal, p).ground();
 			if (once.size() != 1) {
 				continue;
 			}
 			exercised++;
-			List<Package> twice = new BreadthFirstScheduler<>(Trial.imposed(literal, once.head())).get();
+			List<Package> twice = Trial.imposed(literal, once.head()).ground();
 			assertThat(twice).describedAs("seed %d: re-imposition failed", seed).hasSize(1);
 			assertThat(Trial.unchanged(once.head(), twice.head()))
 					.describedAs("seed %d: re-imposition changed the package", seed)
@@ -126,7 +125,7 @@ public class ImpositionLawsTest {
 				exercised++;
 				Absorbable<?> cs = (Absorbable<?>) store;
 				final long s = seed;
-				new BreadthFirstScheduler<>(cs.normalize(p)).get().match(
+				cs.normalize(p).ground().match(
 						() -> {
 							throw new AssertionError(
 									"seed " + s + ": quiescent normalize failed: " + cs);
@@ -151,15 +150,15 @@ public class ImpositionLawsTest {
 		for (long seed = 0; seed < SEEDS; seed++) {
 			World w = new World(seed);
 			Unifiable<Long> x = lvar();
-			Package p = new BreadthFirstScheduler<>(Trial.imposed(
+			Package p = Trial.imposed(
 					FiniteDomain.dom(x, EnumeratedDomain.range(0L, 2L)), Package.empty())
-					).get().head();
+					.ground().head();
 
-			List<Package> clash = new BreadthFirstScheduler<>(Trial.imposed(
-					FiniteDomain.dom(x, EnumeratedDomain.range(5L, 7L)), p)).get();
+			List<Package> clash = Trial.imposed(
+					FiniteDomain.dom(x, EnumeratedDomain.range(5L, 7L)), p).ground();
 			assertThat(clash).describedAs("seed %d: disjoint dom swallowed", seed).isEmpty();
 
-			List<Package> bound = new BreadthFirstScheduler<>(Trial.imposed(Posting.bind(x, lval(9L)), p)).get();
+			List<Package> bound = Trial.imposed(Posting.bind(x, lval(9L)), p).ground();
 			assertThat(bound).describedAs("seed %d: out-of-domain bind swallowed", seed)
 					.isEmpty();
 		}
@@ -178,7 +177,7 @@ public class ImpositionLawsTest {
 					FiniteDomain.leq(lval(a), lval(b)) :
 					FiniteDomain.addo(lval(a), lval(1L), lval(a + (w.r.nextBoolean() ? 1 : 2)));
 			exercised++;
-			List<Package> worlds = new BreadthFirstScheduler<>(Trial.imposed(ground, Package.empty())).get();
+			List<Package> worlds = Trial.imposed(ground, Package.empty()).ground();
 			if (worlds.isEmpty()) {
 				continue;
 			}

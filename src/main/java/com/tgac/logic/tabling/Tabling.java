@@ -16,7 +16,6 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.optimizer.Barrier;
-import com.tgac.logic.unification.Unsafe;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
@@ -186,7 +185,7 @@ public class Tabling {
 				.map(Table.class::cast)
 				.map(table -> {
 					Call key = Call.of(relation,
-							Unsafe.reify(p.substitution(), argsTerm));
+							MiniKanren.reify(p.substitution(), argsTerm).ground());
 					TableEntry<?> entry = table.getEntry(key);
 					// a sealed subsumer's count bounds the instance's emissions
 					// (subset property) — the same lookup reuse consumes through

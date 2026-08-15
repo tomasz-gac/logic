@@ -3,7 +3,6 @@ package com.tgac.logic.nogoods;
 // ABOUTME: NogoodConstraints' boundary faces: split keeps wholly-named nogoods, rename
 // ABOUTME: transcribes literals wrapped, and nogoods cross tabled calls whole.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
@@ -63,8 +62,8 @@ public class NogoodProjectionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> z = lvar();
 
-		NogoodConstraints a = new BreadthFirstScheduler<>(store(over(x.unifies(3))).rename(toHole(x, 0))).get();
-		NogoodConstraints b = new BreadthFirstScheduler<>(store(over(z.unifies(3))).rename(toHole(z, 0))).get();
+		NogoodConstraints a = store(over(x.unifies(3))).rename(toHole(x, 0)).ground();
+		NogoodConstraints b = store(over(z.unifies(3))).rename(toHole(z, 0)).ground();
 
 		assertThat(a).isEqualTo(b);
 	}
@@ -74,10 +73,10 @@ public class NogoodProjectionTest {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> z = lvar();
 
-		NogoodConstraints a = new BreadthFirstScheduler<>(store(over(dom(x, EnumeratedDomain.range(0L, 5L))))
-				.rename(toHole(x, 0))).get();
-		NogoodConstraints b = new BreadthFirstScheduler<>(store(over(dom(z, EnumeratedDomain.range(0L, 5L))))
-				.rename(toHole(z, 0))).get();
+		NogoodConstraints a = store(over(dom(x, EnumeratedDomain.range(0L, 5L))))
+				.rename(toHole(x, 0)).ground();
+		NogoodConstraints b = store(over(dom(z, EnumeratedDomain.range(0L, 5L))))
+				.rename(toHole(z, 0)).ground();
 
 		assertThat(a).isEqualTo(b);
 	}
@@ -95,8 +94,8 @@ public class NogoodProjectionTest {
 								com.tgac.logic.unification.LVal.lval(3))
 						.get());
 
-		NogoodConstraints viaResolution = new BreadthFirstScheduler<>(store(over(resolved)).rename(toHole(x, 0))).get();
-		NogoodConstraints viaBind = new BreadthFirstScheduler<>(store(over(z.unifies(3))).rename(toHole(z, 0))).get();
+		NogoodConstraints viaResolution = store(over(resolved)).rename(toHole(x, 0)).ground();
+		NogoodConstraints viaBind = store(over(z.unifies(3))).rename(toHole(z, 0)).ground();
 
 		assertThat(viaResolution).isEqualTo(viaBind);
 	}

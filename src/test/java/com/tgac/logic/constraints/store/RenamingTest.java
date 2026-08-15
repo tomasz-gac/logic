@@ -3,7 +3,6 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: Pins Renaming.apply's paths: name-free terms, bare names, compound
 // ABOUTME: var replacement, slot instantiation, minting — and deep-term safety.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,14 +29,14 @@ public class RenamingTest {
 	}
 
 	private static boolean sameAs(Term<?> l, Term<?> r) {
-		return new BreadthFirstScheduler<>(MiniKanren.unify(Substitutions.empty(),
-				l.getObjectTerm(), r.getObjectTerm()).getFiber()).get().isDefined();
+		return MiniKanren.unify(Substitutions.empty(),
+				l.getObjectTerm(), r.getObjectTerm()).ground().isDefined();
 	}
 
 	@Test
 	public void aNameFreeTermPassesUnchanged() {
 		Term<?> ground = lval(List.of(lval(1), lval(2)));
-		assertThat(new BreadthFirstScheduler<>(Renaming.of(Collections.<Unknown<?>, Term<?>> emptyMap()).apply(ground)).get())
+		assertThat(Renaming.of(Collections.<Unknown<?>, Term<?>> emptyMap()).apply(ground).ground())
 				.isSameAs(ground);
 	}
 
@@ -46,7 +45,7 @@ public class RenamingTest {
 		Unifiable<Integer> x = lvar();
 		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(9));
-		assertThat(new BreadthFirstScheduler<>(Renaming.of(seed).apply(x.getObjectTerm())).get()).isEqualTo(lval(9));
+		assertThat(Renaming.of(seed).apply(x.getObjectTerm()).ground()).isEqualTo(lval(9));
 	}
 
 	@Test
@@ -58,8 +57,8 @@ public class RenamingTest {
 		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(9));
 
-		Term<?> applied = new BreadthFirstScheduler<>(Renaming.of(seed)
-				.apply(lval(List.of(x, lval(2), y)).getObjectTerm())).get();
+		Term<?> applied = Renaming.of(seed)
+				.apply(lval(List.of(x, lval(2), y)).getObjectTerm()).ground();
 
 		assertThat(sameAs(applied, lval(List.of(lval(9), lval(2), y)).getObjectTerm())).isTrue();
 		assertThat(sameAs(applied, lval(List.of(lval(8), lval(2), y)).getObjectTerm())).isFalse();
@@ -72,8 +71,8 @@ public class RenamingTest {
 		Map<Hole<?>, Term<?>> slotTargets = new HashMap<>();
 		slotTargets.put(Hole.of(0), lval(7));
 		slotTargets.put(Hole.of(1), lval(8));
-		Term<?> applied = new BreadthFirstScheduler<>(Renaming.restating(slotTargets)
-				.apply(withHoles)).get();
+		Term<?> applied = Renaming.restating(slotTargets)
+				.apply(withHoles).ground();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(2), lval(8)))))
 				.isTrue();
@@ -88,8 +87,8 @@ public class RenamingTest {
 		seed.put(nameOf(x), lval(9));
 		seed.put(Hole.of(0), lval(7));
 
-		Term<?> applied = new BreadthFirstScheduler<>(Renaming.minting(seed)
-				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm())).get();
+		Term<?> applied = Renaming.minting(seed)
+				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm()).ground();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
 				.isTrue();
@@ -104,8 +103,8 @@ public class RenamingTest {
 		seed.put(nameOf(x), lval(9));
 		seed.put(Hole.of(0), lval(7));
 
-		Term<?> applied = new BreadthFirstScheduler<>(Renaming.of(seed)
-				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm())).get();
+		Term<?> applied = Renaming.of(seed)
+				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm()).ground();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
 				.isTrue();
@@ -128,8 +127,8 @@ public class RenamingTest {
 		// one unlisted name, two occurrences: the mint is recorded, so both
 		// occurrences become the SAME fresh variable (the existential)
 		Unifiable<Integer> local = lvar();
-		Term<?> applied = new BreadthFirstScheduler<>(Renaming.minting(Collections.<Unknown<?>, Term<?>> emptyMap())
-				.apply(lval(List.of(local, local)).getObjectTerm())).get();
+		Term<?> applied = Renaming.minting(Collections.<Unknown<?>, Term<?>> emptyMap())
+				.apply(lval(List.of(local, local)).getObjectTerm()).ground();
 
 		java.util.List<Term<?>> members = new java.util.ArrayList<>();
 		MiniKanren.members(applied.asVal().isDefined() ? applied : applied)
@@ -152,7 +151,7 @@ public class RenamingTest {
 		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(1));
 
-		Term<?> applied = new BreadthFirstScheduler<>(Renaming.of(seed).apply(deep)).get();
+		Term<?> applied = Renaming.of(seed).apply(deep).ground();
 
 		assertThat(applied).isNotNull();
 	}

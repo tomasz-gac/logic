@@ -3,7 +3,6 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The nogood store's faces over the verification core: normalize is verify
 // ABOUTME: wrapped into Revision, revise is normalize by another trigger.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
@@ -176,8 +175,8 @@ final class NogoodConstraints implements Projectable<NogoodConstraints> {
 			Nogood pruned = Nogood.of(kept.size() == 1 ?
 					kept.head() :
 					Posting.all(kept.toJavaArray(Posting[]::new)));
-			residuals = residuals.append(new BreadthFirstScheduler<>(
-					pruned.rename(Renaming.of(display))).get());
+			residuals = residuals.append(pruned.rename(Renaming.of(display))
+					.ground());
 		}
 		return residuals.isEmpty() ?
 				unifiable :

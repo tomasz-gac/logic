@@ -40,8 +40,8 @@ public class Projection {
 		return Bounded.of(1, Propagation.suspend(
 				Arrays.asList(v1, v2),
 				sub -> sub.isGround(v1) && sub.isGround(v2),
-				s -> Cont.defer(() -> s.substitution().walkAll(v1)
-						.flatMap(w1 -> s.substitution().walkAll(v2)
+				s -> Cont.defer(() -> MiniKanren.walkAll(s.substitution(), v1)
+						.flatMap(w1 -> MiniKanren.walkAll(s.substitution(), v2)
 								.map(w2 -> f.apply(w1.get(), w2.get()).apply(s))))));
 	}
 
@@ -51,9 +51,9 @@ public class Projection {
 		return Bounded.of(1, Propagation.suspend(
 				Arrays.asList(v1, v2, v3),
 				sub -> sub.isGround(v1) && sub.isGround(v2) && sub.isGround(v3),
-				s -> Cont.defer(() -> s.substitution().walkAll(v1)
-						.flatMap(w1 -> s.substitution().walkAll(v2)
-								.flatMap(w2 -> s.substitution().walkAll(v3)
+				s -> Cont.defer(() -> MiniKanren.walkAll(s.substitution(), v1)
+						.flatMap(w1 -> MiniKanren.walkAll(s.substitution(), v2)
+								.flatMap(w2 -> MiniKanren.walkAll(s.substitution(), v3)
 										.map(w3 -> f.apply(w1.get(), w2.get(), w3.get()).apply(s)))))));
 	}
 }

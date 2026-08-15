@@ -3,7 +3,6 @@ package com.tgac.logic.goals.optimizer;
 // ABOUTME: Pins the ambient ordering layer: ascending sort within barrier-delimited
 // ABOUTME: segments, derived orders through combinators, and ambient-solve equivalence.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
@@ -72,7 +71,7 @@ public class OrderingOptimizerTest {
 		// a bound is a COUNT: the pricer's saturating arithmetic and segment
 		// sort both assume non-negatives, so a lying estimator refuses by name
 		Goal liar = new FixedOrder(-5);
-		assertThatThrownBy(() -> new BreadthFirstScheduler<>(liar.and(new FixedOrder(3)).accept(new OrderingOptimizer())).get())
+		assertThatThrownBy(() -> liar.and(new FixedOrder(3)).accept(new OrderingOptimizer()).ground())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("-5");
 	}
@@ -81,7 +80,7 @@ public class OrderingOptimizerTest {
 	public void pricesWithThePackageNotJustTheSubstitution() {
 		Goal sighted = new StoreSighted();
 		Goal b3 = new FixedOrder(3);
-		Goal sorted = new BreadthFirstScheduler<>(b3.and(sighted).accept(new OrderingOptimizer())).get();
+		Goal sorted = b3.and(sighted).accept(new OrderingOptimizer()).ground();
 		assertThat(((Conjunction) sorted).getClauses())
 				.containsExactly(sighted, b3);
 	}
@@ -90,8 +89,8 @@ public class OrderingOptimizerTest {
 	public void sortsSegmentsAscendingAroundBarriers() {
 		Goal b5 = new FixedOrder(5), b1 = new FixedOrder(1), b3 = new FixedOrder(3), b2 = new FixedOrder(2);
 		Goal barrier = opaque();
-		Goal sorted = new BreadthFirstScheduler<>(b5.and(b1).and(barrier).and(b3).and(b2)
-				.accept(new OrderingOptimizer())).get();
+		Goal sorted = b5.and(b1).and(barrier).and(b3).and(b2)
+				.accept(new OrderingOptimizer()).ground();
 		assertThat(((Conjunction) sorted).getClauses())
 				.containsExactly(b1, b5, barrier, b2, b3);
 	}
@@ -101,7 +100,7 @@ public class OrderingOptimizerTest {
 		Goal b2 = new FixedOrder(2), b3 = new FixedOrder(3), b4 = new FixedOrder(4);
 		// conde(2, 3) has derived order 5 — the order-4 leaf sorts ahead of it
 		Goal conde = b2.or(b3);
-		Goal sorted = new BreadthFirstScheduler<>(conde.and(b4).accept(new OrderingOptimizer())).get();
+		Goal sorted = conde.and(b4).accept(new OrderingOptimizer()).ground();
 		assertThat(((Conjunction) sorted).getClauses())
 				.containsExactly(b4, conde);
 	}
@@ -112,7 +111,7 @@ public class OrderingOptimizerTest {
 		// it is a barrier, not a cheap one-answer goal
 		Goal agg = Aggregate.count(t -> Goal.success(), lvar());
 		Goal b2 = new FixedOrder(2);
-		Goal sorted = new BreadthFirstScheduler<>(b2.and(agg).accept(new OrderingOptimizer())).get();
+		Goal sorted = b2.and(agg).accept(new OrderingOptimizer()).ground();
 		assertThat(((Conjunction) sorted).getClauses())
 				.containsExactly(b2, agg);
 	}
@@ -149,8 +148,8 @@ public class OrderingOptimizerTest {
 		assertThat(tabled).isInstanceOf(Barrier.class);
 
 		Goal b5 = new FixedOrder(5), b1 = new FixedOrder(1), b3 = new FixedOrder(3), b2 = new FixedOrder(2);
-		Goal sorted = new BreadthFirstScheduler<>(b5.and(b1).and(tabled).and(b3).and(b2)
-				.accept(new OrderingOptimizer())).get();
+		Goal sorted = b5.and(b1).and(tabled).and(b3).and(b2)
+				.accept(new OrderingOptimizer()).ground();
 		assertThat(((Conjunction) sorted).getClauses())
 				.containsExactly(b1, b5, tabled, b2, b3);
 	}

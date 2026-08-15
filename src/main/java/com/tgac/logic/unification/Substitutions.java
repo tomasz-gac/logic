@@ -4,7 +4,6 @@ package com.tgac.logic.unification;
 // ABOUTME: to shared knowledge (suspension conditions) may see: bindings, nothing else.
 
 import com.tgac.functional.algebra.Semilattice;
-import com.tgac.functional.fibers.Fiber;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
@@ -86,9 +85,9 @@ public final class Substitutions implements Semilattice<Substitutions> {
 		return Option.some(acc);
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
 	private static Option<Substitutions> unifyInto(Substitutions acc, Unknown<?> v, Term<?> t) {
-		return Unsafe.unify(acc, (Term) v, (Term) t);
+		return MiniKanren.unify(acc, (Term) v, (Term) t).ground();
 	}
 
 	/**
@@ -161,8 +160,9 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	}
 
 	/** The term deep-walked to its current bindings. */
-	public <T> Fiber<Term<T>> walkAll(Term<T> t) {
-		return MiniKanren.walkAll(this, t);
+	@SuppressWarnings("deprecation")
+	public <T> Term<T> walkAll(Term<T> t) {
+		return MiniKanren.walkAll(this, t).ground();
 	}
 
 	/**

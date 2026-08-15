@@ -14,17 +14,15 @@ import lombok.Value;
 @RequiredArgsConstructor(staticName = "of")
 public
 class NamedGoal implements Goal {
-	Function<Package, Fiber<String>> label;
+	Function<Package, String> label;
 	Goal goal;
 
 	@Override
 	public Cont<Package, Nothing> apply(Package aPackage) {
 		return DebugStore.from(aPackage)
-				.map(store -> Cont.<Package, Nothing> defer(() ->
-						label.apply(aPackage).map(rendered ->
-								Trace.tracedCont(label, goal, store.getTracer(),
-										aPackage.putStore(store.push(rendered)),
-										answer -> answer.putStore(store)))))
+				.map(store -> Trace.tracedCont(label, goal, store.getTracer(),
+						aPackage.putStore(store.push(label.apply(aPackage))),
+						answer -> answer.putStore(store)))
 				.getOrElse(() -> goal.apply(aPackage));
 	}
 
@@ -35,9 +33,6 @@ class NamedGoal implements Goal {
 
 	@Override
 	public String toString() {
-		Fiber<String> rendered = label.apply(Package.empty());
-		// a state-rendered label may need the engine; display degrades to the
-		// body rather than ground a fiber here
-		return rendered.isDone() ? rendered.getDone("NamedGoal.toString") : goal.toString();
+		return label.apply(Package.empty());
 	}
 }

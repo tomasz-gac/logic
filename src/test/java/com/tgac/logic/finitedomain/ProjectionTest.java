@@ -3,7 +3,6 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: Pins the FD store's single-sorted boundary algebra: named value-equal
 // ABOUTME: propagators, lossless split, renaming across namespaces, absorbed replay.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -137,8 +136,8 @@ public class ProjectionTest {
 				.withDomain(varOf(y), dom(7, 8));
 		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
 
-		FiniteDomainConstraints normalized = new BreadthFirstScheduler<>(store.rename(Renaming.of(
-				Collections.<Unknown<?>, Term<?>> singletonMap(varOf(x), lval(1))))).get();
+		FiniteDomainConstraints normalized = store.rename(Renaming.of(
+				Collections.<Unknown<?>, Term<?>> singletonMap(varOf(x), lval(1)))).ground();
 		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
 		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
 	}
@@ -161,7 +160,7 @@ public class ProjectionTest {
 		seed.put(varOf(x), a);
 		Renaming renaming = Renaming.minting(seed);
 
-		FiniteDomainConstraints renamed = new BreadthFirstScheduler<>(store.rename(renaming)).get();
+		FiniteDomainConstraints renamed = store.rename(renaming).ground();
 		assertThat(renamed.getDomain(a).get()).isEqualTo(dom(1, 2));
 		assertThat(renamed.getDomain(varOf(w)).isDefined()).isFalse();
 
@@ -171,7 +170,7 @@ public class ProjectionTest {
 		Term<?> mintedW = renamedCoupling.watchedTerms().get(1);
 		assertThat(mintedW.asVar().isDefined()).isTrue();
 		assertThat(mintedW).isNotEqualTo(w);
-		assertThat(new BreadthFirstScheduler<>(renaming.apply(w)).get()).isSameAs(mintedW);
+		assertThat(renaming.apply(w).ground()).isSameAs(mintedW);
 		assertThat(renamedCoupling.watchedTerms().get(0)).isEqualTo(a);
 	}
 
@@ -186,12 +185,12 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
 				.withDomain(varOf(y), dom(7, 8));
 
-		FiniteDomainConstraints keyed = new BreadthFirstScheduler<>(store.project(slots(varOf(x), varOf(y)))).get();
+		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
 		assertThat(keyed.getDomain(Hole.of(0)).get()).isEqualTo(dom(1, 2, 3));
 		assertThat(keyed.getDomain(Hole.of(1)).get()).isEqualTo(dom(7, 8));
 
 		// unconstrained var: absent name = ⊤; order is the caller's
-		FiniteDomainConstraints sparse = new BreadthFirstScheduler<>(store.project(slots(varOf(z), varOf(y)))).get();
+		FiniteDomainConstraints sparse = store.project(slots(varOf(z), varOf(y))).ground();
 		assertThat(sparse.getDomain(Hole.of(0)).isDefined()).isFalse();
 		assertThat(sparse.getDomain(Hole.of(1)).get()).isEqualTo(dom(7, 8));
 	}
@@ -207,7 +206,7 @@ public class ProjectionTest {
 				.withDomain(varOf(y), dom(1, 2, 3))
 				.prepend(keeper(x, y, lval(4)));
 
-		FiniteDomainConstraints keyed = new BreadthFirstScheduler<>(store.project(slots(varOf(x), varOf(y)))).get();
+		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
 		assertThat(keyed.getConstraints()).hasSize(1);
 		Propagator carried = keyed.getConstraints().head();
 		assertThat(carried.watchedTerms()).containsExactly(Hole.of(0), Hole.of(1), lval(4));
@@ -244,13 +243,13 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.prepend(keeper(x, y));
 
-		FiniteDomainConstraints first = new BreadthFirstScheduler<>(store.project(slots(varOf(x), varOf(y)))).get();
-		FiniteDomainConstraints again = new BreadthFirstScheduler<>(store.project(slots(varOf(x), varOf(y)))).get();
+		FiniteDomainConstraints first = store.project(slots(varOf(x), varOf(y))).ground();
+		FiniteDomainConstraints again = store.project(slots(varOf(x), varOf(y))).ground();
 		assertThat(first).isEqualTo(again);
 
 		FiniteDomainConstraints reposted = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.prepend(keeper(x, y));
-		assertThat(new BreadthFirstScheduler<>(reposted.project(slots(varOf(x), varOf(y)))).get())
+		assertThat(reposted.project(slots(varOf(x), varOf(y))).ground())
 				.isEqualTo(first);
 	}
 
@@ -281,9 +280,9 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.prepend(posted);
 
-		FiniteDomainConstraints keyed = new BreadthFirstScheduler<>(store.project(slots(varOf(x), varOf(y)))).get();
-		FiniteDomainConstraints seeded = new BreadthFirstScheduler<>(keyed.rename(
-				Renaming.restating(targets(x, y)))).get();
+		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
+		FiniteDomainConstraints seeded = keyed.rename(
+				Renaming.restating(targets(x, y))).ground();
 		assertThat(seeded.getConstraints().head()).isEqualTo(posted);
 		assertThat(seeded.getDomain(varOf(x)).get()).isEqualTo(dom(1, 2));
 	}
@@ -306,7 +305,7 @@ public class ProjectionTest {
 		Unifiable<Integer> fresh = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
 		seed.put(varOf(orig), fresh);
-		assertThat(Propagation.absorb(new BreadthFirstScheduler<>(store.rename(Renaming.minting(seed))).get())
+		assertThat(Propagation.absorb(store.rename(Renaming.minting(seed)).ground())
 				.and(Constraints.unify(fresh, lval(7)))
 				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
@@ -314,7 +313,7 @@ public class ProjectionTest {
 		Unifiable<Integer> fresh2 = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed2 = new java.util.HashMap<>();
 		seed2.put(varOf(orig), fresh2);
-		assertThat(Propagation.absorb(new BreadthFirstScheduler<>(store.rename(Renaming.minting(seed2))).get())
+		assertThat(Propagation.absorb(store.rename(Renaming.minting(seed2)).ground())
 				.and(Constraints.unify(orig, lval(7)))
 				.and(Constraints.unify(fresh2, lval(3)))
 				.solve(fresh2, TestSchedulers.factory())

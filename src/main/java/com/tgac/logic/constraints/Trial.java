@@ -9,7 +9,6 @@ import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import io.vavr.collection.LinkedHashMap;
-import com.tgac.logic.unification.Unsafe;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
@@ -124,9 +123,10 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	@SuppressWarnings("unchecked")
 	public Fiber<Outcome> visit(UnifyGoal<?> unification) {
 		UnifyGoal<Object> bind = (UnifyGoal<Object>) unification;
-		Option<Prefix> minted = bind.isNoCheck() ?
-				Unsafe.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
-				Unsafe.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV());
+		Option<Prefix> minted = (bind.isNoCheck() ?
+				MiniKanren.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
+				MiniKanren.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV()))
+				.ground();
 		// the equality can NEVER hold: unification failure is monotone under
 		// binding growth (a structural clash stays a clash in every extension
 		// of these substitutions), so the forbidden conjunction is refuted
@@ -156,8 +156,8 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		List<Posting> residuals = List.empty();
 		for (Tuple2<com.tgac.logic.unification.LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
 			@SuppressWarnings("unchecked")
-			Option<Prefix> minted = Unsafe.unifyPrefix(current,
-					(Term<Object>) pair._1, (Term<Object>) pair._2);
+			Option<Prefix> minted = MiniKanren.unifyPrefix(current,
+					(Term<Object>) pair._1, (Term<Object>) pair._2).ground();
 			if (!minted.isDefined()) {
 				return Fiber.done(Outcome.refuted());
 			}

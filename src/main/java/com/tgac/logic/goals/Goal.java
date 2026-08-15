@@ -210,7 +210,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @return A {@link NamedGoal} wrapping this goal with the given name.
 	 */
 	default Goal named(String name) {
-		return NamedGoal.of(pkg -> Fiber.done(name), this);
+		return NamedGoal.of(pkg -> name, this);
 	}
 
 	/**
@@ -220,7 +220,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @param label Renders the goal's label from the package it is applied to.
 	 * @return A {@link NamedGoal} whose label is computed per port.
 	 */
-	default Goal named(Function<Package, Fiber<String>> label) {
+	default Goal named(Function<Package, String> label) {
 		return NamedGoal.of(label, this);
 	}
 
@@ -464,7 +464,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * {@link #defer} hook (docs/design/ambient-optimizer.md).
 	 */
 	default <T> Stream<Reified<T>> solve(Unifiable<T> out, Optimizer optimizer) {
-		return new BreadthFirstScheduler<>(accept(optimizer)).get()
+		return accept(optimizer).ground()
 				.solveFrom(Package.empty().putStore(OptimizerStore.of(optimizer)),
 						out, BreadthFirstScheduler::new);
 	}

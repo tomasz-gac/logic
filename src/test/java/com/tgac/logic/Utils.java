@@ -1,6 +1,5 @@
 package com.tgac.logic;
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.category.Monad;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
@@ -16,12 +15,12 @@ public class Utils {
 	public static <T, C extends Monad<Cont<?, Nothing>, T>> List<T> collect(C cnt) {
 		List<T> results = new ArrayList<>();
 		// ground(): this test utility may legitimately run inside an outer
-		// engine (nested pure collection) — a deliberately built engine
-		new BreadthFirstScheduler<>(cnt.<Cont<T, Nothing>> cast()
+		// engine (nested pure collection) — the sanctioned door, not get()
+		cnt.<Cont<T, Nothing>> cast()
 				.run(v -> {
 					results.add(v);
 					return Nothing.nothing();
-				})).get();
+				}).ground();
 		return results;
 	}
 

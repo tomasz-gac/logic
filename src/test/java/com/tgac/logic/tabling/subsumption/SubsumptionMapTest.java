@@ -3,7 +3,6 @@ package com.tgac.logic.tabling.subsumption;
 // ABOUTME: Pins the subsumption map: term-indexed retrieval of stored patterns that
 // ABOUTME: generalize the query, with nonlinear-hole precision.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,7 +17,7 @@ import org.junit.Test;
 public class SubsumptionMapTest {
 
 	private static Reified<?> pattern(Object args) {
-		return new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(), lval(args))).get();
+		return MiniKanren.reify(Substitutions.empty(), lval(args)).ground();
 	}
 
 	@Test

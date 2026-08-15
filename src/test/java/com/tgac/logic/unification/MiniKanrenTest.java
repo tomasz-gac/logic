@@ -58,7 +58,7 @@ public class MiniKanrenTest {
 	@Test
 	public void shouldFindX() {
 		Unifiable<Integer> x = lvar();
-		Substitutions subs = new BreadthFirstScheduler<>(MiniKanren.unify(Substitutions.empty(), x, lval(3)).getFiber()).get().get();
+		val subs = MiniKanren.unify(Substitutions.empty(), x, lval(3)).ground().get();
 		Optional<Integer> y = extractValue(x, subs);
 		assertThat(y)
 				.hasValue(3);
@@ -68,7 +68,7 @@ public class MiniKanrenTest {
 	public void shouldFindXWhenNotGround() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Substitutions subs = new BreadthFirstScheduler<>(MiniKanren.unify(Substitutions.empty(), x, y).getFiber()).get().get();
+		val subs = MiniKanren.unify(Substitutions.empty(), x, y).ground().get();
 		Term<Integer> z = subs.walk(x);
 		assertThat(z)
 				.isEqualTo(y);
@@ -78,8 +78,8 @@ public class MiniKanrenTest {
 	public void shouldFindZAfterSubstitution() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> z = lvar();
-		Substitutions subs = new BreadthFirstScheduler<>(MiniKanren.unify(Substitutions.empty(), x, lval(3)).getFiber()).get().get();
-		Substitutions s2 = new BreadthFirstScheduler<>(MiniKanren.unify(subs, z, x).getFiber()).get().get();
+		val subs = MiniKanren.unify(Substitutions.empty(), x, lval(3)).ground().get();
+		val s2 = MiniKanren.unify(subs, z, x).ground().get();
 		Optional<Integer> y = extractValue(z, s2);
 		assertThat(y)
 				.hasValue(3);
@@ -89,8 +89,8 @@ public class MiniKanrenTest {
 	public void shouldNotExtendFibersion() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Substitutions subst = new BreadthFirstScheduler<>(MiniKanren.unify(Substitutions.empty(), x, y).getFiber()).get().get();
-		assertThat(new BreadthFirstScheduler<>(MiniKanren.unify(subst, y, x).getFiber()).get().get())
+		Substitutions subst = MiniKanren.unify(Substitutions.empty(), x, y).ground().get();
+		assertThat(MiniKanren.unify(subst, y, x).ground().get())
 				.isEqualTo(subst);
 	}
 
@@ -101,10 +101,10 @@ public class MiniKanrenTest {
 		Unifiable<Integer> z = lvar();
 		Unifiable<Integer> q = lvar();
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, y).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, y, z).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, z, q).getFiber()).get().get();
-		Substitutions seq = new BreadthFirstScheduler<>(MiniKanren.unify(s, q, x).getFiber()).get().get();
+		s = MiniKanren.unify(s, x, y).ground().get();
+		s = MiniKanren.unify(s, y, z).ground().get();
+		s = MiniKanren.unify(s, z, q).ground().get();
+		Substitutions seq = MiniKanren.unify(s, q, x).ground().get();
 		assertThat(seq)
 				.isEqualTo(s);
 	}
@@ -116,12 +116,12 @@ public class MiniKanrenTest {
 		Unifiable<Integer> z = lvar();
 		Unifiable<Integer> q = lvar();
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, y, z).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, z, q).getFiber()).get().get();
+		s = MiniKanren.unify(s, y, z).ground().get();
+		s = MiniKanren.unify(s, z, q).ground().get();
 		val t = s;
 
 		// does not trow
-		new BreadthFirstScheduler<>(MiniKanren.unify(t, q, x).getFiber()).get();
+		MiniKanren.unify(t, q, x).ground();
 	}
 
 	@Test
@@ -131,9 +131,9 @@ public class MiniKanrenTest {
 		Unifiable<Integer> z = lvar();
 
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, z, x).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, y, x).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, lval(3)).getFiber()).get().get();
+		s = MiniKanren.unify(s, z, x).ground().get();
+		s = MiniKanren.unify(s, y, x).ground().get();
+		s = MiniKanren.unify(s, x, lval(3)).ground().get();
 		assertThat(extractValue(z, s).get())
 				.isEqualTo(3);
 		assertThat(extractValue(y, s).get())
@@ -146,9 +146,9 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, y).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, z).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, y, lval(3)).getFiber()).get().get();
+		s = MiniKanren.unify(s, x, y).ground().get();
+		s = MiniKanren.unify(s, x, z).ground().get();
+		s = MiniKanren.unify(s, y, lval(3)).ground().get();
 		Assertions.assertThat(s.binding(z.asVar().get()).get())
 				.isEqualTo(3);
 	}
@@ -159,9 +159,9 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, y).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, z).getFiber()).get().get();
-		Substitutions t = new BreadthFirstScheduler<>(MiniKanren.unify(s, y, z).getFiber()).get().get();
+		s = MiniKanren.unify(s, x, y).ground().get();
+		s = MiniKanren.unify(s, x, z).ground().get();
+		Substitutions t = MiniKanren.unify(s, y, z).ground().get();
 		assertThat(t)
 				.isEqualTo(s);
 	}
@@ -172,10 +172,10 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, y).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, z).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, y, lval(3)).getFiber()).get().get();
-		assertThat(new BreadthFirstScheduler<>(MiniKanren.unify(s, z, lval(4)).getFiber()).get().toJavaOptional()).isEmpty();
+		s = MiniKanren.unify(s, x, y).ground().get();
+		s = MiniKanren.unify(s, x, z).ground().get();
+		s = MiniKanren.unify(s, y, lval(3)).ground().get();
+		assertThat(MiniKanren.unify(s, z, lval(4)).ground().toJavaOptional()).isEmpty();
 	}
 
 	@Test
@@ -188,8 +188,8 @@ public class MiniKanrenTest {
 				.boxed()
 				.collect(List.collector());
 
-		Substitutions s = new BreadthFirstScheduler<>(MiniKanren.unify(Substitutions.empty(),
-				lval(xs), lval(ys.map(LVal::lval))).getFiber()).get().get();
+		Substitutions s = MiniKanren.unify(Substitutions.empty(),
+				lval(xs), lval(ys.map(LVal::lval))).ground().get();
 
 		assertThat(xs.toStream()
 				.map(x -> s.walk(x))
@@ -214,11 +214,11 @@ public class MiniKanrenTest {
 				.collect(List.collector());
 		// unifying a variable with a million-element list must not blow the stack
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, y).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, y, lval(vals)).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, y, lval(vs)).getFiber()).get().get();
+		s = MiniKanren.unify(s, x, y).ground().get();
+		s = MiniKanren.unify(s, y, lval(vals)).ground().get();
+		s = MiniKanren.unify(s, y, lval(vs)).ground().get();
 
-		List<Unifiable<Integer>> unifiables = new BreadthFirstScheduler<>(MiniKanren.walkAll(s, x)).get().get();
+		List<Unifiable<Integer>> unifiables = MiniKanren.walkAll(s, x).ground().get();
 		assertThat(unifiables).hasSize(n);
 	}
 
@@ -236,8 +236,8 @@ public class MiniKanrenTest {
 				lvar("female"));
 
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, lval(t1)).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, lval(t1), lval(t2)).getFiber()).get().get();
+		s = MiniKanren.unify(s, x, lval(t1)).ground().get();
+		s = MiniKanren.unify(s, lval(t1), lval(t2)).ground().get();
 
 		Tuple3<Integer, Unifiable<String>, Unifiable<Boolean>> x1 =
 				s.walk(x).get();
@@ -245,7 +245,7 @@ public class MiniKanrenTest {
 				.isEqualTo(3);
 		assertThat(x1)
 				.isEqualTo(t1);
-		assertThat(new BreadthFirstScheduler<>(MiniKanren.walkAll(s, t1._2)).get())
+		assertThat(MiniKanren.walkAll(s, t1._2).ground())
 				.isEqualTo(lval("Anthony"));
 		assertThat(s.walk(t2._3).get())
 				.isEqualTo(false);
@@ -263,10 +263,10 @@ public class MiniKanrenTest {
 				"v2", Tuple.of(4, lvar("v2")));
 
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, lval(m1)).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, lval(m1), lval(m2)).getFiber()).get().get();
+		s = MiniKanren.unify(s, x, lval(m1)).ground().get();
+		s = MiniKanren.unify(s, lval(m1), lval(m2)).ground().get();
 
-		Term<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x1 = new BreadthFirstScheduler<>(MiniKanren.walkAll(s, x)).get();
+		Term<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x1 = MiniKanren.walkAll(s, x).ground();
 		assertThat(s.walk(x).get())
 				.isEqualTo(m1);
 		assertThat(s.walk(x).get())
@@ -306,7 +306,7 @@ public class MiniKanrenTest {
 				.collect(List.collector());
 
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, lval(ints), lval(ints2)).getFiber()).get().get();
+		s = MiniKanren.unify(s, lval(ints), lval(ints2)).ground().get();
 		val listUnifiable = s.walk(lval(ints)).get();
 		assertThat(
 				listUnifiable
@@ -334,10 +334,10 @@ public class MiniKanrenTest {
 				.collect(List.collector());
 
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, lval(ints), lval(ints2)).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, lval(ints)).getFiber()).get().get();
+		s = MiniKanren.unify(s, lval(ints), lval(ints2)).ground().get();
+		s = MiniKanren.unify(s, x, lval(ints)).ground().get();
 
-		val x1 = new BreadthFirstScheduler<>(MiniKanren.walkAll(s, x)).get();
+		val x1 = MiniKanren.walkAll(s, x).ground();
 		assertThat(x1.get().get(3)
 				.asVal().toJavaOptional())
 				.isNotEmpty();
@@ -350,14 +350,14 @@ public class MiniKanrenTest {
 		Unifiable<Integer> z = lvar();
 
 		Substitutions s = Substitutions.empty();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, x, y).getFiber()).get().get();
-		s = new BreadthFirstScheduler<>(MiniKanren.unify(s, z, lval(3)).getFiber()).get().get();
+		s = MiniKanren.unify(s, x, y).ground().get();
+		s = MiniKanren.unify(s, z, lval(3)).ground().get();
 
-		assertThat(new BreadthFirstScheduler<>(MiniKanren.walkAll(s, lval(List.of(x, y, z)))
-				).get())
+		assertThat(MiniKanren.walkAll(s, lval(List.of(x, y, z)))
+				.ground())
 				.isEqualTo(lval(List.of(y, y, lval(3))));
 		List<Term<Integer>> x1 =
-				new BreadthFirstScheduler<>(MiniKanren.reify(s, lval(List.<Term<Integer>> of(x, y, z)))).get()
+				MiniKanren.reify(s, lval(List.<Term<Integer>> of(x, y, z))).ground()
 						.get();
 		assertThat(x1.get(0))
 				.matches(v -> v.asReified().isDefined())
@@ -377,7 +377,7 @@ public class MiniKanrenTest {
 						.or(unify(x, y), unify(x, 3))
 						.or(unify(x, y), unify(x, 3), unify(y, 3))
 						.apply(Package.empty())
-						.map(s -> new BreadthFirstScheduler<>(MiniKanren.reify(s.substitution(), lval(Tuple.of(x, y)))).get()));
+						.map(s -> MiniKanren.reify(s.substitution(), lval(Tuple.of(x, y))).ground()));
 		Assertions.assertThat(result.get(0).get())
 				.isEqualTo(Tuple.of(lval(2), lval(2)));
 		Assertions.assertThat(result.get(1).get())
@@ -553,7 +553,7 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 
 		List<Term<Integer>> reified =
-				new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(), lval(List.<Term<Integer>> of(x, y, x)))).get().get();
+				MiniKanren.reify(Substitutions.empty(), lval(List.<Term<Integer>> of(x, y, x))).ground().get();
 
 		assertThat(reified.get(0).asReified().get().getNumber()).isEqualTo(0);
 		assertThat(reified.get(1).asReified().get().getNumber()).isEqualTo(1);
@@ -566,8 +566,8 @@ public class MiniKanrenTest {
 		Unifiable<LList<Integer>> t = lvar();
 
 		// repeated vars inside nested structures keep first-occurrence numbering
-		Term<?> reified = new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(),
-				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get()))))).get();
+		Term<?> reified = MiniKanren.reify(Substitutions.empty(),
+				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get())))).ground();
 
 		assertThat(reified.toString())
 				.isEqualTo("{({(_.0)}, _.1, {(_.0 . _.1)})}");
@@ -579,9 +579,9 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 
 		Term<Tuple2<Unifiable<Integer>, Integer>> left =
-				new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(), lval(Tuple.of(x, 1)))).get();
+				MiniKanren.reify(Substitutions.empty(), lval(Tuple.of(x, 1))).ground();
 		Term<Tuple2<Unifiable<Integer>, Integer>> right =
-				new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(), lval(Tuple.of(y, 1)))).get();
+				MiniKanren.reify(Substitutions.empty(), lval(Tuple.of(y, 1))).ground();
 
 		assertThat(left).isEqualTo(right);
 	}
@@ -593,9 +593,9 @@ public class MiniKanrenTest {
 
 		// (x, x) shares one variable; (x, y) has two distinct ones
 		Term<List<Unifiable<Integer>>> shared =
-				new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(), lval(List.of(x, x)))).get();
+				MiniKanren.reify(Substitutions.empty(), lval(List.of(x, x))).ground();
 		Term<List<Unifiable<Integer>>> distinct =
-				new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(), lval(List.of(x, y)))).get();
+				MiniKanren.reify(Substitutions.empty(), lval(List.of(x, y))).ground();
 
 		assertThat(shared).isNotEqualTo(distinct);
 		assertThat(shared).isEqualTo(shared);
@@ -606,10 +606,10 @@ public class MiniKanrenTest {
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		// (a, b, a) reifies to (_.0, _.1, _.0); shared holes share the fresh variable
-		Reified<?> template = new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(),
-				lval(List.<Term<Integer>> of(a, b, a)))).get();
+		Reified<?> template = MiniKanren.reify(Substitutions.empty(),
+				lval(List.<Term<Integer>> of(a, b, a))).ground();
 
-		Unifiable<?> instantiated = new BreadthFirstScheduler<>(MiniKanren.instantiate(template)).get();
+		Unifiable<?> instantiated = MiniKanren.instantiate(template).ground();
 
 		List<Term<Integer>> items = (List<Term<Integer>>) instantiated.get();
 		assertThat(items.get(0).asVar().isDefined()).isTrue();
@@ -620,10 +620,10 @@ public class MiniKanrenTest {
 
 	@Test
 	public void shouldInstantiateGroundStructureUnchanged() {
-		Reified<?> template = new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(),
-				lval(Tuple.of(1, "a")))).get();
+		Reified<?> template = MiniKanren.reify(Substitutions.empty(),
+				lval(Tuple.of(1, "a"))).ground();
 
-		assertThat(new BreadthFirstScheduler<>(MiniKanren.instantiate(template)).get())
+		assertThat(MiniKanren.instantiate(template).ground())
 				.isEqualTo(lval(Tuple.of(1, "a")));
 	}
 
@@ -632,10 +632,10 @@ public class MiniKanrenTest {
 		Unifiable<Integer> h = lvar();
 		Unifiable<LList<Integer>> t = lvar();
 		// ({(h)}, t, {(h . t)}) — sharing must survive instantiation through structures
-		Reified<?> template = new BreadthFirstScheduler<>(MiniKanren.reify(Substitutions.empty(),
-				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get()))))).get();
+		Reified<?> template = MiniKanren.reify(Substitutions.empty(),
+				lval(Tuple.of(lval(LList.of(h).get()), t, lval(LList.of(h, t).get())))).ground();
 
-		Unifiable<?> instantiated = new BreadthFirstScheduler<>(MiniKanren.instantiate(template)).get();
+		Unifiable<?> instantiated = MiniKanren.instantiate(template).ground();
 
 		Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>> tuple =
 				(Tuple3<Term<LList<Integer>>, Term<LList<Integer>>, Term<LList<Integer>>>) instantiated.get();

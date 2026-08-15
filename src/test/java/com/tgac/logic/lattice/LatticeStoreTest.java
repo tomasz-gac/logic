@@ -3,7 +3,6 @@ package com.tgac.logic.lattice;
 // ABOUTME: Proves the lattice store is generic: a flat set-of-values instance gets
 // ABOUTME: verification, narrowing, collapse, propagators, split and rename for free.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -187,7 +186,7 @@ public class LatticeStoreTest {
 		Unifiable<Integer> z = lvar();
 		FlatConstraints a = FlatConstraints.empty().withValue(x, FlatSet.of(5, 6));
 		FlatConstraints b = FlatConstraints.empty().withValue(z, FlatSet.of(5, 6));
-		assertThat(new BreadthFirstScheduler<>(a.rename(Renaming.of(Collections.<Unknown<?>, Term<?>> singletonMap(x.asVar().get(), Hole.of(0))))).get())
-				.isEqualTo(new BreadthFirstScheduler<>(b.rename(Renaming.of(Collections.<Unknown<?>, Term<?>> singletonMap(z.asVar().get(), Hole.of(0))))).get());
+		assertThat(a.rename(Renaming.of(Collections.<Unknown<?>, Term<?>> singletonMap(x.asVar().get(), Hole.of(0)))).ground())
+				.isEqualTo(b.rename(Renaming.of(Collections.<Unknown<?>, Term<?>> singletonMap(z.asVar().get(), Hole.of(0)))).ground());
 	}
 }

@@ -125,7 +125,7 @@ public class MiniKanren {
 	 * trace shows arguments fully substituted rather than as raw variable names.
 	 */
 	public static String format(Substitutions s, Object o) {
-		return o instanceof Term ? Unsafe.walkAll(s, (Term<?>) o).toString() : String.valueOf(o);
+		return o instanceof Term ? walkAll(s, (Term<?>) o).ground().toString() : String.valueOf(o);
 	}
 
 	private interface Extender {

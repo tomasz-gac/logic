@@ -3,14 +3,12 @@ package com.tgac.logic.goals;
 // ABOUTME: Pins the Optimizer seam: cascading normalization flattens nested and/or
 // ABOUTME: in one pass, is transparent to NamedGoal, and treats Guard/opaque goals as leaves.
 
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.constraints.Constraints.unify;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.optimizer.Barrier;
 import com.tgac.logic.goals.optimizer.CascadingOptimizer;
@@ -26,7 +24,7 @@ public class OptimizerTest {
 	}
 
 	private static Goal cascade(Goal g) {
-		return new BreadthFirstScheduler<>(g.accept(new CascadingOptimizer())).get();
+		return g.accept(new CascadingOptimizer()).ground();
 	}
 
 	@Test
@@ -57,7 +55,7 @@ public class OptimizerTest {
 	@Test
 	public void namedGoalsAreTransparent() {
 		Goal a = leaf(), b = leaf(), c = leaf();
-		Function<Package, Fiber<String>> label = s -> Fiber.done("query");
+		Function<Package, String> label = s -> "query";
 		Goal optimized = cascade(NamedGoal.of(label, a.and(b.and(c))));
 
 		assertThat(optimized).isInstanceOf(NamedGoal.class);
@@ -80,7 +78,7 @@ public class OptimizerTest {
 	public void rewrittenGoalSolvesToTheSameAnswers() {
 		Unifiable<Integer> x = lvar();
 		Goal g = unify(x, lval(3)).and(Goal.success().and(Goal.success()));
-		assertThat(new BreadthFirstScheduler<>(g.accept(new CascadingOptimizer())).get().solve(x, TestSchedulers.factory())
+		assertThat(g.accept(new CascadingOptimizer()).ground().solve(x, TestSchedulers.factory())
 				.map(Object::toString)
 				.collect(Collectors.toList()))
 				.isEqualTo(g.solve(x, TestSchedulers.factory())

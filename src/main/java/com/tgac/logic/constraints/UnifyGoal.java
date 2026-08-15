@@ -10,7 +10,6 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.NamedGoal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.unification.Unsafe;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
@@ -44,7 +43,7 @@ public class UnifyGoal<T> implements Posting {
 	 */
 	@Override
 	public long answers(Substitutions s) {
-		return Unsafe.unifyPrefix(s, u, v).isDefined() ? 1 : 0;
+		return MiniKanren.unifyPrefix(s, u, v).ground().isDefined() ? 1 : 0;
 	}
 
 	@Override
