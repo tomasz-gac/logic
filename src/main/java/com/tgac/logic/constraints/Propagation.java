@@ -181,13 +181,11 @@ public final class Propagation {
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
 			BiFunction<ConstraintStore, Package, Fiber<Revision>> trigger) {
-		boolean profiled = ProfilerStore.from(s).isDefined();
 		return Cont.defer(() ->
 				constraintStores(s)
 						.reduce(MFiber.mdone(s),
 								(chain, cs) ->
-										chain.flatMap(pkg -> MFiber.ofFiber(
-														named(profiled, cs, trigger.apply(cs, pkg)))
+										chain.flatMap(pkg -> MFiber.ofFiber(trigger.apply(cs, pkg))
 												.flatMap(revision -> revision.match(
 														MFiber::none,            // fail: branch dies
 														() -> MFiber.mdone(pkg), // unchanged
@@ -196,13 +194,6 @@ public final class Propagation {
 								Exceptions.throwingBiOp(UnsupportedOperationException::new))
 						.map(Cont::<Package, Nothing>just)
 						.getOrElse(() -> Cont.complete(Nothing.nothing())));
-	}
-
-	/** Under a profiled solve, a store's answer is a named extent — its class. */
-	private static Fiber<Revision> named(boolean profiled, ConstraintStore cs, Fiber<Revision> answer) {
-		return profiled ?
-				Fiber.named(origin -> cs.getClass().getSimpleName(), answer) :
-				answer;
 	}
 
 	/**
@@ -405,6 +396,12 @@ public final class Propagation {
 			abstract Goal apply();
 		}
 
+		private static Fiber<Revision> getRevisionFiber(String name, ConstraintStore cs, Package p, Fiber<Revision> revise) {
+			return ProfilerStore.from(p).isDefined() ?
+					Fiber.named(origin -> name + " @ " +  cs.getClass().getSimpleName(), revise) :
+					revise;
+		}
+
 		/** Inferred bindings — a prefix, revalidated against the live package at pop. */
 		static final class Bind extends Item {
 			final Prefix prefix;
@@ -430,7 +427,8 @@ public final class Propagation {
 							Package extended = s.withSubstitutions(examined._1);
 							// each store's revise is COMPLETE: custody, its own watchers of the
 							// newly bound variables, and its own cascade
-							return ((Goal) s2 -> reviseAll(s2, (cs, p) -> cs.revise(kept, p)))
+							return ((Goal) s2 -> reviseAll(s2, (cs, p) ->
+									getRevisionFiber("Propagation.Bind", cs, p, cs.revise(kept, p))))
 									.and(ripen(kept))
 									.apply(extended);
 						})
@@ -455,7 +453,7 @@ public final class Propagation {
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> item.getStoreClass() == cs.getClass() ?
-								cs.stated(item, p) :
+								getRevisionFiber("Propagation.Stated", cs, p, cs.stated(item, p)) :
 								Fiber.done(Revision.unchanged()));
 			}
 
@@ -477,7 +475,7 @@ public final class Propagation {
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> factor.getClass() == cs.getClass() ?
-								((Absorbable<?>) cs).normalize(p) :
+								getRevisionFiber("Propagation.Absorbed", cs, p, ((Absorbable<?>) cs).normalize(p)):
 								Fiber.done(Revision.unchanged()));
 			}
 
