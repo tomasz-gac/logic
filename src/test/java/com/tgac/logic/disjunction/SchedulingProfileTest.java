@@ -78,8 +78,7 @@ public class SchedulingProfileTest {
 	}
 
 	private static void solveProfiled(Goal g, List<Strip> ss, ScopeProfiler profiler) {
-		g.solve(SchedulingBenchmarkTest.starts(ss),
-						fiber -> new BreadthFirstScheduler<>(fiber).withListener(profiler))
+		g.solve(SchedulingBenchmarkTest.starts(ss), profiler)
 				.collect(Collectors.toList());
 	}
 }

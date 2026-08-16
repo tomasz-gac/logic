@@ -69,6 +69,7 @@ public final class ProfilerStore implements Packaged {
 	private static boolean minting(String className) {
 		return className.startsWith("java.")
 				|| className.startsWith("sun.")
+				|| className.startsWith("io.vavr.")
 				|| className.startsWith("com.tgac.functional.")
 				|| className.startsWith(NamedGoal.class.getName())
 				|| className.startsWith(Goal.class.getName())
