@@ -137,12 +137,12 @@ public interface Posting extends Goal, Bounded {
 	/** Naming preserves the posting face; the label stays outside identity. */
 	@Override
 	default Posting named(String name) {
-		return named(p -> name);
+		return new Named(this, NamedGoal.of(p -> name, this, name));
 	}
 
 	@Override
 	default Posting named(Function<Package, String> label) {
-		return new Named(this, NamedGoal.of(label, this));
+		return new Named(this, NamedGoal.of(label, this, null));
 	}
 
 	/**

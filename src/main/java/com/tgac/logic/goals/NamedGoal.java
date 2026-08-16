@@ -17,6 +17,8 @@ public
 class NamedGoal implements Goal {
 	Function<Package, String> label;
 	Goal goal;
+	/** The static name when {@code named(String)} minted this; null for rendered labels. */
+	String name;
 
 	@Override
 	public Cont<Package, Nothing> apply(Package aPackage) {
@@ -27,8 +29,8 @@ class NamedGoal implements Goal {
 				.getOrElse(() -> goal.apply(aPackage));
 		return ProfilerStore.from(aPackage)
 				.<Cont<Package, Nothing>> map(store -> k -> Fiber.named(
-						origin -> store.label(label.getClass(), origin,
-								() -> label.apply(Package.empty())),
+						origin -> name != null ? name
+								: store.label(label.getClass(), () -> label.apply(Package.empty())),
 						cont.apply(k)))
 				.getOrElse(cont);
 	}

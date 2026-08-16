@@ -58,7 +58,7 @@ public class CascadingOptimizer implements Optimizer {
 	public Fiber<Goal> visit(NamedGoal named) {
 		// transparent: tracing must not disable optimization
 		return named.getGoal().accept(this)
-				.map(g -> NamedGoal.of(named.getLabel(), g));
+				.map(g -> NamedGoal.of(named.getLabel(), g, named.getName()));
 	}
 
 	@Override

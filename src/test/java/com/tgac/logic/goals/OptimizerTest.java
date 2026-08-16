@@ -56,7 +56,7 @@ public class OptimizerTest {
 	public void namedGoalsAreTransparent() {
 		Goal a = leaf(), b = leaf(), c = leaf();
 		Function<Package, String> label = s -> "query";
-		Goal optimized = cascade(NamedGoal.of(label, a.and(b.and(c))));
+		Goal optimized = cascade(NamedGoal.of(label, a.and(b.and(c)), null));
 
 		assertThat(optimized).isInstanceOf(NamedGoal.class);
 		assertThat(((NamedGoal) optimized).getLabel()).isSameAs(label);

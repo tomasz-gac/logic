@@ -212,7 +212,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @return A {@link NamedGoal} wrapping this goal with the given name.
 	 */
 	default Goal named(String name) {
-		return NamedGoal.of(pkg -> name, this);
+		return NamedGoal.of(pkg -> name, this, name);
 	}
 
 	/**
@@ -223,7 +223,7 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 	 * @return A {@link NamedGoal} whose label is computed per port.
 	 */
 	default Goal named(Function<Package, String> label) {
-		return NamedGoal.of(label, this);
+		return NamedGoal.of(label, this, null);
 	}
 
 	/**

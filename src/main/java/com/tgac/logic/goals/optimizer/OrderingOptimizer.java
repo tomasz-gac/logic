@@ -72,7 +72,7 @@ public class OrderingOptimizer extends CascadingOptimizer {
 		if (g instanceof NamedGoal) {
 			NamedGoal named = (NamedGoal) g;
 			return Fiber.defer(() -> price(named.getGoal()))
-					.map(p -> new Priced(NamedGoal.of(named.getLabel(), p.getGoal()), p.getOrder()));
+					.map(p -> new Priced(NamedGoal.of(named.getLabel(), p.getGoal(), named.getName()), p.getOrder()));
 		}
 		if (g instanceof Bounded) {
 			long declared = ((Bounded) g).answers(bound);
