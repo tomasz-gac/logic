@@ -10,6 +10,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.interpreter.Scope;
 import com.tgac.functional.fibers.interpreter.StepListener;
 import com.tgac.functional.fibers.schedulers.UnfairBreadthFirstScheduler;
 import com.tgac.logic.finitedomain.domains.Interval;
@@ -37,7 +38,7 @@ public class SearchCostPinTest {
 		AtomicLong steps = new AtomicLong();
 		StepListener counting = new StepListener() {
 			@Override
-			public void onStep(Fiber<?> computation) {
+			public void onStep(Fiber<?> computation, Scope scope) {
 				steps.incrementAndGet();
 			}
 		};

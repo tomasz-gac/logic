@@ -10,6 +10,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.interpreter.Scope;
 import com.tgac.functional.fibers.interpreter.StepListener;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.schedulers.ForkJoinScheduler;
@@ -39,7 +40,7 @@ import org.junit.Test;
  */
 public class SchedulingBenchmarkTest {
 
-	private static final class Strip {
+	static final class Strip {
 		final Unifiable<Long> start = lvar();
 		final Unifiable<Long> end = lvar();
 		final long space;
@@ -50,7 +51,7 @@ public class SchedulingBenchmarkTest {
 	}
 
 	/** stripo: start ∈ 0..horizon−1, end = start + 1 (unit durations). */
-	private static Goal strips(List<Strip> strips, long horizon) {
+	static Goal strips(List<Strip> strips, long horizon) {
 		Goal g = Goal.success();
 		for (Strip s : strips) {
 			g = g.and(FiniteDomain.dom(s.start, EnumeratedDomain.range(0L, horizon)))
@@ -60,7 +61,7 @@ public class SchedulingBenchmarkTest {
 		return g;
 	}
 
-	private static Goal nonOverlapResident(Strip a, Strip b) {
+	static Goal nonOverlapResident(Strip a, Strip b) {
 		return any(exclude(lval(a.space).unifies(lval(b.space))),
 				FiniteDomain.leq(a.end, b.start),  
 				FiniteDomain.leq(b.end, a.start));
@@ -73,11 +74,11 @@ public class SchedulingBenchmarkTest {
 				FiniteDomain.leq(b.end, a.start)));
 	}
 
-	private interface Lane {
+	interface Lane {
 		Goal pair(Strip a, Strip b);
 	}
 
-	private static Goal schedule(List<Strip> ss, long horizon, Lane lane) {
+	static Goal schedule(List<Strip> ss, long horizon, Lane lane) {
 		Goal g = strips(ss, horizon);
 		for (int i = 0; i < ss.size(); i++) {
 			for (int j = i + 1; j < ss.size(); j++) {
@@ -87,7 +88,7 @@ public class SchedulingBenchmarkTest {
 		return g;
 	}
 
-	private static List<Strip> sameSpace(int n) {
+	static List<Strip> sameSpace(int n) {
 		List<Strip> ss = new ArrayList<>();
 		for (int i = 0; i < n; i++) {
 			ss.add(new Strip(0L));
@@ -95,7 +96,7 @@ public class SchedulingBenchmarkTest {
 		return ss;
 	}
 
-	private static Unifiable<LList<Long>> starts(List<Strip> ss) {
+	static Unifiable<LList<Long>> starts(List<Strip> ss) {
 		return LList.ofAll(ss.size(), i -> ss.get(i).start);
 	}
 
@@ -104,7 +105,7 @@ public class SchedulingBenchmarkTest {
 	 * of operations, operation j in space j; the chain's leqs propagate
 	 * windows eagerly — the external knowledge that decides disjuncts.
 	 */
-	private static List<Strip> jobShop(int processes, int spaces, List<Goal> chains) {
+	static List<Strip> jobShop(int processes, int spaces, List<Goal> chains) {
 		List<Strip> ops = new ArrayList<>();
 		for (int p = 0; p < processes; p++) {
 			Strip prev = null;
@@ -125,7 +126,7 @@ public class SchedulingBenchmarkTest {
 		AtomicLong count = new AtomicLong();
 		StepListener counting = new StepListener() {
 			@Override
-			public void onStep(Fiber<?> node) {
+			public void onStep(Fiber<?> node, Scope scope) {
 				count.incrementAndGet();
 			}
 		};

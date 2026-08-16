@@ -10,6 +10,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.functional.fibers.interpreter.Scope;
 import com.tgac.functional.fibers.interpreter.StepListener;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.finitedomain.FiniteDomain;
@@ -44,7 +45,7 @@ public class StepCountPinsTest {
 		AtomicLong count = new AtomicLong();
 		StepListener counting = new StepListener() {
 			@Override
-			public void onStep(Fiber<?> node) {
+			public void onStep(Fiber<?> node, Scope scope) {
 				count.incrementAndGet();
 			}
 		};
