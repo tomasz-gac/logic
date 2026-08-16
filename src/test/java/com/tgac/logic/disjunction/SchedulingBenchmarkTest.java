@@ -67,7 +67,7 @@ public class SchedulingBenchmarkTest {
 				FiniteDomain.leq(b.end, a.start));
 	}
 
-	private static Goal nonOverlapConde(Strip a, Strip b) {
+	static Goal nonOverlapConde(Strip a, Strip b) {
 		return Conde.of(java.util.Arrays.asList(
 				exclude(lval(a.space).unifies(lval(b.space))),
 				FiniteDomain.leq(a.end, b.start),
