@@ -1,8 +1,10 @@
 package com.tgac.logic.debug;
 
 // ABOUTME: Marks a profiling solve through the package's store map: NamedGoal
-// ABOUTME: emits Named extents, labeled per name or per call site through the cache.
+// ABOUTME: emits Named extents labeled name @ mint-site, origins as refinement.
 
+import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.NamedGoal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
@@ -12,16 +14,19 @@ import java.util.function.Supplier;
 
 /**
  * Transport for the profiling mode, {@link DebugStore}'s twin: its presence
- * makes every {@link NamedGoal} wrap its body in a named extent. The cache
- * keys extents by the goal's static name when it has one (the name is the
- * label), else by its label lambda's class — one bucket per {@code .named()}
- * call site, so recursive unfolds share — labeled by the goal's own label
- * rendered once against the empty package. Origins play no part: a goal
- * profile never changes with the capture flag.
+ * makes every {@link NamedGoal} wrap its body in a named extent. Labels
+ * compose the goal's two dimensions: the NAME says what the goal is — the
+ * static name when {@code named(String)} minted it, else the label rendered
+ * once per call site against the empty package — and the MINT SITE says who
+ * created this one, derived from the goal's construction origin when
+ * capture was on. Origins REFINE: without them a bucket is the plain name;
+ * with them it splits per site ({@code success @ Constraints.enforce(...)}),
+ * so the coarse profile is always the fine one with sites folded together.
  */
 public final class ProfilerStore implements Packaged {
 
-	private final ConcurrentHashMap<Object, String> labels = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<Object, String> rendered = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<Throwable, String> sites = new ConcurrentHashMap<>();
 
 	private ProfilerStore() {
 	}
@@ -34,13 +39,39 @@ public final class ProfilerStore implements Packaged {
 		return pkg.getStores().get(ProfilerStore.class).map(ProfilerStore.class::cast);
 	}
 
-	public String label(Object key, Supplier<String> rendered) {
-		return labels.computeIfAbsent(key, k -> {
-			try {
-				return rendered.get();
-			} catch (RuntimeException e) {
-				return String.valueOf(k);
+	public String label(String name, Class<?> site, Throwable origin, Supplier<String> render) {
+		String base = name != null ? name
+				: rendered.computeIfAbsent(site, key -> safely(render, key));
+		if (origin == null) {
+			return base;
+		}
+		return sites.computeIfAbsent(origin, o -> base + " @ " + mintSite(o));
+	}
+
+	private static String safely(Supplier<String> render, Object fallback) {
+		try {
+			return render.get();
+		} catch (RuntimeException e) {
+			return String.valueOf(fallback);
+		}
+	}
+
+	private static String mintSite(Throwable origin) {
+		for (StackTraceElement frame : origin.getStackTrace()) {
+			if (!minting(frame.getClassName())) {
+				return frame.toString();
 			}
-		});
+		}
+		return "unknown";
+	}
+
+	/** The layers that mint named goals on behalf of others. */
+	private static boolean minting(String className) {
+		return className.startsWith("java.")
+				|| className.startsWith("sun.")
+				|| className.startsWith("com.tgac.functional.")
+				|| className.startsWith(NamedGoal.class.getName())
+				|| className.startsWith(Goal.class.getName())
+				|| className.startsWith(Posting.class.getName());
 	}
 }
