@@ -7,6 +7,7 @@ import com.tgac.functional.Exceptions;
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Absorbable;
@@ -180,11 +181,13 @@ public final class Propagation {
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
 			BiFunction<ConstraintStore, Package, Fiber<Revision>> trigger) {
+		boolean profiled = ProfilerStore.from(s).isDefined();
 		return Cont.defer(() ->
 				constraintStores(s)
 						.reduce(MFiber.mdone(s),
 								(chain, cs) ->
-										chain.flatMap(pkg -> MFiber.ofFiber(trigger.apply(cs, pkg))
+										chain.flatMap(pkg -> MFiber.ofFiber(
+														named(profiled, cs, trigger.apply(cs, pkg)))
 												.flatMap(revision -> revision.match(
 														MFiber::none,            // fail: branch dies
 														() -> MFiber.mdone(pkg), // unchanged
@@ -193,6 +196,13 @@ public final class Propagation {
 								Exceptions.throwingBiOp(UnsupportedOperationException::new))
 						.map(Cont::<Package, Nothing>just)
 						.getOrElse(() -> Cont.complete(Nothing.nothing())));
+	}
+
+	/** Under a profiled solve, a store's answer is a named extent — its class. */
+	private static Fiber<Revision> named(boolean profiled, ConstraintStore cs, Fiber<Revision> answer) {
+		return profiled ?
+				Fiber.named(origin -> cs.getClass().getSimpleName(), answer) :
+				answer;
 	}
 
 	/**
