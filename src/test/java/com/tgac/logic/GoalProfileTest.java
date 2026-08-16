@@ -74,9 +74,9 @@ public class GoalProfileTest {
 			}
 		});
 		// the plain success bucket splits by who minted it — enforce's
-		// ground floor shows its site
+		// ground floor shows its site as a chain segment
 		assertThat(counts[0].keySet().stream()
-				.anyMatch(label -> label.startsWith("success @ ")
+				.anyMatch(label -> label.contains("success @ ")
 						&& label.contains("Constraints.enforce")))
 				.isTrue();
 	}

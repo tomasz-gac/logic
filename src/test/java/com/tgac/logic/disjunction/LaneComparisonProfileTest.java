@@ -48,6 +48,9 @@ public class LaneComparisonProfileTest {
 		report.add("=== conde at five (total " + total(conde) + ")");
 		report.addAll(conde.report());
 		Files.write(Paths.get("target/lane-comparison-profile.txt"), report);
+		// collapsed-stack files — feed speedscope or flamegraph.pl directly
+		Files.write(Paths.get("target/lane-resident.folded"), resident.folded());
+		Files.write(Paths.get("target/lane-conde.folded"), conde.folded());
 
 		assertThat(answers.get(1)).isEqualTo(answers.get(0));
 		assertThat(resident.counts().keySet().stream()
