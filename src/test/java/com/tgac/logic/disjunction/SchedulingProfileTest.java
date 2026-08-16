@@ -34,11 +34,16 @@ public class SchedulingProfileTest {
 
 	@Test
 	public void profilesTheResidentLane() throws IOException {
-		OriginCapture.enable(true);
-		try {
-			profile();
-		} finally {
-			OriginCapture.enable(false);
+		IOException[] failed = new IOException[1];
+		OriginCapture.within(() -> {
+			try {
+				profile();
+			} catch (IOException e) {
+				failed[0] = e;
+			}
+		});
+		if (failed[0] != null) {
+			throw failed[0];
 		}
 	}
 
