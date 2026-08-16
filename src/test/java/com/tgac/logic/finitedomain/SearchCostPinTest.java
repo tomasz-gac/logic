@@ -38,7 +38,7 @@ public class SearchCostPinTest {
 		AtomicLong steps = new AtomicLong();
 		StepListener counting = new StepListener() {
 			@Override
-			public void onStep(Fiber<?> computation, Scope scope) {
+			public void onStep(Fiber<?> computation, Scope scope, String name) {
 				steps.incrementAndGet();
 			}
 		};

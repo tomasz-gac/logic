@@ -11,7 +11,9 @@ import com.tgac.functional.fibers.schedulers.DepthFirstScheduler;
 import com.tgac.functional.fibers.schedulers.ForkJoinScheduler;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.functional.fibers.interpreter.ScopeProfiler;
 import com.tgac.logic.debug.DebugStore;
+import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.logic.debug.Trace;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.goals.optimizer.Optimizer;
@@ -336,6 +338,17 @@ public interface Goal extends Function<Package, Cont<Package, Nothing>> {
 		return solveFrom(
 				Package.empty().withStore(Table.empty()).withStore(DebugStore.of(tracer)),
 				out, DepthFirstScheduler::of);
+	}
+
+	/**
+	 * Solves under the profiler: seeds a {@link ProfilerStore} so every
+	 * {@link NamedGoal} names its dynamic extent, and installs the profiler
+	 * on the driver — steps bill to goal names, workforce labels, or root.
+	 */
+	default <T> Stream<Reified<T>> solve(Unifiable<T> out, ScopeProfiler profiler) {
+		return solveFrom(
+				Package.empty().withStore(Table.empty()).withStore(ProfilerStore.of()),
+				out, fiber -> new BreadthFirstScheduler<>(fiber).withListener(profiler));
 	}
 
 	/**

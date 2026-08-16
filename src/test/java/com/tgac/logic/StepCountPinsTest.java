@@ -45,7 +45,7 @@ public class StepCountPinsTest {
 		AtomicLong count = new AtomicLong();
 		StepListener counting = new StepListener() {
 			@Override
-			public void onStep(Fiber<?> node, Scope scope) {
+			public void onStep(Fiber<?> node, Scope scope, String name) {
 				count.incrementAndGet();
 			}
 		};

@@ -5,6 +5,7 @@ package com.tgac.logic.disjunction;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.fibers.interpreter.OriginCapture;
 import com.tgac.functional.fibers.interpreter.ScopeProfiler;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.disjunction.SchedulingBenchmarkTest.Strip;
@@ -33,6 +34,15 @@ public class SchedulingProfileTest {
 
 	@Test
 	public void profilesTheResidentLane() throws IOException {
+		OriginCapture.enable(true);
+		try {
+			profile();
+		} finally {
+			OriginCapture.enable(false);
+		}
+	}
+
+	private void profile() throws IOException {
 		List<String> report = new ArrayList<>();
 
 		ScopeProfiler race = new ScopeProfiler(SKIP);
