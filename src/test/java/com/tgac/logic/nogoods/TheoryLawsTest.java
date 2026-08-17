@@ -54,6 +54,20 @@ public class TheoryLawsTest {
 	}
 
 	@Test
+	public void distinctAtomsOnTheSameSurfaceUnionWithoutTheCapability() {
+		// same name, same watched surface, different knowledge: nogoods
+		// declare no Semilattice, so the slot holds both — no forced merge
+		Nogood xyOneTwo = Nogood.of(Posting.all(
+				Posting.bind(X, lval(1)), Posting.bind(Y, lval(2))));
+		Nogood xyTwoOne = Nogood.of(Posting.all(
+				Posting.bind(X, lval(2)), Posting.bind(Y, lval(1))));
+		Theory<NogoodConstraints> met = Theory
+				.of(Collections.singletonList(xyOneTwo))
+				.meet(Theory.of(Collections.singletonList(xyTwoOne)));
+		assertThat(met.atoms()).containsExactlyInAnyOrder(xyOneTwo, xyTwoOne);
+	}
+
+	@Test
 	public void theCoveringOrderIsSharperThanSubsetThroughAtomLeq() {
 		// ¬A entails ¬(A ∧ B): a theory holding the stronger atom covers a
 		// theory holding the weaker one, with no shared atoms at all
