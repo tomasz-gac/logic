@@ -19,11 +19,11 @@ import java.util.Map;
 public interface Constraint<S extends Constraint<S>> extends Packaged, Semilattice<S>, PartialOrder<S> {
 
 	/**
-	 * Parks {@code c} in the family — the raw half of statement, completed by
-	 * {@code normalize}. Scheduled for deletion: statement becomes absorption
-	 * of the atom's singleton factor when the activate door folds into absorb.
+	 * The statement meet: parks {@code c} in the family — pure, context-free,
+	 * the combine half of statement; {@link #stated} examines it once a
+	 * context is present.
 	 */
-	S prepend(Atom c);
+	S meet(Atom c);
 
 	/**
 	 * Scheduled for deletion into {@code leq}: containment of an atom is
@@ -98,14 +98,15 @@ public interface Constraint<S extends Constraint<S>> extends Packaged, Semilatti
 	<T> Goal enforce(Term<T> x);
 
 	/**
-	 * One of this store's items was just stated ({@code Propagation.activate}
-	 * parked it already). First examination: a constraint over already-ground
-	 * terms will never be woken, so whatever can be decided or narrowed at
-	 * statement time must be decided here. Same scheduling contract as
-	 * {@link #normalize}.
+	 * The statement delta: {@code item} was just parked ({@code meet(Atom)}
+	 * did the combine half) and only it is new. The agreement law binds this
+	 * to the wholesale pass — {@code stated(atom, P) == normalize(P)} where P
+	 * already holds the atom parked — and the default IS the wholesale pass;
+	 * families override with a first-examination fast path (examine one
+	 * item, not the family).
 	 */
 	default Fiber<Revision> stated(Atom item, Package state) {
-		return Fiber.done(Revision.unchanged());
+		return normalize(state);
 	}
 
 	/**

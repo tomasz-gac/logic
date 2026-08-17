@@ -117,8 +117,8 @@ public class ProjectionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.empty()
-				.prepend(keeper(x, y))
-				.prepend(keeper(x, y));
+				.meet(keeper(x, y))
+				.meet(keeper(x, y));
 		assertThat(store.getConstraints()).hasSize(1);
 	}
 
@@ -154,7 +154,7 @@ public class ProjectionTest {
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.withDomain(varOf(w), dom(2, 3))
-				.prepend(coupling);
+				.meet(coupling);
 
 		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
 		seed.put(varOf(x), a);
@@ -204,7 +204,7 @@ public class ProjectionTest {
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.withDomain(varOf(y), dom(1, 2, 3))
-				.prepend(keeper(x, y, lval(4)));
+				.meet(keeper(x, y, lval(4)));
 
 		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
 		assertThat(keyed.getConstraints()).hasSize(1);
@@ -222,7 +222,7 @@ public class ProjectionTest {
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.withDomain(varOf(w), dom(2, 3))
-				.prepend(keeper(x, w, lval(6)));
+				.meet(keeper(x, w, lval(6)));
 
 		Tuple2<FiniteDomainConstraints, FiniteDomainConstraints> halves =
 				store.split(Arrays.asList(varOf(x)));
@@ -241,14 +241,14 @@ public class ProjectionTest {
 		Unifiable<Integer> y = lvar();
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
-				.prepend(keeper(x, y));
+				.meet(keeper(x, y));
 
 		FiniteDomainConstraints first = store.project(slots(varOf(x), varOf(y))).ground();
 		FiniteDomainConstraints again = store.project(slots(varOf(x), varOf(y))).ground();
 		assertThat(first).isEqualTo(again);
 
 		FiniteDomainConstraints reposted = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
-				.prepend(keeper(x, y));
+				.meet(keeper(x, y));
 		assertThat(reposted.project(slots(varOf(x), varOf(y))).ground())
 				.isEqualTo(first);
 	}
@@ -278,7 +278,7 @@ public class ProjectionTest {
 		Propagator posted = keeper(x, y);
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
-				.prepend(posted);
+				.meet(posted);
 
 		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
 		FiniteDomainConstraints seeded = keyed.rename(
@@ -300,7 +300,7 @@ public class ProjectionTest {
 							: Verdict.keep();
 				});
 		FiniteDomainConstraints store =
-				(FiniteDomainConstraints) FiniteDomainConstraints.empty().prepend(notSeven);
+				(FiniteDomainConstraints) FiniteDomainConstraints.empty().meet(notSeven);
 
 		Unifiable<Integer> fresh = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();

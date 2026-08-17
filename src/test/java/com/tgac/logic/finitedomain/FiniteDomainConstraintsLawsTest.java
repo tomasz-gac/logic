@@ -41,7 +41,7 @@ public class FiniteDomainConstraintsLawsTest {
 				FiniteDomainConstraints.empty()
 						.withDomain(X, Interval.of(3L, 6L))
 						.withDomain(Y, Interval.of(2L, 7L)),
-				((FiniteDomainConstraints) FiniteDomainConstraints.empty().prepend(KEEP))
+				((FiniteDomainConstraints) FiniteDomainConstraints.empty().meet(KEEP))
 						.withDomain(Y, Interval.of(5L, 15L)),
 				FiniteDomainConstraints.bottom());
 		SemilatticeLaws.checkLeqReversesAccumulation(samples);

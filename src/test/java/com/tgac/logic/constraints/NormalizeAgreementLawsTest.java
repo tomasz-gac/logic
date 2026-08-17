@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.finitedomain.FiniteDomain;
@@ -97,6 +98,59 @@ public class NormalizeAgreementLawsTest {
 									seed, cs.getClass().getSimpleName())
 							.isEqualTo(wholesaleLanding.get());
 				}
+			}
+		}
+		assertThat(exercised).describedAs("the law must not pass vacuously")
+				.isGreaterThan(50);
+		assertThat(failures).describedAs("both verdict directions must be exercised")
+				.isGreaterThan(5);
+	}
+
+	@Test
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public void statedLandsWhereWholesaleNormalizeWould() {
+		int exercised = 0;
+		int failures = 0;
+		for (long seed = 0; seed < SEEDS; seed++) {
+			Random r = new Random(seed);
+			Unifiable<Long> x = lvar();
+			Unifiable<Long> y = lvar();
+			Package p = Package.empty();
+			boolean conflicting = r.nextBoolean();
+			p = impose(p, FiniteDomain.dom(x, conflicting
+					? EnumeratedDomain.range(3L, 5L)
+					: EnumeratedDomain.range(0L, 5L)));
+			p = impose(p, FiniteDomain.dom(y, conflicting
+					? EnumeratedDomain.range(0L, 2L)
+					: EnumeratedDomain.range(0L, 5L)));
+			p = impose(p, exclude(x.unifies(lval(7L))));
+
+			// a freshly PARKED atom, un-examined: only it is new in the package
+			Posting posting = r.nextBoolean()
+					? FiniteDomain.leq(x, y)
+					: exclude(conflicting ? x.unifies(x) : x.unifies(lval((long) r.nextInt(5))));
+			Atom atom = ((Posting.Activation) posting).getItem();
+			Package parked = p.withStored(atom);
+			Constraint<?> cs = (Constraint<?>) parked.getStores()
+					.get(atom.getConstraintClass()).get();
+
+			exercised++;
+			Revision delta = run((Fiber<Revision>) ((Constraint) cs).stated(atom, parked));
+			Revision wholesale = run((Fiber<Revision>) ((Constraint) cs).normalize(parked));
+			Option<Object> deltaLanding = landing(delta, cs);
+			Option<Object> wholesaleLanding = landing(wholesale, cs);
+			if (!deltaLanding.isDefined()) {
+				failures++;
+			}
+			assertThat(deltaLanding.isDefined())
+					.describedAs("seed %d, %s: one overload failed, the other did not",
+							seed, cs.getClass().getSimpleName())
+					.isEqualTo(wholesaleLanding.isDefined());
+			if (deltaLanding.isDefined()) {
+				assertThat(deltaLanding.get())
+						.describedAs("seed %d, %s: the overloads landed on different factors",
+								seed, cs.getClass().getSimpleName())
+						.isEqualTo(wholesaleLanding.get());
 			}
 		}
 		assertThat(exercised).describedAs("the law must not pass vacuously")

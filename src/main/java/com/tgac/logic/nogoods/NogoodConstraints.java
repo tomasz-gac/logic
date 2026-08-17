@@ -107,7 +107,7 @@ final class NogoodConstraints implements Constraint<NogoodConstraints> {
 	}
 
 	@Override
-	public NogoodConstraints prepend(Atom c) {
+	public NogoodConstraints meet(Atom c) {
 		return NogoodConstraints.of(nogoods.add((Nogood) c));
 	}
 
@@ -141,11 +141,6 @@ final class NogoodConstraints implements Constraint<NogoodConstraints> {
 		return normalize(state);
 	}
 
-	/** First examination is the same wholesale re-verification: a nogood born violated fails here. */
-	@Override
-	public Fiber<Revision> stated(Atom item, Package state) {
-		return normalize(state);
-	}
 
 	/**
 	 * A nogood still live about the rendered term is an expressed infinity:

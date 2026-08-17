@@ -138,7 +138,7 @@ public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeCo
 	}
 
 	@Override
-	public S prepend(Atom c) {
+	public S meet(Atom c) {
 		return c instanceof Propagator ?
 				create(values, propagators.add((Propagator) c)) :
 				self();

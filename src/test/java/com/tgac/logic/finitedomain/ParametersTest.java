@@ -46,7 +46,7 @@ public class ParametersTest {
 		Package[] box = new Package[1];
 		Package pkg = Package.of(HashMap.empty(),
 				LinkedHashMap.of(FiniteDomainConstraints.class,
-						FiniteDomainConstraints.empty().prepend(constraint)));
+						FiniteDomainConstraints.empty().meet(constraint)));
 		Propagation.resolve(TestAccess.prefix(prefix))
 				.apply(pkg)
 				.run(v -> {

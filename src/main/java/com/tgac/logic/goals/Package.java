@@ -80,7 +80,7 @@ public class Package {
 	public Package withStored(Atom c) {
 		Watermark.check(this, c);
 		return stores.get(c.getConstraintClass())
-				.map(cs -> ((com.tgac.logic.constraints.store.Constraint<?>) cs).prepend(c))
+				.map(cs -> ((com.tgac.logic.constraints.store.Constraint<?>) cs).meet(c))
 				.map(cs -> Package.of(substitutions, stores.put(c.getConstraintClass(), cs)))
 				.getOrElse(this);
 	}

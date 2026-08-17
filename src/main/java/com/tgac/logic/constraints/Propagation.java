@@ -97,7 +97,7 @@ public final class Propagation {
 	/**
 	 * The statement entry for store items: parks {@code item} in its store (which
 	 * must already be registered) and queues its first examination — the owning
-	 * store's {@code stated} hook decides everything decidable at statement time.
+	 * store's statement-delta {@code normalize} decides everything decidable at statement time.
 	 */
 	public static Posting activate(Atom item) {
 		return new Posting.Activation(item, UnaryOperator.identity(), p -> false);
