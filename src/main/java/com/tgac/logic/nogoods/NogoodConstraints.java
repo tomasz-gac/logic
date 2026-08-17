@@ -14,19 +14,17 @@ import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
+import com.tgac.logic.unification.Name;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Name;
-import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
@@ -66,16 +64,17 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	 * have fused in the theory; execution sees their conjuncts one by one.
 	 */
 	public LinkedHashSet<Nogood> getNogoods() {
-		return LinkedHashSet.ofAll(residents());
+		return residents().collect(LinkedHashSet.collector());
 	}
 
-	private List<Nogood> residents() {
-		return theory.atoms().toList().flatMap(atom -> {
-			Nogood nogood = (Nogood) atom;
-			return nogood.getForbidden().size() == 1 ?
-					List.of(nogood) :
-					nogood.getForbidden().toList().map(Nogood::of);
-		});
+	private Stream<Nogood> residents() {
+		return theory.atoms().toJavaStream()
+				.flatMap(atom -> {
+					Nogood nogood = (Nogood) atom;
+					return nogood.getForbidden().size() == 1 ?
+							Stream.of(nogood) :
+							nogood.getForbidden().toJavaStream().map(Nogood::of);
+				});
 	}
 
 	/** The theory meet: union, same-surface fusion, subsumption deletion. */
@@ -133,7 +132,7 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 
 	@Override
 	public Fiber<Revision> normalize(Package state) {
-		return Verification.verify(residents(), state.withoutStore(NogoodConstraints.class))
+		return Verification.verify(residents().collect(List.collector()), state.withoutStore(NogoodConstraints.class))
 				.map(kept -> kept.isDefined() ?
 						revisedTo(LinkedHashSet.ofAll(kept.get())) :
 						Revision.fail());
@@ -165,7 +164,7 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 		// renameSubstitutions is the answer's canonical seed: a live name it
 		// binds is part of the rendered answer
 		List<Atom<?>> residuals = List.empty();
-		for (Nogood nogood : residents()) {
+		for (Nogood nogood : residents().collect(Collectors.toList())) {
 			List<Posting> kept = getUnboundNames(renaming, s, nogood);
 			if (kept.isEmpty()) {
 				continue;
