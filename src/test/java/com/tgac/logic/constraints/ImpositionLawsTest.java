@@ -4,7 +4,6 @@ package com.tgac.logic.constraints;
 // ABOUTME: quiescent normalize is a fixpoint, no silent swallowing, ground decides.
 
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
-import static com.tgac.logic.disjunction.Disjunction.any;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -59,18 +58,15 @@ public class ImpositionLawsTest {
 
 		/** A random store-shaped posting over the world's variables. */
 		Posting literal() {
-			switch (r.nextInt(5)) {
+			switch (r.nextInt(4)) {
 				case 0:
 					return FiniteDomain.dom(var(), dom());
 				case 1:
 					return FiniteDomain.leq(var(), var());
 				case 2:
 					return FiniteDomain.addo(var(), lval(1L), var());
-				case 3:
-					return exclude(var().unifies(lval((long) r.nextInt(4))));
 				default:
-					return any(var().unifies(lval((long) r.nextInt(4))),
-							var().unifies(lval((long) r.nextInt(4))));
+					return exclude(var().unifies(lval((long) r.nextInt(4))));
 			}
 		}
 

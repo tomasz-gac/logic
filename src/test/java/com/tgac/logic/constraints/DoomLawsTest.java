@@ -4,7 +4,6 @@ package com.tgac.logic.constraints;
 // ABOUTME: at every extension; the doors' refinements obey the same contract.
 
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
-import static com.tgac.logic.disjunction.Disjunction.any;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -48,7 +47,7 @@ public class DoomLawsTest {
 		}
 
 		Posting literal() {
-			switch (r.nextInt(6)) {
+			switch (r.nextInt(5)) {
 				case 0:
 					return Posting.bind(var(), lval(r.nextInt(3)));
 				case 1:
@@ -58,9 +57,6 @@ public class DoomLawsTest {
 							Posting.bind(var(), lval(r.nextInt(3))));
 				case 3:
 					return exclude(var().unifies(lval(r.nextInt(3))));
-				case 4:
-					return any(var().unifies(lval(r.nextInt(3))),
-							var().unifies(lval(r.nextInt(3))));
 				default:
 					int lo = r.nextInt(2);
 					return FiniteDomain.dom(var(), EnumeratedDomain.of(

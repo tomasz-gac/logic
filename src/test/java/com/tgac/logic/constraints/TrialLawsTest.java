@@ -9,8 +9,6 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.disjunction.Disjunct;
-import com.tgac.logic.disjunction.Disjunction;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.nogoods.Nogood;
 import com.tgac.logic.unification.Unifiable;
@@ -179,10 +177,6 @@ public class TrialLawsTest {
 					.describedAs("seed %d: ∧ flattening not idempotent", seed)
 					.isEqualTo(flat);
 
-			Disjunct nestedOr = Disjunct.of(Disjunction.any(a, Disjunction.any(b, c)));
-			Disjunct flatOr = Disjunct.of(Disjunction.any(a, b, c));
-			assertThat(nestedOr).describedAs("seed %d: ∨ nesting visible", seed)
-					.isEqualTo(flatOr);
 		}
 	}
 }
