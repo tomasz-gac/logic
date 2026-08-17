@@ -9,7 +9,6 @@ import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
-import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple2;
 import java.util.ArrayList;
@@ -116,9 +115,9 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 	 * them). (cKanren's reify-constraints, Alvis et al.)
 	 *
 	 * @param unifiable - the reified answer built so far
-	 * @param renameSubstitutions - substitutions used in variable renaming
+	 * @param renaming - the crossing into the answer namespace
 	 */
-	<A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package p);
+	<A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p);
 
 	/**
 	 * Lossless factoring: (the knowledge expressible over {@code vars}, the

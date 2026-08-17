@@ -76,7 +76,7 @@ class Span implements Factor<Span> {
 	}
 
 	@Override
-	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package p) {
+	public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p) {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 

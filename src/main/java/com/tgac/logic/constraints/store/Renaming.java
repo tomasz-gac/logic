@@ -44,6 +44,29 @@ public final class Renaming {
 		return new Renaming(named(seed), false);
 	}
 
+	/** The costume off: a rename substitution read as the dictionary it is. */
+	public static Renaming of(Substitutions renameSubstitutions) {
+		return of(renameSubstitutions.bindings().toJavaMap());
+	}
+
+	/**
+	 * The name's target under this renaming — itself on a miss. The
+	 * synchronous dictionary face of {@link #apply}: chain-following lookup,
+	 * no structural rebuild.
+	 */
+	public Term<?> target(Term<?> name) {
+		Term<?> current = name;
+		while (current instanceof Unknown && targets.containsKey(current)) {
+			current = targets.get(current);
+		}
+		return current;
+	}
+
+	/** Whether this renaming maps {@code name} anywhere but itself. */
+	public boolean renames(Term<?> name) {
+		return target(name) != name;
+	}
+
 	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */
 	public static Renaming minting(Map<? extends Unknown<?>, ? extends Term<?>> seed) {
 		return new Renaming(named(seed), true);

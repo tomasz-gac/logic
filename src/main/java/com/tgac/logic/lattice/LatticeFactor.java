@@ -424,7 +424,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	@Override
-	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package p) {
+	public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p) {
 		Set<LVar<?>> varsWithValues = values.keySet().toJavaStream()
 				.map(p::walk)
 				.flatMap(u -> u.asVar().toJavaStream())

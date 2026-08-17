@@ -151,16 +151,16 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 	 * whose every literal pruned stays invisible, as it always was.
 	 */
 	@Override
-	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package s) {
+	public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package s) {
 		// renameSubstitutions is the answer's canonical seed: a live name it
 		// binds is part of the rendered answer
 		List<Atom> residuals = List.empty();
 		for (Nogood nogood : nogoods) {
-			List<Posting> kept = getUnboundNames(renameSubstitutions, s, nogood);
+			List<Posting> kept = getUnboundNames(renaming, s, nogood);
 			if (kept.isEmpty()) {
 				continue;
 			}
-			Map<Unknown<?>, Term<?>> display = renameKept(renameSubstitutions, s, kept);
+			Map<Unknown<?>, Term<?>> display = renameKept(renaming, s, kept);
 			Nogood pruned = Nogood.of(kept.size() == 1 ?
 					kept.head() :
 					Posting.all(kept.toJavaArray(Posting[]::new)));
@@ -172,7 +172,7 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 				Constrained.of(unifiable, residuals);
 	}
 
-	private static List<Posting> getUnboundNames(Substitutions renameSubstitutions, Package s, Nogood nogood) {
+	private static List<Posting> getUnboundNames(Renaming renaming, Package s, Nogood nogood) {
 		return literals(nogood)
 				.filter(literal -> {
 					java.util.List<Term<?>> names = literal.terms()
@@ -180,17 +180,17 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 							.map(name -> (Term<?>) name)
 							.collect(Collectors.toList());
 					return !names.isEmpty() && names.stream()
-							.allMatch(name -> renameSubstitutions.walk(name) != name);
+							.allMatch(renaming::renames);
 				});
 	}
 
-	private static Map<Unknown<?>, Term<?>> renameKept(Substitutions renameSubstitutions, Package s, List<Posting> kept) {
+	private static Map<Unknown<?>, Term<?>> renameKept(Renaming renaming, Package s, List<Posting> kept) {
 		return kept.toJavaStream()
 				.flatMap(Posting::terms)
 				.flatMap(term -> s.substitution().namesIn(term))
 				// one name may appear in several kept literals; walk(name) is
 				// deterministic, so both occurrences agree — first wins
-				.collect(Collectors.toMap(Function.identity(), renameSubstitutions::walk,
+				.collect(Collectors.toMap(Function.identity(), renaming::target,
 						(first, same) -> first,
 						LinkedHashMap::new));
 	}

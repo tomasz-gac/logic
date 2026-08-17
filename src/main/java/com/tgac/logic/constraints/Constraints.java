@@ -5,6 +5,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Factor;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVal;
@@ -53,7 +54,7 @@ public class Constraints {
 														.map(result ->
 																s1.getStores() == null ?
 																		result :
-																		reifyConstraints(s1, result, vr._2))))
+																		reifyConstraints(s1, result, Renaming.of(vr._2)))))
 								.map(t -> (Reified<T>) t)
 								.map(Cont::just)));
 	}
@@ -83,13 +84,13 @@ public class Constraints {
 	}
 
 	/** Every store renders its residual constraints into the reified answer. */
-	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Substitutions renameSubstitutions) {
+	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Renaming renaming) {
 		return p.getStores().values()
 				.toJavaStream()
 				.filter(Factor.class::isInstance)
 				.map(cs -> (Factor<?>) cs)
 				.reduce(Try.success(unifiable),
-						(l, cs) -> l.flatMap(u -> Try.of(() -> cs.reify(u, renameSubstitutions, p))),
+						(l, cs) -> l.flatMap(u -> Try.of(() -> cs.reify(u, renaming, p))),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))
 				.get();
 	}
