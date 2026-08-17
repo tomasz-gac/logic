@@ -11,6 +11,7 @@ import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Goal;
@@ -63,6 +64,11 @@ public class CapabilityDriverTest {
 		@Override
 		public boolean isEmpty() {
 			return true;
+		}
+
+		@Override
+		public Theory<EmittingFactor> theory() {
+			throw new UnsupportedOperationException("driver fixtures have no theory");
 		}
 
 		@Override

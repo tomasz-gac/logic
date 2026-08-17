@@ -29,10 +29,10 @@ import lombok.RequiredArgsConstructor;
  */
 @EqualsAndHashCode(of = {"storeClass", "name", "watchedTerms"})
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public final class Propagator implements Atom, Transcribable {
+public final class Propagator<F extends Factor<F>> implements Atom<F>, Transcribable<Propagator<F>> {
 
 	@Getter
-	private final Class<? extends Factor<?>> storeClass;
+	private final Class<? extends F> storeClass;
 	private final String name;
 	private final Array<? extends Term<?>> watchedTerms;
 	private final BiFunction<Array<? extends Term<?>>, Package, Verdict> body;
@@ -52,12 +52,12 @@ public final class Propagator implements Atom, Transcribable {
 	 * (idempotent re-posting — the store dedups them), and renamed instances
 	 * of one post compare equal wherever the renaming agrees.
 	 */
-	public static Propagator of(
-			Class<? extends Factor<?>> storeClass,
+	public static <F extends Factor<F>> Propagator<F> of(
+			Class<? extends F> storeClass,
 			String name,
 			Iterable<? extends Term<?>> watchedTerms,
 			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
-		return new Propagator(storeClass, name, Array.ofAll(watchedTerms), body);
+		return new Propagator<>(storeClass, name, Array.ofAll(watchedTerms), body);
 	}
 
 	/** The terms whose variables this propagator watches — as stated, un-walked. */
@@ -66,7 +66,7 @@ public final class Propagator implements Atom, Transcribable {
 	}
 
 	@Override
-	public Class<? extends Factor<?>> getFactorClass() {
+	public Class<? extends F> getFactorClass() {
 		return storeClass;
 	}
 
@@ -106,7 +106,7 @@ public final class Propagator implements Atom, Transcribable {
 
 	/** The schema re-instantiated over the renamed terms — {@link #watching}. */
 	@Override
-	public Fiber<Atom> rename(Renaming renaming) {
+	public Fiber<Propagator<F>> rename(Renaming renaming) {
 		return watchedTerms.foldLeft(
 						Fiber.<List<Term<?>>> done(List.empty()),
 						(acc, term) -> acc.flatMap(terms ->

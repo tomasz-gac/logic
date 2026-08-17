@@ -21,13 +21,13 @@ import lombok.Value;
  * so {@code prepend} deliberately ignores it.
  */
 @Value
-public class Imposition<L extends Domain<L>> implements Atom, Transcribable {
-	Class<? extends Factor<?>> storeClass;
+public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Atom<F>, Transcribable<Imposition<L, F>> {
+	Class<? extends F> storeClass;
 	Term<?> target;
 	L value;
 
 	@Override
-	public Class<? extends Factor<?>> getFactorClass() {
+	public Class<? extends F> getFactorClass() {
 		return storeClass;
 	}
 
@@ -48,7 +48,7 @@ public class Imposition<L extends Domain<L>> implements Atom, Transcribable {
 
 	/** The value is ground data and rides; only the target re-keys. */
 	@Override
-	public Fiber<Atom> rename(Renaming renaming) {
+	public Fiber<Imposition<L, F>> rename(Renaming renaming) {
 		return renaming.apply(target)
 				.map(renamed -> new Imposition<>(storeClass, renamed, value));
 	}

@@ -7,6 +7,7 @@ import com.tgac.logic.constraints.store.Atom;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -77,6 +78,11 @@ class Span implements Factor<Span> {
 
 	@Override
 	public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p) {
+		throw new UnsupportedOperationException("value-only test store");
+	}
+
+	@Override
+	public Theory<Span> theory() {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 

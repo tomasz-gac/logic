@@ -13,7 +13,7 @@ import com.tgac.functional.fibers.Fiber;
  * across a boundary; {@code Posting.rename} refuses loudly on it rather than
  * crossing knowledge silently.
  */
-public interface Transcribable {
+public interface Transcribable<T> {
 
-	Fiber<Atom> rename(Renaming renaming);
+	Fiber<T> rename(Renaming renaming);
 }

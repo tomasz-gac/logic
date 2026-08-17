@@ -82,7 +82,7 @@ public class LatticeFactorTest {
 		private static final FlatConstraints BOTTOM =
 				new FlatConstraints(LinkedHashMap.empty(), HashSet.empty());
 
-		private FlatConstraints(LinkedHashMap<Term<?>, FlatSet> values, HashSet<Propagator> propagators) {
+		private FlatConstraints(LinkedHashMap<Term<?>, FlatSet> values, HashSet<Propagator<FlatConstraints>> propagators) {
 			super(values, propagators);
 		}
 
@@ -91,7 +91,7 @@ public class LatticeFactorTest {
 		}
 
 		@Override
-		protected FlatConstraints create(LinkedHashMap<Term<?>, FlatSet> values, HashSet<Propagator> propagators) {
+		protected FlatConstraints create(LinkedHashMap<Term<?>, FlatSet> values, HashSet<Propagator<FlatConstraints>> propagators) {
 			return new FlatConstraints(values, propagators);
 		}
 

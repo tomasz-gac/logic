@@ -166,7 +166,7 @@ public class ProjectionTest {
 
 		// w went somewhere fresh — and a SECOND application of the same
 		// renaming sends w to the SAME fresh var
-		Propagator renamedCoupling = renamed.getConstraints().head();
+		Propagator<FiniteDomainConstraints> renamedCoupling = renamed.getConstraints().head();
 		Term<?> mintedW = renamedCoupling.watchedTerms().get(1);
 		assertThat(mintedW.asVar().isDefined()).isTrue();
 		assertThat(mintedW).isNotEqualTo(w);

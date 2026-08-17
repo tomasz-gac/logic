@@ -35,6 +35,13 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 	 */
 	boolean isEmpty();
 
+	/**
+	 * The factor's knowledge as syntax: its atoms, as a plan-space value.
+	 * The crossing out of execution space; absorb is the way back (fold
+	 * {@code meet(Atom)}, then normalize under the destination's context).
+	 */
+	Theory<S> theory();
+
 	/** The store meet: the factor product. Accumulation descends the extension. */
 	S meet(S other);
 

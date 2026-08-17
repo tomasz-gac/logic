@@ -9,6 +9,7 @@ import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -104,6 +105,11 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 	@Override
 	public boolean isEmpty() {
 		return nogoods.isEmpty();
+	}
+
+	@Override
+	public Theory<NogoodConstraints> theory() {
+		return Theory.of(NogoodConstraints.class, nogoods);
 	}
 
 	@Override

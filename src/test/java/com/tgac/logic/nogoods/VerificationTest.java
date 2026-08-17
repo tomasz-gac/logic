@@ -115,9 +115,9 @@ public class VerificationTest {
 		// dropped statement would read "unchanged" — the false cross-off
 		// direction, which can veto a satisfiable branch. Residence is
 		// asserted after literal instead
-		Atom orphan = new Atom() {
+		Atom<NogoodConstraints> orphan = new Atom<NogoodConstraints>() {
 			@Override
-			public Class<? extends Factor<?>> getFactorClass() {
+			public Class<? extends NogoodConstraints> getFactorClass() {
 				return NogoodConstraints.class;
 			}
 

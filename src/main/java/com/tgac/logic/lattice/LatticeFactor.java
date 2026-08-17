@@ -15,6 +15,7 @@ import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Goal;
@@ -58,10 +59,10 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	// entries keyed by NAME: a live LVar or a canonical Hole
 	protected final LinkedHashMap<Term<?>, L> values;
 
-	protected final HashSet<Propagator> propagators;
+	protected final HashSet<Propagator<S>> propagators;
 
 	/** The same store kind over different contents. */
-	protected abstract S create(LinkedHashMap<Term<?>, L> values, HashSet<Propagator> propagators);
+	protected abstract S create(LinkedHashMap<Term<?>, L> values, HashSet<Propagator<S>> propagators);
 
 	/**
 	 * The canonical dead store: meets and cascades transition to it on failure,
@@ -139,15 +140,29 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 
 	@Override
 	public S meet(Atom c) {
+		// an Imposition is a MESSAGE, not parkable content: its value enters
+		// only through stated's routing (verification, collapse, inference) —
+		// a silent park would put un-vetted knowledge in front of normalize
 		return c instanceof Propagator ?
-				create(values, propagators.add((Propagator) c)) :
+				create(values, propagators.add((Propagator<S>) c)) :
 				self();
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Theory<S> theory() {
+		java.util.List<Atom<S>> atoms = new ArrayList<>();
+		for (Tuple2<Term<?>, L> entry : values) {
+			atoms.add(new Imposition<>((Class<S>) getClass(), entry._1, entry._2));
+		}
+		propagators.forEach(atoms::add);
+		return Theory.of((Class<S>) getClass(), atoms);
 	}
 
 	@Override
 	public boolean contains(Atom c) {
 		return c instanceof Propagator &&
-				propagators.contains((Propagator) c);
+				propagators.contains((Propagator<S>) c);
 	}
 
 	/**
@@ -200,7 +215,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	@SuppressWarnings("unchecked")
 	public Posting impose(Term<?> target, L value) {
 		return Propagation.activate(
-				new Imposition<>((Class<? extends Factor<?>>) getClass(), target, value),
+				new Imposition<>((Class<S>) getClass(), target, value),
 				p -> p.getStores().containsKey(getClass()) ? p
 						: p.withStore(create(LinkedHashMap.empty(), HashSet.empty())),
 				p -> doomedAt(p, target, value));
@@ -299,7 +314,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			}
 			factor = factor.create(factor.values.remove(entry._1), factor.propagators);
 		}
-		for (Propagator propagator : propagators) {
+		for (Propagator<S> propagator : propagators) {
 			factor = consume(examine(propagator, state.putStore(factor), factor),
 					factor, inferred, runs, queue);
 			if (factor == null) {
@@ -316,7 +331,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			// update's verification/collapse/narrowing routing, inside the
 			// store's method: the item is a message, the values map keeps
 			// the knowledge
-			Imposition<L> imposition = (Imposition<L>) item;
+			Imposition<L, S> imposition = (Imposition<L, S>) item;
 			List<Prefix> inferred = new ArrayList<>();
 			List<Goal> runs = new ArrayList<>();
 			ArrayDeque<Term<?>> queue = new ArrayDeque<>();
@@ -335,7 +350,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		List<Goal> runs = new ArrayList<>();
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
 		S factor = consume(
-				examine((Propagator) item, state.putStore(this), self()),
+				examine((Propagator<S>) item, state.putStore(this), self()),
 				self(), inferred, runs, queue);
 		if (factor == null) {
 			return Fiber.done(Revision.fail());
@@ -362,7 +377,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		S factor = MonotoneDrain.drainUnsafe(start, queue, (current, next) -> {
 			S stepped = current;
 			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
-			for (Propagator p : stepped.propagators.toJavaList()) {
+			for (Propagator<S> p : stepped.propagators.toJavaList()) {
 				if (!stepped.contains(p)) {
 					// an earlier verdict of this same trigger removed it
 					continue;
@@ -397,7 +412,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	/** One propagator's verdict as an {@link Update} step against the factor. */
-	private Update examine(Propagator p, Package live, S factor) {
+	private Update examine(Propagator<S> p, Package live, S factor) {
 		return p.propagate(live).match(
 				Update::fail,
 				Update::unchanged,
@@ -462,9 +477,9 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 				out = out.put(entry);
 			}
 		}
-		HashSet<Propagator> inConstraints = HashSet.empty();
-		HashSet<Propagator> outConstraints = HashSet.empty();
-		for (Propagator propagator : propagators) {
+		HashSet<Propagator<S>> inConstraints = HashSet.empty();
+		HashSet<Propagator<S>> outConstraints = HashSet.empty();
+		for (Propagator<S> propagator : propagators) {
 			boolean fits = propagator.watchedTerms().forAll(watched ->
 					!watched.asVar().isDefined() || covered.contains(watched));
 			if (fits) {
@@ -487,13 +502,13 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 				Fiber.<LinkedHashMap<Term<?>, L>> done(LinkedHashMap.empty()),
 				(acc, entry) -> acc.flatMap(m -> renaming.apply(entry._1)
 						.map(target -> target.asVal().isDefined() ? m : m.put(target, entry._2))));
-		Fiber<HashSet<Propagator>> renamedConstraints = propagators.foldLeft(
-				Fiber.<HashSet<Propagator>> done(HashSet.empty()),
+		Fiber<HashSet<Propagator<S>>> renamedConstraints = propagators.foldLeft(
+				Fiber.<HashSet<Propagator<S>>> done(HashSet.empty()),
 				(acc, p) -> acc.flatMap(ps -> rewatched(p, renaming).map(ps::add)));
 		return renamed.flatMap(vals -> renamedConstraints.map(props -> create(vals, props)));
 	}
 
-	private static Fiber<Propagator> rewatched(Propagator propagator, Renaming renaming) {
+	private static <F extends Factor<F>> Fiber<Propagator<F>> rewatched(Propagator<F> propagator, Renaming renaming) {
 		return propagator.watchedTerms().foldLeft(
 						Fiber.<Array<Term<?>>> done(Array.empty()),
 						(acc, watched) -> acc.flatMap(terms -> renaming.apply(watched).map(terms::append)))

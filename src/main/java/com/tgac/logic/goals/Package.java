@@ -77,11 +77,13 @@ public class Package {
 	}
 
 	/** Prepends {@code c} into its store; unchanged when the store is absent. */
-	public Package withStored(Atom c) {
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public Package withStored(Atom<?> c) {
 		Watermark.check(this, c);
-		return stores.get(c.getFactorClass())
-				.map(cs -> ((com.tgac.logic.constraints.store.Factor<?>) cs).meet(c))
-				.map(cs -> Package.of(substitutions, stores.put(c.getFactorClass(), cs)))
+		Class<? extends Packaged> key = c.getFactorClass();
+		return stores.get(key)
+				.map(cs -> (Packaged) ((com.tgac.logic.constraints.store.Factor) cs).meet(c))
+				.map(cs -> Package.of(substitutions, stores.put(key, cs)))
 				.getOrElse(this);
 	}
 

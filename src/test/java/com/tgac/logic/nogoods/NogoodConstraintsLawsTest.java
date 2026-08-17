@@ -6,6 +6,7 @@ package com.tgac.logic.nogoods;
 import com.tgac.logic.constraints.Posting;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
@@ -30,6 +31,18 @@ public class NogoodConstraintsLawsTest {
 	private static final Nogood Y_APART = Nogood.of(Posting.bind(Y, lval(2)));
 	private static final Nogood NOT_BOTH = Nogood.of(Posting.all(
 			Posting.bind(X, lval(1)), Posting.bind(Y, lval(2))));
+
+	@Test
+	public void theoryRoundTripRebuildsTheFactor() {
+		// the crossing there and back, pure for nogoods (the factor IS the bag):
+		// theory() → fold meet(Atom) into the empty family ≡ the original —
+		// exact on a subsumption-free factor (the crossing deletes dominated atoms)
+		NogoodConstraints factor = NogoodConstraints.of(
+				LinkedHashSet.of(X_APART, Y_APART));
+		NogoodConstraints rebuilt = factor.theory().atoms()
+				.foldLeft(NogoodConstraints.EMPTY, NogoodConstraints::meet);
+		assertThat(rebuilt).isEqualTo(factor);
+	}
 
 	@Test
 	public void nogoodUnionIsAMeetSemilattice() {

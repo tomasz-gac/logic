@@ -3,6 +3,7 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: The singular case of a constraint: one named item with its watched
 // ABOUTME: surface and payload — the unit families accumulate and split into.
 
+import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.logic.unification.Term;
 import java.util.stream.Stream;
 
@@ -15,9 +16,22 @@ import java.util.stream.Stream;
  * arrives with the singleton family views — an atom's class field names its
  * family until then.
  */
-public interface Atom {
+public interface Atom<F extends Factor<F>> extends PartialOrder<Atom<F>> {
 
-	Class<? extends Factor<?>> getFactorClass();
+	/**
+	 * Single-atom entailment: this ⊑ other iff this atom alone implies that
+	 * one — the covering order's fuel. Default is STRUCTURAL equality (grade
+	 * one of the tower); sharp overrides (domain containment, nogood
+	 * subsumption) are sound only over WALKED terms and must answer false
+	 * over open ones.
+	 */
+	@Override
+	default boolean leq(Atom<F> other) {
+		return equals(other);
+	}
+
+
+	Class<? extends F> getFactorClass();
 
 	String name();
 

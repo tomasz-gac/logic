@@ -31,12 +31,12 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 	private static final FiniteDomainConstraints BOTTOM =
 			new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
 
-	private FiniteDomainConstraints(LinkedHashMap<Term<?>, Domain<Object>> domains, HashSet<Propagator> constraints) {
+	private FiniteDomainConstraints(LinkedHashMap<Term<?>, Domain<Object>> domains, HashSet<Propagator<FiniteDomainConstraints>> constraints) {
 		super(domains, constraints);
 	}
 
 	@SuppressWarnings("unchecked")
-	static FiniteDomainConstraints of(LinkedHashMap<Term<?>, Domain<?>> domains, HashSet<Propagator> constraints) {
+	static FiniteDomainConstraints of(LinkedHashMap<Term<?>, Domain<?>> domains, HashSet<Propagator<FiniteDomainConstraints>> constraints) {
 		return new FiniteDomainConstraints((LinkedHashMap<Term<?>, Domain<Object>>) (LinkedHashMap<?, ?>) domains, constraints);
 	}
 
@@ -76,7 +76,7 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 	}
 
 	// cKanren constraints
-	public HashSet<Propagator> getConstraints() {
+	public HashSet<Propagator<FiniteDomainConstraints>> getConstraints() {
 		return propagators;
 	}
 
@@ -91,7 +91,7 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 	}
 
 	@Override
-	protected FiniteDomainConstraints create(LinkedHashMap<Term<?>, Domain<Object>> values, HashSet<Propagator> propagators) {
+	protected FiniteDomainConstraints create(LinkedHashMap<Term<?>, Domain<Object>> values, HashSet<Propagator<FiniteDomainConstraints>> propagators) {
 		return new FiniteDomainConstraints(values, propagators);
 	}
 
