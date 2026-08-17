@@ -3,7 +3,7 @@ package com.tgac.logic.lattice;
 // ABOUTME: A propagator's application to its OWN store's factor — the intra-store
 // ABOUTME: answer type, distinct from the store→driver Revision.
 
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
@@ -33,7 +33,7 @@ public abstract class Update {
 		return Unchanged.INSTANCE;
 	}
 
-	public static Applied applied(Constraint<?> factor) {
+	public static Applied applied(Factor<?> factor) {
 		return new Applied(factor,
 				Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 	}
@@ -74,12 +74,12 @@ public abstract class Update {
 	}
 
 	public static final class Applied extends Update {
-		private final Constraint<?> factor;
+		private final Factor<?> factor;
 		private final List<Prefix> inferred;
 		private final List<Term<?>> reexamine;
 		private final List<Goal> runs;
 
-		private Applied(Constraint<?> factor, List<Prefix> inferred,
+		private Applied(Factor<?> factor, List<Prefix> inferred,
 				List<Term<?>> reexamine, List<Goal> runs) {
 			this.factor = factor;
 			this.inferred = inferred;
@@ -102,7 +102,7 @@ public abstract class Update {
 			return new Applied(factor, inferred, reexamine, appended(runs, goal));
 		}
 
-		public Constraint<?> factor() {
+		public Factor<?> factor() {
 			return factor;
 		}
 

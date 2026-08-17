@@ -33,7 +33,7 @@ import org.junit.Test;
  * is inherited machinery; the component lattice carries its capability record
  * and the store supplies only its construction seams.
  */
-public class LatticeConstraintTest {
+public class LatticeFactorTest {
 
 	/** The component lattice: a finite set of admissible values. */
 	@Value
@@ -76,7 +76,7 @@ public class LatticeConstraintTest {
 	}
 
 	/** The store: nothing but its construction seams. */
-	static final class FlatConstraints extends LatticeConstraint<FlatSet, FlatConstraints> {
+	static final class FlatConstraints extends LatticeFactor<FlatSet, FlatConstraints> {
 		private static final FlatConstraints EMPTY =
 				new FlatConstraints(LinkedHashMap.empty(), HashSet.empty());
 		private static final FlatConstraints BOTTOM =

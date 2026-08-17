@@ -3,7 +3,7 @@
 /**
  * The store protocol — the driver's entire constraint boundary
  * (docs/reference/constraint-kernel.md). A {@link
- * com.tgac.logic.constraints.store.Constraint} is one constraint domain's
+ * com.tgac.logic.constraints.store.Factor} is one constraint domain's
  * factor of the package (finite domains, disequality), living for the whole
  * derivation. Two triggers — {@code revise} (bindings arrived: custody, your
  * own watchers, your own cascade) and {@code stated} (your item was stated;

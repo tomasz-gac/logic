@@ -13,7 +13,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
@@ -52,8 +52,8 @@ import lombok.RequiredArgsConstructor;
  * {@link #bottomStore} plus its {@code enforce}.
  */
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeConstraint<L, S>>
-		implements Constraint<S>, Absorbing {
+public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor<L, S>>
+		implements Factor<S>, Absorbing {
 
 	// entries keyed by NAME: a live LVar or a canonical Hole
 	protected final LinkedHashMap<Term<?>, L> values;
@@ -200,7 +200,7 @@ public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeCo
 	@SuppressWarnings("unchecked")
 	public Posting impose(Term<?> target, L value) {
 		return Propagation.activate(
-				new Imposition<>((Class<? extends Constraint<?>>) getClass(), target, value),
+				new Imposition<>((Class<? extends Factor<?>>) getClass(), target, value),
 				p -> p.getStores().containsKey(getClass()) ? p
 						: p.withStore(create(LinkedHashMap.empty(), HashSet.empty())),
 				p -> doomedAt(p, target, value));
@@ -508,7 +508,7 @@ public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeCo
 		if (o == null || getClass() != o.getClass()) {
 			return false;
 		}
-		LatticeConstraint<?, ?> that = (LatticeConstraint<?, ?>) o;
+		LatticeFactor<?, ?> that = (LatticeFactor<?, ?>) o;
 		if (isAbsorbing() || that.isAbsorbing()) {
 			// ⊥ has exactly one representative per kind — identity, never structure,
 			// so an empty live store can never compare equal to the dead one

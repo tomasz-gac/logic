@@ -9,7 +9,7 @@ import com.tgac.logic.constraints.UnifyGoal;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.constraints.store.Atom;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.List;
 import java.util.stream.Stream;
@@ -70,7 +70,7 @@ public class Nogood implements Atom, Transcribable {
 			};
 
 	@Override
-	public Class<? extends Constraint<?>> getConstraintClass() {
+	public Class<? extends Factor<?>> getFactorClass() {
 		return NogoodConstraints.class;
 	}
 

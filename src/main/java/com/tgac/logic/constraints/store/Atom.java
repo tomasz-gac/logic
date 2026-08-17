@@ -17,7 +17,7 @@ import java.util.stream.Stream;
  */
 public interface Atom {
 
-	Class<? extends Constraint<?>> getConstraintClass();
+	Class<? extends Factor<?>> getFactorClass();
 
 	String name();
 

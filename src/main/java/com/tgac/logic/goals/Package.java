@@ -79,9 +79,9 @@ public class Package {
 	/** Prepends {@code c} into its store; unchanged when the store is absent. */
 	public Package withStored(Atom c) {
 		Watermark.check(this, c);
-		return stores.get(c.getConstraintClass())
-				.map(cs -> ((com.tgac.logic.constraints.store.Constraint<?>) cs).meet(c))
-				.map(cs -> Package.of(substitutions, stores.put(c.getConstraintClass(), cs)))
+		return stores.get(c.getFactorClass())
+				.map(cs -> ((com.tgac.logic.constraints.store.Factor<?>) cs).meet(c))
+				.map(cs -> Package.of(substitutions, stores.put(c.getFactorClass(), cs)))
 				.getOrElse(this);
 	}
 

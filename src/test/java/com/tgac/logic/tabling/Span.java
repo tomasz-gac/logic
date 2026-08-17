@@ -5,7 +5,7 @@ package com.tgac.logic.tabling;
 
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -27,7 +27,7 @@ import lombok.Value;
  * because a conjunct inside a {@link Condition} is data, never driven.
  */
 @Value
-class Span implements Constraint<Span> {
+class Span implements Factor<Span> {
 	long lo;
 	long hi;
 

@@ -9,7 +9,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.constraints.store.Atom;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Array;
 import io.vavr.collection.List;
@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
  * The parked unit of the wake machinery (docs/reference/constraint-kernel.md* §2.2). Extends {@link Atom} so park/remove route to the owning store without a
  * wrapper. Watch matching walks the watched terms against the LIVE state, so
  * aliasing (x bound to y) re-targets the watch structurally, where the old
- * Constraint protocol relied on the re-park-with-freshly-walked-args side effect of
+ * Factor protocol relied on the re-park-with-freshly-walked-args side effect of
  * remove-and-rerun.
  */
 @EqualsAndHashCode(of = {"storeClass", "name", "watchedTerms"})
@@ -32,7 +32,7 @@ import lombok.RequiredArgsConstructor;
 public final class Propagator implements Atom, Transcribable {
 
 	@Getter
-	private final Class<? extends Constraint<?>> storeClass;
+	private final Class<? extends Factor<?>> storeClass;
 	private final String name;
 	private final Array<? extends Term<?>> watchedTerms;
 	private final BiFunction<Array<? extends Term<?>>, Package, Verdict> body;
@@ -53,7 +53,7 @@ public final class Propagator implements Atom, Transcribable {
 	 * of one post compare equal wherever the renaming agrees.
 	 */
 	public static Propagator of(
-			Class<? extends Constraint<?>> storeClass,
+			Class<? extends Factor<?>> storeClass,
 			String name,
 			Iterable<? extends Term<?>> watchedTerms,
 			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
@@ -66,7 +66,7 @@ public final class Propagator implements Atom, Transcribable {
 	}
 
 	@Override
-	public Class<? extends Constraint<?>> getConstraintClass() {
+	public Class<? extends Factor<?>> getFactorClass() {
 		return storeClass;
 	}
 

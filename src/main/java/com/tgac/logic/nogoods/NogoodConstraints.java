@@ -7,7 +7,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -48,7 +48,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @EqualsAndHashCode
 @RequiredArgsConstructor(staticName = "of")
-final class NogoodConstraints implements Constraint<NogoodConstraints> {
+final class NogoodConstraints implements Factor<NogoodConstraints> {
 	public static final NogoodConstraints EMPTY = NogoodConstraints.of(LinkedHashSet.empty());
 	private final LinkedHashSet<Nogood> nogoods;
 

@@ -37,7 +37,7 @@ public abstract class Revision {
 	}
 
 	/** Replace my factor; add consequences with the {@code with*} builders. */
-	public static Updated updated(Constraint<?> replacement) {
+	public static Updated updated(Factor<?> replacement) {
 		return new Updated(replacement,
 				Collections.emptyList(), Collections.emptyList());
 	}
@@ -78,11 +78,11 @@ public abstract class Revision {
 	}
 
 	public static final class Updated extends Revision {
-		private final Constraint<?> factor;
+		private final Factor<?> factor;
 		private final List<Prefix> inferred;
 		private final List<Suspension> suspensions;
 
-		private Updated(Constraint<?> factor, List<Prefix> inferred, List<Suspension> suspensions) {
+		private Updated(Factor<?> factor, List<Prefix> inferred, List<Suspension> suspensions) {
 			this.factor = factor;
 			this.inferred = inferred;
 			this.suspensions = suspensions;
@@ -106,7 +106,7 @@ public abstract class Revision {
 			return new Updated(factor, inferred, appended(suspensions, suspension));
 		}
 
-		public Constraint<?> factor() {
+		public Factor<?> factor() {
 			return factor;
 		}
 

@@ -4,7 +4,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: entailed fails, survivors keep their original literals, bindings thread.
 
 import com.tgac.logic.constraints.store.Atom;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
@@ -117,7 +117,7 @@ public class VerificationTest {
 		// asserted after literal instead
 		Atom orphan = new Atom() {
 			@Override
-			public Class<? extends Constraint<?>> getConstraintClass() {
+			public Class<? extends Factor<?>> getFactorClass() {
 				return NogoodConstraints.class;
 			}
 

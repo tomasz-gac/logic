@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public interface Constraint<S extends Constraint<S>> extends Packaged, Semilattice<S>, PartialOrder<S> {
+public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, PartialOrder<S> {
 
 	/**
 	 * The statement meet: parks {@code c} in the family — pure, context-free,

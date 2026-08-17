@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
@@ -38,10 +38,10 @@ import org.junit.Test;
 public class CapabilityDriverTest {
 
 	/** A test-only constraint domain that emits configured inferences on every prefix. */
-	private static abstract class EmittingConstraint implements Constraint<EmittingConstraint> {
+	private static abstract class EmittingFactor implements Factor<EmittingFactor> {
 		final BiFunction<Prefix, Package, Revision> reaction;
 
-		EmittingConstraint(BiFunction<Prefix, Package, Revision> reaction) {
+		EmittingFactor(BiFunction<Prefix, Package, Revision> reaction) {
 			this.reaction = reaction;
 		}
 
@@ -66,7 +66,7 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public EmittingConstraint meet(Atom c) {
+		public EmittingFactor meet(Atom c) {
 			return this;
 		}
 
@@ -76,17 +76,17 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public Tuple2<EmittingConstraint, EmittingConstraint> split(List<LVar<?>> vars) {
+		public Tuple2<EmittingFactor, EmittingFactor> split(List<LVar<?>> vars) {
 			throw new UnsupportedOperationException("driver fixtures do not split");
 		}
 
 		@Override
-		public Fiber<EmittingConstraint> rename(Renaming renaming) {
+		public Fiber<EmittingFactor> rename(Renaming renaming) {
 			throw new UnsupportedOperationException("driver fixtures do not rename");
 		}
 
 		@Override
-		public EmittingConstraint meet(EmittingConstraint other) {
+		public EmittingFactor meet(EmittingFactor other) {
 			throw new UnsupportedOperationException("driver fixtures do not meet");
 		}
 
@@ -97,14 +97,14 @@ public class CapabilityDriverTest {
 	}
 
 	// two distinct classes: the store map is keyed by class
-	private static final class ConstraintA extends EmittingConstraint {
-		ConstraintA(BiFunction<Prefix, Package, Revision> r) {
+	private static final class FactorA extends EmittingFactor {
+		FactorA(BiFunction<Prefix, Package, Revision> r) {
 			super(r);
 		}
 	}
 
-	private static class ConstraintB extends EmittingConstraint {
-		ConstraintB(BiFunction<Prefix, Package, Revision> r) {
+	private static class FactorB extends EmittingFactor {
+		FactorB(BiFunction<Prefix, Package, Revision> r) {
 			super(r);
 		}
 	}
@@ -126,17 +126,17 @@ public class CapabilityDriverTest {
 
 	@Test(timeout = 5000)
 	public void aRevisionMayOnlyReplaceItsOwnFactor() {
-		// ConstraintA answers revise with a ConstraintB replacement: a
+		// FactorA answers revise with a FactorB replacement: a
 		// cross-family swap the driver must refuse by name - putStore would
 		// otherwise silently overwrite ANOTHER family's factor
 		Package root = root(
-				new ConstraintA((prefix, state) -> Revision.updated(
-						new ConstraintB((pf, st) -> Revision.unchanged()))));
+				new FactorA((prefix, state) -> Revision.updated(
+						new FactorB((pf, st) -> Revision.unchanged()))));
 
 		assertThatThrownBy(() -> solutions(root))
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("ConstraintA")
-				.hasMessageContaining("ConstraintB");
+				.hasMessageContaining("FactorA")
+				.hasMessageContaining("FactorB");
 	}
 
 	@Test(timeout = 5000)
@@ -144,9 +144,9 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new ConstraintA((prefix, state) -> Revision.updated(new ConstraintA((pf, st) -> Revision.unchanged()))
+				new FactorA((prefix, state) -> Revision.updated(new FactorA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())),
-				new ConstraintB((prefix, state) -> Revision.updated(new ConstraintB((pf, st) -> Revision.unchanged()))
+				new FactorB((prefix, state) -> Revision.updated(new FactorB((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(2L)).get())));
 
 		// two stores infer q=1 and q=2 in one pass: the branch is inconsistent and
@@ -159,9 +159,9 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new ConstraintA((prefix, state) -> Revision.updated(new ConstraintA((pf, st) -> Revision.unchanged()))
+				new FactorA((prefix, state) -> Revision.updated(new FactorA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())),
-				new ConstraintB((prefix, state) -> Revision.updated(new ConstraintB((pf, st) -> Revision.unchanged()))
+				new FactorB((prefix, state) -> Revision.updated(new FactorB((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())));
 
 		assertThat(solutions(root)).isEqualTo(1);
@@ -177,7 +177,7 @@ public class CapabilityDriverTest {
 		};
 
 		Package root = root(
-				new ConstraintA((prefix, state) -> Revision.updated(new ConstraintA((pf, st) -> Revision.unchanged()))
+				new FactorA((prefix, state) -> Revision.updated(new FactorA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())));
 
 		Unifiable<Long> x = lvar();
@@ -204,8 +204,8 @@ public class CapabilityDriverTest {
 		};
 
 		Package root = root(
-				new ConstraintA((prefix, state) ->
-						Revision.updated(new ConstraintA((pf, st) -> Revision.unchanged()))
+				new FactorA((prefix, state) ->
+						Revision.updated(new FactorA((pf, st) -> Revision.unchanged()))
 								.withSuspend(Suspension.of(
 										Collections.emptyList(), st -> true, probe))));
 

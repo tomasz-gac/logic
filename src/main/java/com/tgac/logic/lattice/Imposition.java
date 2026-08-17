@@ -8,26 +8,26 @@ import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.constraints.store.Atom;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.unification.Term;
 import java.util.stream.Stream;
 import lombok.Value;
 
 /**
  * "{@code target ⊂ value}" as an item: stated through the chokepoint, the
- * owning {@link LatticeConstraint} consumes it in its {@code stated} trigger —
+ * owning {@link LatticeFactor} consumes it in its {@code stated} trigger —
  * update's verification/collapse/narrowing routing, inside the store's
  * method. The item itself never persists: the values map is the knowledge,
  * so {@code prepend} deliberately ignores it.
  */
 @Value
 public class Imposition<L extends Domain<L>> implements Atom, Transcribable {
-	Class<? extends Constraint<?>> storeClass;
+	Class<? extends Factor<?>> storeClass;
 	Term<?> target;
 	L value;
 
 	@Override
-	public Class<? extends Constraint<?>> getConstraintClass() {
+	public Class<? extends Factor<?>> getFactorClass() {
 		return storeClass;
 	}
 

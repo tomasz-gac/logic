@@ -1,6 +1,6 @@
 package com.tgac.logic.constraints;
 
-// ABOUTME: Constraint-aware unification as a data goal: order 1 — it can only
+// ABOUTME: Factor-aware unification as a data goal: order 1 — it can only
 // ABOUTME: prune or pass, never branch — so ordering passes sort it first.
 
 import static com.tgac.functional.category.Nothing.nothing;

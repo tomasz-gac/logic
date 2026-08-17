@@ -6,7 +6,7 @@ package com.tgac.logic.constraints;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Goal;
@@ -192,10 +192,10 @@ public interface Posting extends Goal, Bounded {
 		 */
 		private Goal landed() {
 			return s -> {
-				if (!s.getStores().containsKey(item.getConstraintClass())) {
+				if (!s.getStores().containsKey(item.getFactorClass())) {
 					throw new IllegalStateException(
 							"statement dropped: no store registered for "
-									+ item.getConstraintClass().getSimpleName() + " — " + item);
+									+ item.getFactorClass().getSimpleName() + " — " + item);
 				}
 				return Cont.just(s);
 			};
@@ -264,10 +264,10 @@ public interface Posting extends Goal, Bounded {
 	@Getter
 	@EqualsAndHashCode(of = "factor")
 	class Absorption implements Posting {
-		private final Constraint<?> factor;
+		private final Factor<?> factor;
 		private final List<Term<?>> declared;
 
-		Absorption(Constraint<?> factor, List<Term<?>> declared) {
+		Absorption(Factor<?> factor, List<Term<?>> declared) {
 			this.factor = factor;
 			this.declared = declared;
 		}

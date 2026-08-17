@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.store.Atom;
-import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -75,13 +75,13 @@ public class NormalizeAgreementLawsTest {
 			Package extended = p.withSubstitutions(examined.get()._1);
 
 			for (Object store : extended.getStores().values()) {
-				if (!(store instanceof Constraint)) {
+				if (!(store instanceof Factor)) {
 					continue;
 				}
 				exercised++;
-				Constraint<?> cs = (Constraint<?>) store;
-				Revision delta = run((Fiber<Revision>) ((Constraint) cs).normalize(kept, extended));
-				Revision wholesale = run((Fiber<Revision>) ((Constraint) cs).normalize(extended));
+				Factor<?> cs = (Factor<?>) store;
+				Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize(kept, extended));
+				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(extended));
 
 				Option<Object> deltaLanding = landing(delta, cs);
 				Option<Object> wholesaleLanding = landing(wholesale, cs);
@@ -131,12 +131,12 @@ public class NormalizeAgreementLawsTest {
 					: exclude(conflicting ? x.unifies(x) : x.unifies(lval((long) r.nextInt(5))));
 			Atom atom = ((Posting.Activation) posting).getItem();
 			Package parked = p.withStored(atom);
-			Constraint<?> cs = (Constraint<?>) parked.getStores()
-					.get(atom.getConstraintClass()).get();
+			Factor<?> cs = (Factor<?>) parked.getStores()
+					.get(atom.getFactorClass()).get();
 
 			exercised++;
-			Revision delta = run((Fiber<Revision>) ((Constraint) cs).stated(atom, parked));
-			Revision wholesale = run((Fiber<Revision>) ((Constraint) cs).normalize(parked));
+			Revision delta = run((Fiber<Revision>) ((Factor) cs).stated(atom, parked));
+			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(parked));
 			Option<Object> deltaLanding = landing(delta, cs);
 			Option<Object> wholesaleLanding = landing(wholesale, cs);
 			if (!deltaLanding.isDefined()) {
@@ -164,7 +164,7 @@ public class NormalizeAgreementLawsTest {
 	}
 
 	/** Failure = none; otherwise the factor the revision leaves resident. */
-	private static Option<Object> landing(Revision revision, Constraint<?> cs) {
+	private static Option<Object> landing(Revision revision, Factor<?> cs) {
 		return revision.match(
 				Option::none,
 				() -> Option.of(cs),
