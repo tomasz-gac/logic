@@ -10,7 +10,8 @@ import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.unification.Term;
-import java.util.stream.Stream;
+import io.vavr.collection.HashSet;
+import io.vavr.collection.Traversable;
 import lombok.Value;
 
 /**
@@ -62,8 +63,8 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 	}
 
 	@Override
-	public Stream<Term<?>> watched() {
-		return Stream.of(target);
+	public Traversable<Term<?>> watched() {
+		return HashSet.of(target);
 	}
 
 	@Override

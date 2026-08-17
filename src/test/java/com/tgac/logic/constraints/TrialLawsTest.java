@@ -173,7 +173,7 @@ public class TrialLawsTest {
 			Nogood flat = Nogood.of(Posting.all(a, b, c));
 			assertThat(nested).describedAs("seed %d: ∧ nesting visible", seed)
 					.isEqualTo(flat);
-			assertThat(Nogood.of(flat.getForbidden()))
+			assertThat(Nogood.of(flat.conjunct()))
 					.describedAs("seed %d: ∧ flattening not idempotent", seed)
 					.isEqualTo(flat);
 

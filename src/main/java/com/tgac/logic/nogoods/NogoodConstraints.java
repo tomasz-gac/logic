@@ -79,9 +79,8 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 		LinkedHashSet<Nogood> in = LinkedHashSet.empty();
 		LinkedHashSet<Nogood> out = LinkedHashSet.empty();
 		for (Nogood nogood : nogoods) {
-			boolean fits = nogood.watched()
-					.flatMap(MiniKanren::namesIn)
-					.allMatch(covered::contains);
+			boolean fits = nogood.watched().forAll(term ->
+					MiniKanren.namesIn(term).allMatch(covered::contains));
 			if (fits) {
 				in = in.add(nogood);
 			} else {
@@ -111,9 +110,11 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 		return Theory.of(nogoods);
 	}
 
+	/** Flattens: the factor's digested form is one resident per conjunct. */
 	@Override
 	public NogoodConstraints meet(Atom<NogoodConstraints> c) {
-		return NogoodConstraints.of(nogoods.add((Nogood) c));
+		return NogoodConstraints.of(nogoods.addAll(
+				((Nogood) c).getForbidden().map(Nogood::of)));
 	}
 
 	@Override
@@ -200,8 +201,8 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	}
 
 	private static List<Posting> literals(Nogood nogood) {
-		return nogood.getForbidden() instanceof Posting.AllOf ?
-				((Posting.AllOf) nogood.getForbidden()).getParts() :
-				List.of(nogood.getForbidden());
+		return nogood.conjunct() instanceof Posting.AllOf ?
+				((Posting.AllOf) nogood.conjunct()).getParts() :
+				List.of(nogood.conjunct());
 	}
 }

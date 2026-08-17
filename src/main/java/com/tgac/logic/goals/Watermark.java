@@ -67,7 +67,7 @@ public class Watermark implements Packaged {
 	 * are already bound to values.
 	 */
 	public static void check(Package pkg, Atom item) {
-		markOn(pkg).forEach(watermark -> refuseOldFreeNames(pkg, watermark, item.watched()));
+		markOn(pkg).forEach(watermark -> refuseOldFreeNames(pkg, watermark, item.watched().toJavaStream()));
 	}
 
 	/**

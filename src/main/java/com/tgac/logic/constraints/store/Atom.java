@@ -6,7 +6,7 @@ package com.tgac.logic.constraints.store;
 import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Term;
-import java.util.stream.Stream;
+import io.vavr.collection.Traversable;
 
 /**
  * One constraint item: the unit a family accumulates by meet and decomposes
@@ -36,7 +36,13 @@ public interface Atom<F extends Factor<F>> extends PartialOrder<Atom<F>> {
 
 	String name();
 
-	Stream<Term<?>> watched();
+	/**
+	 * The watched surface as the collection the atom HOLDS — its equality is
+	 * the kind's identity granularity (a propagator's ordered Array keeps
+	 * positional variants distinct; a nogood's surface set ignores order),
+	 * which is what lets a theory key its slots on it directly.
+	 */
+	Traversable<Term<?>> watched();
 
 	Object payload();
 

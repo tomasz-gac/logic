@@ -11,12 +11,11 @@ import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.LinkedHashSet;
+import io.vavr.collection.Traversable;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
@@ -55,23 +54,23 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 
 	/**
 	 * The slot index, derived from {@code atoms} (excluded from equality):
-	 * collision key → the atoms on that surface. A capability kind's bucket
-	 * is always the singleton fused representative; undeclared kinds share
-	 * the bucket. Meet merges indexes — each atom's surface is collected
-	 * once, at the door it entered through, never per comparison.
+	 * collision key → THE atom on that slot, one hop. Single occupancy is
+	 * the atom kinds' obligation — a kind whose knowledge accumulates on one
+	 * surface holds it as a collection and declares {@link Semilattice}.
+	 * The key is the collection the atom already holds, so its equality is
+	 * the kind's identity granularity and keying costs nothing.
 	 */
-	private final LinkedHashMap<Slot, LinkedHashSet<Atom<F>>> slots;
+	private final LinkedHashMap<Slot, Atom<F>> slots;
 
-	/** The collision key: same name, same watched surface = same slot. */
+	/** The collision key: same name, same held watched collection = same slot. */
 	@Value
 	private static class Slot {
 		String name;
-		HashSet<Term<?>> surface;
+		Traversable<Term<?>> surface;
 	}
 
 	private static Slot slotOf(Atom<?> atom) {
-		return new Slot(atom.name(),
-				HashSet.ofAll(atom.watched().collect(Collectors.toList())));
+		return new Slot(atom.name(), atom.watched());
 	}
 
 	public static <F extends Factor<F>> Theory<F> empty() {
@@ -84,7 +83,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 
 	/** Normal form: fuse slot-mates, then delete dominated — every door digests. */
 	private static <F extends Factor<F>> Theory<F> digested(Iterable<? extends Atom<F>> in) {
-		LinkedHashMap<Slot, LinkedHashSet<Atom<F>>> slots = LinkedHashMap.empty();
+		LinkedHashMap<Slot, Atom<F>> slots = LinkedHashMap.empty();
 		for (Atom<F> atom : in) {
 			slots = inserted(slots, slotOf(atom), atom);
 		}
@@ -94,16 +93,25 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	/**
 	 * The capability meet: an atom kind that declares {@link Semilattice}
 	 * knows how to digest its own slot-mates — combining is family
-	 * knowledge, read here as a capability, never assumed. Undeclared kinds
-	 * union into the bucket.
+	 * knowledge, read here as a capability, never assumed. A kind that
+	 * cannot combine yet collides has broken the single-occupancy
+	 * obligation: hold the collection inside the atom.
 	 */
-	private static <F extends Factor<F>> LinkedHashMap<Slot, LinkedHashSet<Atom<F>>> inserted(
-			LinkedHashMap<Slot, LinkedHashSet<Atom<F>>> slots, Slot slot, Atom<F> atom) {
-		LinkedHashSet<Atom<F>> bucket = slots.get(slot).getOrElse(LinkedHashSet.empty());
-		if (atom instanceof Semilattice && bucket.nonEmpty()) {
-			return slots.put(slot, LinkedHashSet.of(fuse(bucket.head(), atom)));
-		}
-		return slots.put(slot, bucket.add(atom));
+	private static <F extends Factor<F>> LinkedHashMap<Slot, Atom<F>> inserted(
+			LinkedHashMap<Slot, Atom<F>> slots, Slot slot, Atom<F> atom) {
+		return slots.get(slot)
+				.map(occupant -> {
+					if (occupant.equals(atom)) {
+						return slots;
+					}
+					if (occupant instanceof Semilattice && atom instanceof Semilattice) {
+						return slots.put(slot, fuse(occupant, atom));
+					}
+					throw new IllegalStateException(
+							"slot-mates that cannot combine — the kind must hold its collection: "
+									+ occupant + " vs " + atom);
+				})
+				.getOrElse(() -> slots.put(slot, atom));
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
@@ -111,17 +119,14 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		return (Atom<F>) ((Semilattice) a).combine((Semilattice) b);
 	}
 
-	/** The domination filter over the fused buckets; rebuilt only on a kill. */
-	private static <F extends Factor<F>> Theory<F> pruned(LinkedHashMap<Slot, LinkedHashSet<Atom<F>>> slots) {
-		LinkedHashSet<Atom<F>> flat = slots.values()
-				.foldLeft(LinkedHashSet.empty(), LinkedHashSet::addAll);
+	/** The domination filter over the fused slots; rebuilt only on a kill. */
+	private static <F extends Factor<F>> Theory<F> pruned(LinkedHashMap<Slot, Atom<F>> slots) {
+		LinkedHashSet<Atom<F>> flat = LinkedHashSet.ofAll(slots.values());
 		LinkedHashSet<Atom<F>> kept = minimal(flat);
 		if (kept.size() == flat.size()) {
 			return new Theory<>(flat, slots);
 		}
-		return new Theory<>(kept, slots
-				.mapValues(bucket -> bucket.filter(kept::contains))
-				.filterValues(LinkedHashSet::nonEmpty));
+		return new Theory<>(kept, slots.filterValues(kept::contains));
 	}
 
 	/**
@@ -148,11 +153,9 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	 * is linear in the right-hand theory.
 	 */
 	public Theory<F> meet(Theory<F> other) {
-		LinkedHashMap<Slot, LinkedHashSet<Atom<F>>> merged = slots;
-		for (Tuple2<Slot, LinkedHashSet<Atom<F>>> entry : other.slots) {
-			for (Atom<F> atom : entry._2) {
-				merged = inserted(merged, entry._1, atom);
-			}
+		LinkedHashMap<Slot, Atom<F>> merged = slots;
+		for (Tuple2<Slot, Atom<F>> entry : other.slots) {
+			merged = inserted(merged, entry._1, entry._2);
 		}
 		return pruned(merged);
 	}
@@ -181,9 +184,8 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		LinkedHashSet<Atom<F>> covered = LinkedHashSet.empty();
 		LinkedHashSet<Atom<F>> remainder = LinkedHashSet.empty();
 		for (Atom<F> atom : atoms) {
-			boolean in = atom.watched()
-					.flatMap(MiniKanren::namesIn)
-					.allMatch(vars::contains);
+			boolean in = atom.watched().forAll(term ->
+					MiniKanren.namesIn(term).allMatch(vars::contains));
 			if (in) {
 				covered = covered.add(atom);
 			} else {

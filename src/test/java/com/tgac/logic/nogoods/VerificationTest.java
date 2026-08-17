@@ -94,8 +94,8 @@ public class VerificationTest {
 				Posting.bind(x, lval(1)), Posting.bind(y, lval(2)));
 
 		Nogood survivor = verdict.get().head();
-		assertThat(survivor.getForbidden()).isInstanceOf(Posting.Resolution.class);
-		assertThat(survivor.getForbidden().terms()
+		assertThat(survivor.conjunct()).isInstanceOf(Posting.Resolution.class);
+		assertThat(survivor.conjunct().terms()
 				.anyMatch(t -> t == x.asVar().get())).isTrue();
 	}
 
@@ -107,7 +107,7 @@ public class VerificationTest {
 		Option<List<Nogood>> verdict = verified(Package.empty(),
 				Posting.bind(x, lval(1)), Posting.bind(y, lval(2)));
 
-		Posting forbidden = verdict.get().head().getForbidden();
+		Posting forbidden = verdict.get().head().conjunct();
 		assertThat(forbidden).isInstanceOf(Posting.AllOf.class);
 		assertThat(((Posting.AllOf) forbidden).getParts())
 				.allMatch(l -> l instanceof Posting.Resolution);
@@ -136,8 +136,8 @@ public class VerificationTest {
 			}
 
 			@Override
-			public java.util.stream.Stream<Term<?>> watched() {
-				return java.util.stream.Stream.empty();
+			public io.vavr.collection.Traversable<Term<?>> watched() {
+				return io.vavr.collection.HashSet.empty();
 			}
 
 			@Override
@@ -179,7 +179,7 @@ public class VerificationTest {
 				com.tgac.logic.finitedomain.FiniteDomain.dom(y,
 						com.tgac.logic.finitedomain.domains.EnumeratedDomain.range(2L, 5L)));
 
-		Posting survivor = verdict.get().head().getForbidden();
+		Posting survivor = verdict.get().head().conjunct();
 		assertThat(survivor).isNotInstanceOf(Posting.AllOf.class);
 		assertThat(survivor.terms().anyMatch(t -> t == y.asVar().get())).isTrue();
 	}
@@ -197,7 +197,7 @@ public class VerificationTest {
 
 		// one survivor: the alias simplified to its residual (y's binding);
 		// the y = 2 literal read entailed THROUGH the threading and crossed off
-		assertThat(verdict.get().head().getForbidden())
+		assertThat(verdict.get().head().conjunct())
 				.isInstanceOf(Posting.Resolution.class);
 	}
 }

@@ -59,7 +59,7 @@ public final class Verification {
 	 */
 	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
 		Tuple2<List<Nogood>, List<Nogood>> byShape =
-				nogoods.partition(n -> Trial.bindingShaped(n.getForbidden()));
+				nogoods.partition(n -> Trial.bindingShaped(n.conjunct()));
 		// the binding subset answers through the synchronous face — the sync
 		// gate is a typed code path, not an eagerness property
 		Option<List<Nogood>> bindingKept = foldNow(byShape._1, state);
@@ -103,11 +103,11 @@ public final class Verification {
 	}
 
 	private static boolean subsumed(Nogood nogood, List<Nogood> others, Package base) {
-		Option<Package> assumed = Trial.now(nogood.getForbidden(), base)
+		Option<Package> assumed = Trial.now(nogood.conjunct(), base)
 				.map(Trial.Outcome::getGrown)
 				.filter(grown -> grown != null);
 		return assumed.isDefined() && others.exists(other ->
-				Trial.now(other.getForbidden(), assumed.get())
+				Trial.now(other.conjunct(), assumed.get())
 						.map(Trial.Outcome::isEntailed)
 						.getOrElse(false));
 	}
@@ -116,7 +116,7 @@ public final class Verification {
 	private static Option<List<Nogood>> foldNow(List<Nogood> nogoods, Package base) {
 		List<Nogood> kept = List.empty();
 		for (Nogood nogood : nogoods) {
-			Trial.Outcome outcome = Trial.now(nogood.getForbidden(), base)
+			Trial.Outcome outcome = Trial.now(nogood.conjunct(), base)
 					.getOrElseThrow(() -> new IllegalStateException(
 							"the binding pass met a store-shaped nogood"));
 			if (outcome.isEntailed()) {
@@ -133,7 +133,7 @@ public final class Verification {
 		return nogoods.foldLeft(
 				Fiber.done(Option.of(List.empty())),
 				(acc, nogood) -> acc.flatMap(kept -> kept.isDefined() ?
-						Trial.trial(nogood.getForbidden(), base).map(outcome ->
+						Trial.trial(nogood.conjunct(), base).map(outcome ->
 								outcome.isRefuted() ?
 										Option.of(kept.get()) :
 										outcome.isEntailed() ?

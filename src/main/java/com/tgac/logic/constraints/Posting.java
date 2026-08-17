@@ -207,7 +207,7 @@ public interface Posting extends Goal, Bounded {
 
 		@Override
 		public Stream<Term<?>> terms() {
-			return item.watched();
+			return item.watched().toJavaStream();
 		}
 
 		@Override

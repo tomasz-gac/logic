@@ -12,8 +12,8 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Array;
 import io.vavr.collection.List;
+import io.vavr.collection.Traversable;
 import java.util.function.BiFunction;
-import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -75,8 +75,8 @@ public final class Propagator<F extends Factor<F>> implements Atom<F> {
 	}
 
 	@Override
-	public Stream<Term<?>> watched() {
-		return watchedTerms.toJavaStream().map(t -> (Term<?>) t);
+	public Traversable<Term<?>> watched() {
+		return Array.narrow(watchedTerms);
 	}
 
 	/** The rebuild-by-name schema: the watched terms, re-posted under name(). */

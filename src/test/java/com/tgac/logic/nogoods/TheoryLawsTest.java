@@ -54,9 +54,10 @@ public class TheoryLawsTest {
 	}
 
 	@Test
-	public void distinctAtomsOnTheSameSurfaceUnionWithoutTheCapability() {
-		// same name, same watched surface, different knowledge: nogoods
-		// declare no Semilattice, so the slot holds both — no forced merge
+	public void sameSurfaceNogoodsFuseIntoOneConjunctionAtom() {
+		// same name, same watched surface, different knowledge: the slot
+		// holds ONE atom — a nogood holds its conjuncts as a collection, and
+		// combine is their union
 		Nogood xyOneTwo = Nogood.of(Posting.all(
 				Posting.bind(X, lval(1)), Posting.bind(Y, lval(2))));
 		Nogood xyTwoOne = Nogood.of(Posting.all(
@@ -64,7 +65,9 @@ public class TheoryLawsTest {
 		Theory<NogoodConstraints> met = Theory
 				.of(Collections.singletonList(xyOneTwo))
 				.meet(Theory.of(Collections.singletonList(xyTwoOne)));
-		assertThat(met.atoms()).containsExactlyInAnyOrder(xyOneTwo, xyTwoOne);
+		assertThat(met.atoms()).containsExactly(xyOneTwo.combine(xyTwoOne));
+		assertThat(met.atoms().head().payload())
+				.isEqualTo(xyOneTwo.getForbidden().addAll(xyTwoOne.getForbidden()));
 	}
 
 	@Test

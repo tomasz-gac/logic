@@ -6,10 +6,12 @@ package com.tgac.logic.nogoods;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.PartialOrderLaws;
+import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.unification.Unifiable;
@@ -48,5 +50,36 @@ public class NogoodLawsTest {
 		Nogood notAB = Nogood.of(Posting.all(A, B));
 		assertThat(notA.leq(notAB)).isTrue();
 		assertThat(notAB.leq(notA)).isFalse();
+	}
+
+	@Test
+	public void sameSurfaceNogoodsFormAMeetSemilattice() {
+		Nogood oneTwo = Nogood.of(Posting.all(
+				Posting.bind(X, lval(1)), Posting.bind(Y, lval(2))));
+		Nogood twoOne = Nogood.of(Posting.all(
+				Posting.bind(X, lval(2)), Posting.bind(Y, lval(1))));
+		SemilatticeLaws.check(Arrays.asList(oneTwo, twoOne, oneTwo.combine(twoOne)));
+	}
+
+	@Test
+	public void combineUnionsConjunctsOnASharedSurface() {
+		Nogood oneTwo = Nogood.of(Posting.all(
+				Posting.bind(X, lval(1)), Posting.bind(Y, lval(2))));
+		Nogood twoOne = Nogood.of(Posting.all(
+				Posting.bind(X, lval(2)), Posting.bind(Y, lval(1))));
+		Nogood met = oneTwo.combine(twoOne);
+		assertThat(met.getForbidden())
+				.isEqualTo(oneTwo.getForbidden().addAll(twoOne.getForbidden()));
+		// the conjunction entails each of its parts
+		assertThat(met.leq(oneTwo)).isTrue();
+		assertThat(met.leq(twoOne)).isTrue();
+		assertThat(oneTwo.leq(met)).isFalse();
+	}
+
+	@Test
+	public void combineRefusesDifferentSurfacesLoudly() {
+		assertThatThrownBy(() ->
+						Nogood.of(A).combine(Nogood.of(B)))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 }
