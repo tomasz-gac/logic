@@ -65,10 +65,8 @@ public class ParametersTest {
 
 		List<Package> collect = Utils.collect(EnforceConstraintsFD.forceAns(i)
 				.apply(Package.empty().withStore(
-						FiniteDomainConstraints.of(
-								LinkedHashMap.<Term<?>, Domain<?>> empty()
-										.put(i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
-								HashSet.empty()))));
+						FiniteDomainConstraints.empty()
+								.withDomain(i.asVar().get(), EnumeratedDomain.range(0L, 10L)))));
 
 		Assertions.assertThat(collect.stream()
 						.map(p -> TestAccess.get(p, i.asVar().get()).get())
@@ -84,11 +82,9 @@ public class ParametersTest {
 
 		List<Package> collect = Utils.collect(
 				EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
-						.apply(Package.empty().withStore(FiniteDomainConstraints.of(
-								LinkedHashMap.<Term<?>, Domain<?>> empty()
-										.put(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
-										.put(j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
-								HashSet.empty()))));
+						.apply(Package.empty().withStore(FiniteDomainConstraints.empty()
+								.withDomain(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
+								.withDomain(j.asVar().get(), EnumeratedDomain.range(0L, 3L)))));
 
 		List<Tuple2<Long, Long>> results = collect.stream()
 				.map(p -> Tuple.of(TestAccess.get(p, i.asVar().get()).get(),

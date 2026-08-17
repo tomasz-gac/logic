@@ -4,15 +4,18 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: record is membership, singleton collapse and the equal-domain guard.
 
 import com.tgac.functional.reflection.Types;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.lattice.Imposition;
 import com.tgac.logic.lattice.LatticeFactor;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
+import java.util.stream.Collectors;
 
 /**
  * The prototype {@link LatticeFactor} instance (docs/design/lattice-store.md):
@@ -24,20 +27,15 @@ import io.vavr.control.Option;
 class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomainConstraints> {
 
 	private static final FiniteDomainConstraints EMPTY =
-			new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
+			new FiniteDomainConstraints(Theory.empty());
 
 	// the canonical dead store: any-empty-domain meets normalize to it, and the
 	// cascade transitions to it on a failing update, so ⊥ IS the branch death
 	private static final FiniteDomainConstraints BOTTOM =
-			new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());
+			new FiniteDomainConstraints(Theory.empty());
 
-	private FiniteDomainConstraints(LinkedHashMap<Term<?>, Domain<Object>> domains, HashSet<Propagator<FiniteDomainConstraints>> constraints) {
-		super(domains, constraints);
-	}
-
-	@SuppressWarnings("unchecked")
-	static FiniteDomainConstraints of(LinkedHashMap<Term<?>, Domain<?>> domains, HashSet<Propagator<FiniteDomainConstraints>> constraints) {
-		return new FiniteDomainConstraints((LinkedHashMap<Term<?>, Domain<Object>>) (LinkedHashMap<?, ?>) domains, constraints);
+	private FiniteDomainConstraints(Theory<FiniteDomainConstraints> theory) {
+		super(theory);
 	}
 
 	public static Package register(Package p) {
@@ -70,14 +68,15 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 	}
 
 	// cKanren domains — keyed by NAME: a live LVar or a canonical Any
-	@SuppressWarnings("unchecked")
 	public LinkedHashMap<Term<?>, Domain<?>> getDomains() {
-		return (LinkedHashMap<Term<?>, Domain<?>>) (LinkedHashMap<?, ?>) values;
+		return LinkedHashMap.ofEntries(impositions()
+				.map(i -> io.vavr.Tuple.of(i.getTarget(), (Domain<?>) i.getValue()))
+				.collect(Collectors.toList()));
 	}
 
 	// cKanren constraints
 	public HashSet<Propagator<FiniteDomainConstraints>> getConstraints() {
-		return propagators;
+		return HashSet.ofAll(props().collect(Collectors.toList()));
 	}
 
 	public <T> Option<Domain<T>> getDomain(Term<T> v) {
@@ -91,8 +90,8 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 	}
 
 	@Override
-	protected FiniteDomainConstraints create(LinkedHashMap<Term<?>, Domain<Object>> values, HashSet<Propagator<FiniteDomainConstraints>> propagators) {
-		return new FiniteDomainConstraints(values, propagators);
+	protected FiniteDomainConstraints create(Theory<FiniteDomainConstraints> theory) {
+		return new FiniteDomainConstraints(theory);
 	}
 
 	@Override

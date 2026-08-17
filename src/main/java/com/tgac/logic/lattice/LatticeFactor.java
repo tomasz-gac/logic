@@ -1,7 +1,7 @@
 package com.tgac.logic.lattice;
 
-// ABOUTME: The generic constraint store over a component lattice: a name→value map
-// ABOUTME: plus named propagators; instances supply only their capability record.
+// ABOUTME: The generic constraint store over a component lattice: a resident theory
+// ABOUTME: of impositions and propagators; instances supply only their capability record.
 
 import static com.tgac.logic.unification.LVal.lval;
 import com.tgac.logic.constraints.store.Atom;
@@ -56,13 +56,45 @@ import lombok.RequiredArgsConstructor;
 public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor<L, S>>
 		implements Factor<S>, Absorbing {
 
-	// entries keyed by NAME: a live LVar or a canonical Any
-	protected final LinkedHashMap<Term<?>, L> values;
-
-	protected final HashSet<Propagator<S>> propagators;
+	/**
+	 * The resident theory: an {@link Imposition} per constrained NAME (a live
+	 * LVar or a canonical Any) plus the parked propagators. The values-map
+	 * face is the theory's slot index read by surface.
+	 */
+	protected final Theory<S> theory;
 
 	/** The same store kind over different contents. */
-	protected abstract S create(LinkedHashMap<Term<?>, L> values, HashSet<Propagator<S>> propagators);
+	protected abstract S create(Theory<S> theory);
+
+	@SuppressWarnings("unchecked")
+	private Imposition<L, S> imposition(Term<?> target, L value) {
+		return new Imposition<>((Class<S>) getClass(), target, value);
+	}
+
+	private Option<Atom<S>> valueAtom(Term<?> v) {
+		return theory.atom("imposition", HashSet.of(v));
+	}
+
+	@SuppressWarnings("unchecked")
+	protected java.util.stream.Stream<Imposition<L, S>> impositions() {
+		return theory.atoms().toJavaStream()
+				.filter(a -> a instanceof Imposition)
+				.map(a -> (Imposition<L, S>) a);
+	}
+
+	@SuppressWarnings("unchecked")
+	protected java.util.stream.Stream<Propagator<S>> props() {
+		return theory.atoms().toJavaStream()
+				.filter(a -> a instanceof Propagator)
+				.map(a -> (Propagator<S>) a);
+	}
+
+	/** The factor without its entry at {@code name} — spent bookkeeping drops. */
+	protected S spent(Term<?> name) {
+		return valueAtom(name)
+				.map(atom -> create(theory.without(atom)))
+				.getOrElse(this::self);
+	}
 
 	/**
 	 * The canonical dead store: meets and cascades transition to it on failure,
@@ -75,12 +107,14 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		return (S) this;
 	}
 
+	@SuppressWarnings("unchecked")
 	public Option<L> getValue(Term<?> v) {
-		return values.get(v);
+		return valueAtom(v).map(atom -> (L) atom.payload());
 	}
 
+	/** Narrowing write: the value FUSES with any existing entry at {@code x}. */
 	public S withValue(Term<?> x, L value) {
-		return create(values.put(x, value), propagators);
+		return create(theory.with(imposition(x, value)));
 	}
 
 	/**
@@ -92,20 +126,15 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 * (knowledge gone redundant — the factor rises, the region stands).
 	 */
 	@Override
+	@SuppressWarnings("unchecked")
 	public S meet(S other) {
 		if (isAbsorbing() || other.isAbsorbing()) {
 			return bottomStore();
 		}
-		LinkedHashMap<Term<?>, L> met = values;
-		for (Tuple2<Term<?>, L> entry : other.values) {
-			L mine = met.get(entry._1).getOrNull();
-			L narrowed = mine == null ? entry._2 : mine.meet(entry._2);
-			if (narrowed.isAbsorbing()) {
-				return bottomStore();
-			}
-			met = met.put(entry._1, narrowed);
-		}
-		return create(met, propagators.union(other.propagators));
+		S met = create(theory.meet(other.theory));
+		return met.impositions().anyMatch(i -> ((L) i.getValue()).isAbsorbing()) ?
+				bottomStore() :
+				met;
 	}
 
 	/**
@@ -123,9 +152,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		if (other.isAbsorbing()) {
 			return false;
 		}
-		return other.values.forAll(entry -> values.get(entry._1)
-				.exists(mine -> mine.leq(entry._2)))
-				&& propagators.containsAll(other.propagators);
+		return theory.leq(other.theory);
 	}
 
 	@Override
@@ -135,7 +162,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 
 	@Override
 	public boolean isEmpty() {
-		return !isAbsorbing() && values.isEmpty() && propagators.isEmpty();
+		return !isAbsorbing() && theory.isEmpty();
 	}
 
 	@Override
@@ -144,25 +171,18 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		// only through stated's routing (verification, collapse, inference) —
 		// a silent park would put un-vetted knowledge in front of normalize
 		return c instanceof Propagator ?
-				create(values, propagators.add((Propagator<S>) c)) :
+				create(theory.with(c)) :
 				self();
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public Theory<S> theory() {
-		java.util.List<Atom<S>> atoms = new ArrayList<>();
-		for (Tuple2<Term<?>, L> entry : values) {
-			atoms.add(new Imposition<>((Class<S>) getClass(), entry._1, entry._2));
-		}
-		propagators.forEach(atoms::add);
-		return Theory.of(atoms);
+		return theory;
 	}
 
 	@Override
 	public boolean contains(Atom<S> c) {
-		return c instanceof Propagator &&
-				propagators.contains((Propagator<S>) c);
+		return c instanceof Propagator && theory.atoms().contains(c);
 	}
 
 	/**
@@ -180,7 +200,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			return value.admits(target.get()) ? Update.unchanged() : Update.fail();
 		}
 		LVar<?> x = target.asVar().get();
-		L previous = values.get(x).getOrNull();
+		L previous = getValue(x).getOrNull();
 		L effective;
 		if (previous != null) {
 			effective = previous.meet(value);
@@ -217,7 +237,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		return Propagation.activate(
 				new Imposition<>((Class<S>) getClass(), target, value),
 				p -> p.getStores().containsKey(getClass()) ? p
-						: p.withStore(create(LinkedHashMap.empty(), HashSet.empty())),
+						: p.withStore(create(Theory.empty())),
 				p -> doomedAt(p, target, value));
 	}
 
@@ -269,7 +289,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
 		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
 			queue.add(binding._1);
-			L value = factor.values.get(binding._1).getOrNull();
+			L value = factor.getValue(binding._1).getOrNull();
 			if (value == null) {
 				continue;
 			}
@@ -281,7 +301,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			// the entry is spent the moment its verification passed (ground) or
 			// its value followed the representative (alias) — prune it here,
 			// while we already hold it, so the factor never drifts
-			factor = factor.create(factor.values.remove(binding._1), factor.propagators);
+			factor = factor.spent(binding._1);
 		}
 		return cascade(state, factor, inferred, runs, queue);
 	}
@@ -302,19 +322,19 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		List<Prefix> inferred = new ArrayList<>();
 		List<Goal> runs = new ArrayList<>();
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-		for (Tuple2<Term<?>, L> entry : values) {
-			Term<?> walked = state.walk(entry._1);
-			if (walked == entry._1) {
+		for (Imposition<L, S> entry : impositions().collect(Collectors.toList())) {
+			Term<?> walked = state.walk(entry.getTarget());
+			if (walked == entry.getTarget()) {
 				continue;    // live at its root
 			}
-			factor = consume(factor.update(state, walked, entry._2),
+			factor = consume(factor.update(state, walked, entry.getValue()),
 					factor, inferred, runs, queue);
 			if (factor == null) {
 				return Fiber.done(Revision.fail());
 			}
-			factor = factor.create(factor.values.remove(entry._1), factor.propagators);
+			factor = factor.spent(entry.getTarget());
 		}
-		for (Propagator<S> propagator : propagators) {
+		for (Propagator<S> propagator : props().collect(Collectors.toList())) {
 			factor = consume(examine(propagator, state.putStore(factor), factor),
 					factor, inferred, runs, queue);
 			if (factor == null) {
@@ -376,7 +396,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		S factor = MonotoneDrain.drainUnsafe(start, queue, (current, next) -> {
 			S stepped = current;
 			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
-			for (Propagator<S> p : stepped.propagators.toJavaList()) {
+			for (Propagator<S> p : stepped.props().collect(Collectors.toList())) {
 				if (!stepped.contains(p)) {
 					// an earlier verdict of this same trigger removed it
 					continue;
@@ -415,7 +435,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		return p.propagate(live).match(
 				Update::fail,
 				Update::unchanged,
-				() -> Update.applied(create(factor.values, factor.propagators.remove(p))),
+				() -> Update.applied(create(factor.theory.without(p))),
 				f -> f.apply(live, factor));
 	}
 
@@ -439,12 +459,13 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 
 	@Override
 	public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p) {
-		Set<LVar<?>> varsWithValues = values.keySet().toJavaStream()
+		Set<LVar<?>> varsWithValues = impositions()
+				.map(Imposition::getTarget)
 				.map(p::walk)
 				.flatMap(u -> u.asVar().toJavaStream())
 				.collect(Collectors.toSet());
 
-		Set<LVar<?>> constrainedVarsWithoutValues = propagators.toJavaStream()
+		Set<LVar<?>> constrainedVarsWithoutValues = props()
 				.map(Propagator::watchedTerms)
 				.flatMap(ts -> StreamSupport.stream(ts.spliterator(), false))
 				.map(p::walk)
@@ -466,28 +487,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 */
 	@Override
 	public Tuple2<S, S> split(List<LVar<?>> vars) {
-		Set<Term<?>> covered = new java.util.HashSet<>(vars);
-		LinkedHashMap<Term<?>, L> in = LinkedHashMap.empty();
-		LinkedHashMap<Term<?>, L> out = LinkedHashMap.empty();
-		for (Tuple2<Term<?>, L> entry : values) {
-			if (covered.contains(entry._1)) {
-				in = in.put(entry);
-			} else {
-				out = out.put(entry);
-			}
-		}
-		HashSet<Propagator<S>> inConstraints = HashSet.empty();
-		HashSet<Propagator<S>> outConstraints = HashSet.empty();
-		for (Propagator<S> propagator : propagators) {
-			boolean fits = propagator.watchedTerms().forAll(watched ->
-					!watched.asVar().isDefined() || covered.contains(watched));
-			if (fits) {
-				inConstraints = inConstraints.add(propagator);
-			} else {
-				outConstraints = outConstraints.add(propagator);
-			}
-		}
-		return Tuple.of(create(in, inConstraints), create(out, outConstraints));
+		return theory.split(vars).map(this::create, this::create);
 	}
 
 	/**
@@ -497,14 +497,16 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 */
 	@Override
 	public Fiber<S> rename(Renaming renaming) {
-		Fiber<LinkedHashMap<Term<?>, L>> renamed = values.foldLeft(
-				Fiber.<LinkedHashMap<Term<?>, L>> done(LinkedHashMap.empty()),
-				(acc, entry) -> acc.flatMap(m -> renaming.apply(entry._1)
-						.map(target -> target.asVal().isDefined() ? m : m.put(target, entry._2))));
-		Fiber<HashSet<Propagator<S>>> renamedConstraints = propagators.foldLeft(
-				Fiber.<HashSet<Propagator<S>>> done(HashSet.empty()),
-				(acc, p) -> acc.flatMap(ps -> rewatched(p, renaming).map(ps::add)));
-		return renamed.flatMap(vals -> renamedConstraints.map(props -> create(vals, props)));
+		Fiber<Theory<S>> renamed = Fiber.done(Theory.empty());
+		for (Imposition<L, S> entry : impositions().collect(Collectors.toList())) {
+			renamed = renamed.flatMap(t -> renaming.apply(entry.getTarget())
+					.map(target -> target.asVal().isDefined() ? t
+							: t.with(imposition(target, entry.getValue()))));
+		}
+		for (Propagator<S> propagator : props().collect(Collectors.toList())) {
+			renamed = renamed.flatMap(t -> rewatched(propagator, renaming).map(t::with));
+		}
+		return renamed.map(this::create);
 	}
 
 	private static <F extends Factor<F>> Fiber<Propagator<F>> rewatched(Propagator<F> propagator, Renaming renaming) {
@@ -528,16 +530,16 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			// so an empty live store can never compare equal to the dead one
 			return false;
 		}
-		return values.equals(that.values) && propagators.equals(that.propagators);
+		return theory.equals(that.theory);
 	}
 
 	@Override
 	public int hashCode() {
-		return values.hashCode() * 31 + propagators.hashCode();
+		return theory.hashCode();
 	}
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName() + "(" + values + ", " + propagators + ")";
+		return getClass().getSimpleName() + "(" + theory + ")";
 	}
 }

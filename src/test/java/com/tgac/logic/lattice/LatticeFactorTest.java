@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.unification.Any;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
@@ -78,12 +79,12 @@ public class LatticeFactorTest {
 	/** The store: nothing but its construction seams. */
 	static final class FlatConstraints extends LatticeFactor<FlatSet, FlatConstraints> {
 		private static final FlatConstraints EMPTY =
-				new FlatConstraints(LinkedHashMap.empty(), HashSet.empty());
+				new FlatConstraints(Theory.empty());
 		private static final FlatConstraints BOTTOM =
-				new FlatConstraints(LinkedHashMap.empty(), HashSet.empty());
+				new FlatConstraints(Theory.empty());
 
-		private FlatConstraints(LinkedHashMap<Term<?>, FlatSet> values, HashSet<Propagator<FlatConstraints>> propagators) {
-			super(values, propagators);
+		private FlatConstraints(Theory<FlatConstraints> theory) {
+			super(theory);
 		}
 
 		static FlatConstraints empty() {
@@ -91,8 +92,8 @@ public class LatticeFactorTest {
 		}
 
 		@Override
-		protected FlatConstraints create(LinkedHashMap<Term<?>, FlatSet> values, HashSet<Propagator<FlatConstraints>> propagators) {
-			return new FlatConstraints(values, propagators);
+		protected FlatConstraints create(Theory<FlatConstraints> theory) {
+			return new FlatConstraints(theory);
 		}
 
 		@Override
