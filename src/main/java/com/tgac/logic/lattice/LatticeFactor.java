@@ -75,14 +75,12 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		return theory.atom("imposition", HashSet.of(v));
 	}
 
-	@SuppressWarnings("unchecked")
 	protected java.util.stream.Stream<Imposition<L, S>> impositions() {
 		return theory.atoms().toJavaStream()
 				.filter(a -> a instanceof Imposition)
 				.map(a -> (Imposition<L, S>) a);
 	}
 
-	@SuppressWarnings("unchecked")
 	protected java.util.stream.Stream<Propagator<S>> props() {
 		return theory.atoms().toJavaStream()
 				.filter(a -> a instanceof Propagator)
@@ -126,7 +124,6 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 * (knowledge gone redundant — the factor rises, the region stands).
 	 */
 	@Override
-	@SuppressWarnings("unchecked")
 	public S meet(S other) {
 		if (isAbsorbing() || other.isAbsorbing()) {
 			return bottomStore();
@@ -393,10 +390,11 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 */
 	protected Fiber<Revision> cascade(Package state, S start,
 			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
+		java.util.List<Propagator<S>> parked = start.props().collect(Collectors.toList());
 		S factor = MonotoneDrain.drainUnsafe(start, queue, (current, next) -> {
 			S stepped = current;
 			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
-			for (Propagator<S> p : stepped.props().collect(Collectors.toList())) {
+			for (Propagator<S> p : parked) {
 				if (!stepped.contains(p)) {
 					// an earlier verdict of this same trigger removed it
 					continue;
@@ -499,21 +497,15 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	public Fiber<S> rename(Renaming renaming) {
 		Fiber<Theory<S>> renamed = Fiber.done(Theory.empty());
 		for (Imposition<L, S> entry : impositions().collect(Collectors.toList())) {
+		// TODO : this seems inconsistent with what Imposition.rename does
 			renamed = renamed.flatMap(t -> renaming.apply(entry.getTarget())
 					.map(target -> target.asVal().isDefined() ? t
 							: t.with(imposition(target, entry.getValue()))));
 		}
 		for (Propagator<S> propagator : props().collect(Collectors.toList())) {
-			renamed = renamed.flatMap(t -> rewatched(propagator, renaming).map(t::with));
+			renamed = renamed.flatMap(t -> propagator.rename(renaming).map(t::with));
 		}
 		return renamed.map(this::create);
-	}
-
-	private static <F extends Factor<F>> Fiber<Propagator<F>> rewatched(Propagator<F> propagator, Renaming renaming) {
-		return propagator.watchedTerms().foldLeft(
-						Fiber.<Array<Term<?>>> done(Array.empty()),
-						(acc, watched) -> acc.flatMap(terms -> renaming.apply(watched).map(terms::append)))
-				.map(propagator::watching);
 	}
 
 	@Override
