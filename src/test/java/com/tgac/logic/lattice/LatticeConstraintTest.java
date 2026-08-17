@@ -33,7 +33,7 @@ import org.junit.Test;
  * is inherited machinery; the component lattice carries its capability record
  * and the store supplies only its construction seams.
  */
-public class LatticeStoreTest {
+public class LatticeConstraintTest {
 
 	/** The component lattice: a finite set of admissible values. */
 	@Value

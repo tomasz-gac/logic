@@ -82,17 +82,17 @@ public class CapabilityDriverTest {
 
 		@Override
 		public Tuple2<EmittingConstraint, EmittingConstraint> split(List<LVar<?>> vars) {
-			return null;
+			throw new UnsupportedOperationException("driver fixtures do not split");
 		}
 
 		@Override
 		public Fiber<EmittingConstraint> rename(Renaming renaming) {
-			return null;
+			throw new UnsupportedOperationException("driver fixtures do not rename");
 		}
 
 		@Override
 		public EmittingConstraint meet(EmittingConstraint other) {
-			return null;
+			throw new UnsupportedOperationException("driver fixtures do not meet");
 		}
 
 		@Override

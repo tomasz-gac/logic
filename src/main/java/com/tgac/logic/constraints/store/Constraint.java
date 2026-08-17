@@ -32,6 +32,11 @@ public interface Constraint<S extends Constraint<S>> extends Store, Semilattice<
 		return meet(other);
 	}
 
+	/**
+	 * Entailment as the algebra reads it: this ⊑ other iff meeting other adds
+	 * nothing. Correct only where {@code equals} compares NORMAL FORMS — a
+	 * family holding denormalized factors must override.
+	 */
 	@Override
 	default boolean leq(S other) {
 		return meet(other).equals(this);
