@@ -14,7 +14,6 @@ import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Name;
@@ -28,16 +27,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * A bag of nogoods, held conjunctively — the package's own ∧. The lattice is
- * nogood union (more nogoods = more known; the derived leq is containment), and
- * the normal form is wholesale re-verification: {@link Verification#verify}
- * wrapped into {@link Revision} — none → fail, the kept set unchanged →
- * unchanged, otherwise the kept set replaces the factor.
+ * A theory of nogoods, held conjunctively — the package's own ∧. The value
+ * plane is the resident {@link Theory}: meet is union with same-surface
+ * fusion and subsumption deletion (a dominated nogood drops — fewer trials,
+ * same knowledge), leq is the covering order. The execution-plane normal
+ * form is wholesale re-verification: {@link Verification#verify} wrapped
+ * into {@link Revision} — none → fail, the kept set unchanged → unchanged,
+ * otherwise the kept set replaces the factor.
  *
  * <p>Verification imposes on a scratch that NEVER carries this store: nogoods
  * examined inside a scratch answer conservatively by not being there — the
@@ -45,27 +46,48 @@ import lombok.RequiredArgsConstructor;
  * resident nogood store would cause (its own revise re-verifying inside every
  * trial) is unrepresentable.
  */
-@Getter
 @EqualsAndHashCode
-@RequiredArgsConstructor(staticName = "of")
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	public static final NogoodConstraints EMPTY = NogoodConstraints.of(LinkedHashSet.empty());
-	private final LinkedHashSet<Nogood> nogoods;
+	private final Theory<NogoodConstraints> theory;
+
+	public static NogoodConstraints of(LinkedHashSet<Nogood> nogoods) {
+		return new NogoodConstraints(Theory.of(nogoods));
+	}
 
 	public static Package register(Package a) {
 		return a.withStore(EMPTY);
 	}
 
-	/** More nogoods = more known: meet is union; wholesale re-verification keeps it exact. */
-	@Override
-	public NogoodConstraints meet(NogoodConstraints other) {
-		return NogoodConstraints.of(nogoods.addAll(other.nogoods));
+	/**
+	 * The resident view: every atom flattened to single-conjunct nogoods —
+	 * the digested form verification and reify read. Same-surface atoms may
+	 * have fused in the theory; execution sees their conjuncts one by one.
+	 */
+	public LinkedHashSet<Nogood> getNogoods() {
+		return LinkedHashSet.ofAll(residents());
 	}
 
-	/** Nogood containment directly — the order the union-meet derives. */
+	private List<Nogood> residents() {
+		return theory.atoms().toList().flatMap(atom -> {
+			Nogood nogood = (Nogood) atom;
+			return nogood.getForbidden().size() == 1 ?
+					List.of(nogood) :
+					nogood.getForbidden().toList().map(Nogood::of);
+		});
+	}
+
+	/** The theory meet: union, same-surface fusion, subsumption deletion. */
+	@Override
+	public NogoodConstraints meet(NogoodConstraints other) {
+		return new NogoodConstraints(theory.meet(other.theory));
+	}
+
+	/** The covering order — {¬A} entails {¬(A ∧ B)} with no shared residents. */
 	@Override
 	public boolean leq(NogoodConstraints other) {
-		return nogoods.containsAll(other.nogoods);
+		return theory.leq(other.theory);
 	}
 
 	/**
@@ -75,51 +97,33 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	 */
 	@Override
 	public Tuple2<NogoodConstraints, NogoodConstraints> split(java.util.List<LVar<?>> vars) {
-		Set<Name<?>> covered = new HashSet<>(vars);
-		LinkedHashSet<Nogood> in = LinkedHashSet.empty();
-		LinkedHashSet<Nogood> out = LinkedHashSet.empty();
-		for (Nogood nogood : nogoods) {
-			boolean fits = nogood.watched().forAll(term ->
-					MiniKanren.namesIn(term).allMatch(covered::contains));
-			if (fits) {
-				in = in.add(nogood);
-			} else {
-				out = out.add(nogood);
-			}
-		}
-		return Tuple.of(NogoodConstraints.of(in), NogoodConstraints.of(out));
+		return theory.split(vars)
+				.map(NogoodConstraints::new, NogoodConstraints::new);
 	}
 
-	/** Every nogood transcribed wrapped — literal by literal, items re-instantiated. */
 	@Override
 	public Fiber<NogoodConstraints> rename(Renaming renaming) {
-		return nogoods.foldLeft(
-						Fiber.<LinkedHashSet<Nogood>> done(LinkedHashSet.empty()),
-						(acc, nogood) -> acc.flatMap(renamed ->
-								nogood.rename(renaming).map(item -> renamed.add((Nogood) item))))
-				.map(NogoodConstraints::of);
+		return theory.rename(renaming).map(NogoodConstraints::new);
 	}
 
 	@Override
 	public boolean isEmpty() {
-		return nogoods.isEmpty();
+		return theory.isEmpty();
 	}
 
 	@Override
 	public Theory<NogoodConstraints> theory() {
-		return Theory.of(nogoods);
+		return theory;
 	}
 
-	/** Flattens: the factor's digested form is one resident per conjunct. */
 	@Override
 	public NogoodConstraints meet(Atom<NogoodConstraints> c) {
-		return NogoodConstraints.of(nogoods.addAll(
-				((Nogood) c).getForbidden().map(Nogood::of)));
+		return new NogoodConstraints(theory.meet(Theory.of(List.of((Nogood) c))));
 	}
 
 	@Override
 	public boolean contains(Atom<NogoodConstraints> c) {
-		return c instanceof Nogood && nogoods.contains((Nogood) c);
+		return theory.atoms().contains(c);
 	}
 
 	@Override
@@ -129,16 +133,17 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 
 	@Override
 	public Fiber<Revision> normalize(Package state) {
-		return Verification.verify(nogoods.toList(), state.withoutStore(NogoodConstraints.class))
+		return Verification.verify(residents(), state.withoutStore(NogoodConstraints.class))
 				.map(kept -> kept.isDefined() ?
 						revisedTo(LinkedHashSet.ofAll(kept.get())) :
 						Revision.fail());
 	}
 
 	private Revision revisedTo(LinkedHashSet<Nogood> kept) {
-		return kept.equals(nogoods) ?
+		NogoodConstraints revised = NogoodConstraints.of(kept);
+		return revised.equals(this) ?
 				Revision.unchanged() :
-				Revision.updated(NogoodConstraints.of(kept));
+				Revision.updated(revised);
 	}
 
 	@Override
@@ -160,7 +165,7 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 		// renameSubstitutions is the answer's canonical seed: a live name it
 		// binds is part of the rendered answer
 		List<Atom<?>> residuals = List.empty();
-		for (Nogood nogood : nogoods) {
+		for (Nogood nogood : residents()) {
 			List<Posting> kept = getUnboundNames(renaming, s, nogood);
 			if (kept.isEmpty()) {
 				continue;

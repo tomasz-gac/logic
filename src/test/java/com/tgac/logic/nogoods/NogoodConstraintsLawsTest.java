@@ -45,6 +45,24 @@ public class NogoodConstraintsLawsTest {
 	}
 
 	@Test
+	public void theStoreDeletesDominatedNogoods() {
+		// subsumption deletion, live in the store: ¬(x≡1) states everything
+		// ¬(x≡1 ∧ y≡2) does, so the dominated resident drops — fewer trials
+		// per revision, same knowledge
+		assertThat(NogoodConstraints.of(LinkedHashSet.of(X_APART, NOT_BOTH)))
+				.isEqualTo(NogoodConstraints.of(LinkedHashSet.of(X_APART)));
+	}
+
+	@Test
+	public void theStoreOrderIsCoveringNotContainment() {
+		// {¬(x≡1)} entails {¬(x≡1 ∧ y≡2)} with no shared residents at all
+		NogoodConstraints stronger = NogoodConstraints.of(LinkedHashSet.of(X_APART));
+		NogoodConstraints weaker = NogoodConstraints.of(LinkedHashSet.of(NOT_BOTH));
+		assertThat(stronger.leq(weaker)).isTrue();
+		assertThat(weaker.leq(stronger)).isFalse();
+	}
+
+	@Test
 	public void nogoodUnionIsAMeetSemilattice() {
 		java.util.List<NogoodConstraints> samples = Arrays.asList(
 				NogoodConstraints.of(LinkedHashSet.empty()),
