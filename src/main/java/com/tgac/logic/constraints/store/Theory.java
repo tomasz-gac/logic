@@ -14,6 +14,7 @@ import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.Traversable;
+import io.vavr.control.Option;
 import java.util.List;
 import java.util.Objects;
 import lombok.AccessLevel;
@@ -141,6 +142,50 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 
 	public LinkedHashSet<Atom<F>> atoms() {
 		return atoms;
+	}
+
+	/** The slot occupant, one hop — the factor's by-surface read. */
+	public Option<Atom<F>> atom(String name, Traversable<Term<?>> surface) {
+		return slots.get(new Slot(name, surface));
+	}
+
+	/**
+	 * The incremental door: insert one atom, fusing at its slot — NO
+	 * domination sweep. Agrees with {@link #meet} exactly when the kinds'
+	 * leq is slot-local (impositions, propagators — the lattice family);
+	 * a family with cross-slot entailment (nogood subsumption) must meet.
+	 */
+	public Theory<F> with(Atom<F> atom) {
+		Slot slot = slotOf(atom);
+		Option<Atom<F>> occupant = slots.get(slot);
+		if (!occupant.isDefined()) {
+			return new Theory<>(atoms.add(atom), slots.put(slot, atom));
+		}
+		Atom<F> prior = occupant.get();
+		if (prior.equals(atom)) {
+			return this;
+		}
+		if (prior instanceof Semilattice && atom instanceof Semilattice) {
+			Atom<F> fused = fuse(prior, atom);
+			return new Theory<>(atoms.remove(prior).add(fused), slots.put(slot, fused));
+		}
+		throw new IllegalStateException(
+				"slot-mates that cannot combine — the kind must hold its collection: "
+						+ prior + " vs " + atom);
+	}
+
+	/**
+	 * Occupant removal — NOT an algebra operation (knowledge only grows
+	 * under ⊗): the execution plane's own-factor surgery, for a store
+	 * discharging spent entries and subsumed propagators. A non-occupant
+	 * leaves the theory untouched.
+	 */
+	public Theory<F> without(Atom<F> atom) {
+		Slot slot = slotOf(atom);
+		return slots.get(slot)
+				.filter(atom::equals)
+				.map(occupant -> new Theory<F>(atoms.remove(occupant), slots.remove(slot)))
+				.getOrElse(this);
 	}
 
 	public boolean isEmpty() {
