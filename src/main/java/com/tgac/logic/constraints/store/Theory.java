@@ -34,9 +34,9 @@ import lombok.RequiredArgsConstructor;
  * the atom leq is itself antisymmetric mod equals — the sharp overrides'
  * obligation.
  *
- * <p>Admission is family-guarded: a theory only holds atoms whose
- * {@code getFactorClass} is compatible with its family token — the
- * homogeneity the type parameter promises, enforced at the door.
+ * <p>Family homogeneity is the type parameter's promise alone — atoms are
+ * typed over their factor, so a theory of {@code F} can only be handed
+ * {@code F}'s atoms; there is no runtime door.
  */
 
 @RequiredArgsConstructor
@@ -63,15 +63,6 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	private static <F extends Factor<F>> LinkedHashSet<Atom<F>> minimal(LinkedHashSet<Atom<F>> atoms) {
 		return atoms.filter(a -> !atoms.exists(b ->
 				!b.equals(a) && b.leq(a) && !a.leq(b)));
-	}
-
-	private static <F extends Factor<F>> Atom<F> admit(Class<? extends Factor<?>> family, Atom<F> atom) {
-		if (!family.isAssignableFrom(atom.getFactorClass())
-				&& !atom.getFactorClass().isAssignableFrom(family)) {
-			throw new IllegalArgumentException("a theory of " + family.getSimpleName()
-					+ " refuses a " + atom.getFactorClass().getSimpleName() + " atom: " + atom);
-		}
-		return atom;
 	}
 
 	public LinkedHashSet<Atom<F>> atoms() {
