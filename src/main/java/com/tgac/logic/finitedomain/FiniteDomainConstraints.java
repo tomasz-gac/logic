@@ -7,7 +7,7 @@ import com.tgac.functional.reflection.Types;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.lattice.LatticeStore;
+import com.tgac.logic.lattice.LatticeConstraint;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashSet;
@@ -15,13 +15,13 @@ import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
 
 /**
- * The prototype {@link LatticeStore} instance (docs/design/lattice-store.md):
+ * The prototype {@link LatticeConstraint} instance (docs/design/lattice-store.md):
  * component lattice {@link Domain} (meet = intersect), verification is
  * membership, a {@link Singleton} collapses to an inferred binding, and the
  * termination guard is exact domain equality — finite descent. Labelling
  * ({@link EnforceConstraintsFD}) is this store's {@code enforce}.
  */
-class FiniteDomainConstraints extends LatticeStore<Domain<Object>, FiniteDomainConstraints> {
+class FiniteDomainConstraints extends LatticeConstraint<Domain<Object>, FiniteDomainConstraints> {
 
 	private static final FiniteDomainConstraints EMPTY =
 			new FiniteDomainConstraints(LinkedHashMap.empty(), HashSet.empty());

@@ -8,7 +8,6 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.goals.Goal;
@@ -77,7 +76,7 @@ public class LatticeStoreTest {
 	}
 
 	/** The store: nothing but its construction seams. */
-	static final class FlatConstraints extends LatticeStore<FlatSet, FlatConstraints> {
+	static final class FlatConstraints extends LatticeConstraint<FlatSet, FlatConstraints> {
 		private static final FlatConstraints EMPTY =
 				new FlatConstraints(LinkedHashMap.empty(), HashSet.empty());
 		private static final FlatConstraints BOTTOM =

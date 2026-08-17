@@ -9,7 +9,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.constraints.store.Absorbable;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -116,11 +116,11 @@ public class ImpositionLawsTest {
 			World w = new World(seed);
 			Package p = w.state(3);
 			for (Object store : p.getStores().values()) {
-				if (!(store instanceof Absorbable)) {
+				if (!(store instanceof Constraint)) {
 					continue;
 				}
 				exercised++;
-				Absorbable<?> cs = (Absorbable<?>) store;
+				Constraint<?> cs = (Constraint<?>) store;
 				final long s = seed;
 				new BreadthFirstScheduler<>(cs.normalize(p)).get().match(
 						() -> {

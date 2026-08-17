@@ -9,10 +9,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.store.Absorbable;
-import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
@@ -37,7 +34,7 @@ import lombok.Value;
  * ({@link Condition}) sums over: a meet-semilattice with top, the pointwise
  * product of the store lattices (absent factor = that store's ⊤).
  * {@code leq} is containment — narrower entails wider, the store-level
- * {@link Absorbable} convention lifted pointwise — so {@code leq} REVERSES
+ * convention lifted pointwise — so {@code leq} REVERSES
  * the accumulation order of {@code combine = meet}, exactly like the
  * stores it aggregates.
  *
@@ -53,9 +50,9 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	/** The empty conjunct: ⊗'s 1 and the region ⊤ — no knowledge, TRUE. */
 	public static final Residues TRUE = new Residues(HashMap.empty());
 
-	Map<Class<?>, Projectable<?>> factors;
+	Map<Class<?>, Constraint<?>> factors;
 
-	public static Residues of(Map<Class<?>, Projectable<?>> factors) {
+	public static Residues of(Map<Class<?>, Constraint<?>> factors) {
 		return factors.isEmpty() ? TRUE : new Residues(factors);
 	}
 
@@ -66,12 +63,12 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	/** ⊗: pointwise factor meet; a class only one side knows joins whole. */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public Residues meet(Residues other) {
-		Map<Class<?>, Projectable<?>> result = factors;
-		for (Tuple2<Class<?>, Projectable<?>> factor : other.factors) {
-			Projectable<?> mine = result.getOrElse(factor._1, null);
+		Map<Class<?>, Constraint<?>> result = factors;
+		for (Tuple2<Class<?>, Constraint<?>> factor : other.factors) {
+			Constraint<?> mine = result.getOrElse(factor._1, null);
 			result = result.put(factor._1, mine == null
 					? factor._2
-					: (Projectable<?>) ((Absorbable) mine).meet(factor._2));
+					: ((Constraint) mine).meet(factor._2));
 		}
 		return of(result);
 	}
@@ -96,8 +93,8 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public boolean leq(Residues other) {
-		for (Tuple2<Class<?>, Projectable<?>> knowledge : other.factors) {
-			Projectable<?> mine = factors.getOrElse(knowledge._1, null);
+		for (Tuple2<Class<?>, Constraint<?>> knowledge : other.factors) {
+			Constraint<?> mine = factors.getOrElse(knowledge._1, null);
 			if (mine == null || !((PartialOrder) mine).leq(knowledge._2)) {
 				return false;
 			}
@@ -163,17 +160,12 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 
 	private static Fiber<Residues> ofRelevant(Package callerPkg, java.util.Map<LVar<?>, Hole<?>> callVars) {
 		return callerPkg.getStores().values().foldLeft(
-						Fiber.<Map<Class<?>, Projectable<?>>> done(HashMap.empty()),
+						Fiber.<Map<Class<?>, Constraint<?>>> done(HashMap.empty()),
 						(acc, store) -> acc.flatMap(residues -> {
-							if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
+							if (!(store instanceof Constraint) || ((Constraint<?>) store).isEmpty()) {
 								return Fiber.done(residues);
 							}
-							if (!(store instanceof Projectable)) {
-								throw new IllegalStateException(
-										"Tabling cannot key constraints it cannot project: non-empty "
-												+ store.getClass().getSimpleName() + " at a tabled call");
-							}
-							return ((Projectable<?>) store).project(callVars)
+							return ((Constraint<?>) store).project(callVars)
 									.map(keyed -> keyed.isEmpty()
 											? residues
 											: residues.put(store.getClass(), keyed));
@@ -195,17 +187,12 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 		Renaming canonicalization = Renaming.of(holeVars);
 		return resolution(answerPkg.substitution()).flatMap(resolution ->
 						answerPkg.getStores().values().foldLeft(
-								Fiber.<Map<Class<?>, Projectable<?>>> done(HashMap.empty()),
+								Fiber.<Map<Class<?>, Constraint<?>>> done(HashMap.empty()),
 								(acc, store) -> acc.flatMap(residues -> {
-									if (!(store instanceof ConstraintStore) || ((ConstraintStore) store).isEmpty()) {
+									if (!(store instanceof Constraint) || ((Constraint<?>) store).isEmpty()) {
 										return Fiber.done(residues);
 									}
-									if (!(store instanceof Projectable)) {
-										throw new IllegalStateException(
-												"Tabling does not support non-projectable store: non-empty "
-														+ store.getClass().getSimpleName() + " on a tabled answer");
-									}
-									return normalized((Projectable<?>) store, resolution, canonicalization)
+									return normalized((Constraint<?>) store, resolution, canonicalization)
 											.map(factor -> factor.isEmpty()
 													? residues
 													: residues.put(store.getClass(), factor));
@@ -214,10 +201,10 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	}
 
 	/** One store's answer factor: resolved, then slot-canonical — empty when spent. */
-	private static <S extends Projectable<S>> Fiber<Projectable<?>> normalized(
-			Projectable<S> store, Renaming resolution, Renaming canonicalization) {
+	private static <S extends Constraint<S>> Fiber<Constraint<?>> normalized(
+			Constraint<S> store, Renaming resolution, Renaming canonicalization) {
 		return store.rename(resolution).flatMap(resolved -> resolved.isEmpty()
-				? Fiber.<Projectable<?>> done(resolved)
+				? Fiber.done(resolved)
 				: resolved.rename(canonicalization).map(factor -> factor));
 	}
 
@@ -248,14 +235,14 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 */
 	public Goal restate(Renaming renaming) {
 		Goal restated = Goal.success();
-		for (Tuple2<Class<?>, Projectable<?>> factor : factors) {
+		for (Tuple2<Class<?>, Constraint<?>> factor : factors) {
 			restated = Conjunction.of(restated, imposed(factor._2, renaming));
 		}
 		return restated;
 	}
 
 	/** One factor's imposition: rename runs in the goal's fiber, absorb states it. */
-	private static <S extends Projectable<S>> Goal imposed(Projectable<S> factor, Renaming renaming) {
+	private static <S extends Constraint<S>> Goal imposed(Constraint<S> factor, Renaming renaming) {
 		return pkg -> Cont.suspend(k -> factor.rename(renaming)
 				.flatMap(renamed -> Propagation.absorb(renamed).apply(pkg).apply(k)));
 	}

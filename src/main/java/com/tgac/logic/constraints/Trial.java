@@ -4,7 +4,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: the synchronous now(), store rows impose on the scratch, conjuncts thread.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
@@ -366,7 +366,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	//   bookkeeping shapes should be invisible to this comparison, and whether
 	//   knowledge comparison belongs on Package once more clients appear.
 	private static LinkedHashMap<Class<? extends Packaged>, Packaged> knowledge(Package p) {
-		return p.getStores().filter(entry -> !(entry._2 instanceof ConstraintStore
-				&& ((ConstraintStore) entry._2).isEmpty()));
+		return p.getStores().filter(entry -> !(entry._2 instanceof Constraint
+				&& ((Constraint) entry._2).isEmpty()));
 	}
 }

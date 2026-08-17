@@ -9,7 +9,7 @@ import com.tgac.functional.algebra.Semilattice;
 import io.vavr.control.Option;
 
 /**
- * What a {@link LatticeStore} requires of its per-name values — the capability
+ * What a {@link LatticeConstraint} requires of its per-name values — the capability
  * record of docs/design/lattice-store.md Â§2, carried by the value itself. The
  * record is the ADMISSION TEST: it sorts every candidate domain in one glance
  * (finite sets: everything; reals: no exact stabilization; labels: pure meet)

@@ -5,7 +5,7 @@ package com.tgac.logic.tabling;
 
 import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.Semilattice;
-import com.tgac.logic.constraints.store.Absorbable;
+import com.tgac.logic.constraints.store.Constraint;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Vector;
 
@@ -16,7 +16,7 @@ import io.vavr.collection.Vector;
  * dominated conjunct contributes nothing and drops, a dominating newcomer
  * evicts what it covers — subsumption dedup is this ⊕'s absorption, not a
  * separate mechanism. ⊗ is conjunction: the cross product of pairwise
- * conjunct meets ({@link Absorbable#meet} pointwise). 1 is TRUE — the
+ * conjunct meets ({@link Constraint#meet} pointwise). 1 is TRUE — the
  * single empty conjunct, a GROUND answer — and {@code 1 ⊕ a = 1} makes
  * {@link #RING} BOUNDED: a value that reached 1 can never move, which is
  * why ground answers stream and conditional answers wait for their seal.

@@ -5,19 +5,8 @@ import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.tgac.functional.fibers.Fiber;
-import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
-import com.tgac.functional.monad.Cont;
-import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
-import com.tgac.logic.unification.Prefix;
-import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
@@ -118,78 +107,6 @@ public class TabledTest {
 		long count = pairs.apply(Tuple.of(p)).solve(p, TestSchedulers.factory()).count();
 
 		assertThat(count).isEqualTo(1);
-	}
-
-	/** A live constraint store without the Projectable capability. */
-	private static final class Opaque implements ConstraintStore {
-		@Override
-		public boolean isEmpty() {
-			return false;
-		}
-
-		@Override
-		public Store remove(Stored c) {
-			return this;
-		}
-
-		@Override
-		public Store prepend(Stored c) {
-			return this;
-		}
-
-		@Override
-		public boolean contains(Stored c) {
-			return false;
-		}
-
-		@Override
-		public <T> Goal enforce(Term<T> x) {
-			return Goal.success();
-		}
-
-		@Override
-		public Fiber<Revision> revise(Prefix prefix, Package state) {
-			return Fiber.done(Revision.unchanged());
-		}
-
-		@Override
-		public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package p) {
-			return unifiable;
-		}
-	}
-
-	@Test
-	public void shouldRejectTabledCallsUnderNonProjectableConstraints() {
-		// knowledge a store cannot project cannot enter the call key, and a
-		// cache shared between differently-constrained callers would be
-		// unsound — refused loudly at the call
-		Tabled<Tuple1<Unifiable<Integer>>> anything =
-				Tabling.define(args -> args.apply(x -> x.unifies(1)));
-
-		Package p = Package.empty().withStore(Table.empty()).withStore(new Opaque());
-		Unifiable<Integer> x = lvar();
-
-		assertThatThrownBy(() -> anything.apply(Tuple.of(x))
-				.solveFrom(p, x, BreadthFirstScheduler::new)
-				.count())
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("constraint");
-	}
-
-	@Test
-	public void shouldRejectNonProjectableAnswerConstraints() {
-		// an answer whose variables carry knowledge no store can project
-		// would be cached as an unconstrained template and replayed too
-		// generally — refused loudly before caching
-		Tabled<Tuple1<Unifiable<Integer>>> stuck =
-				Tabling.define(args -> args.apply(x ->
-						pkg -> Cont.just(pkg.withStore(new Opaque()))));
-
-		Unifiable<Integer> x = lvar();
-
-		assertThatThrownBy(() -> stuck.apply(Tuple.of(x)).solve(x, TestSchedulers.factory()).count())
-				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("non-projectable");
 	}
 
 	private final Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> pathNoSelf =

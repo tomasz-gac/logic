@@ -4,7 +4,7 @@ import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVal;
@@ -75,8 +75,8 @@ public class Constraints {
 	/** Every store commits its constraints before {@code x} is reified. */
 	private static <T> Goal enforce(Package p, Term<T> x) {
 		return p.getStores().values().toJavaStream()
-				.filter(ConstraintStore.class::isInstance)
-				.map(ConstraintStore.class::cast)
+				.filter(Constraint.class::isInstance)
+				.map(Constraint.class::cast)
 				.map(cs -> cs.enforce(x))
 				.reduce(Goal::and)
 				.orElseGet(Goal::success);
@@ -86,8 +86,8 @@ public class Constraints {
 	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Substitutions renameSubstitutions) {
 		return p.getStores().values()
 				.toJavaStream()
-				.filter(ConstraintStore.class::isInstance)
-				.map(ConstraintStore.class::cast)
+				.filter(Constraint.class::isInstance)
+				.map(cs -> (Constraint<?>) cs)
 				.reduce(Try.success(unifiable),
 						(l, cs) -> l.flatMap(u -> Try.of(() -> cs.reify(u, renameSubstitutions, p))),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))

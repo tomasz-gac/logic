@@ -6,8 +6,7 @@ package com.tgac.logic.nogoods;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -49,7 +48,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @EqualsAndHashCode
 @RequiredArgsConstructor(staticName = "of")
-final class NogoodConstraints implements Projectable<NogoodConstraints> {
+final class NogoodConstraints implements Constraint<NogoodConstraints> {
 	public static final NogoodConstraints EMPTY = NogoodConstraints.of(LinkedHashSet.empty());
 	private final LinkedHashSet<Nogood> nogoods;
 
@@ -108,12 +107,12 @@ final class NogoodConstraints implements Projectable<NogoodConstraints> {
 	}
 
 	@Override
-	public ConstraintStore remove(Stored c) {
+	public Constraint remove(Stored c) {
 		return NogoodConstraints.of(nogoods.remove((Nogood) c));
 	}
 
 	@Override
-	public ConstraintStore prepend(Stored c) {
+	public Constraint prepend(Stored c) {
 		return NogoodConstraints.of(nogoods.add((Nogood) c));
 	}
 
@@ -142,7 +141,7 @@ final class NogoodConstraints implements Projectable<NogoodConstraints> {
 	}
 
 	@Override
-	public Fiber<Revision> revise(Prefix prefix, Package state) {
+	public Fiber<Revision> normalize(Prefix prefix, Package state) {
 		// the reaction was always wholesale — revise is normalize by another trigger
 		return normalize(state);
 	}

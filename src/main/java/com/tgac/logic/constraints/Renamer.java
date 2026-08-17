@@ -4,7 +4,6 @@ package com.tgac.logic.constraints;
 // ABOUTME: transcribes wrapped; content that cannot cross refuses with its name.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Projectable;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.unification.Term;
@@ -64,11 +63,7 @@ final class Renamer implements Posting.Visitor<Fiber<Posting>> {
 
 	@Override
 	public Fiber<Posting> visit(Posting.Absorption absorption) {
-		if (!(absorption.getFactor() instanceof Projectable)) {
-			throw new IllegalStateException(
-					"absorbed factor cannot cross the boundary: " + absorption.getFactor());
-		}
-		return ((Projectable<?>) absorption.getFactor()).rename(renaming)
+		return absorption.getFactor().rename(renaming)
 				.flatMap(renamed -> absorption.getDeclared().foldLeft(
 								Fiber.<List<Term<?>>> done(List.empty()),
 								(acc, term) -> acc.flatMap(terms ->

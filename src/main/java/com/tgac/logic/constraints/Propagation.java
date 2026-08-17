@@ -10,8 +10,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.constraints.store.Absorbable;
-import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Conjunction;
@@ -59,7 +58,7 @@ public final class Propagation {
 	 * call is the outermost trigger and drains to fixpoint. Applying a Bind
 	 * revalidates the prefix against the live package (open variables bind their
 	 * walked representatives, agreeing pairs drop, contradicting pairs fail the
-	 * branch), extends the substitution once, folds every {@link ConstraintStore}'s
+	 * branch), extends the substitution once, folds every {@link Constraint}'s
 	 * {@code revise} revision, then queues a Wake per bound variable — woken
 	 * propagators' verdicts feed further items, and that queue-until-empty loop is the
 	 * propagation fixpoint, one item per deferred step.
@@ -119,32 +118,32 @@ public final class Propagation {
 	 * The bulk statement entry — the trigger family's third row: a whole
 	 * FACTOR arrives. Meets {@code factor} into its resident store
 	 * (registering it when absent) and queues the store's
-	 * {@link ConstraintStore#normalize re-normalization}: verification of
+	 * {@link Constraint#normalize re-normalization}: verification of
 	 * what the meet brought in, first examinations, the internal fixpoint —
 	 * meet is completed by normalize, and a met factor answers no queries in
 	 * between (the two run inside one drain). How tabling seeds a master
 	 * from its key and replays an answer's delta.
 	 */
-	public static Posting absorb(Absorbable<?> factor) {
+	public static Posting absorb(Constraint<?> factor) {
 		return new Posting.Absorption(factor, List.empty());
 	}
 
 	/** {@link #absorb} declaring the factor's watched surface alongside. */
-	public static Posting absorb(Absorbable<?> factor, List<Term<?>> terms) {
+	public static Posting absorb(Constraint<?> factor, List<Term<?>> terms) {
 		return new Posting.Absorption(factor, terms);
 	}
 
 	/** The imposition body behind the {@link #absorb} constructors. */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	static Goal absorption(Absorbable<?> factor) {
+	static Goal absorption(Constraint factor) {
 		return p -> {
 			if (factor.isEmpty()) {
 				return Cont.just(p);
 			}
-			ConstraintStore resident = (ConstraintStore) p.getStores()
+			Constraint resident = (Constraint) p.getStores()
 					.get(factor.getClass()).getOrNull();
-			ConstraintStore met = resident == null ? factor
-					: (ConstraintStore) ((Semilattice) resident).combine((Semilattice) factor);
+			Constraint met = resident == null ? factor
+					: (Constraint) ((Semilattice) resident).combine(factor);
 			return enqueue(p.putStore(met), new Agenda.Absorbed(factor));
 		};
 	}
@@ -180,7 +179,7 @@ public final class Propagation {
 	 */
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
-			BiFunction<ConstraintStore, Package, Fiber<Revision>> trigger) {
+			BiFunction<Constraint<?>, Package, Fiber<Revision>> trigger) {
 		return Cont.defer(() ->
 				constraintStores(s)
 						.reduce(MFiber.mdone(s),
@@ -201,7 +200,7 @@ public final class Propagation {
 	 * enforced: package store entries are keyed by class, so a foreign-class
 	 * replacement would silently overwrite ANOTHER store's factor.
 	 */
-	private static Store ownFactor(ConstraintStore author, Revision.Updated upd) {
+	private static Store ownFactor(Constraint<?> author, Revision.Updated upd) {
 		if (upd.factor().getClass() != author.getClass()) {
 			throw new IllegalStateException("a revision may only replace its own factor: "
 					+ author.getClass().getSimpleName() + " answered with "
@@ -263,10 +262,11 @@ public final class Propagation {
 				.getOrElse(false);
 	}
 
-	private static Stream<ConstraintStore> constraintStores(Package p) {
+	@SuppressWarnings("unchecked")
+	private static Stream<Constraint<?>> constraintStores(Package p) {
 		return p.getStores().values().toJavaStream()
-				.filter(ConstraintStore.class::isInstance)
-				.map(ConstraintStore.class::cast);
+				.filter(Constraint.class::isInstance)
+				.map(Constraint.class::cast);
 	}
 
 	/**
@@ -396,7 +396,7 @@ public final class Propagation {
 			abstract Goal apply();
 		}
 
-		private static Fiber<Revision> getRevisionFiber(String name, ConstraintStore cs, Package p, Fiber<Revision> revise) {
+		private static Fiber<Revision> getRevisionFiber(String name, Constraint<?> cs, Package p, Fiber<Revision> revise) {
 			return ProfilerStore.from(p).isDefined() ?
 					Fiber.named(origin -> name + " @ " +  cs.getClass().getSimpleName(), revise) :
 					revise;
@@ -428,7 +428,7 @@ public final class Propagation {
 							// each store's revise is COMPLETE: custody, its own watchers of the
 							// newly bound variables, and its own cascade
 							return ((Goal) s2 -> reviseAll(s2, (cs, p) ->
-									getRevisionFiber("Propagation.Bind", cs, p, cs.revise(kept, p))))
+									getRevisionFiber("Propagation.Bind", cs, p, cs.normalize(kept, p))))
 									.and(ripen(kept))
 									.apply(extended);
 						})
@@ -465,9 +465,9 @@ public final class Propagation {
 
 		/** A factor was met into its store — the owning store re-normalizes. */
 		static final class Absorbed extends Item {
-			final Absorbable<?> factor;
+			final Constraint<?> factor;
 
-			Absorbed(Absorbable<?> factor) {
+			Absorbed(Constraint<?> factor) {
 				this.factor = factor;
 			}
 
@@ -475,7 +475,7 @@ public final class Propagation {
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> factor.getClass() == cs.getClass() ?
-								getRevisionFiber("Propagation.Absorbed", cs, p, ((Absorbable<?>) cs).normalize(p)):
+								getRevisionFiber("Propagation.Absorbed", cs, p, cs.normalize(p)):
 								Fiber.done(Revision.unchanged()));
 			}
 

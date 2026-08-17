@@ -4,7 +4,7 @@ package com.tgac.logic.tabling;
 // ABOUTME: meet = intersection - the value algebra without a live solver store.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
@@ -17,7 +17,6 @@ import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.Map;
 import java.util.List;
 import lombok.Value;
 
@@ -28,7 +27,7 @@ import lombok.Value;
  * because a conjunct inside a {@link Condition} is data, never driven.
  */
 @Value
-class Span implements Projectable<Span> {
+class Span implements Constraint<Span> {
 	long lo;
 	long hi;
 
@@ -72,7 +71,7 @@ class Span implements Projectable<Span> {
 	}
 
 	@Override
-	public Fiber<Revision> revise(Prefix prefix, Package state) {
+	public Fiber<Revision> normalize(Prefix prefix, Package state) {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 

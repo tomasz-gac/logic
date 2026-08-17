@@ -12,8 +12,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.store.ConstraintStore;
-import com.tgac.logic.constraints.store.Projectable;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
@@ -53,8 +52,8 @@ import lombok.RequiredArgsConstructor;
  * {@link #bottomStore} plus its {@code enforce}.
  */
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L, S>>
-		implements Projectable<S>, Absorbing {
+public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeConstraint<L, S>>
+		implements Constraint<S>, Absorbing {
 
 	// entries keyed by NAME: a live LVar or a canonical Hole
 	protected final LinkedHashMap<Term<?>, L> values;
@@ -139,14 +138,14 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	}
 
 	@Override
-	public ConstraintStore remove(Stored c) {
+	public Constraint remove(Stored c) {
 		return c instanceof Propagator ?
 				create(values, propagators.remove((Propagator) c)) :
 				this;
 	}
 
 	@Override
-	public ConstraintStore prepend(Stored c) {
+	public Constraint prepend(Stored c) {
 		return c instanceof Propagator ?
 				create(values, propagators.add((Propagator) c)) :
 				this;
@@ -250,7 +249,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 	}
 
 	@Override
-	public Fiber<Revision> revise(Prefix prefix, Package state) {
+	public Fiber<Revision> normalize(Prefix prefix, Package state) {
 		// each newly bound value must lie in its variable's lattice value; a
 		// var-var binding aliases the two, so the value follows the representative;
 		// every bound variable's watchers re-examine, then the cascade drains
@@ -514,7 +513,7 @@ public abstract class LatticeStore<L extends Domain<L>, S extends LatticeStore<L
 		if (o == null || getClass() != o.getClass()) {
 			return false;
 		}
-		LatticeStore<?, ?> that = (LatticeStore<?, ?>) o;
+		LatticeConstraint<?, ?> that = (LatticeConstraint<?, ?>) o;
 		if (isAbsorbing() || that.isAbsorbing()) {
 			// ⊥ has exactly one representative per kind — identity, never structure,
 			// so an empty live store can never compare equal to the dead one

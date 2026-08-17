@@ -8,7 +8,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.constraints.store.ConstraintStore;
+import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Goal;
@@ -21,7 +22,9 @@ import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple2;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.BiFunction;
 import org.junit.Test;
 
@@ -35,15 +38,15 @@ import org.junit.Test;
 public class CapabilityDriverTest {
 
 	/** A test-only constraint domain that emits configured inferences on every prefix. */
-	private static abstract class EmittingStore implements ConstraintStore {
+	private static abstract class EmittingConstraint implements Constraint<EmittingConstraint> {
 		final BiFunction<Prefix, Package, Revision> reaction;
 
-		EmittingStore(BiFunction<Prefix, Package, Revision> reaction) {
+		EmittingConstraint(BiFunction<Prefix, Package, Revision> reaction) {
 			this.reaction = reaction;
 		}
 
 		@Override
-		public Fiber<Revision> revise(Prefix prefix, Package state) {
+		public Fiber<Revision> normalize(Prefix prefix, Package state) {
 			return Fiber.done(reaction.apply(prefix, state));
 		}
 
@@ -76,17 +79,37 @@ public class CapabilityDriverTest {
 		public boolean contains(Stored c) {
 			return false;
 		}
+
+		@Override
+		public Tuple2<EmittingConstraint, EmittingConstraint> split(List<LVar<?>> vars) {
+			return null;
+		}
+
+		@Override
+		public Fiber<EmittingConstraint> rename(Renaming renaming) {
+			return null;
+		}
+
+		@Override
+		public EmittingConstraint meet(EmittingConstraint other) {
+			return null;
+		}
+
+		@Override
+		public Fiber<Revision> normalize(Package state) {
+			return null;
+		}
 	}
 
 	// two distinct classes: the store map is keyed by class
-	private static final class StoreA extends EmittingStore {
-		StoreA(BiFunction<Prefix, Package, Revision> r) {
+	private static final class ConstraintA extends EmittingConstraint {
+		ConstraintA(BiFunction<Prefix, Package, Revision> r) {
 			super(r);
 		}
 	}
 
-	private static class StoreB extends EmittingStore {
-		StoreB(BiFunction<Prefix, Package, Revision> r) {
+	private static class ConstraintB extends EmittingConstraint {
+		ConstraintB(BiFunction<Prefix, Package, Revision> r) {
 			super(r);
 		}
 	}
@@ -108,17 +131,17 @@ public class CapabilityDriverTest {
 
 	@Test(timeout = 5000)
 	public void aRevisionMayOnlyReplaceItsOwnFactor() {
-		// StoreA answers revise with a StoreB replacement: a cross-store swap
-		// the driver must refuse by name - putStore would otherwise silently
-		// overwrite ANOTHER store's factor
+		// ConstraintA answers revise with a ConstraintB replacement: a
+		// cross-family swap the driver must refuse by name - putStore would
+		// otherwise silently overwrite ANOTHER family's factor
 		Package root = root(
-				new StoreA((prefix, state) -> Revision.updated(
-						new StoreB((pf, st) -> Revision.unchanged()))));
+				new ConstraintA((prefix, state) -> Revision.updated(
+						new ConstraintB((pf, st) -> Revision.unchanged()))));
 
 		assertThatThrownBy(() -> solutions(root))
 				.isInstanceOf(IllegalStateException.class)
-				.hasMessageContaining("StoreA")
-				.hasMessageContaining("StoreB");
+				.hasMessageContaining("ConstraintA")
+				.hasMessageContaining("ConstraintB");
 	}
 
 	@Test(timeout = 5000)
@@ -126,9 +149,9 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+				new ConstraintA((prefix, state) -> Revision.updated(new ConstraintA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())),
-				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()))
+				new ConstraintB((prefix, state) -> Revision.updated(new ConstraintB((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(2L)).get())));
 
 		// two stores infer q=1 and q=2 in one pass: the branch is inconsistent and
@@ -141,9 +164,9 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+				new ConstraintA((prefix, state) -> Revision.updated(new ConstraintA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())),
-				new StoreB((prefix, state) -> Revision.updated(new StoreB((pf, st) -> Revision.unchanged()))
+				new ConstraintB((prefix, state) -> Revision.updated(new ConstraintB((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())));
 
 		assertThat(solutions(root)).isEqualTo(1);
@@ -159,7 +182,7 @@ public class CapabilityDriverTest {
 		};
 
 		Package root = root(
-				new StoreA((prefix, state) -> Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+				new ConstraintA((prefix, state) -> Revision.updated(new ConstraintA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())));
 
 		Unifiable<Long> x = lvar();
@@ -186,8 +209,8 @@ public class CapabilityDriverTest {
 		};
 
 		Package root = root(
-				new StoreA((prefix, state) ->
-						Revision.updated(new StoreA((pf, st) -> Revision.unchanged()))
+				new ConstraintA((prefix, state) ->
+						Revision.updated(new ConstraintA((pf, st) -> Revision.unchanged()))
 								.withSuspend(Suspension.of(
 										Collections.emptyList(), st -> true, probe))));
 
