@@ -8,11 +8,15 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
+import io.vavr.control.Option;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -20,10 +24,13 @@ import lombok.RequiredArgsConstructor;
  * value. No context — bindings were baked into the atoms by whatever walk
  * produced them; applying new context is the execution plane's business
  * (absorb: fold {@code meet(Atom)} into a factor, then normalize). The
- * algebra is generic and lawful once: {@code meet} is union with
- * ENTAILMENT dedup — an atom strictly dominated by another drops
- * (subsumption deletion: stating ¬(A ∧ B) alongside ¬A adds nothing) —
- * and {@code leq} is the COVERING order — every atom of the wider theory
+ * algebra is generic and lawful once: {@code meet} is insert/filter —
+ * union, then slot-mates that declare the {@link Semilattice} capability
+ * combine (same name, same watched surface: what an atom kind knows about
+ * its own digestion — {@code x⊂{1,2} ⊗ x⊂{2,3} = x⊂{2}}), then ENTAILMENT
+ * dedup: an atom strictly dominated by another drops (subsumption
+ * deletion: stating ¬(A ∧ B) alongside ¬A adds nothing). {@code leq} is
+ * the COVERING order — every atom of the wider theory
  * entailed by some atom of this one — grade two of the leq tower
  * (structural ⊂ covering ⊂ the factor's semantic leq): sound always,
  * sharp exactly as far as the atom classes' own {@code leq} overrides
@@ -52,7 +59,46 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		for (Atom<F> atom : atoms) {
 			admitted = admitted.add(atom);
 		}
-		return new Theory<>(minimal(admitted));
+		return new Theory<>(digested(admitted));
+	}
+
+	/** Normal form: fuse slot-mates, then delete dominated — every door digests. */
+	private static <F extends Factor<F>> LinkedHashSet<Atom<F>> digested(LinkedHashSet<Atom<F>> atoms) {
+		return minimal(fused(atoms));
+	}
+
+	/**
+	 * The capability meet: an atom kind that declares {@link Semilattice}
+	 * knows how to digest its own slot-mates (same name, same watched
+	 * surface) — combining is family knowledge, read here as a capability,
+	 * never assumed. Undeclared kinds union.
+	 */
+	private static <F extends Factor<F>> LinkedHashSet<Atom<F>> fused(LinkedHashSet<Atom<F>> atoms) {
+		LinkedHashSet<Atom<F>> out = LinkedHashSet.empty();
+		for (Atom<F> atom : atoms) {
+			Option<Atom<F>> mate = out.find(prior -> fusable(prior, atom));
+			if (mate.isDefined()) {
+				out = out.remove(mate.get()).add(fuse(mate.get(), atom));
+			} else {
+				out = out.add(atom);
+			}
+		}
+		return out;
+	}
+
+	private static boolean fusable(Atom<?> a, Atom<?> b) {
+		return a instanceof Semilattice && b instanceof Semilattice
+				&& a.name().equals(b.name())
+				&& watchedSurface(a).equals(watchedSurface(b));
+	}
+
+	private static Set<Term<?>> watchedSurface(Atom<?> atom) {
+		return atom.watched().collect(Collectors.toSet());
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static <F extends Factor<F>> Atom<F> fuse(Atom<F> a, Atom<F> b) {
+		return (Atom<F>) ((Semilattice) a).combine((Semilattice) b);
 	}
 
 	/**
@@ -73,9 +119,9 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		return atoms.isEmpty();
 	}
 
-	/** ⊗: union with entailment dedup — stating twice, or weaker, is stating once. */
+	/** ⊗: insert/filter — union, fuse slot-mates, delete dominated. */
 	public Theory<F> meet(Theory<F> other) {
-		return new Theory<>(minimal(atoms.addAll(other.atoms)));
+		return new Theory<>(digested(atoms.addAll(other.atoms)));
 	}
 
 	@Override
@@ -115,9 +161,9 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	}
 
 	/**
-	 * The crossing, atom by atom; refuses loudly on an untranscribable atom.
-	 * Re-minimalizes: a renaming that merges names can create dominations
-	 * the source theory did not have.
+	 * The crossing, atom by atom. Re-digests: a renaming that merges names
+	 * can create slot collisions and dominations the source theory did not
+	 * have.
 	 */
 	public Fiber<Theory<F>> rename(Renaming renaming) {
 		Fiber<LinkedHashSet<Atom<F>>> renamed = Fiber.done(LinkedHashSet.empty());
@@ -125,7 +171,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 			renamed = renamed.flatMap(acc ->
 					atom.rename(renaming).map(acc::add));
 		}
-		return renamed.map(as -> new Theory<>(minimal(as)));
+		return renamed.map(as -> new Theory<>(digested(as)));
 	}
 
 	@Override
