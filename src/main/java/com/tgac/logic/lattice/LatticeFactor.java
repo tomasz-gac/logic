@@ -321,9 +321,12 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
 		for (Imposition<L, S> entry : impositions().collect(Collectors.toList())) {
 			Term<?> walked = state.walk(entry.getTarget());
-			if (walked == entry.getTarget()) {
-				continue;    // live at its root
+			if (walked == entry.getTarget() && walked.asVar().isDefined()) {
+				continue;    // a live var at its root
 			}
+			// anything else verifies: a rebound name follows its representative,
+			// and a GROUND-keyed entry (the theory crossing keeps val-resolved
+			// targets) takes its membership check instead of lingering unread
 			factor = consume(factor.update(state, walked, entry.getValue()),
 					factor, inferred, runs, queue);
 			if (factor == null) {
@@ -497,7 +500,9 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	public Fiber<S> rename(Renaming renaming) {
 		Fiber<Theory<S>> renamed = Fiber.done(Theory.empty());
 		for (Imposition<L, S> entry : impositions().collect(Collectors.toList())) {
-		// TODO : this seems inconsistent with what Imposition.rename does
+			// Imposition.rename keeps a val-resolved target (the faithful
+			// crossing); dropping it here is this store's OPTIMIZATION — safe
+			// either way, since normalize verifies ground-keyed entries
 			renamed = renamed.flatMap(t -> renaming.apply(entry.getTarget())
 					.map(target -> target.asVal().isDefined() ? t
 							: t.with(imposition(target, entry.getValue()))));

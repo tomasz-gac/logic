@@ -4,10 +4,13 @@ package com.tgac.logic.lattice;
 // ABOUTME: verification, narrowing, collapse, propagators, split and rename for free.
 
 import com.tgac.logic.TestSchedulers;
+import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.unification.Any;
@@ -105,6 +108,29 @@ public class LatticeFactorTest {
 		public <T> Goal enforce(Term<T> x) {
 			return Goal.success();
 		}
+	}
+
+	@Test
+	public void aGroundKeyedEntryVerifiesAtNormalize() {
+		// a ground-keyed imposition can enter through the theory crossing
+		// (Imposition.rename keeps val-resolved targets); normalize must
+		// verify it against the domain, not skip it as live-at-root
+		FlatConstraints inadmissible = FlatConstraints.empty()
+				.withValue(lval(5), FlatSet.of(1, 2));
+		boolean failed = new BreadthFirstScheduler<>(
+				inadmissible.normalize(Package.empty()))
+				.get()
+				.match(() -> true, () -> false, upd -> false);
+		assertThat(failed).isTrue();
+
+		FlatConstraints admissible = FlatConstraints.empty()
+				.withValue(lval(1), FlatSet.of(1, 2));
+		FlatConstraints spent = new BreadthFirstScheduler<>(
+				admissible.normalize(Package.empty()))
+				.get()
+				.match(() -> null, () -> null, upd -> (FlatConstraints) upd.factor());
+		assertThat(spent).isNotNull();
+		assertThat(spent.isEmpty()).isTrue();
 	}
 
 	private static Goal flat(Unifiable<?> x, FlatSet values) {
