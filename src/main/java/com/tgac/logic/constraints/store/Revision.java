@@ -3,7 +3,6 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: A store's revised self after a trigger — its own updated factor plus the
 // ABOUTME: cross-store consequences (bindings, suspensions); never a whole package.
 
-import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import java.util.ArrayList;
@@ -38,7 +37,7 @@ public abstract class Revision {
 	}
 
 	/** Replace my factor; add consequences with the {@code with*} builders. */
-	public static Updated updated(Packaged replacement) {
+	public static Updated updated(Constraint<?> replacement) {
 		return new Updated(replacement,
 				Collections.emptyList(), Collections.emptyList());
 	}
@@ -79,11 +78,11 @@ public abstract class Revision {
 	}
 
 	public static final class Updated extends Revision {
-		private final Packaged factor;
+		private final Constraint<?> factor;
 		private final List<Prefix> inferred;
 		private final List<Suspension> suspensions;
 
-		private Updated(Packaged factor, List<Prefix> inferred, List<Suspension> suspensions) {
+		private Updated(Constraint<?> factor, List<Prefix> inferred, List<Suspension> suspensions) {
 			this.factor = factor;
 			this.inferred = inferred;
 			this.suspensions = suspensions;
@@ -107,7 +106,7 @@ public abstract class Revision {
 			return new Updated(factor, inferred, appended(suspensions, suspension));
 		}
 
-		public Packaged factor() {
+		public Constraint<?> factor() {
 			return factor;
 		}
 

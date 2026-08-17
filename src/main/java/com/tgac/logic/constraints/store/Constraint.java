@@ -18,12 +18,17 @@ import java.util.Map;
 
 public interface Constraint<S extends Constraint<S>> extends Packaged, Semilattice<S>, PartialOrder<S> {
 
-	/** Parks {@code c} in the family — the raw half of statement; meet's cousin. */
+	/**
+	 * Parks {@code c} in the family — the raw half of statement, completed by
+	 * {@code normalize}. Scheduled for deletion: statement becomes absorption
+	 * of the atom's singleton factor when the activate door folds into absorb.
+	 */
 	S prepend(Atom c);
 
-	/** Unparks {@code c} — the raw half of retraction; split's degenerate cousin. */
-	S remove(Atom c);
-
+	/**
+	 * Scheduled for deletion into {@code leq}: containment of an atom is
+	 * entailment of its singleton factor.
+	 */
 	boolean contains(Atom c);
 
 	/**

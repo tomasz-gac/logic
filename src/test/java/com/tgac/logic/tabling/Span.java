@@ -81,11 +81,6 @@ class Span implements Constraint<Span> {
 	}
 
 	@Override
-	public Span remove(Atom c) {
-		throw new UnsupportedOperationException("value-only test store");
-	}
-
-	@Override
 	public Span prepend(Atom c) {
 		throw new UnsupportedOperationException("value-only test store");
 	}

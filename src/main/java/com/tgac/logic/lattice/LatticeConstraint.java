@@ -138,13 +138,6 @@ public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeCo
 	}
 
 	@Override
-	public S remove(Atom c) {
-		return c instanceof Propagator ?
-				create(values, propagators.remove((Propagator) c)) :
-				self();
-	}
-
-	@Override
 	public S prepend(Atom c) {
 		return c instanceof Propagator ?
 				create(values, propagators.add((Propagator) c)) :
@@ -408,7 +401,7 @@ public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeCo
 		return p.propagate(live).match(
 				Update::fail,
 				Update::unchanged,
-				() -> Update.applied(factor.remove(p)),
+				() -> Update.applied(create(factor.values, factor.propagators.remove(p))),
 				f -> f.apply(live, factor));
 	}
 

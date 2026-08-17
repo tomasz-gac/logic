@@ -200,7 +200,7 @@ public final class Propagation {
 	 * enforced: package store entries are keyed by class, so a foreign-class
 	 * replacement would silently overwrite ANOTHER store's factor.
 	 */
-	private static Packaged ownFactor(Constraint<?> author, Revision.Updated upd) {
+	private static Constraint<?> ownFactor(Constraint<?> author, Revision.Updated upd) {
 		if (upd.factor().getClass() != author.getClass()) {
 			throw new IllegalStateException("a revision may only replace its own factor: "
 					+ author.getClass().getSimpleName() + " answered with "

@@ -85,13 +85,6 @@ public class Package {
 				.getOrElse(this);
 	}
 
-	/** Removes {@code c} from its store; unchanged when the store is absent. */
-	public Package withoutStored(Atom c) {
-		return stores.get(c.getConstraintClass())
-				.map(cs -> ((com.tgac.logic.constraints.store.Constraint<?>) cs).remove(c))
-				.map(cs -> Package.of(substitutions, stores.put(c.getConstraintClass(), cs)))
-				.getOrElse(this);
-	}
 
 	/** Applies {@code f} to the payload registered under {@code cls}; unchanged when absent. */
 	@SuppressWarnings("unchecked")

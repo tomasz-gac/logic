@@ -66,11 +66,6 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public EmittingConstraint remove(Atom c) {
-			return this;
-		}
-
-		@Override
 		public EmittingConstraint prepend(Atom c) {
 			return this;
 		}

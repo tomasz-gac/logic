@@ -107,11 +107,6 @@ final class NogoodConstraints implements Constraint<NogoodConstraints> {
 	}
 
 	@Override
-	public NogoodConstraints remove(Atom c) {
-		return NogoodConstraints.of(nogoods.remove((Nogood) c));
-	}
-
-	@Override
 	public NogoodConstraints prepend(Atom c) {
 		return NogoodConstraints.of(nogoods.add((Nogood) c));
 	}
