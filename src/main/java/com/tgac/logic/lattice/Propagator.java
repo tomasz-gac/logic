@@ -5,11 +5,11 @@ package com.tgac.logic.lattice;
 
 import com.tgac.logic.constraints.store.Watches;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Store;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Array;
 import io.vavr.collection.List;
@@ -21,7 +21,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 /**
- * The parked unit of the wake machinery (docs/reference/constraint-kernel.md* §2.2). Extends {@link Stored} so park/remove route to the owning store without a
+ * The parked unit of the wake machinery (docs/reference/constraint-kernel.md* §2.2). Extends {@link Atom} so park/remove route to the owning store without a
  * wrapper. Watch matching walks the watched terms against the LIVE state, so
  * aliasing (x bound to y) re-targets the watch structurally, where the old
  * Constraint protocol relied on the re-park-with-freshly-walked-args side effect of
@@ -29,10 +29,10 @@ import lombok.RequiredArgsConstructor;
  */
 @EqualsAndHashCode(of = {"storeClass", "name", "watchedTerms"})
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public final class Propagator implements Stored, Transcribable {
+public final class Propagator implements Atom, Transcribable {
 
 	@Getter
-	private final Class<? extends Store> storeClass;
+	private final Class<? extends Constraint<?>> storeClass;
 	private final String name;
 	private final Array<? extends Term<?>> watchedTerms;
 	private final BiFunction<Array<? extends Term<?>>, Package, Verdict> body;
@@ -53,7 +53,7 @@ public final class Propagator implements Stored, Transcribable {
 	 * of one post compare equal wherever the renaming agrees.
 	 */
 	public static Propagator of(
-			Class<? extends Store> storeClass,
+			Class<? extends Constraint<?>> storeClass,
 			String name,
 			Iterable<? extends Term<?>> watchedTerms,
 			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
@@ -66,8 +66,24 @@ public final class Propagator implements Stored, Transcribable {
 	}
 
 	@Override
-	public Stream<Term<?>> terms() {
+	public Class<? extends Constraint<?>> getConstraintClass() {
+		return storeClass;
+	}
+
+	@Override
+	public String name() {
+		return name;
+	}
+
+	@Override
+	public Stream<Term<?>> watched() {
 		return watchedTerms.toJavaStream().map(t -> (Term<?>) t);
+	}
+
+	/** The rebuild-by-name schema: the watched terms, re-posted under name(). */
+	@Override
+	public Object payload() {
+		return watchedTerms;
 	}
 
 	/**
@@ -90,7 +106,7 @@ public final class Propagator implements Stored, Transcribable {
 
 	/** The schema re-instantiated over the renamed terms — {@link #watching}. */
 	@Override
-	public Fiber<Stored> rename(Renaming renaming) {
+	public Fiber<Atom> rename(Renaming renaming) {
 		return watchedTerms.foldLeft(
 						Fiber.<List<Term<?>>> done(List.empty()),
 						(acc, term) -> acc.flatMap(terms ->

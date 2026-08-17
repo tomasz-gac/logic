@@ -10,6 +10,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
@@ -17,8 +18,7 @@ import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.Watermark;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
@@ -99,18 +99,18 @@ public final class Propagation {
 	 * must already be registered) and queues its first examination — the owning
 	 * store's {@code stated} hook decides everything decidable at statement time.
 	 */
-	public static Posting activate(Stored item) {
+	public static Posting activate(Atom item) {
 		return new Posting.Activation(item, UnaryOperator.identity(), p -> false);
 	}
 
 	/** {@link #activate} with the owning store's registration and doom check. */
-	public static Posting activate(Stored item, UnaryOperator<Package> registration,
+	public static Posting activate(Atom item, UnaryOperator<Package> registration,
 			Predicate<Package> doomed) {
 		return new Posting.Activation(item, registration, doomed);
 	}
 
 	/** The imposition body behind the {@link #activate} constructors. */
-	static Goal activation(Stored item) {
+	static Goal activation(Atom item) {
 		return s -> enqueue(s.withStored(item), new Agenda.Stated(item));
 	}
 
@@ -200,7 +200,7 @@ public final class Propagation {
 	 * enforced: package store entries are keyed by class, so a foreign-class
 	 * replacement would silently overwrite ANOTHER store's factor.
 	 */
-	private static Store ownFactor(Constraint<?> author, Revision.Updated upd) {
+	private static Packaged ownFactor(Constraint<?> author, Revision.Updated upd) {
 		if (upd.factor().getClass() != author.getClass()) {
 			throw new IllegalStateException("a revision may only replace its own factor: "
 					+ author.getClass().getSimpleName() + " answered with "
@@ -341,7 +341,7 @@ public final class Propagation {
 	}
 
 	/** Parked suspensions — persistent, branch-local, driver-owned. */
-	static final class Suspensions implements Store {
+	static final class Suspensions implements Packaged {
 		static final Suspensions EMPTY = new Suspensions(List.empty());
 
 		final List<Suspension> parked;
@@ -358,20 +358,7 @@ public final class Propagation {
 			return new Suspensions(parked.remove(s));
 		}
 
-		@Override
-		public Store remove(Stored c) {
-			return this;
-		}
 
-		@Override
-		public Store prepend(Stored c) {
-			return this;
-		}
-
-		@Override
-		public boolean contains(Stored c) {
-			return false;
-		}
 
 		@Override
 		public String toString() {
@@ -386,7 +373,7 @@ public final class Propagation {
 	 * goals splice only after the items are exhausted and the agenda is removed.
 	 * A plain, inert store: constraint processing never sees it.
 	 */
-	static final class Agenda implements Store {
+	static final class Agenda implements Packaged {
 
 		abstract static class Item {
 			private Item() {
@@ -443,16 +430,16 @@ public final class Propagation {
 
 		/** A store item was just stated — its owning store examines it. */
 		static final class Stated extends Item {
-			final Stored item;
+			final Atom item;
 
-			Stated(Stored item) {
+			Stated(Atom item) {
 				this.item = item;
 			}
 
 			@Override
 			Goal apply() {
 				return s -> reviseAll(s,
-						(cs, p) -> item.getStoreClass() == cs.getClass() ?
+						(cs, p) -> item.getConstraintClass() == cs.getClass() ?
 								getRevisionFiber("Propagation.Stated", cs, p, cs.stated(item, p)) :
 								Fiber.done(Revision.unchanged()));
 			}
@@ -526,20 +513,7 @@ public final class Propagation {
 			return runs;
 		}
 
-		@Override
-		public Store remove(Stored c) {
-			return this;
-		}
 
-		@Override
-		public Store prepend(Stored c) {
-			return this;
-		}
-
-		@Override
-		public boolean contains(Stored c) {
-			return false;
-		}
 
 		@Override
 		public String toString() {

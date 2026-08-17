@@ -5,8 +5,7 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
@@ -17,7 +16,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public interface Constraint<S extends Constraint<S>> extends Store, Semilattice<S>, PartialOrder<S> {
+public interface Constraint<S extends Constraint<S>> extends Packaged, Semilattice<S>, PartialOrder<S> {
+
+	/** Parks {@code c} in the family — the raw half of statement; meet's cousin. */
+	S prepend(Atom c);
+
+	/** Unparks {@code c} — the raw half of retraction; split's degenerate cousin. */
+	S remove(Atom c);
+
+	boolean contains(Atom c);
 
 	/**
 	 * Whether the store currently holds no constraints.
@@ -92,7 +99,7 @@ public interface Constraint<S extends Constraint<S>> extends Store, Semilattice<
 	 * statement time must be decided here. Same scheduling contract as
 	 * {@link #normalize}.
 	 */
-	default Fiber<Revision> stated(Stored item, Package state) {
+	default Fiber<Revision> stated(Atom item, Package state) {
 		return Fiber.done(Revision.unchanged());
 	}
 

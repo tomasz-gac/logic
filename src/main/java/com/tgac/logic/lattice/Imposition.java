@@ -1,13 +1,14 @@
 package com.tgac.logic.lattice;
 
-// ABOUTME: A domain value keyed to its target, as a Stored item — the statement
+// ABOUTME: A domain value keyed to its target, as a Atom item — the statement
 // ABOUTME: unit of a lattice store. Consumed by stated, never resident.
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Packaged;
+import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.unification.Term;
 import java.util.stream.Stream;
 import lombok.Value;
@@ -20,19 +21,34 @@ import lombok.Value;
  * so {@code prepend} deliberately ignores it.
  */
 @Value
-public class Imposition<L extends Domain<L>> implements Stored, Transcribable {
-	Class<? extends Store> storeClass;
+public class Imposition<L extends Domain<L>> implements Atom, Transcribable {
+	Class<? extends Constraint<?>> storeClass;
 	Term<?> target;
 	L value;
 
 	@Override
-	public Stream<Term<?>> terms() {
+	public Class<? extends Constraint<?>> getConstraintClass() {
+		return storeClass;
+	}
+
+	@Override
+	public String name() {
+		return "imposition";
+	}
+
+	@Override
+	public Stream<Term<?>> watched() {
 		return Stream.of(target);
+	}
+
+	@Override
+	public Object payload() {
+		return value;
 	}
 
 	/** The value is ground data and rides; only the target re-keys. */
 	@Override
-	public Fiber<Stored> rename(Renaming renaming) {
+	public Fiber<Atom> rename(Renaming renaming) {
 		return renaming.apply(target)
 				.map(renamed -> new Imposition<>(storeClass, renamed, value));
 	}

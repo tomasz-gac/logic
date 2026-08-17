@@ -1,5 +1,6 @@
 package com.tgac.logic.goals;
 
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
@@ -76,19 +77,19 @@ public class Package {
 	}
 
 	/** Prepends {@code c} into its store; unchanged when the store is absent. */
-	public Package withStored(Stored c) {
+	public Package withStored(Atom c) {
 		Watermark.check(this, c);
-		return stores.get(c.getStoreClass())
-				.map(cs -> ((Store) cs).prepend(c))
-				.map(cs -> Package.of(substitutions, stores.put(c.getStoreClass(), cs)))
+		return stores.get(c.getConstraintClass())
+				.map(cs -> ((com.tgac.logic.constraints.store.Constraint<?>) cs).prepend(c))
+				.map(cs -> Package.of(substitutions, stores.put(c.getConstraintClass(), cs)))
 				.getOrElse(this);
 	}
 
 	/** Removes {@code c} from its store; unchanged when the store is absent. */
-	public Package withoutStored(Stored c) {
-		return stores.get(c.getStoreClass())
-				.map(cs -> ((Store) cs).remove(c))
-				.map(cs -> Package.of(substitutions, stores.put(c.getStoreClass(), cs)))
+	public Package withoutStored(Atom c) {
+		return stores.get(c.getConstraintClass())
+				.map(cs -> ((com.tgac.logic.constraints.store.Constraint<?>) cs).remove(c))
+				.map(cs -> Package.of(substitutions, stores.put(c.getConstraintClass(), cs)))
 				.getOrElse(this);
 	}
 

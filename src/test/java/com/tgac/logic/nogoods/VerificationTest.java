@@ -3,6 +3,8 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The verification core against Neq's own semantics: refuted discards,
 // ABOUTME: entailed fails, survivors keep their original literals, bindings thread.
 
+import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
@@ -15,9 +17,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Store;
+import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Array;
@@ -114,15 +115,25 @@ public class VerificationTest {
 		// dropped statement would read "unchanged" — the false cross-off
 		// direction, which can veto a satisfiable branch. Residence is
 		// asserted after literal instead
-		Stored orphan = new Stored() {
+		Atom orphan = new Atom() {
 			@Override
-			public Class<? extends Store> getStoreClass() {
-				return Store.class;
+			public Class<? extends Constraint<?>> getConstraintClass() {
+				return NogoodConstraints.class;
 			}
 
 			@Override
-			public java.util.stream.Stream<Term<?>> terms() {
+			public String name() {
+				return "orphan";
+			}
+
+			@Override
+			public java.util.stream.Stream<Term<?>> watched() {
 				return java.util.stream.Stream.empty();
+			}
+
+			@Override
+			public Object payload() {
+				return "orphan";
 			}
 		};
 
@@ -137,9 +148,9 @@ public class VerificationTest {
 		// the item (the named-schema contract), and the statement follows it
 		Term<?> x = lvar();
 		Posting first = Propagation.activate(
-				Propagator.of(Store.class, "same-schema", Array.of(x), (watched, pkg) -> null));
+				Propagator.of(NogoodConstraints.class, "same-schema", Array.of(x), (watched, pkg) -> null));
 		Posting second = Propagation.activate(
-				Propagator.of(Store.class, "same-schema", Array.of(x), (watched, pkg) -> null));
+				Propagator.of(NogoodConstraints.class, "same-schema", Array.of(x), (watched, pkg) -> null));
 
 		assertThat(first).isEqualTo(second);
 		assertThat(first.terms()).containsExactly(x);

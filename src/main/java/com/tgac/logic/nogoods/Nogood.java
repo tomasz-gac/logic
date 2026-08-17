@@ -8,8 +8,8 @@ import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.UnifyGoal;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Transcribable;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.List;
 import java.util.stream.Stream;
@@ -23,7 +23,7 @@ import lombok.Value;
  * is the package's; a nogood only ever says "not this".
  */
 @Value
-public class Nogood implements Stored, Transcribable {
+public class Nogood implements Atom, Transcribable {
 	Posting forbidden;
 
 	/**
@@ -70,18 +70,28 @@ public class Nogood implements Stored, Transcribable {
 			};
 
 	@Override
-	public Class<? extends Store> getStoreClass() {
+	public Class<? extends Constraint<?>> getConstraintClass() {
 		return NogoodConstraints.class;
 	}
 
 	@Override
-	public Stream<Term<?>> terms() {
+	public String name() {
+		return "nogood";
+	}
+
+	@Override
+	public Stream<Term<?>> watched() {
 		return forbidden.terms();
+	}
+
+	@Override
+	public Object payload() {
+		return forbidden;
 	}
 
 	/** The posting transcribes itself wrapped; the envelope follows. */
 	@Override
-	public Fiber<Stored> rename(Renaming renaming) {
+	public Fiber<Atom> rename(Renaming renaming) {
 		return forbidden.rename(renaming).map(Nogood::of);
 	}
 

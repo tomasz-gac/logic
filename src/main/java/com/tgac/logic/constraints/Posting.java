@@ -12,7 +12,7 @@ import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.NamedGoal;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.goals.optimizer.Bounded;
 import com.tgac.logic.goals.optimizer.Optimizer;
 import com.tgac.logic.unification.MiniKanren;
@@ -167,11 +167,11 @@ public interface Posting extends Goal, Bounded {
 	@Getter
 	@EqualsAndHashCode(of = "item")
 	class Activation implements Posting {
-		private final Stored item;
+		private final Atom item;
 		private final UnaryOperator<Package> registration;
 		private final Predicate<Package> doomCheck;
 
-		Activation(Stored item, UnaryOperator<Package> registration,
+		Activation(Atom item, UnaryOperator<Package> registration,
 				Predicate<Package> doomCheck) {
 			this.item = item;
 			this.registration = registration;
@@ -192,10 +192,10 @@ public interface Posting extends Goal, Bounded {
 		 */
 		private Goal landed() {
 			return s -> {
-				if (!s.getStores().containsKey(item.getStoreClass())) {
+				if (!s.getStores().containsKey(item.getConstraintClass())) {
 					throw new IllegalStateException(
 							"statement dropped: no store registered for "
-									+ item.getStoreClass().getSimpleName() + " — " + item);
+									+ item.getConstraintClass().getSimpleName() + " — " + item);
 				}
 				return Cont.just(s);
 			};
@@ -208,7 +208,7 @@ public interface Posting extends Goal, Bounded {
 
 		@Override
 		public Stream<Term<?>> terms() {
-			return item.terms();
+			return item.watched();
 		}
 
 		@Override

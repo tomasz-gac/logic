@@ -3,6 +3,7 @@ package com.tgac.logic.goals;
 // ABOUTME: The birth watermark a closed sub-solve carries: a variable born before
 // ABOUTME: the mark may not surface unbound inside — the closed-aggregate age check.
 
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
@@ -65,8 +66,8 @@ public class Watermark implements Packaged {
 	 * conditional on it. Deep-walking first admits terms whose old variables
 	 * are already bound to values.
 	 */
-	public static void check(Package pkg, Stored item) {
-		markOn(pkg).forEach(watermark -> refuseOldFreeNames(pkg, watermark, item.terms()));
+	public static void check(Package pkg, Atom item) {
+		markOn(pkg).forEach(watermark -> refuseOldFreeNames(pkg, watermark, item.watched()));
 	}
 
 	/**

@@ -3,14 +3,14 @@ package com.tgac.logic.tabling;
 // ABOUTME: A minimal Projectable for carrier tests: one closed interval of longs,
 // ABOUTME: meet = intersection - the value algebra without a live solver store.
 
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
@@ -81,17 +81,17 @@ class Span implements Constraint<Span> {
 	}
 
 	@Override
-	public Store remove(Stored c) {
+	public Span remove(Atom c) {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 
 	@Override
-	public Store prepend(Stored c) {
+	public Span prepend(Atom c) {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 
 	@Override
-	public boolean contains(Stored c) {
+	public boolean contains(Atom c) {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 }

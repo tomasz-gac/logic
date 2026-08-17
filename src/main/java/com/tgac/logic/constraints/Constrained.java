@@ -3,7 +3,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: The canonical escape for infinities: a rendered answer carrying the
 // ABOUTME: residual items its stores could not finish — expressed, never dropped.
 
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.unification.Hole;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Reified;
@@ -23,7 +23,7 @@ import lombok.Value;
 @Value(staticConstructor = "of")
 public class Constrained<T> implements Reified<T> {
 	Term<T> that;
-	List<Stored> residuals;
+	List<Atom> residuals;
 
 	@Override
 	public Option<T> asVal() {

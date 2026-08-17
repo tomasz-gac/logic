@@ -1,5 +1,6 @@
 package com.tgac.logic.constraints;
 
+import com.tgac.logic.constraints.store.Atom;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,8 +15,7 @@ import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Store;
-import com.tgac.logic.goals.Stored;
+import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.tabling.Table;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
@@ -66,17 +66,17 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public Store remove(Stored c) {
+		public EmittingConstraint remove(Atom c) {
 			return this;
 		}
 
 		@Override
-		public Store prepend(Stored c) {
+		public EmittingConstraint prepend(Atom c) {
 			return this;
 		}
 
 		@Override
-		public boolean contains(Stored c) {
+		public boolean contains(Atom c) {
 			return false;
 		}
 
@@ -114,9 +114,9 @@ public class CapabilityDriverTest {
 		}
 	}
 
-	private static Package root(Store... stores) {
+	private static Package root(Packaged... stores) {
 		Package p = Package.empty().withStore(Table.empty());
-		for (Store s : stores) {
+		for (Packaged s : stores) {
 			p = p.putStore(s);
 		}
 		return p;

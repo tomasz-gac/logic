@@ -4,7 +4,6 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: re-instantiate — the item half of posting transcription.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.goals.Stored;
 
 /**
  * The item-side crossing capability: this item's content under changed names —
@@ -16,5 +15,5 @@ import com.tgac.logic.goals.Stored;
  */
 public interface Transcribable {
 
-	Fiber<Stored> rename(Renaming renaming);
+	Fiber<Atom> rename(Renaming renaming);
 }

@@ -4,6 +4,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: wrapped into Revision, revise is normalize by another trigger.
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Constraint;
@@ -11,7 +12,6 @@ import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
@@ -79,7 +79,7 @@ final class NogoodConstraints implements Constraint<NogoodConstraints> {
 		LinkedHashSet<Nogood> in = LinkedHashSet.empty();
 		LinkedHashSet<Nogood> out = LinkedHashSet.empty();
 		for (Nogood nogood : nogoods) {
-			boolean fits = nogood.terms()
+			boolean fits = nogood.watched()
 					.flatMap(MiniKanren::namesIn)
 					.allMatch(covered::contains);
 			if (fits) {
@@ -107,17 +107,17 @@ final class NogoodConstraints implements Constraint<NogoodConstraints> {
 	}
 
 	@Override
-	public Constraint remove(Stored c) {
+	public NogoodConstraints remove(Atom c) {
 		return NogoodConstraints.of(nogoods.remove((Nogood) c));
 	}
 
 	@Override
-	public Constraint prepend(Stored c) {
+	public NogoodConstraints prepend(Atom c) {
 		return NogoodConstraints.of(nogoods.add((Nogood) c));
 	}
 
 	@Override
-	public boolean contains(Stored c) {
+	public boolean contains(Atom c) {
 		return c instanceof Nogood && nogoods.contains((Nogood) c);
 	}
 
@@ -148,7 +148,7 @@ final class NogoodConstraints implements Constraint<NogoodConstraints> {
 
 	/** First examination is the same wholesale re-verification: a nogood born violated fails here. */
 	@Override
-	public Fiber<Revision> stated(Stored item, Package state) {
+	public Fiber<Revision> stated(Atom item, Package state) {
 		return normalize(state);
 	}
 
@@ -164,7 +164,7 @@ final class NogoodConstraints implements Constraint<NogoodConstraints> {
 	public <A> Term<A> reify(Term<A> unifiable, Substitutions renameSubstitutions, Package s) {
 		// renameSubstitutions is the answer's canonical seed: a live name it
 		// binds is part of the rendered answer
-		List<Stored> residuals = List.empty();
+		List<Atom> residuals = List.empty();
 		for (Nogood nogood : nogoods) {
 			List<Posting> kept = getUnboundNames(renameSubstitutions, s, nogood);
 			if (kept.isEmpty()) {

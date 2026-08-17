@@ -4,6 +4,7 @@ package com.tgac.logic.lattice;
 // ABOUTME: plus named propagators; instances supply only their capability record.
 
 import static com.tgac.logic.unification.LVal.lval;
+import com.tgac.logic.constraints.store.Atom;
 
 import com.tgac.functional.algebra.Absorbing;
 import com.tgac.functional.algebra.MonotoneDrain;
@@ -18,7 +19,6 @@ import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Stored;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
@@ -138,21 +138,21 @@ public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeCo
 	}
 
 	@Override
-	public Constraint remove(Stored c) {
+	public S remove(Atom c) {
 		return c instanceof Propagator ?
 				create(values, propagators.remove((Propagator) c)) :
-				this;
+				self();
 	}
 
 	@Override
-	public Constraint prepend(Stored c) {
+	public S prepend(Atom c) {
 		return c instanceof Propagator ?
 				create(values, propagators.add((Propagator) c)) :
-				this;
+				self();
 	}
 
 	@Override
-	public boolean contains(Stored c) {
+	public boolean contains(Atom c) {
 		return c instanceof Propagator &&
 				propagators.contains((Propagator) c);
 	}
@@ -204,8 +204,10 @@ public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeCo
 	 * stand against the live state: a ground target the value refuses, or a
 	 * live entry it meets to bottom.
 	 */
+	@SuppressWarnings("unchecked")
 	public Posting impose(Term<?> target, L value) {
-		return Propagation.activate(new Imposition<>(getClass(), target, value),
+		return Propagation.activate(
+				new Imposition<>((Class<? extends Constraint<?>>) getClass(), target, value),
 				p -> p.getStores().containsKey(getClass()) ? p
 						: p.withStore(create(LinkedHashMap.empty(), HashSet.empty())),
 				p -> doomedAt(p, target, value));
@@ -316,7 +318,7 @@ public abstract class LatticeConstraint<L extends Domain<L>, S extends LatticeCo
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Fiber<Revision> stated(Stored item, Package state) {
+	public Fiber<Revision> stated(Atom item, Package state) {
 		if (item instanceof Imposition) {
 			// update's verification/collapse/narrowing routing, inside the
 			// store's method: the item is a message, the values map keeps

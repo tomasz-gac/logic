@@ -4,7 +4,7 @@ package com.tgac.logic.lattice;
 // ABOUTME: answer type, distinct from the store→driver Revision.
 
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.goals.Store;
+import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
 import java.util.ArrayList;
@@ -33,7 +33,7 @@ public abstract class Update {
 		return Unchanged.INSTANCE;
 	}
 
-	public static Applied applied(Store factor) {
+	public static Applied applied(Packaged factor) {
 		return new Applied(factor,
 				Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 	}
@@ -74,12 +74,12 @@ public abstract class Update {
 	}
 
 	public static final class Applied extends Update {
-		private final Store factor;
+		private final Packaged factor;
 		private final List<Prefix> inferred;
 		private final List<Term<?>> reexamine;
 		private final List<Goal> runs;
 
-		private Applied(Store factor, List<Prefix> inferred,
+		private Applied(Packaged factor, List<Prefix> inferred,
 				List<Term<?>> reexamine, List<Goal> runs) {
 			this.factor = factor;
 			this.inferred = inferred;
@@ -102,7 +102,7 @@ public abstract class Update {
 			return new Applied(factor, inferred, reexamine, appended(runs, goal));
 		}
 
-		public Store factor() {
+		public Packaged factor() {
 			return factor;
 		}
 

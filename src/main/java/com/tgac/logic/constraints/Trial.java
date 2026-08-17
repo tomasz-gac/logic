@@ -151,7 +151,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	 * contradiction — right for a Bind item, fatally wrong here: the trial
 	 * asks whether the EQUALITY can still hold, disequality's own reading of
 	 * the same pairs); a binding-shaped CONJUNCT threads its parts through
-	 * the growing scratch in a plain loop. Store rows are unreachable behind
+	 * the growing scratch in a plain loop. Packaged rows are unreachable behind
 	 * the {@link #bindingShaped} gate.
 	 */
 	private static final class Now implements Posting.Visitor<Outcome> {
@@ -247,7 +247,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	}
 
 	/**
-	 * Store factors deliberately do NOT hear these bindings: staleness only
+	 * Packaged factors deliberately do NOT hear these bindings: staleness only
 	 * shifts verdicts toward "owed", the delay-safe direction.
 	 */
 	private static Package withSubstitutions(Package scratch, Substitutions grown) {
