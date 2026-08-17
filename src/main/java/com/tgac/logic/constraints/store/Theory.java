@@ -63,6 +63,14 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	 */
 	private final LinkedHashMap<Slot, Atom<F>> slots;
 
+	/**
+	 * The by-kind index, derived like {@code slots} (excluded from equality):
+	 * concrete atom class → its atoms, so a factor's kind-specific reads
+	 * (impositions, propagators, residents) iterate exactly their kind
+	 * instead of filtering the whole bag.
+	 */
+	private final LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kinds;
+
 	/** The collision key: same name, same held watched collection = same slot. */
 	@Value
 	private static class Slot {
@@ -75,7 +83,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	}
 
 	public static <F extends Factor<F>> Theory<F> empty() {
-		return new Theory<>(LinkedHashSet.empty(), LinkedHashMap.empty());
+		return new Theory<>(LinkedHashSet.empty(), LinkedHashMap.empty(), LinkedHashMap.empty());
 	}
 
 	public static <F extends Factor<F>> Theory<F> of(Iterable<? extends Atom<F>> atoms) {
@@ -125,9 +133,17 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		LinkedHashSet<Atom<F>> flat = LinkedHashSet.ofAll(slots.values());
 		LinkedHashSet<Atom<F>> kept = minimal(flat);
 		if (kept.size() == flat.size()) {
-			return new Theory<>(flat, slots);
+			return new Theory<>(flat, slots, kindsOf(flat));
 		}
-		return new Theory<>(kept, slots.filterValues(kept::contains));
+		return new Theory<>(kept, slots.filterValues(kept::contains), kindsOf(kept));
+	}
+
+	private static <F extends Factor<F>> LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kindsOf(
+			LinkedHashSet<Atom<F>> atoms) {
+		return atoms.foldLeft(LinkedHashMap.empty(), (kinds, atom) ->
+				kinds.put(atom.getClass(), kinds.get(atom.getClass())
+						.getOrElse(LinkedHashSet.empty())
+						.add(atom)));
 	}
 
 	/**
@@ -149,6 +165,13 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		return slots.get(new Slot(name, surface));
 	}
 
+	/** One kind's atoms, streamed — the factor's kind-specific iteration. */
+	public <K> java.util.stream.Stream<K> kind(Class<K> kind) {
+		return kinds.get(kind)
+				.map(bucket -> bucket.toJavaStream().map(kind::cast))
+				.getOrElse(java.util.stream.Stream::empty);
+	}
+
 	/**
 	 * The incremental door: insert one atom, fusing at its slot — NO
 	 * domination sweep. Agrees with {@link #meet} exactly when the kinds'
@@ -159,7 +182,8 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		Slot slot = slotOf(atom);
 		Option<Atom<F>> occupant = slots.get(slot);
 		if (!occupant.isDefined()) {
-			return new Theory<>(atoms.add(atom), slots.put(slot, atom));
+			return new Theory<>(atoms.add(atom), slots.put(slot, atom),
+					kindAdded(kinds, atom));
 		}
 		Atom<F> prior = occupant.get();
 		if (prior.equals(atom)) {
@@ -167,11 +191,29 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		}
 		if (prior instanceof Semilattice && atom instanceof Semilattice) {
 			Atom<F> fused = fuse(prior, atom);
-			return new Theory<>(atoms.remove(prior).add(fused), slots.put(slot, fused));
+			return new Theory<>(atoms.remove(prior).add(fused), slots.put(slot, fused),
+					kindAdded(kindRemoved(kinds, prior), fused));
 		}
 		throw new IllegalStateException(
 				"slot-mates that cannot combine — the kind must hold its collection: "
 						+ prior + " vs " + atom);
+	}
+
+	private static <F extends Factor<F>> LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kindAdded(
+			LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kinds, Atom<F> atom) {
+		return kinds.put(atom.getClass(), kinds.get(atom.getClass())
+				.getOrElse(LinkedHashSet.empty())
+				.add(atom));
+	}
+
+	private static <F extends Factor<F>> LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kindRemoved(
+			LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kinds, Atom<F> atom) {
+		LinkedHashSet<Atom<F>> bucket = kinds.get(atom.getClass())
+				.getOrElse(LinkedHashSet.empty())
+				.remove(atom);
+		return bucket.isEmpty() ?
+				kinds.remove(atom.getClass()) :
+				kinds.put(atom.getClass(), bucket);
 	}
 
 	/**
@@ -184,7 +226,8 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		Slot slot = slotOf(atom);
 		return slots.get(slot)
 				.filter(atom::equals)
-				.map(occupant -> new Theory<F>(atoms.remove(occupant), slots.remove(slot)))
+				.map(occupant -> new Theory<F>(atoms.remove(occupant), slots.remove(slot),
+						kindRemoved(kinds, occupant)))
 				.getOrElse(this);
 	}
 

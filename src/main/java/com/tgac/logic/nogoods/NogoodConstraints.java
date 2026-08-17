@@ -68,13 +68,10 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	}
 
 	private Stream<Nogood> residents() {
-		return theory.atoms().toJavaStream()
-				.flatMap(atom -> {
-					Nogood nogood = (Nogood) atom;
-					return nogood.getForbidden().size() == 1 ?
-							Stream.of(nogood) :
-							nogood.getForbidden().toJavaStream().map(Nogood::of);
-				});
+		return theory.kind(Nogood.class)
+				.flatMap(nogood -> nogood.getForbidden().size() == 1 ?
+						Stream.of(nogood) :
+						nogood.getForbidden().toJavaStream().map(Nogood::of));
 	}
 
 	/** The theory meet: union, same-surface fusion, subsumption deletion. */

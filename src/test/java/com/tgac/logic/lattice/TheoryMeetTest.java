@@ -14,6 +14,7 @@ import com.tgac.logic.lattice.LatticeFactorTest.FlatSet;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.HashSet;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 import java.util.Collections;
 import org.junit.Test;
 
@@ -102,6 +103,20 @@ public class TheoryMeetTest {
 		// a non-occupant leaves the theory untouched
 		assertThat(theory.without(on(X, 9)).atoms())
 				.containsExactlyInAnyOrder(on(X, 1, 2), on(Y, 3));
+	}
+
+	@Test
+	public void kindStreamsExactlyThatKindsAtoms() {
+		Propagator<FlatConstraints> even = Propagator.of(FlatConstraints.class, "even",
+				Collections.singletonList(X), (watched, state) -> Verdict.keep());
+		Theory<FlatConstraints> theory = Theory.of(
+				Arrays.<Atom<FlatConstraints>> asList(on(X, 1, 2), even));
+		assertThat(theory.kind(Imposition.class).collect(Collectors.toList()))
+				.containsExactly(on(X, 1, 2));
+		assertThat(theory.kind(Propagator.class).collect(Collectors.toList()))
+				.containsExactly(even);
+		assertThat(theory.without(on(X, 1, 2)).kind(Imposition.class).count())
+				.isZero();
 	}
 
 	@Test

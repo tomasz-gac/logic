@@ -75,16 +75,14 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		return theory.atom("imposition", HashSet.of(v));
 	}
 
+	@SuppressWarnings("unchecked")
 	protected java.util.stream.Stream<Imposition<L, S>> impositions() {
-		return theory.atoms().toJavaStream()
-				.filter(a -> a instanceof Imposition)
-				.map(a -> (Imposition<L, S>) a);
+		return theory.kind(Imposition.class).map(i -> (Imposition<L, S>) i);
 	}
 
+	@SuppressWarnings("unchecked")
 	protected java.util.stream.Stream<Propagator<S>> props() {
-		return theory.atoms().toJavaStream()
-				.filter(a -> a instanceof Propagator)
-				.map(a -> (Propagator<S>) a);
+		return theory.kind(Propagator.class).map(p -> (Propagator<S>) p);
 	}
 
 	/** The factor without its entry at {@code name} — spent bookkeeping drops. */
