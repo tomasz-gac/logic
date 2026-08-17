@@ -3,17 +3,21 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The verification core against Neq's own semantics: refuted discards,
 // ABOUTME: entailed fails, survivors keep their original literals, bindings thread.
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
+
+import static com.tgac.functional.fibers.Fiber.done;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
@@ -116,6 +120,11 @@ public class VerificationTest {
 		// direction, which can veto a satisfiable branch. Residence is
 		// asserted after literal instead
 		Atom<NogoodConstraints> orphan = new Atom<NogoodConstraints>() {
+			@Override
+			public Fiber<Atom<NogoodConstraints>> rename(Renaming renaming) {
+				return done(this);
+			}
+
 			@Override
 			public Class<? extends NogoodConstraints> getFactorClass() {
 				return NogoodConstraints.class;

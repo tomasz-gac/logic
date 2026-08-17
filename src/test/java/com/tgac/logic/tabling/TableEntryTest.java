@@ -11,7 +11,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.AwaitResult;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
 import java.util.ArrayList;
@@ -106,11 +106,11 @@ public class TableEntryTest {
 	public void testAlphaEquivalentAnswerIsAnInertJoin() {
 		TableEntry<Condition> entry = entry();
 
-		// Reified answers carry canonical hole names, so terms that
+		// Reified answers carry canonical any names, so terms that
 		// differ only in token objects are the same answer
 		produced(entry,
-				answer(Tuple.of(Hole.of(0), lval("bob"))),
-				answer(Tuple.of(Hole.of(0), lval("bob"))));
+				answer(Tuple.of(Any.of(0), lval("bob"))),
+				answer(Tuple.of(Any.of(0), lval("bob"))));
 
 		assertThat(entry.getAnswerCount()).isEqualTo(1);
 	}

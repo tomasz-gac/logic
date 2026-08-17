@@ -8,13 +8,13 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import com.tgac.logic.unification.Unknown;
+import com.tgac.logic.unification.Name;
 import io.vavr.collection.List;
 import java.util.Arrays;
 import java.util.Collections;
@@ -24,7 +24,7 @@ import org.junit.Test;
 
 public class RenamingTest {
 
-	private static Unknown<?> nameOf(Unifiable<?> u) {
+	private static Name<?> nameOf(Unifiable<?> u) {
 		return u.getObjectTerm().asVar().get();
 	}
 
@@ -36,14 +36,14 @@ public class RenamingTest {
 	@Test
 	public void aNameFreeTermPassesUnchanged() {
 		Term<?> ground = lval(List.of(lval(1), lval(2)));
-		assertThat(Renaming.of(Collections.<Unknown<?>, Term<?>> emptyMap()).apply(ground).ground())
+		assertThat(Renaming.of(Collections.<Name<?>, Term<?>> emptyMap()).apply(ground).ground())
 				.isSameAs(ground);
 	}
 
 	@Test
 	public void aBareNameMapsDirectly() {
 		Unifiable<Integer> x = lvar();
-		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		Map<Name<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(9));
 		assertThat(Renaming.of(seed).apply(x.getObjectTerm()).ground()).isEqualTo(lval(9));
 	}
@@ -54,7 +54,7 @@ public class RenamingTest {
 		// names replace while unlisted ones keep themselves
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		Map<Name<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(9));
 
 		Term<?> applied = Renaming.of(seed)
@@ -66,11 +66,11 @@ public class RenamingTest {
 
 	@Test
 	public void compoundSlotNamesInstantiate() {
-		// the slot path: holes in a compound term land on their targets
-		Term<?> withHoles = lval(List.of(Hole.of(0), lval(2), Hole.of(1)));
-		Map<Hole<?>, Term<?>> slotTargets = new HashMap<>();
-		slotTargets.put(Hole.of(0), lval(7));
-		slotTargets.put(Hole.of(1), lval(8));
+		// the slot path: anys in a compound term land on their targets
+		Term<?> withHoles = lval(List.of(Any.of(0), lval(2), Any.of(1)));
+		Map<Any<?>, Term<?>> slotTargets = new HashMap<>();
+		slotTargets.put(Any.of(0), lval(7));
+		slotTargets.put(Any.of(1), lval(8));
 		Term<?> applied = Renaming.restating(slotTargets)
 				.apply(withHoles).ground();
 
@@ -81,14 +81,14 @@ public class RenamingTest {
 	@Test
 	public void mintingAppliesVarsAndSlotsInOnePass() {
 		// the one crossing that speaks both namespaces: seeded vars and
-		// seeded holes land on their targets in a single application
+		// seeded anys land on their targets in a single application
 		Unifiable<Integer> x = lvar();
-		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		Map<Name<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(9));
-		seed.put(Hole.of(0), lval(7));
+		seed.put(Any.of(0), lval(7));
 
 		Term<?> applied = Renaming.minting(seed)
-				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm()).ground();
+				.apply(lval(List.of(Any.of(0), x, lval(2))).getObjectTerm()).ground();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
 				.isTrue();
@@ -96,15 +96,15 @@ public class RenamingTest {
 
 	@Test
 	public void aSeedMayMixVarsAndSlots() {
-		// one engine, one map: live vars and holes are both names, so a
+		// one engine, one map: live vars and anys are both names, so a
 		// plain seed carries both namespaces in one application
 		Unifiable<Integer> x = lvar();
-		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		Map<Name<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(9));
-		seed.put(Hole.of(0), lval(7));
+		seed.put(Any.of(0), lval(7));
 
 		Term<?> applied = Renaming.of(seed)
-				.apply(lval(List.of(Hole.of(0), x, lval(2))).getObjectTerm()).ground();
+				.apply(lval(List.of(Any.of(0), x, lval(2))).getObjectTerm()).ground();
 
 		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
 				.isTrue();
@@ -118,7 +118,7 @@ public class RenamingTest {
 		Map raw = new HashMap();
 		raw.put(lval(7), lval(8));
 
-		assertThatThrownBy(() -> Renaming.of((Map<Unknown<?>, Term<?>>) raw))
+		assertThatThrownBy(() -> Renaming.of((Map<Name<?>, Term<?>>) raw))
 				.isInstanceOf(ClassCastException.class);
 	}
 
@@ -127,7 +127,7 @@ public class RenamingTest {
 		// one unlisted name, two occurrences: the mint is recorded, so both
 		// occurrences become the SAME fresh variable (the existential)
 		Unifiable<Integer> local = lvar();
-		Term<?> applied = Renaming.minting(Collections.<Unknown<?>, Term<?>> emptyMap())
+		Term<?> applied = Renaming.minting(Collections.<Name<?>, Term<?>> emptyMap())
 				.apply(lval(List.of(local, local)).getObjectTerm()).ground();
 
 		java.util.List<Term<?>> members = new java.util.ArrayList<>();
@@ -148,7 +148,7 @@ public class RenamingTest {
 		for (int i = 0; i < 10_000; i++) {
 			deep = lval(List.of(deep));
 		}
-		Map<Unknown<?>, Term<?>> seed = new HashMap<>();
+		Map<Name<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(1));
 
 		Term<?> applied = Renaming.of(seed).apply(deep).ground();

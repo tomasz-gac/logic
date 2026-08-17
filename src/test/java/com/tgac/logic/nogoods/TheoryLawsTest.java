@@ -36,10 +36,10 @@ public class TheoryLawsTest {
 	@Test
 	public void theoriesFormAMeetSemilatticeWithTheCoveringOrder() {
 		java.util.List<Theory<NogoodConstraints>> samples = Arrays.asList(
-				Theory.empty(NogoodConstraints.class),
-				Theory.of(NogoodConstraints.class, Collections.singletonList(NOT_A)),
-				Theory.of(NogoodConstraints.class, Arrays.asList(NOT_B, NOT_AB)),
-				Theory.of(NogoodConstraints.class, Arrays.asList(NOT_A, NOT_B)));
+				Theory.empty(),
+				Theory.of(Collections.singletonList(NOT_A)),
+				Theory.of(Arrays.asList(NOT_B, NOT_AB)),
+				Theory.of(Arrays.asList(NOT_A, NOT_B)));
 		SemilatticeLaws.checkLeqReversesAccumulation(samples);
 	}
 
@@ -48,8 +48,8 @@ public class TheoryLawsTest {
 		// subsumption deletion: ¬A states everything ¬(A ∧ B) does — this is
 		// the dedup that makes the covering order agree with accumulation
 		Theory<NogoodConstraints> met = Theory
-				.of(NogoodConstraints.class, Collections.singletonList(NOT_AB))
-				.meet(Theory.of(NogoodConstraints.class, Collections.singletonList(NOT_A)));
+				.of(Collections.singletonList(NOT_AB))
+				.meet(Theory.of(Collections.singletonList(NOT_A)));
 		assertThat(met.atoms()).containsExactly(NOT_A);
 	}
 
@@ -58,9 +58,9 @@ public class TheoryLawsTest {
 		// ¬A entails ¬(A ∧ B): a theory holding the stronger atom covers a
 		// theory holding the weaker one, with no shared atoms at all
 		Theory<NogoodConstraints> stronger =
-				Theory.of(NogoodConstraints.class, Collections.singletonList(NOT_A));
+				Theory.of(Collections.singletonList(NOT_A));
 		Theory<NogoodConstraints> weaker =
-				Theory.of(NogoodConstraints.class, Collections.singletonList(NOT_AB));
+				Theory.of(Collections.singletonList(NOT_AB));
 		assertThat(stronger.leq(weaker)).isTrue();
 		assertThat(weaker.leq(stronger)).isFalse();
 	}

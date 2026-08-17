@@ -14,14 +14,14 @@ import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import com.tgac.logic.unification.Unknown;
+import com.tgac.logic.unification.Name;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
@@ -105,14 +105,14 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	/**
 	 * IN, narrow: what {@code world} knows JUST about the anchor. The
 	 * anchor's free vars become slots (first-occurrence order — the walked
-	 * anchor reified with holes IS the bindings factor's image); per store,
+	 * anchor reified with anys IS the bindings factor's image); per store,
 	 * knowledge not expressible over them is split away — sound by
 	 * containment, re-verified at consumption. The comparable KEY citizen.
 	 * A store that cannot project cannot enter the key, and unkeyed
 	 * knowledge means silently wrong reuse — refused loudly.
 	 */
 	public static Fiber<Tuple2<Reified<?>, Residues>> about(Package world, Unifiable<?> anchor) {
-		return MiniKanren.reifyWithHoles(world.substitution(), anchor.getObjectTerm())
+		return MiniKanren.reifyWithAnys(world.substitution(), anchor.getObjectTerm())
 				.flatMap(reified -> ofRelevant(world, reified._2)
 						.map(factors -> Tuple.of((Reified<?>) reified._1, factors)));
 	}
@@ -125,7 +125,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * claim, and the stores are not closed under ∃-elimination).
 	 */
 	public static Fiber<Tuple2<Reified<?>, Residues>> all(Package world, Unifiable<?> anchor) {
-		return MiniKanren.reifyWithHoles(world.substitution(), anchor.getObjectTerm())
+		return MiniKanren.reifyWithAnys(world.substitution(), anchor.getObjectTerm())
 				.flatMap(reified -> ofAll(world, reified._2)
 						.map(factors -> Tuple.of((Reified<?>) reified._1, factors)));
 	}
@@ -140,7 +140,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * existential). Master seeding and answer delivery are both this.
 	 */
 	public static Goal restate(Reified<?> image, Residues factors, Unifiable<?> anchor) {
-		return pkg -> Cont.suspend(k -> MiniKanren.instantiateWithHoles(image)
+		return pkg -> Cont.suspend(k -> MiniKanren.instantiateWithAnys(image)
 				.flatMap(inst -> Conjunction.of(
 								unifyImage(anchor.getObjectUnifiable(), inst._1.getObjectUnifiable()),
 								factors.isTrue() ? Goal.success()
@@ -158,7 +158,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 		return Constraints.unify(anchor, instantiated);
 	}
 
-	private static Fiber<Residues> ofRelevant(Package callerPkg, java.util.Map<LVar<?>, Hole<?>> callVars) {
+	private static Fiber<Residues> ofRelevant(Package callerPkg, java.util.Map<LVar<?>, Any<?>> callVars) {
 		return callerPkg.getStores().values().foldLeft(
 						Fiber.<Map<Class<?>, Factor<?>>> done(HashMap.empty()),
 						(acc, store) -> acc.flatMap(residues -> {
@@ -177,14 +177,14 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * The answer-side crossing: each store's factor normalized against the
 	 * answer's substitutions (spent entries drop — the ground-answer fast
 	 * path is a factor that normalizes to empty), then slot-canonicalized:
-	 * live hole vars go to their slot holes, so residues from SEPARATE
+	 * live slot vars go to their anys, so residues from SEPARATE
 	 * derivations compare in ONE basis (dedup, key equality); body locals
 	 * keep their names — the existential witnesses ride whole,
 	 * conservatively incomparable across answers. Non-projectable live
 	 * knowledge refuses loudly.
 	 */
-	private static Fiber<Residues> ofAll(Package answerPkg, java.util.Map<LVar<?>, Hole<?>> holeVars) {
-		Renaming canonicalization = Renaming.of(holeVars);
+	private static Fiber<Residues> ofAll(Package answerPkg, java.util.Map<LVar<?>, Any<?>> anyVars) {
+		Renaming canonicalization = Renaming.of(anyVars);
 		return resolution(answerPkg.substitution()).flatMap(resolution ->
 						answerPkg.getStores().values().foldLeft(
 								Fiber.<Map<Class<?>, Factor<?>>> done(HashMap.empty()),
@@ -216,7 +216,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 */
 	private static Fiber<Renaming> resolution(Substitutions home) {
 		return home.bindings().foldLeft(
-						Fiber.<java.util.Map<Unknown<?>, Term<?>>> done(new java.util.HashMap<>()),
+						Fiber.<java.util.Map<Name<?>, Term<?>>> done(new java.util.HashMap<>()),
 						(acc, binding) -> acc.flatMap(walked ->
 								MiniKanren.walkAll(home, binding._1).map(meaning -> {
 									walked.put(binding._1, meaning);
@@ -229,7 +229,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * This conjunct imposing itself under {@code renaming} — the ONE replay
 	 * primitive: master seeding renames the key's conjunct back onto the
 	 * live call vars ({@code Renaming.restating}); answer delivery renames it
-	 * onto the instantiation's fresh holes ({@code Renaming.minting}, unseeded
+	 * onto the instantiation's fresh vars ({@code Renaming.minting}, unseeded
 	 * locals minting — the existential). Posting stays the driver's: each
 	 * factor rides {@code Posting.absorb}.
 	 */

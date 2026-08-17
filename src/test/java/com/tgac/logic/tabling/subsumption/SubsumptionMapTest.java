@@ -1,7 +1,7 @@
 package com.tgac.logic.tabling.subsumption;
 
 // ABOUTME: Pins the subsumption map: term-indexed retrieval of stored patterns that
-// ABOUTME: generalize the query, with nonlinear-hole precision.
+// ABOUTME: generalize the query, with nonlinear-any precision.
 
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -36,7 +36,7 @@ public class SubsumptionMapTest {
 		SubsumptionMap<String> map = new SubsumptionMap<>();
 		map.put(pattern(Tuple.of(lval(1), lvar())), "bound-first");
 
-		// query's first arg is a hole — the stored concrete 1 cannot cover it
+		// query's first arg is an any — the stored concrete 1 cannot cover it
 		assertThat(map.subsumers(pattern(Tuple.of(lvar(), lval(10)))))
 				.isEmpty();
 		// different constant — no match either
@@ -64,7 +64,7 @@ public class SubsumptionMapTest {
 	@Test
 	public void nestedStructureMatchesThroughTheWalk() {
 		SubsumptionMap<String> map = new SubsumptionMap<>();
-		// stored: (X, (5, Y)) — a hole, then a tuple with a constant head
+		// stored: (X, (5, Y)) — an any, then a tuple with a constant head
 		Unifiable<Object> x = lvar();
 		Unifiable<Object> y = lvar();
 		map.put(pattern(Tuple.of(x, Tuple.of(lval(5), y))), "nested");

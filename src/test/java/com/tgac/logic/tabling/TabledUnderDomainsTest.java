@@ -258,7 +258,7 @@ public class TabledUnderDomainsTest {
 
 	@Test
 	public void narrowerRedundantAnswersDedupByEntailment() {
-		// two derivations of the SAME hole-term: the narrower residue is
+		// two derivations of the SAME any-term: the narrower residue is
 		// entailed by the wider and must not replay a second time
 		Tabled<Tuple1<Unifiable<Integer>>> gen =
 				Tabling.define(args -> args.apply(x ->
@@ -346,7 +346,7 @@ public class TabledUnderDomainsTest {
 
 	@Test
 	public void twoConsumptionsOfACoupledAnswerAreIndependent() {
-		// a conditional answer is a SCHEMA over its holes: each consumption
+		// a conditional answer is a SCHEMA over its anys: each consumption
 		// replays a fresh instance of the carried coupling, so consuming the
 		// same answer twice yields the full product, never just the diagonal
 		Tabled<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> region =

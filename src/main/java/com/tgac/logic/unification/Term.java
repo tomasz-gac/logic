@@ -23,7 +23,7 @@ public interface Term<T> extends Supplier<T> {
 		return false;
 	}
 
-	default Option<Unknown<T>> asUnknown() {
+	default Option<Name<T>> asName() {
 		return Option.none();
 	}
 
@@ -31,7 +31,7 @@ public interface Term<T> extends Supplier<T> {
 		return Option.none();
 	}
 
-	default Option<Hole<T>> asReified() {
+	default Option<Any<T>> asReified() {
 		return Option.none();
 	}
 

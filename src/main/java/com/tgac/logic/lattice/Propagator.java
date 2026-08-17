@@ -3,13 +3,12 @@ package com.tgac.logic.lattice;
 // ABOUTME: A parked constraint body that reports a Verdict — the framework owns the
 // ABOUTME: parked lifecycle; watch matching resolves against the live state.
 
-import com.tgac.logic.constraints.store.Watches;
-import com.tgac.logic.goals.Package;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
+import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Watches;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Array;
 import io.vavr.collection.List;
@@ -29,7 +28,7 @@ import lombok.RequiredArgsConstructor;
  */
 @EqualsAndHashCode(of = {"storeClass", "name", "watchedTerms"})
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public final class Propagator<F extends Factor<F>> implements Atom<F>, Transcribable<Propagator<F>> {
+public final class Propagator<F extends Factor<F>> implements Atom<F> {
 
 	@Getter
 	private final Class<? extends F> storeClass;
@@ -100,13 +99,13 @@ public final class Propagator<F extends Factor<F>> implements Atom<F>, Transcrib
 	 * instance of the schema this propagator's body denotes. How a carried
 	 * coupling replays onto a consumption's fresh variables.
 	 */
-	public Propagator watching(Array<? extends Term<?>> terms) {
-		return new Propagator(storeClass, name, terms, body);
+	public Propagator<F> watching(Array<? extends Term<?>> terms) {
+		return new Propagator<>(storeClass, name, terms, body);
 	}
 
 	/** The schema re-instantiated over the renamed terms — {@link #watching}. */
 	@Override
-	public Fiber<Propagator<F>> rename(Renaming renaming) {
+	public Fiber<Atom<F>> rename(Renaming renaming) {
 		return watchedTerms.foldLeft(
 						Fiber.<List<Term<?>>> done(List.empty()),
 						(acc, term) -> acc.flatMap(terms ->

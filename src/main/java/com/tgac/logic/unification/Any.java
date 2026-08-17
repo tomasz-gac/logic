@@ -1,7 +1,7 @@
 package com.tgac.logic.unification;
 
-// ABOUTME: A canonical hole in a reified answer: the output counterpart of LVar.
-// ABOUTME: Equal by number — reification numbers holes canonically, so equality is alpha-equivalence.
+// ABOUTME: The any-value position in a reified answer: the output counterpart of LVar.
+// ABOUTME: Equal by number — reification numbers anys canonically, so equality is alpha-equivalence.
 
 import io.vavr.control.Option;
 import lombok.Value;
@@ -17,16 +17,16 @@ import lombok.Value;
  * @author TGa
  */
 @Value(staticConstructor = "of")
-public class Hole<T> implements Reified<T>, Unknown<T> {
+public class Any<T> implements Reified<T>, Name<T> {
 	int number;
 
 	@Override
-	public Option<Unknown<T>> asUnknown() {
+	public Option<Name<T>> asName() {
 		return Option.of(this);
 	}
 
 	@Override
-	public Option<Hole<T>> asReified() {
+	public Option<Any<T>> asReified() {
 		return Option.of(this);
 	}
 

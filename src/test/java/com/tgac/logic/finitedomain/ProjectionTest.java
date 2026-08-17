@@ -18,12 +18,12 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import com.tgac.logic.unification.Unknown;
+import com.tgac.logic.unification.Name;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
@@ -137,7 +137,7 @@ public class ProjectionTest {
 		Substitutions bound = Substitutions.of(HashMap.of(varOf(x), lval(1)));
 
 		FiniteDomainConstraints normalized = store.rename(Renaming.of(
-				Collections.<Unknown<?>, Term<?>> singletonMap(varOf(x), lval(1)))).ground();
+				Collections.<Name<?>, Term<?>> singletonMap(varOf(x), lval(1)))).ground();
 		assertThat(normalized.getDomain(varOf(y)).isDefined()).isTrue();
 		assertThat(normalized.getDomain(varOf(x)).isDefined()).isFalse();
 	}
@@ -186,19 +186,19 @@ public class ProjectionTest {
 				.withDomain(varOf(y), dom(7, 8));
 
 		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
-		assertThat(keyed.getDomain(Hole.of(0)).get()).isEqualTo(dom(1, 2, 3));
-		assertThat(keyed.getDomain(Hole.of(1)).get()).isEqualTo(dom(7, 8));
+		assertThat(keyed.getDomain(Any.of(0)).get()).isEqualTo(dom(1, 2, 3));
+		assertThat(keyed.getDomain(Any.of(1)).get()).isEqualTo(dom(7, 8));
 
 		// unconstrained var: absent name = ⊤; order is the caller's
 		FiniteDomainConstraints sparse = store.project(slots(varOf(z), varOf(y))).ground();
-		assertThat(sparse.getDomain(Hole.of(0)).isDefined()).isFalse();
-		assertThat(sparse.getDomain(Hole.of(1)).get()).isEqualTo(dom(7, 8));
+		assertThat(sparse.getDomain(Any.of(0)).isDefined()).isFalse();
+		assertThat(sparse.getDomain(Any.of(1)).get()).isEqualTo(dom(7, 8));
 	}
 
 	@Test
 	public void aCoveredCouplingProjectsCanonically() {
 		// every watched var supplied: the coupling rides the key as the same
-		// NAME over the slot holes — comparable across packages
+		// NAME over the anys — comparable across packages
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2, 3));
@@ -209,7 +209,7 @@ public class ProjectionTest {
 		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
 		assertThat(keyed.getConstraints()).hasSize(1);
 		Propagator carried = keyed.getConstraints().head();
-		assertThat(carried.watchedTerms()).containsExactly(Hole.of(0), Hole.of(1), lval(4));
+		assertThat(carried.watchedTerms()).containsExactly(Any.of(0), Any.of(1), lval(4));
 	}
 
 	@Test
@@ -320,18 +320,18 @@ public class ProjectionTest {
 				.count()).isEqualTo(1);
 	}
 
-	private static java.util.Map<LVar<?>, Hole<?>> slots(LVar<?>... vars) {
-		java.util.Map<LVar<?>, Hole<?>> bySlot = new java.util.LinkedHashMap<>();
+	private static java.util.Map<LVar<?>, Any<?>> slots(LVar<?>... vars) {
+		java.util.Map<LVar<?>, Any<?>> bySlot = new java.util.LinkedHashMap<>();
 		for (int i = 0; i < vars.length; i++) {
-			bySlot.put(vars[i], Hole.of(i));
+			bySlot.put(vars[i], Any.of(i));
 		}
 		return bySlot;
 	}
 
-	private static java.util.Map<Hole<?>, Term<?>> targets(Term<?>... terms) {
-		java.util.Map<Hole<?>, Term<?>> bySlot = new java.util.LinkedHashMap<>();
+	private static java.util.Map<Any<?>, Term<?>> targets(Term<?>... terms) {
+		java.util.Map<Any<?>, Term<?>> bySlot = new java.util.LinkedHashMap<>();
 		for (int i = 0; i < terms.length; i++) {
-			bySlot.put(Hole.of(i), terms[i]);
+			bySlot.put(Any.of(i), terms[i]);
 		}
 		return bySlot;
 	}

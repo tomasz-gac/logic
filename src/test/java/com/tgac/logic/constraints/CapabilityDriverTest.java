@@ -72,12 +72,12 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public EmittingFactor meet(Atom c) {
+		public EmittingFactor meet(Atom<EmittingFactor> c) {
 			return this;
 		}
 
 		@Override
-		public boolean contains(Atom c) {
+		public boolean contains(Atom<EmittingFactor> c) {
 			return false;
 		}
 

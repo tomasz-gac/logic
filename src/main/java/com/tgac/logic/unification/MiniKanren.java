@@ -435,39 +435,39 @@ public class MiniKanren {
 	}
 
 	/**
-	 * Convert a reified term back into a solver term: canonical holes become
-	 * fresh variables — holes sharing a name share the variable — and ground
+	 * Convert a reified term back into a solver term: canonical anys become
+	 * fresh variables — anys sharing a number share the variable — and ground
 	 * structure is preserved. One minted seed, one walk.
 	 */
 	public static <T> Fiber<Unifiable<T>> instantiate(Reified<T> term) {
 		return MiniKanren.instantiated(term).map(t -> (Unifiable<T>) t._1);
 	}
 
-	private static <T> Fiber<Tuple2<Term<T>, Map<Hole<?>, LVar<?>>>> instantiated(Reified<T> term) {
-		Map<Hole<?>, LVar<?>> fresh = new java.util.LinkedHashMap<>();
+	private static <T> Fiber<Tuple2<Term<T>, Map<Any<?>, LVar<?>>>> instantiated(Reified<T> term) {
+		Map<Any<?>, LVar<?>> fresh = new java.util.LinkedHashMap<>();
 		namesIn(term)
-				.<Hole<?>> flatMap(name -> name.asReified().toJavaStream())
-				.forEach(hole -> fresh.computeIfAbsent(hole, miss -> (LVar<?>) LVar.lvar()));
+				.<Any<?>> flatMap(name -> name.asReified().toJavaStream())
+				.forEach(any -> fresh.computeIfAbsent(any, miss -> (LVar<?>) LVar.lvar()));
 		return walkAll(Substitutions.of(HashMap.ofAll(fresh)), term)
 				.map(t -> Tuple.of(t, fresh));
 	}
 
 	/**
-	 * Every NAME occurrence in the term — live vars and canonical holes —
+	 * Every NAME occurrence in the term — live vars and canonical anys —
 	 * lazily streamed in traversal order: a short-circuiting consumer stops
 	 * the scan early. Iterative, deep spines never recurse.
 	 */
-	public static Stream<Unknown<?>> namesIn(Term<?> term) {
+	public static Stream<Name<?>> namesIn(Term<?> term) {
 		java.util.Deque<Term<?>> work = new java.util.ArrayDeque<>();
 		work.push(term);
-		return StreamSupport.stream(new Spliterators.AbstractSpliterator<Unknown<?>>(
+		return StreamSupport.stream(new Spliterators.AbstractSpliterator<Name<?>>(
 				Long.MAX_VALUE, java.util.Spliterator.ORDERED | java.util.Spliterator.NONNULL) {
 			@Override
-			public boolean tryAdvance(java.util.function.Consumer<? super Unknown<?>> action) {
+			public boolean tryAdvance(java.util.function.Consumer<? super Name<?>> action) {
 				while (!work.isEmpty()) {
 					Term<?> current = work.pop();
-					if (current.asUnknown().isDefined()) {
-						action.accept(current.asUnknown().get());
+					if (current.asName().isDefined()) {
+						action.accept(current.asName().get());
 						return true;
 					}
 					members(current).forEach(members -> members.forEach(work::push));
@@ -478,7 +478,7 @@ public class MiniKanren {
 	}
 
 	public static <T> Fiber<Reified<T>> reify(Substitutions s, Term<T> item) {
-		// after renaming, every node is an LVal or a Hole — both Reified
+		// after renaming, every node is an LVal or a Any — both Reified
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Substitutions.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)))
@@ -487,38 +487,38 @@ public class MiniKanren {
 
 	/**
 	 * {@link #reify} plus the renaming it performed: each renamed var to its
-	 * hole. Holes are numbered by first occurrence and the map iterates in
+	 * any. Anys are numbered by first occurrence and the map iterates in
 	 * slot order — callers get the var↔slot correspondence as data, not by a
 	 * parallel walk.
 	 */
-	public static <T> Fiber<Tuple2<Reified<T>, Map<LVar<?>, Hole<?>>>> reifyWithHoles(
+	public static <T> Fiber<Tuple2<Reified<T>, Map<LVar<?>, Any<?>>>> reifyWithAnys(
 			Substitutions s, Term<T> item) {
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Substitutions.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)
-								.map(reified -> Tuple.of((Reified<T>) reified, varsToHoles(rp)))));
+								.map(reified -> Tuple.of((Reified<T>) reified, varsToAnys(rp)))));
 	}
 
 	/**
-	 * {@link #instantiate} plus the minting it performed: each hole to the
+	 * {@link #instantiate} plus the minting it performed: each any to the
 	 * fresh {@link LVar} standing where the term said {@code _.i} — the
-	 * mirror of {@link #reifyWithHoles}, for callers that must re-impose
+	 * mirror of {@link #reifyWithAnys}, for callers that must re-impose
 	 * slot-named knowledge (residues) onto the instantiation.
 	 */
-	public static <T> Fiber<Tuple2<Unifiable<T>, Map<Hole<?>, LVar<?>>>> instantiateWithHoles(Reified<T> term) {
+	public static <T> Fiber<Tuple2<Unifiable<T>, Map<Any<?>, LVar<?>>>> instantiateWithAnys(Reified<T> term) {
 		return MiniKanren.instantiated(term).map(t -> Tuple.of((Unifiable<T>) t._1, t._2));
 	}
 
 	/** Invert the rename substitution into slot order: the var named {@code _.i} ↦ {@code _.i}. */
-	private static Map<LVar<?>, Hole<?>> varsToHoles(Substitutions renames) {
+	private static Map<LVar<?>, Any<?>> varsToAnys(Substitutions renames) {
 		LVar<?>[] slots = new LVar<?>[(int) renames.size()];
-		for (Tuple2<Unknown<?>, Term<?>> entry : renames.map()) {
+		for (Tuple2<Name<?>, Term<?>> entry : renames.map()) {
 			// the rename pass binds live vars only, so the keys are LVars
-			slots[((Hole<?>) entry._2).getNumber()] = (LVar<?>) entry._1;
+			slots[((Any<?>) entry._2).getNumber()] = (LVar<?>) entry._1;
 		}
-		Map<LVar<?>, Hole<?>> vars = new java.util.LinkedHashMap<>();
+		Map<LVar<?>, Any<?>> vars = new java.util.LinkedHashMap<>();
 		for (int i = 0; i < slots.length; i++) {
-			vars.put(slots[i], Hole.of(i));
+			vars.put(slots[i], Any.of(i));
 		}
 		return vars;
 	}
@@ -531,8 +531,8 @@ public class MiniKanren {
 				.flatMap(v -> v.asVar()
 						// a var that walked to something else is already renamed
 						.map(u -> u == val ?
-								// a Hole is an atom: no occurs check to fail here
-								s.extend((LVar<Object>) u, Hole.of((int) s.size())) :
+								// a Any is an atom: no occurs check to fail here
+								s.extend((LVar<Object>) u, Any.of((int) s.size())) :
 								s)
 						.map(Fiber::done)
 						.orElse(() -> members(v)
@@ -551,7 +551,7 @@ public class MiniKanren {
 
 	/**
 	 * Check if two terms are alpha-equivalent (equivalent modulo variable renaming).
-	 * Reification numbers holes canonically and reified vars carry value
+	 * Reification numbers anys canonically and reified vars carry value
 	 * equality by name, so plain equality on the reified forms decides it.
 	 */
 	public static <T> Fiber<Boolean> alphaEquiv(Term<T> x, Term<T> y, Substitutions s) {

@@ -8,7 +8,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unknown;
+import com.tgac.logic.unification.Name;
 import io.vavr.Tuple2;
 import io.vavr.control.Option;
 import java.util.LinkedHashSet;
@@ -36,7 +36,7 @@ public class Watermark implements Packaged {
 		return new Watermark(LVar.births());
 	}
 
-	private boolean refuses(Unknown<?> name) {
+	private boolean refuses(Name<?> name) {
 		return name instanceof LVar && ((LVar<?>) name).getBirth() < mark;
 	}
 
@@ -46,7 +46,7 @@ public class Watermark implements Packaged {
 	 */
 	public static void check(Package pkg, Prefix prefix) {
 		markOn(pkg).forEach(watermark -> {
-			Set<Unknown<?>> old = new LinkedHashSet<>();
+			Set<Name<?>> old = new LinkedHashSet<>();
 			for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
 				if (watermark.refuses(binding._1)) {
 					old.add(binding._1);
@@ -89,7 +89,7 @@ public class Watermark implements Packaged {
 				.collect(Collectors.toCollection(LinkedHashSet::new)));
 	}
 
-	private static void refuseIfAny(Set<Unknown<?>> old) {
+	private static void refuseIfAny(Set<Name<?>> old) {
 		if (!old.isEmpty()) {
 			throw new IllegalStateException(
 					"closed sub-solve touches pre-existing variables "

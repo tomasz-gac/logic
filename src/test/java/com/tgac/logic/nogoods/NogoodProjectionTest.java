@@ -14,11 +14,11 @@ import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
-import com.tgac.logic.unification.Unknown;
+import com.tgac.logic.unification.Name;
 import io.vavr.collection.LinkedHashSet;
 import java.util.Collections;
 import java.util.stream.Collectors;
@@ -37,8 +37,8 @@ public class NogoodProjectionTest {
 	}
 
 	private static Renaming toHole(Unifiable<?> var, int slot) {
-		return Renaming.of(Collections.<Unknown<?>, Term<?>> singletonMap(
-				var.asVar().get(), Hole.of(slot)));
+		return Renaming.of(Collections.<Name<?>, Term<?>> singletonMap(
+				var.asVar().get(), Any.of(slot)));
 	}
 
 	@Test

@@ -8,7 +8,6 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.NamedGoal;
@@ -62,8 +61,8 @@ public interface Posting extends Goal, Bounded {
 	/**
 	 * This posting under changed names — the crossing keeps every row WRAPPED
 	 * (nogood-store.md §7): terms rename through the {@link Renaming}, ground
-	 * data rides unchanged, items re-instantiate over the renamed terms
-	 * ({@link Transcribable}). Labels are presentation and drop; doom checks
+	 * data rides unchanged, items re-instantiate over the renamed terms.
+	 * Labels are presentation and drop; doom checks
 	 * capture lexical terms and reset to the safe default; registrations are
 	 * store-generic and carry. Content that cannot transcribe refuses loudly
 	 * with its name — the boundary never crosses knowledge silently.
@@ -167,11 +166,11 @@ public interface Posting extends Goal, Bounded {
 	@Getter
 	@EqualsAndHashCode(of = "item")
 	class Activation implements Posting {
-		private final Atom item;
+		private final Atom<?> item;
 		private final UnaryOperator<Package> registration;
 		private final Predicate<Package> doomCheck;
 
-		Activation(Atom item, UnaryOperator<Package> registration,
+		Activation(Atom<?> item, UnaryOperator<Package> registration,
 				Predicate<Package> doomCheck) {
 			this.item = item;
 			this.registration = registration;
@@ -279,7 +278,7 @@ public interface Posting extends Goal, Bounded {
 
 		@Override
 		public Stream<Term<?>> terms() {
-			return declared.toJavaStream().map(t -> (Term<?>) t);
+			return declared.toJavaStream();
 		}
 
 		@Override

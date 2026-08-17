@@ -605,7 +605,7 @@ public class MiniKanrenTest {
 	public void shouldInstantiateHolesAsFreshSharedVariables() {
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
-		// (a, b, a) reifies to (_.0, _.1, _.0); shared holes share the fresh variable
+		// (a, b, a) reifies to (_.0, _.1, _.0); shared anys share the fresh variable
 		Reified<?> template = MiniKanren.reify(Substitutions.empty(),
 				lval(List.<Term<Integer>> of(a, b, a))).ground();
 

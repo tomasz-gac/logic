@@ -3,17 +3,15 @@ package com.tgac.logic.constraints;
 // ABOUTME: The rename machinery as the vocabulary's first visitor: every row
 // ABOUTME: transcribes wrapped; content that cannot cross refuses with its name.
 
-import com.tgac.logic.constraints.store.Atom;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.List;
 import lombok.RequiredArgsConstructor;
 
 /**
  * Terms rename through the {@link Renaming}, ground data rides unchanged,
- * items re-instantiate over the renamed terms ({@link Transcribable});
+ * items re-instantiate over the renamed terms ;
  * labels drop (the {@link Posting.Visitor} default), doom checks reset to
  * the safe default, registrations carry.
  */
@@ -53,13 +51,9 @@ final class Renamer implements Posting.Visitor<Fiber<Posting>> {
 
 	@Override
 	public Fiber<Posting> visit(Posting.Activation activation) {
-		if (!(activation.getItem() instanceof Transcribable)) {
-			throw new IllegalStateException(
-					"stated item cannot cross the boundary: " + activation.getItem());
-		}
-		return ((Transcribable<? extends Atom<?>>) activation.getItem()).rename(renaming)
+		return activation.getItem().rename(renaming)
 				.map(renamed -> Propagation.activate(
-						(Atom<?>) renamed, activation.getRegistration(), p -> false));
+						renamed, activation.getRegistration(), p -> false));
 	}
 
 	@Override

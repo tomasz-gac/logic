@@ -4,6 +4,7 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: surface and payload — the unit families accumulate and split into.
 
 import com.tgac.functional.algebra.PartialOrder;
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Term;
 import java.util.stream.Stream;
 
@@ -38,4 +39,6 @@ public interface Atom<F extends Factor<F>> extends PartialOrder<Atom<F>> {
 	Stream<Term<?>> watched();
 
 	Object payload();
+
+	Fiber<Atom<F>> rename(Renaming renaming);
 }

@@ -69,7 +69,7 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 		return EMPTY.reexamineOwn(x);
 	}
 
-	// cKanren domains — keyed by NAME: a live LVar or a canonical Hole
+	// cKanren domains — keyed by NAME: a live LVar or a canonical Any
 	@SuppressWarnings("unchecked")
 	public LinkedHashMap<Term<?>, Domain<?>> getDomains() {
 		return (LinkedHashMap<Term<?>, Domain<?>>) (LinkedHashMap<?, ?>) values;

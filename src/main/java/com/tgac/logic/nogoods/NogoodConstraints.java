@@ -4,21 +4,20 @@ package com.tgac.logic.nogoods;
 // ABOUTME: wrapped into Revision, revise is normalize by another trigger.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Revision;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
-import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unknown;
+import com.tgac.logic.unification.Name;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
@@ -49,7 +48,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @EqualsAndHashCode
 @RequiredArgsConstructor(staticName = "of")
-final class NogoodConstraints implements Factor<NogoodConstraints> {
+public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	public static final NogoodConstraints EMPTY = NogoodConstraints.of(LinkedHashSet.empty());
 	private final LinkedHashSet<Nogood> nogoods;
 
@@ -76,7 +75,7 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 	 */
 	@Override
 	public Tuple2<NogoodConstraints, NogoodConstraints> split(java.util.List<LVar<?>> vars) {
-		Set<Unknown<?>> covered = new HashSet<>(vars);
+		Set<Name<?>> covered = new HashSet<>(vars);
 		LinkedHashSet<Nogood> in = LinkedHashSet.empty();
 		LinkedHashSet<Nogood> out = LinkedHashSet.empty();
 		for (Nogood nogood : nogoods) {
@@ -109,16 +108,16 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 
 	@Override
 	public Theory<NogoodConstraints> theory() {
-		return Theory.of(NogoodConstraints.class, nogoods);
+		return Theory.of(nogoods);
 	}
 
 	@Override
-	public NogoodConstraints meet(Atom c) {
+	public NogoodConstraints meet(Atom<NogoodConstraints> c) {
 		return NogoodConstraints.of(nogoods.add((Nogood) c));
 	}
 
 	@Override
-	public boolean contains(Atom c) {
+	public boolean contains(Atom<NogoodConstraints> c) {
 		return c instanceof Nogood && nogoods.contains((Nogood) c);
 	}
 
@@ -147,7 +146,6 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 		return normalize(state);
 	}
 
-
 	/**
 	 * A nogood still live about the rendered term is an expressed infinity:
 	 * it ATTACHES to the answer as a residual through {@link Constrained} —
@@ -160,13 +158,13 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 	public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package s) {
 		// renameSubstitutions is the answer's canonical seed: a live name it
 		// binds is part of the rendered answer
-		List<Atom> residuals = List.empty();
+		List<Atom<?>> residuals = List.empty();
 		for (Nogood nogood : nogoods) {
 			List<Posting> kept = getUnboundNames(renaming, s, nogood);
 			if (kept.isEmpty()) {
 				continue;
 			}
-			Map<Unknown<?>, Term<?>> display = renameKept(renaming, s, kept);
+			Map<Name<?>, Term<?>> display = renameKept(renaming, s, kept);
 			Nogood pruned = Nogood.of(kept.size() == 1 ?
 					kept.head() :
 					Posting.all(kept.toJavaArray(Posting[]::new)));
@@ -190,7 +188,7 @@ final class NogoodConstraints implements Factor<NogoodConstraints> {
 				});
 	}
 
-	private static Map<Unknown<?>, Term<?>> renameKept(Renaming renaming, Package s, List<Posting> kept) {
+	private static Map<Name<?>, Term<?>> renameKept(Renaming renaming, Package s, List<Posting> kept) {
 		return kept.toJavaStream()
 				.flatMap(Posting::terms)
 				.flatMap(term -> s.substitution().namesIn(term))

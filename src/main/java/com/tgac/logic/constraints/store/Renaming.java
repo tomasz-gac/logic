@@ -4,18 +4,18 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: one engine (walkAll), one miss policy: keep yourself, or mint (∃).
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unknown;
+import com.tgac.logic.unification.Name;
 import io.vavr.collection.HashMap;
 import java.util.Map;
 
 /**
  * The name DICTIONARY knowledge needs to cross a boundary. A name is a live
- * {@link LVar} or a canonical {@link Hole} — one {@link Unknown} type — so a
+ * {@link LVar} or a canonical {@link Any} — one {@link Name} type — so a
  * renaming is literally the map type the engine already walks: seeds go in,
  * {@code walkAll} carries them, and the crossings differ only in seed shape
  * and miss policy. {@link #of} keeps unlisted names ({@link #restating} is
@@ -31,16 +31,16 @@ import java.util.Map;
  */
 public final class Renaming {
 
-	private final Map<Unknown<?>, Term<?>> targets;
+	private final Map<Name<?>, Term<?>> targets;
 	private final boolean mintOnMiss;
 
-	private Renaming(Map<Unknown<?>, Term<?>> targets, boolean mintOnMiss) {
+	private Renaming(Map<Name<?>, Term<?>> targets, boolean mintOnMiss) {
 		this.targets = targets;
 		this.mintOnMiss = mintOnMiss;
 	}
 
 	/** A renaming from a seed map: unlisted names keep themselves. */
-	public static Renaming of(Map<? extends Unknown<?>, ? extends Term<?>> seed) {
+	public static Renaming of(Map<? extends Name<?>, ? extends Term<?>> seed) {
 		return new Renaming(named(seed), false);
 	}
 
@@ -56,7 +56,7 @@ public final class Renaming {
 	 */
 	public Term<?> target(Term<?> name) {
 		Term<?> current = name;
-		while (current instanceof Unknown && targets.containsKey(current)) {
+		while (current instanceof Name && targets.containsKey(current)) {
 			current = targets.get(current);
 		}
 		return current;
@@ -68,12 +68,12 @@ public final class Renaming {
 	}
 
 	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */
-	public static Renaming minting(Map<? extends Unknown<?>, ? extends Term<?>> seed) {
+	public static Renaming minting(Map<? extends Name<?>, ? extends Term<?>> seed) {
 		return new Renaming(named(seed), true);
 	}
 
 	/** Leaving the canonical namespace: {@code _.i} ↦ its target — unlisted slots keep their names. */
-	public static Renaming restating(Map<? extends Hole<?>, ? extends Term<?>> slotTargets) {
+	public static Renaming restating(Map<? extends Any<?>, ? extends Term<?>> slotTargets) {
 		return of(slotTargets);
 	}
 
@@ -82,8 +82,8 @@ public final class Renaming {
 	 * chain-follower never sees a self-binding. Keys are NAMES by type;
 	 * raw-typed abuse dies on the erased cast at this boundary.
 	 */
-	private static Map<Unknown<?>, Term<?>> named(Map<? extends Unknown<?>, ? extends Term<?>> seed) {
-		Map<Unknown<?>, Term<?>> targets = new java.util.LinkedHashMap<>();
+	private static Map<Name<?>, Term<?>> named(Map<? extends Name<?>, ? extends Term<?>> seed) {
+		Map<Name<?>, Term<?>> targets = new java.util.LinkedHashMap<>();
 		seed.forEach((name, target) -> {
 			if (!name.equals(target)) {
 				targets.put(name, target);
@@ -103,7 +103,7 @@ public final class Renaming {
 				: MiniKanren.walkAll(Substitutions.of(seed()), term).map(t -> t);
 	}
 
-	private HashMap<Unknown<?>, Term<?>> seed() {
+	private HashMap<Name<?>, Term<?>> seed() {
 		return HashMap.ofAll(targets);
 	}
 }

@@ -87,12 +87,12 @@ class Span implements Factor<Span> {
 	}
 
 	@Override
-	public Span meet(Atom c) {
+	public Span meet(Atom<Span> c) {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 
 	@Override
-	public boolean contains(Atom c) {
+	public boolean contains(Atom<Span> c) {
 		throw new UnsupportedOperationException("value-only test store");
 	}
 }

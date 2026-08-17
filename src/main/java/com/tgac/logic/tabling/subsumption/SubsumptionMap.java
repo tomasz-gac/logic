@@ -4,7 +4,7 @@ package com.tgac.logic.tabling.subsumption;
 // ABOUTME: a discrimination trie prunes candidates, Subsumption.subsumes decides.
 
 import com.tgac.functional.index.ImmutableIndex;
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple2;
@@ -19,7 +19,7 @@ import lombok.Value;
 
 /**
  * Generalization retrieval over reified patterns — the dual of an index probe:
- * stored keys are GENERAL (they carry holes), queries are specific, and the
+ * stored keys are GENERAL (they carry anys), queries are specific, and the
  * answer is every stored value whose pattern subsumes the query. ONE key
  * space: partitioning (per relation, per rule body, …) is the caller's
  * concern, which is what keeps this reusable across its customers — tabling's
@@ -28,11 +28,11 @@ import lombok.Value;
  * <p>A stored pattern serializes to its preorder {@link Edge} path over one
  * persistent trie ({@link ImmutableIndex}); alpha-equal patterns are one key
  * (reified equality — last put wins). The QUERY is never serialized: the walk
- * carries a worklist of query subterms, so a stored {@link Edge.Hole}
+ * carries a worklist of query subterms, so a stored {@link Edge.Any}
  * swallows one whole subterm by popping it, an {@link Edge.Atom} matches the
  * head by equality, and an {@link Edge.Branch} unfolds the head's members
  * onto the worklist. Candidates at exhausted paths pass
- * {@link Subsumption#subsumes}, which restores the precision the erased hole
+ * {@link Subsumption#subsumes}, which restores the precision the erased any
  * names gave up: the trie prunes, subsumes decides.
  *
  * <p>Thread-safe: the persistent trie behind a CAS'd reference — reads are
@@ -74,8 +74,8 @@ public final class SubsumptionMap<V> {
 			Term<?> head = terms.head();
 			List<Term<?>> rest = terms.tail();
 			followHoleEdge(state.getNode(), rest, pending);
-			if (head instanceof Hole) {
-				// only a hole covers a hole — a stored concrete position cannot
+			if (head instanceof Any) {
+				// only an any covers an any — a stored concrete position cannot
 				continue;
 			}
 			followExactEdge(state.getNode(), head, rest, pending);
@@ -96,7 +96,7 @@ public final class SubsumptionMap<V> {
 	/** A stored hole covers the head wholesale — pop it. */
 	private static <V> void followHoleEdge(ImmutableIndex<Edge, HashMap<Term<?>, V>> node,
 			List<Term<?>> rest, ArrayDeque<State<V>> pending) {
-		node.getLookup().get(Edge.Hole.HOLE)
+		node.getLookup().get(Edge.Any.ANY)
 				.forEach(child -> pending.push(new State<>(child, rest)));
 	}
 
@@ -122,8 +122,8 @@ public final class SubsumptionMap<V> {
 		while (!pending.isEmpty()) {
 			Term<?> term = pending.head();
 			pending = pending.tail();
-			if (term instanceof Hole) {
-				out.add(Edge.Hole.HOLE);
+			if (term instanceof Any) {
+				out.add(Edge.Any.ANY);
 				continue;
 			}
 			Option<Iterable<Term<?>>> members = MiniKanren.members(term);

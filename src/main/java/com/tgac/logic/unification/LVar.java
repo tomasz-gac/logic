@@ -9,7 +9,7 @@ import lombok.Getter;
  */
 
 @Getter
-public class LVar<T> implements Unifiable<T>, Unknown<T> {
+public class LVar<T> implements Unifiable<T>, Name<T> {
 	private static final AtomicLong VARIABLE_COUNTER = new AtomicLong(0L);
 	private final long birth;
 	private final String name;
@@ -38,7 +38,7 @@ public class LVar<T> implements Unifiable<T>, Unknown<T> {
 	}
 
 	@Override
-	public Option<Unknown<T>> asUnknown() {
+	public Option<Name<T>> asName() {
 		return Option.of(this);
 	}
 

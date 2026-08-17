@@ -5,7 +5,7 @@ import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
-import com.tgac.logic.unification.Unknown;
+import com.tgac.logic.unification.Name;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
 import java.util.function.UnaryOperator;
@@ -25,7 +25,7 @@ public class Package {
 		return Package.of(Substitutions.empty(), LinkedHashMap.empty());
 	}
 
-	public static Package of(HashMap<Unknown<?>, Term<?>> substitutions,
+	public static Package of(HashMap<Name<?>, Term<?>> substitutions,
 			LinkedHashMap<Class<? extends Packaged>, Packaged> stores) {
 		return Package.of(Substitutions.of(substitutions), stores);
 	}

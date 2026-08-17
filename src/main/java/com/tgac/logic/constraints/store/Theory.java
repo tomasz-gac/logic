@@ -8,12 +8,12 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import lombok.RequiredArgsConstructor;
 
 /**
  * A factor's knowledge as SYNTAX: the set of atoms that state it, held as a
@@ -38,26 +38,21 @@ import java.util.Objects;
  * {@code getFactorClass} is compatible with its family token — the
  * homogeneity the type parameter promises, enforced at the door.
  */
-public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>, PartialOrder<Theory<F>> {
 
-	private final Class<? extends Factor<?>> family;
+@RequiredArgsConstructor
+public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>, PartialOrder<Theory<F>> {
 	private final LinkedHashSet<Atom<F>> atoms;
 
-	private Theory(Class<? extends Factor<?>> family, LinkedHashSet<Atom<F>> atoms) {
-		this.family = family;
-		this.atoms = atoms;
+	public static <F extends Factor<F>> Theory<F> empty() {
+		return new Theory<>(LinkedHashSet.empty());
 	}
 
-	public static <F extends Factor<F>> Theory<F> empty(Class<F> family) {
-		return new Theory<>(family, LinkedHashSet.empty());
-	}
-
-	public static <F extends Factor<F>> Theory<F> of(Class<? extends F> family, Iterable<? extends Atom<F>> atoms) {
+	public static <F extends Factor<F>> Theory<F> of(Iterable<? extends Atom<F>> atoms) {
 		LinkedHashSet<Atom<F>> admitted = LinkedHashSet.empty();
 		for (Atom<F> atom : atoms) {
-			admitted = admitted.add(admit(family, atom));
+			admitted = admitted.add(atom);
 		}
-		return new Theory<>(family, minimal(admitted));
+		return new Theory<>(minimal(admitted));
 	}
 
 	/**
@@ -79,10 +74,6 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		return atom;
 	}
 
-	public Class<? extends Factor<?>> family() {
-		return family;
-	}
-
 	public LinkedHashSet<Atom<F>> atoms() {
 		return atoms;
 	}
@@ -93,11 +84,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 
 	/** ⊗: union with entailment dedup — stating twice, or weaker, is stating once. */
 	public Theory<F> meet(Theory<F> other) {
-		if (!family.equals(other.family)) {
-			throw new IllegalArgumentException("theories of different families do not meet: "
-					+ family.getSimpleName() + " vs " + other.family.getSimpleName());
-		}
-		return new Theory<>(family, minimal(atoms.addAll(other.atoms)));
+		return new Theory<>(minimal(atoms.addAll(other.atoms)));
 	}
 
 	@Override
@@ -133,7 +120,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 				remainder = remainder.add(atom);
 			}
 		}
-		return Tuple.of(new Theory<>(family, covered), new Theory<>(family, remainder));
+		return Tuple.of(new Theory<>(covered), new Theory<>(remainder));
 	}
 
 	/**
@@ -141,17 +128,13 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	 * Re-minimalizes: a renaming that merges names can create dominations
 	 * the source theory did not have.
 	 */
-	@SuppressWarnings("unchecked")
 	public Fiber<Theory<F>> rename(Renaming renaming) {
 		Fiber<LinkedHashSet<Atom<F>>> renamed = Fiber.done(LinkedHashSet.empty());
 		for (Atom<F> atom : atoms) {
-			if (!(atom instanceof Transcribable)) {
-				throw new IllegalStateException("a theory cannot cross with an untranscribable atom: " + atom);
-			}
 			renamed = renamed.flatMap(acc ->
-					((Transcribable<? extends Atom<F>>) atom).rename(renaming).map(acc::add));
+					atom.rename(renaming).map(acc::add));
 		}
-		return renamed.map(as -> new Theory<>(family, minimal(as)));
+		return renamed.map(as -> new Theory<>(minimal(as)));
 	}
 
 	@Override
@@ -163,16 +146,16 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 			return false;
 		}
 		Theory<?> other = (Theory<?>) o;
-		return family.equals(other.family) && atoms.equals(other.atoms);
+		return atoms.equals(other.atoms);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(family, atoms);
+		return Objects.hash(atoms);
 	}
 
 	@Override
 	public String toString() {
-		return family.getSimpleName() + atoms.mkString("{", " ⊗ ", "}");
+		return atoms.mkString("{", " ⊗ ", "}");
 	}
 }

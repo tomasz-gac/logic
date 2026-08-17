@@ -6,7 +6,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
@@ -22,13 +22,13 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 	 * the combine half of statement; {@link #stated} examines it once a
 	 * context is present.
 	 */
-	S meet(Atom c);
+	S meet(Atom<S> c);
 
 	/**
 	 * Scheduled for deletion into {@code leq}: containment of an atom is
 	 * entailment of its singleton factor.
 	 */
-	boolean contains(Atom c);
+	boolean contains(Atom<S> c);
 
 	/**
 	 * Whether the store currently holds no constraints.
@@ -111,7 +111,7 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 	 * families override with a first-examination fast path (examine one
 	 * item, not the family).
 	 */
-	default Fiber<Revision> stated(Atom item, Package state) {
+	default Fiber<Revision> stated(Atom<S> item, Package state) {
 		return normalize(state);
 	}
 
@@ -143,11 +143,11 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 
 	/**
 	 * This store's knowledge about the mapped vars in canonical names — each
-	 * var to its slot hole, the correspondence reify built, carried as data.
+	 * var to its any, the correspondence reify built, carried as data.
 	 * The comparable key citizen. Projecting an empty map of an empty store
 	 * is the empty store: the triviality test is {@code isEmpty}.
 	 */
-	default Fiber<S> project(Map<LVar<?>, Hole<?>> slots) {
+	default Fiber<S> project(Map<LVar<?>, Any<?>> slots) {
 		return split(new ArrayList<>(slots.keySet()))._1.rename(Renaming.of(slots));
 	}
 

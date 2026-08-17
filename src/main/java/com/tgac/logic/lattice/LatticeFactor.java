@@ -44,7 +44,7 @@ import lombok.RequiredArgsConstructor;
 /**
  * The store residue that never mentions its value domain
  * (docs/design/lattice-store.md): entries keyed by NAME — a live {@link LVar}
- * or a canonical Hole — carrying a value of the component lattice {@code L},
+ * or a canonical Any — carrying a value of the component lattice {@code L},
  * plus the propagator kernel (named, value-equal, watched, cascaded, deduped).
  * Pointwise meet, slotwise leq, revise/normalize/stated, split and rename are
  * all inherited; the value's capability record ({@link Domain}) supplies
@@ -56,7 +56,7 @@ import lombok.RequiredArgsConstructor;
 public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor<L, S>>
 		implements Factor<S>, Absorbing {
 
-	// entries keyed by NAME: a live LVar or a canonical Hole
+	// entries keyed by NAME: a live LVar or a canonical Any
 	protected final LinkedHashMap<Term<?>, L> values;
 
 	protected final HashSet<Propagator<S>> propagators;
@@ -139,7 +139,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	@Override
-	public S meet(Atom c) {
+	public S meet(Atom<S> c) {
 		// an Imposition is a MESSAGE, not parkable content: its value enters
 		// only through stated's routing (verification, collapse, inference) —
 		// a silent park would put un-vetted knowledge in front of normalize
@@ -156,11 +156,11 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			atoms.add(new Imposition<>((Class<S>) getClass(), entry._1, entry._2));
 		}
 		propagators.forEach(atoms::add);
-		return Theory.of((Class<S>) getClass(), atoms);
+		return Theory.of(atoms);
 	}
 
 	@Override
-	public boolean contains(Atom c) {
+	public boolean contains(Atom<S> c) {
 		return c instanceof Propagator &&
 				propagators.contains((Propagator<S>) c);
 	}
@@ -179,7 +179,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		if (target.isVal()) {
 			return value.admits(target.get()) ? Update.unchanged() : Update.fail();
 		}
-		LVar<?> x = (LVar<?>) target.asVar().get();
+		LVar<?> x = target.asVar().get();
 		L previous = values.get(x).getOrNull();
 		L effective;
 		if (previous != null) {
@@ -325,8 +325,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public Fiber<Revision> stated(Atom item, Package state) {
+	public Fiber<Revision> stated(Atom<S> item, Package state) {
 		if (item instanceof Imposition) {
 			// update's verification/collapse/narrowing routing, inside the
 			// store's method: the item is a message, the values map keeps

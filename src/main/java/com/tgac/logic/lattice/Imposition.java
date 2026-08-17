@@ -5,7 +5,6 @@ package com.tgac.logic.lattice;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
@@ -21,7 +20,7 @@ import lombok.Value;
  * so {@code prepend} deliberately ignores it.
  */
 @Value
-public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Atom<F>, Transcribable<Imposition<L, F>> {
+public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Atom<F> {
 	Class<? extends F> storeClass;
 	Term<?> target;
 	L value;
@@ -48,7 +47,7 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 
 	/** The value is ground data and rides; only the target re-keys. */
 	@Override
-	public Fiber<Imposition<L, F>> rename(Renaming renaming) {
+	public Fiber<Atom<F>> rename(Renaming renaming) {
 		return renaming.apply(target)
 				.map(renamed -> new Imposition<>(storeClass, renamed, value));
 	}

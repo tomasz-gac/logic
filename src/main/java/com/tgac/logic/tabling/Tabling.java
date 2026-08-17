@@ -116,7 +116,7 @@ public class Tabling {
 		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k ->
 				Residues.about(callerPkg, argsTerm).flatMap(keyPair -> {
 					// the call's REGION: the bindings factor's image (args
-					// reified with holes) plus each store's slot-named factor
+					// reified with anys) plus each store's slot-named factor
 					Reified<?> reifiedArgs = keyPair._1;
 					Residues keyResidues = keyPair._2;
 					Call key = Call.of(relation, reifiedArgs, keyResidues);
@@ -311,7 +311,7 @@ public class Tabling {
 	 * consumptions of the same answer don't alias each other's free
 	 * variables. Delivery is a goal: unify the caller's args with the
 	 * instantiation — through the public entry, so the caller's stores
-	 * revise — then RESTATE the residues onto the fresh holes. The
+	 * revise — then RESTATE the residues onto the fresh vars. The
 	 * meet-at-consumption: a failed unification, a violated store or a
 	 * violated residue all silently fail the delivery and consumption moves
 	 * on.
@@ -320,7 +320,7 @@ public class Tabling {
 			Reified<?> term, Object value) {
 		if (value instanceof Condition) {
 			// a condition delivers per region: each conjunct is one branch,
-			// its residues restated onto that delivery's fresh holes; regions
+			// its residues restated onto that delivery's fresh vars; regions
 			// are disjuncts, so they fork like any other alternatives
 			return Fiber.fork(((Condition) value).conjuncts().toJavaStream()
 					.map(conjunct -> deliverAtom(entry, reader, term, conjunct, value))

@@ -30,7 +30,7 @@ public class SubstitutionLatticeLawsTest {
 	 * are structurally distinct maps but the same substitution.
 	 */
 	private static final BiPredicate<Substitutions, Substitutions> BY_SOLVED_FORM = (s1, s2) -> {
-		HashSet<Unknown<?>> vars = HashSet.ofAll(s1.map().keySet())
+		HashSet<Name<?>> vars = HashSet.ofAll(s1.map().keySet())
 				.addAll(s2.map().keySet());
 		return vars.forAll(v -> MiniKanren.format(s1, v).equals(MiniKanren.format(s2, v)));
 	};

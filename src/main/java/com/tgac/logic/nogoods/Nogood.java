@@ -6,15 +6,13 @@ package com.tgac.logic.nogoods;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.UnifyGoal;
-import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Transcribable;
 import com.tgac.logic.constraints.store.Atom;
-import com.tgac.logic.constraints.store.Factor;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.List;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Value;
 
@@ -26,7 +24,7 @@ import lombok.Value;
  * is the package's; a nogood only ever says "not this".
  */
 @Value
-public class Nogood implements Atom<NogoodConstraints>, Transcribable<Nogood> {
+public class Nogood implements Atom<NogoodConstraints> {
 	Posting forbidden;
 
 	/**
@@ -107,15 +105,14 @@ public class Nogood implements Atom<NogoodConstraints>, Transcribable<Nogood> {
 	}
 
 	private static Set<Posting> literalSet(Nogood nogood) {
-		return (nogood.forbidden instanceof Posting.AllOf ?
+		return new HashSet<>((nogood.forbidden instanceof Posting.AllOf ?
 				((Posting.AllOf) nogood.forbidden).getParts().toJavaList() :
-				Collections.singletonList(nogood.forbidden))
-				.stream().collect(Collectors.toSet());
+				Collections.singletonList(nogood.forbidden)));
 	}
 
 	/** The posting transcribes itself wrapped; the envelope follows. */
 	@Override
-	public Fiber<Nogood> rename(Renaming renaming) {
+	public Fiber<Atom<NogoodConstraints>> rename(Renaming renaming) {
 		return forbidden.rename(renaming).map(Nogood::of);
 	}
 

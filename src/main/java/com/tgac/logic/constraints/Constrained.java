@@ -4,7 +4,7 @@ package com.tgac.logic.constraints;
 // ABOUTME: residual items its stores could not finish — expressed, never dropped.
 
 import com.tgac.logic.constraints.store.Atom;
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
@@ -23,7 +23,7 @@ import lombok.Value;
 @Value(staticConstructor = "of")
 public class Constrained<T> implements Reified<T> {
 	Term<T> that;
-	List<Atom> residuals;
+	List<Atom<?>> residuals;
 
 	@Override
 	public Option<T> asVal() {
@@ -46,7 +46,7 @@ public class Constrained<T> implements Reified<T> {
 	}
 
 	@Override
-	public Option<Hole<T>> asReified() {
+	public Option<Any<T>> asReified() {
 		return that.asReified();
 	}
 

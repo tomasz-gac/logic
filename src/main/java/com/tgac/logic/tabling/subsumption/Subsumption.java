@@ -1,9 +1,9 @@
 package com.tgac.logic.tabling.subsumption;
 
 // ABOUTME: Herbrand pattern subsumption over reified terms: one-way instance
-// ABOUTME: matching, holes binding consistently — the retrieval's precision layer.
+// ABOUTME: matching, anys binding consistently — the retrieval's precision layer.
 
-import com.tgac.logic.unification.Hole;
+import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
@@ -19,8 +19,8 @@ import lombok.NoArgsConstructor;
 /**
  * Herbrand subsumption: does {@code general} generalize {@code specific}?
  * One-way instance MATCHING (no unification, no anti-unification): the
- * general pattern's holes bind consistently to specific's subterms —
- * repeated holes demand equal subterms, which reified canonical names make
+ * general pattern's anys bind consistently to specific's subterms —
+ * repeated anys demand equal subterms, which reified canonical names make
  * decidable by plain equality.
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -39,18 +39,18 @@ public final class Subsumption {
 			Tuple2<Term<?>, Term<?>> pair = pending.pop();
 			Term<?> g = pair._1;
 			Term<?> s = pair._2;
-			if (g instanceof Hole) {
-				int hole = ((Hole<?>) g).getNumber();
-				Term<?> bound = binding.get(hole);
+			if (g instanceof Any) {
+				int any = ((Any<?>) g).getNumber();
+				Term<?> bound = binding.get(any);
 				if (bound == null) {
-					binding.put(hole, s);
+					binding.put(any, s);
 				} else if (!bound.equals(s)) {
 					return false;
 				}
 				continue;
 			}
-			if (s instanceof Hole) {
-				// a concrete general position cannot cover the hole's instances
+			if (s instanceof Any) {
+				// a concrete general position cannot cover the any's instances
 				return false;
 			}
 			Option<Iterable<Term<?>>> gm = MiniKanren.members(g);
