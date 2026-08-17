@@ -17,6 +17,9 @@ import io.vavr.collection.Traversable;
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 
 /**
@@ -30,9 +33,21 @@ import lombok.Value;
  * flattens); multi-conjunct atoms live in plan space.
  */
 @Value
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
 	LinkedHashSet<Posting> forbidden;
 	HashSet<Term<?>> surface;
+
+	/**
+	 * Identity: ∧ is commutative, so a conjunct IS its literal set and a
+	 * nogood is the set of those — permuted literals are the same knowledge
+	 * and must be the same nogood (dedup, cross-lineage keys, and leq
+	 * antisymmetry all lean on it). The postings keep their stated order
+	 * for the trial and the display; {@code leq} reads these held sets.
+	 */
+	@EqualsAndHashCode.Include
+	Set<Set<Posting>> literals;
 
 	/**
 	 * One forbidden conjunct, held FLAT: ∧ is associative, so nested
@@ -44,10 +59,15 @@ public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
 	 */
 	public static Nogood of(Posting forbidden) {
 		List<Posting> flat = forbidden.accept(FLATTEN);
-		LinkedHashSet<Posting> conjuncts = LinkedHashSet.of(flat.size() == 1 ?
+		return make(LinkedHashSet.of(flat.size() == 1 ?
 				flat.head() :
-				Posting.all(flat.toJavaArray(Posting[]::new)));
-		return new Nogood(conjuncts, surfaceOf(conjuncts));
+				Posting.all(flat.toJavaArray(Posting[]::new))));
+	}
+
+	private static Nogood make(LinkedHashSet<Posting> conjuncts) {
+		return new Nogood(conjuncts, surfaceOf(conjuncts), conjuncts.toJavaStream()
+				.map(Nogood::literalSet)
+				.collect(Collectors.toSet()));
 	}
 
 	private static HashSet<Term<?>> surfaceOf(LinkedHashSet<Posting> conjuncts) {
@@ -91,7 +111,7 @@ public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
 			throw new IllegalArgumentException(
 					"nogoods on different surfaces do not combine: " + this + " vs " + other);
 		}
-		return new Nogood(forbidden.addAll(other.forbidden), surface);
+		return make(forbidden.addAll(other.forbidden));
 	}
 
 	/** The factor-resident face: a digested nogood holds exactly one conjunct. */
@@ -134,9 +154,8 @@ public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
 		if (!(other instanceof Nogood)) {
 			return equals(other);
 		}
-		LinkedHashSet<Posting> theirs = ((Nogood) other).forbidden;
-		return theirs.forAll(d -> forbidden.exists(c ->
-				literalSet(d).containsAll(literalSet(c))));
+		return ((Nogood) other).literals.stream().allMatch(d ->
+				literals.stream().anyMatch(d::containsAll));
 	}
 
 	private static Set<Posting> literalSet(Posting conjunct) {
@@ -152,7 +171,7 @@ public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
 		for (Posting conjunct : forbidden) {
 			renamed = renamed.flatMap(acc -> conjunct.rename(renaming).map(acc::add));
 		}
-		return renamed.map(conjuncts -> new Nogood(conjuncts, surfaceOf(conjuncts)));
+		return renamed.map(Nogood::make);
 	}
 
 	@Override

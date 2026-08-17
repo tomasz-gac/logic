@@ -36,12 +36,25 @@ public class NogoodLawsTest {
 
 	@Test
 	public void subsumptionIsAPartialOrder() {
+		// includes a permuted pair: mutual entailment must mean equality
 		java.util.List<Atom<NogoodConstraints>> samples = Arrays.asList(
 				Nogood.of(A),
 				Nogood.of(B),
 				Nogood.of(Posting.all(A, B)),
+				Nogood.of(Posting.all(B, A)),
 				Nogood.of(Posting.all(A, B, C)));
 		PartialOrderLaws.check(samples);
+	}
+
+	@Test
+	public void aNogoodIsItsLiteralSetNotItsLiteralOrder() {
+		// ∧ is commutative: ¬(A ∧ B) and ¬(B ∧ A) are the same knowledge,
+		// so they must be the same nogood — dedup and cross-lineage key
+		// comparison depend on it
+		Nogood ab = Nogood.of(Posting.all(A, B));
+		Nogood ba = Nogood.of(Posting.all(B, A));
+		assertThat(ab).isEqualTo(ba);
+		assertThat(ab.hashCode()).isEqualTo(ba.hashCode());
 	}
 
 	@Test
