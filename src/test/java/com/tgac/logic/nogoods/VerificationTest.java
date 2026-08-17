@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.finitedomain.FiniteDomain;
+import java.util.stream.Stream;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
@@ -41,7 +42,7 @@ public class VerificationTest {
 	}
 
 	private static Option<List<Nogood>> verified(Package state, Posting... literals) {
-		return new BreadthFirstScheduler<>(Verification.verify(List.of(Nogood.of(literals.length == 1 ?
+		return new BreadthFirstScheduler<>(Verification.verify(Stream.of(Nogood.of(literals.length == 1 ?
 				literals[0] : Posting.all(literals))), state)).get();
 	}
 

@@ -132,7 +132,7 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 
 	@Override
 	public Fiber<Revision> normalize(Package state) {
-		return Verification.verify(residents().collect(List.collector()), state.withoutStore(NogoodConstraints.class))
+		return Verification.verify(residents(), state.withoutStore(NogoodConstraints.class))
 				.map(kept -> kept.isDefined() ?
 						revisedTo(LinkedHashSet.ofAll(kept.get())) :
 						Revision.fail());

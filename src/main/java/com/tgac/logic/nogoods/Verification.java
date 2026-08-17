@@ -8,9 +8,11 @@ import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.goals.Package;
-import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -57,22 +59,23 @@ public final class Verification {
 	 * are search and stay with the real drain); a settle failure means the
 	 * branch is doomed on the same items, deterministically.
 	 */
-	public static Fiber<Option<List<Nogood>>> verify(List<Nogood> nogoods, Package state) {
-		Tuple2<List<Nogood>, List<Nogood>> byShape =
-				nogoods.partition(n -> Trial.bindingShaped(n.conjunct()));
+	public static Fiber<Option<List<Nogood>>> verify(Stream<Nogood> nogoods, Package state) {
+		Map<Boolean, List<Nogood>> byShape = nogoods.collect(
+				Collectors.partitioningBy(n -> Trial.bindingShaped(n.conjunct()),
+						List.collector()));
 		// the binding subset answers through the synchronous face — the sync
 		// gate is a typed code path, not an eagerness property
-		Option<List<Nogood>> bindingKept = foldNow(byShape._1, state);
+		Option<List<Nogood>> bindingKept = foldNow(byShape.get(true), state);
 		if (!bindingKept.isDefined()) {
 			return Fiber.done(Option.none());
 		}
 		Option<List<Nogood>> minimal = bindingKept.map(kept -> pruneSubsumed(kept, state));
-		if (byShape._2.isEmpty()) {
+		if (byShape.get(false).isEmpty()) {
 			return Fiber.done(minimal);
 		}
 		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
 				Fiber.done(Option.none()) :
-				fold(byShape._2, settled.get())
+				fold(byShape.get(false), settled.get())
 						.map(packagedKept -> packagedKept.map(minimal.get()::appendAll)));
 	}
 
