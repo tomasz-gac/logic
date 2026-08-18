@@ -37,10 +37,16 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 
 	/**
 	 * The factor's knowledge as syntax: its atoms, as a plan-space value.
-	 * The crossing out of execution space; absorb is the way back (fold
-	 * {@code meet(Atom)}, then normalize under the destination's context).
+	 * The crossing out of execution space; {@link #absorb} is the way back.
 	 */
 	Theory<S> theory();
+
+	/**
+	 * The crossing back in: meet the incoming theory into the resident one —
+	 * the value half of absorption. Completed by normalize under the
+	 * destination's context, exactly as meet always was; the door queues it.
+	 */
+	S absorb(Theory<S> incoming);
 
 	/** The store meet: the factor product. Accumulation descends the extension. */
 	S meet(S other);

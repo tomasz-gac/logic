@@ -92,6 +92,11 @@ class Span implements Factor<Span> {
 	}
 
 	@Override
+	public Span absorb(Theory<Span> incoming) {
+		throw new UnsupportedOperationException("value-only test store");
+	}
+
+	@Override
 	public boolean contains(Atom<Span> c) {
 		throw new UnsupportedOperationException("value-only test store");
 	}

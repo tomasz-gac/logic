@@ -77,7 +77,12 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	/** The theory meet: union, same-surface fusion, subsumption deletion. */
 	@Override
 	public NogoodConstraints meet(NogoodConstraints other) {
-		return new NogoodConstraints(theory.meet(other.theory));
+		return absorb(other.theory);
+	}
+
+	@Override
+	public NogoodConstraints absorb(Theory<NogoodConstraints> incoming) {
+		return new NogoodConstraints(theory.meet(incoming));
 	}
 
 	/** The covering order — {¬A} entails {¬(A ∧ B)} with no shared residents. */

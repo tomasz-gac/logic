@@ -126,7 +126,13 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		if (isAbsorbing() || other.isAbsorbing()) {
 			return bottomStore();
 		}
-		S met = create(theory.meet(other.theory));
+		return absorb(other.theory);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public S absorb(Theory<S> incoming) {
+		S met = create(theory.meet(incoming));
 		return met.impositions().anyMatch(i -> ((L) i.getValue()).isAbsorbing()) ?
 				bottomStore() :
 				met;

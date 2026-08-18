@@ -77,6 +77,11 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
+		public EmittingFactor absorb(Theory<EmittingFactor> incoming) {
+			return this;
+		}
+
+		@Override
 		public boolean contains(Atom<EmittingFactor> c) {
 			return false;
 		}

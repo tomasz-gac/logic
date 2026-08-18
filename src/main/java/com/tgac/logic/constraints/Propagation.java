@@ -142,8 +142,15 @@ public final class Propagation {
 			}
 			Factor resident = (Factor) p.getStores()
 					.get(factor.getClass()).getOrNull();
-			Factor met = resident == null ? factor
-					: (Factor) ((Semilattice) resident).combine(factor);
+			if (resident == null) {
+				return enqueue(p.putStore(factor), new Agenda.Absorbed(factor));
+			}
+			if (resident.theory().leq(factor.theory())) {
+				// the covering door guard: the resident already entails the
+				// incoming knowledge — no meet, no re-normalization, no trials
+				return Cont.just(p);
+			}
+			Factor met = (Factor) resident.absorb(factor.theory());
 			return enqueue(p.putStore(met), new Agenda.Absorbed(factor));
 		};
 	}

@@ -133,6 +133,22 @@ public class LatticeFactorTest {
 		assertThat(spent.isEmpty()).isTrue();
 	}
 
+	@Test
+	public void theoryRoundTripRebuildsTheFactorThroughAbsorb() {
+		// the crossing there and back, now PURE for the lattice family too:
+		// residence dissolved the imposition-message deferral — the factor IS
+		// its theory, so absorbing its theory into empty rebuilds it
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		FlatConstraints original = FlatConstraints.empty()
+				.withValue(x, FlatSet.of(1, 2))
+				.meet(Propagator.of(FlatConstraints.class, "even",
+						java.util.Collections.singletonList(y),
+						(watched, state) -> Verdict.keep()));
+		assertThat(FlatConstraints.empty().absorb(original.theory()))
+				.isEqualTo(original);
+	}
+
 	private static Goal flat(Unifiable<?> x, FlatSet values) {
 		return FlatConstraints.empty().impose(x, values);
 	}
