@@ -71,15 +71,21 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	 */
 	private final LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kinds;
 
-	/** The collision key: same name, same held watched collection = same slot. */
+	/**
+	 * The collision key: same family, same name, same held watched
+	 * collection = same slot. The family rides in the key because atom
+	 * names are unique only WITHIN a family (every lattice family names
+	 * its value atoms "imposition").
+	 */
 	@Value
 	private static class Slot {
+		Class<?> family;
 		String name;
 		Traversable<Term<?>> surface;
 	}
 
 	private static Slot slotOf(Atom<?> atom) {
-		return new Slot(atom.name(), atom.watched());
+		return new Slot(atom.getFactorClass(), atom.name(), atom.watched());
 	}
 
 	public static <F extends Factor<F>> Theory<F> empty() {
@@ -161,8 +167,8 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	}
 
 	/** The slot occupant, one hop — the factor's by-surface read. */
-	public Option<Atom<F>> atom(String name, Traversable<Term<?>> surface) {
-		return slots.get(new Slot(name, surface));
+	public Option<Atom<F>> atom(Class<?> family, String name, Traversable<Term<?>> surface) {
+		return slots.get(new Slot(family, name, surface));
 	}
 
 	/** One kind's atoms, streamed — the factor's kind-specific iteration. */

@@ -76,6 +76,35 @@ public class ImpositionLawsTest {
 	}
 
 	@Test
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public void impositionsOfDifferentFamiliesNeverDominate() {
+		// same target, same domain type, DIFFERENT lattice family: without the
+		// family in the slot condition these would dominate each other
+		Unifiable<Integer> x = lvar();
+		Imposition mine = new Imposition<>(FlatConstraints.class, x, FlatSet.of(1));
+		Imposition other = new Imposition(OtherFamily.class, x, FlatSet.of(1, 2));
+		assertThat(mine.leq((Imposition<FlatSet, FlatConstraints>) other)).isFalse();
+		assertThat(other.leq(mine)).isFalse();
+	}
+
+	@Test
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public void combineRefusesDifferentFamiliesLoudly() {
+		Unifiable<Integer> x = lvar();
+		Imposition mine = new Imposition<>(FlatConstraints.class, x, FlatSet.of(1));
+		Imposition other = new Imposition(OtherFamily.class, x, FlatSet.of(1, 2));
+		assertThatThrownBy(() -> mine.combine(other))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	/** A second family token; never instantiated — the class is the point. */
+	private static abstract class OtherFamily extends LatticeFactor<FlatSet, OtherFamily> {
+		private OtherFamily() {
+			super(null);
+		}
+	}
+
+	@Test
 	public void combineRefusesDifferentTargetsLoudly() {
 		// unreachable through Theory's collision guard; loud if called directly
 		assertThatThrownBy(() -> on(X, 1, 2).combine(on(Y, 2, 3)))

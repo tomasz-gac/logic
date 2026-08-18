@@ -12,6 +12,7 @@ import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Theory;
+import com.tgac.logic.lattice.Imposition;
 import com.tgac.logic.unification.Unifiable;
 import java.util.Arrays;
 import java.util.Collections;
@@ -66,7 +67,7 @@ public class TheoryLawsTest {
 				.of(Collections.singletonList(xyOneTwo))
 				.meet(Theory.of(Collections.singletonList(xyTwoOne)));
 		assertThat(met.atoms()).containsExactly(xyOneTwo.combine(xyTwoOne));
-		assertThat(met.atoms().head().payload())
+		assertThat(((Nogood) met.atoms().head()).getForbidden())
 				.isEqualTo(xyOneTwo.getForbidden().addAll(xyTwoOne.getForbidden()));
 	}
 

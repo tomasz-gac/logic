@@ -140,11 +140,6 @@ public class VerificationTest {
 			public io.vavr.collection.Traversable<Term<?>> watched() {
 				return io.vavr.collection.HashSet.empty();
 			}
-
-			@Override
-			public Object payload() {
-				return "orphan";
-			}
 		};
 
 		assertThatThrownBy(() -> new BreadthFirstScheduler<>(Trial.imposed(

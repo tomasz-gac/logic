@@ -12,6 +12,7 @@ import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Traversable;
+import lombok.Getter;
 import lombok.Value;
 
 /**
@@ -30,23 +31,26 @@ import lombok.Value;
 public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Atom<F>, Semilattice<Imposition<L, F>> {
 	Class<? extends F> storeClass;
 	Term<?> target;
+	@Getter
 	L value;
 
-	/** Same-target only — unreachable through the theory meet's collision guard. */
+	/** Same family, same target only — the slot condition, guarded loudly. */
 	@Override
 	public Imposition<L, F> combine(Imposition<L, F> other) {
-		if (!target.equals(other.target)) {
+		if (!storeClass.equals(other.storeClass) || !target.equals(other.target)) {
 			throw new IllegalArgumentException(
-					"impositions on different targets do not combine: " + this + " vs " + other);
+					"impositions combine only on their own slot: " + this + " vs " + other);
 		}
 		return new Imposition<>(storeClass, target, value.meet(other.value));
 	}
 
-	/** Sharp over same-target domains: the domain order; structural otherwise. */
+	/** Sharp over same-slot domains (same family, same target); structural otherwise. */
 	@SuppressWarnings("unchecked")
 	@Override
 	public boolean leq(Atom<F> other) {
-		if (other instanceof Imposition && target.equals(((Imposition<?, ?>) other).target)) {
+		if (other instanceof Imposition
+				&& storeClass.equals(((Imposition<?, ?>) other).storeClass)
+				&& target.equals(((Imposition<?, ?>) other).target)) {
 			return value.leq((L) ((Imposition<?, ?>) other).value);
 		}
 		return equals(other);
@@ -65,11 +69,6 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 	@Override
 	public Traversable<Term<?>> watched() {
 		return HashSet.of(target);
-	}
-
-	@Override
-	public Object payload() {
-		return value;
 	}
 
 	/** The value is ground data and rides; only the target re-keys. */

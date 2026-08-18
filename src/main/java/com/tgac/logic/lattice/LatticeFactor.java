@@ -4,32 +4,29 @@ package com.tgac.logic.lattice;
 // ABOUTME: of impositions and propagators; instances supply only their capability record.
 
 import static com.tgac.logic.unification.LVal.lval;
-import com.tgac.logic.constraints.store.Atom;
 
 import com.tgac.functional.algebra.Absorbing;
 import com.tgac.functional.algebra.MonotoneDrain;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.constraints.Propagation;
+import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
-import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Predicates;
-import io.vavr.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.Array;
 import io.vavr.collection.HashSet;
-import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -71,8 +68,8 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		return new Imposition<>((Class<S>) getClass(), target, value);
 	}
 
-	private Option<Atom<S>> valueAtom(Term<?> v) {
-		return theory.atom("imposition", HashSet.of(v));
+	private Option<Imposition<L, S>> valueAtom(Term<?> v) {
+		return theory.atom(getClass(), "imposition", HashSet.of(v)).map(Types.cast());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -103,9 +100,8 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		return (S) this;
 	}
 
-	@SuppressWarnings("unchecked")
 	public Option<L> getValue(Term<?> v) {
-		return valueAtom(v).map(atom -> (L) atom.payload());
+		return valueAtom(v).map(Imposition::getValue);
 	}
 
 	/** Narrowing write: the value FUSES with any existing entry at {@code x}. */
@@ -130,10 +126,9 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public S absorb(Theory<S> incoming) {
 		S met = create(theory.meet(incoming));
-		return met.impositions().anyMatch(i -> ((L) i.getValue()).isAbsorbing()) ?
+		return met.impositions().anyMatch(i -> (i.getValue()).isAbsorbing()) ?
 				bottomStore() :
 				met;
 	}
@@ -430,7 +425,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		for (Goal run : runs) {
 			// a store-level search effect is a degenerate (already ripe) suspension
 			result = result.withSuspend(Suspension.of(
-					Collections.<Term<?>> emptyList(), p -> true, run));
+					Collections.emptyList(), p -> true, run));
 		}
 		return Fiber.done(result);
 	}

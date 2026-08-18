@@ -59,7 +59,7 @@ public class TheoryMeetTest {
 				.of(Collections.singletonList(on(X, 1)))
 				.meet(Theory.of(Collections.singletonList(on(X, 2))));
 		assertThat(met.atoms()).hasSize(1);
-		assertThat(((FlatSet) met.atoms().head().payload()).isAbsorbing()).isTrue();
+		assertThat((((Imposition) met.atoms().head()).getValue()).isAbsorbing()).isTrue();
 	}
 
 	@Test
@@ -79,9 +79,9 @@ public class TheoryMeetTest {
 	@Test
 	public void atomFindsTheSlotOccupant() {
 		Theory<FlatConstraints> theory = Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 3)));
-		assertThat(theory.atom("imposition", HashSet.of(X)))
+		assertThat(theory.atom(FlatConstraints.class, "imposition", HashSet.of(X)))
 				.contains(on(X, 1, 2));
-		assertThat(theory.atom("imposition", HashSet.of(Z)))
+		assertThat(theory.atom(FlatConstraints.class, "imposition", HashSet.of(Z)))
 				.isEmpty();
 	}
 

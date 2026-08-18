@@ -44,7 +44,5 @@ public interface Atom<F extends Factor<F>> extends PartialOrder<Atom<F>> {
 	 */
 	Traversable<Term<?>> watched();
 
-	Object payload();
-
 	Fiber<Atom<F>> rename(Renaming renaming);
 }

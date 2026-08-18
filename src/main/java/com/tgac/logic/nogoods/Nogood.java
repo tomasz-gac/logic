@@ -7,8 +7,8 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.UnifyGoal;
-import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashSet;
@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.Value;
 
 /**
@@ -136,11 +137,6 @@ public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
 	@Override
 	public Traversable<Term<?>> watched() {
 		return surface;
-	}
-
-	@Override
-	public Object payload() {
-		return forbidden;
 	}
 
 	/**

@@ -26,6 +26,7 @@ import io.vavr.control.Option;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.Value;
 import org.junit.Test;
 
@@ -42,6 +43,7 @@ public class LatticeFactorTest {
 	/** The component lattice: a finite set of admissible values. */
 	@Value
 	static class FlatSet implements Domain<FlatSet> {
+		@Getter
 		HashSet<Object> values;
 
 		static FlatSet of(Object... vs) {

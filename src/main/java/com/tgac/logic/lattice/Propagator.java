@@ -79,12 +79,6 @@ public final class Propagator<F extends Factor<F>> implements Atom<F> {
 		return Array.narrow(watchedTerms);
 	}
 
-	/** The rebuild-by-name schema: the watched terms, re-posted under name(). */
-	@Override
-	public Object payload() {
-		return watchedTerms;
-	}
-
 	/**
 	 * The body, for the OWNING store to recognize richer capabilities on its
 	 * own propagators (labelling, marshalling) — equality never consults it,
