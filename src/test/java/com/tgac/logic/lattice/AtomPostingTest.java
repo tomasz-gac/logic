@@ -6,7 +6,6 @@ package com.tgac.logic.lattice;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.constraints.Posting;
@@ -45,7 +44,7 @@ public class AtomPostingTest {
 	@Test
 	public void aStatedPropagatorParksAndWakes() {
 		Unifiable<Integer> x = lvar();
-		Propagator<FlatConstraints> even = Propagator.of(FlatConstraints.class, "even",
+		Propagator<FlatConstraints> even = Propagator.of(FlatConstraints.empty(), "even",
 						Collections.singletonList(x),
 						(watched, state) -> {
 							Term<?> w = state.walk(watched.get(0));
@@ -53,8 +52,7 @@ public class AtomPostingTest {
 								return Verdict.keep();
 							}
 							return ((Integer) w.get()) % 2 == 0 ? Verdict.subsumed() : Verdict.fail();
-						})
-				.stated(FlatConstraints.empty(), p -> false);
+						});
 		assertThat(FlatConstraints.empty().impose(x, FlatSet.of(1, 2, 3, 4))
 				.and(even.posting()).and(x.unifies(4))
 				.solve(x, TestSchedulers.factory()).count()).isEqualTo(1L);
@@ -63,12 +61,4 @@ public class AtomPostingTest {
 				.solve(x, TestSchedulers.factory()).count()).isZero();
 	}
 
-	@Test
-	public void anUnconfiguredPropagatorRefusesToPost() {
-		Unifiable<Integer> x = lvar();
-		assertThatThrownBy(() -> Propagator.of(FlatConstraints.class, "even",
-						Collections.singletonList(x), (watched, state) -> Verdict.keep())
-				.posting())
-				.isInstanceOf(IllegalStateException.class);
-	}
 }

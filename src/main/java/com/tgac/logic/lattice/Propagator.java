@@ -1,143 +1,83 @@
 package com.tgac.logic.lattice;
 
-// ABOUTME: A parked constraint body that reports a Verdict — the framework owns the
-// ABOUTME: parked lifecycle; watch matching resolves against the live state.
+// ABOUTME: The parked constraint schema: an abstract base owning the watched
+// ABOUTME: terms, the identity contract, matching, rename and the statement.
 
 import com.tgac.functional.fibers.Fiber;
+import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Watches;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Array;
 import io.vavr.collection.List;
 import io.vavr.collection.Traversable;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
-import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 /**
- * The parked unit of the wake machinery (docs/reference/constraint-kernel.md* §2.2). Extends {@link Atom} so park/remove route to the owning store without a
- * wrapper. Watch matching walks the watched terms against the LIVE state, so
- * aliasing (x bound to y) re-targets the watch structurally, where the old
- * Factor protocol relied on the re-park-with-freshly-walked-args side effect of
- * remove-and-rerun.
+ * The parked unit of the wake machinery (docs/reference/constraint-kernel.md
+ * §2.2), as an abstract base: the class IS the schema. Shared here — the one
+ * piece of instance state (the watched terms), the identity contract, the
+ * walk-aware watch matching, rename-as-re-instantiation and the statement.
+ * A subclass supplies exactly its schema: {@link #propagate}, its
+ * re-instantiation {@link #watching}, its family ({@link #getFactorClass},
+ * {@link #empty}), its {@link #name} and, where the author knows better than
+ * never, its {@link #doomed} check.
+ *
+ * <p>THE CLASS CONTRACT that licenses the identity: a schema carries NO
+ * instance state beyond the terms it watches — the name must uniquely
+ * determine the verdict semantics within its family, so two posts of one
+ * relation on the same terms are the same knowledge stated twice (the store
+ * dedups them), and renamed instances compare equal wherever the renaming
+ * agrees. Equality is (family, name, watched terms), final.
+ *
+ * <p>Postable by construction: every propagator carries its complete
+ * statement context — there is no unconfigured state to construct.
  */
-@EqualsAndHashCode(of = {"storeClass", "name", "watchedTerms"})
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public final class Propagator<F extends Factor<F>> implements Atom<F> {
+public abstract class Propagator<F extends Factor<F>> implements Atom<F> {
 
-	@Getter
-	private final Class<? extends F> storeClass;
-	private final String name;
 	private final Array<? extends Term<?>> watchedTerms;
-	private final BiFunction<Array<? extends Term<?>>, Package, Verdict> body;
 
-	/** Statement context — the family's empty and the doom check; outside identity. */
-	private final F empty;
-	private final Predicate<Package> doom;
-
-	/**
-	 * A propagator from its owning store, name, watched terms and body. The
-	 * body is POSITIONAL — it reads its variables through the watched array it
-	 * is handed, never through lexical capture — so the constraint can be
-	 * re-instantiated over different terms ({@link #watching}).
-	 *
-	 * <p>A propagator IS its name over its terms: equality is (store, name,
-	 * watched), the body excluded. THE CONTRACT THAT LICENSES IT: the name
-	 * must uniquely determine the body's semantics — two builders sharing a
-	 * name with different verdict logic would merge distinct knowledge,
-	 * silently and unsoundly. Under that contract, two independent posts of
-	 * one relation on the same terms are the same knowledge stated twice
-	 * (idempotent re-posting — the store dedups them), and renamed instances
-	 * of one post compare equal wherever the renaming agrees.
-	 */
-	public static <F extends Factor<F>> Propagator<F> of(
-			Class<? extends F> storeClass,
-			String name,
-			Iterable<? extends Term<?>> watchedTerms,
-			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
-		return new Propagator<>(storeClass, name, Array.ofAll(watchedTerms), body, null, null);
+	protected Propagator(Array<? extends Term<?>> watchedTerms) {
+		this.watchedTerms = watchedTerms;
 	}
 
-	/** This propagator with its statement context — what {@link #posting} needs. */
-	public Propagator<F> stated(F empty, Predicate<Package> doom) {
-		return new Propagator<>(storeClass, name, watchedTerms, body, empty, doom);
-	}
+	/** Re-examine against the current state. Reads anything, mutates nothing. */
+	public abstract Verdict propagate(Package state);
 
 	/**
-	 * The statement: registration seeds the family when absent; the doom
-	 * check is the constraint author's. Refuses loudly without context —
-	 * a propagator is only stateable as configured by its family.
+	 * This schema re-instantiated over other terms — how a carried coupling
+	 * replays onto a consumption's fresh variables. The body reads its
+	 * variables POSITIONALLY through the watched terms, never through
+	 * lexical capture, which is what makes this sound.
 	 */
-	@Override
-	public Posting posting() {
-		if (empty == null) {
-			throw new IllegalStateException(
-					"no statement context: " + this + " — configure with stated(empty, doom)");
-		}
-		return Propagation.activate(this,
-				p -> p.getStores().containsKey(storeClass) ? p : p.withStore(empty),
-				doom == null ? p -> false : doom);
+	public abstract Propagator<F> watching(Array<? extends Term<?>> terms);
+
+	/** The family's empty — the statement's registration seed. */
+	protected abstract F empty();
+
+	/**
+	 * Born-violated under the current bindings? Failure found at pricing is
+	 * failure forever — the check must be monotone under binding growth.
+	 * Default: the author claims nothing.
+	 */
+	protected boolean doomed(Package state) {
+		return false;
 	}
 
 	/** The terms whose variables this propagator watches — as stated, un-walked. */
-	public Array<? extends Term<?>> watchedTerms() {
+	public final Array<? extends Term<?>> watchedTerms() {
 		return watchedTerms;
 	}
 
 	@Override
-	public Class<? extends F> getFactorClass() {
-		return storeClass;
-	}
-
-	@Override
-	public String name() {
-		return name;
-	}
-
-	@Override
-	public Traversable<Term<?>> watched() {
+	public final Traversable<Term<?>> watched() {
 		return Array.narrow(watchedTerms);
-	}
-
-	/**
-	 * The body, for the OWNING store to recognize richer capabilities on its
-	 * own propagators (labelling, marshalling) — equality never consults it,
-	 * and no store may assume anything about a body it did not create.
-	 */
-	public BiFunction<Array<? extends Term<?>>, Package, Verdict> body() {
-		return body;
-	}
-
-	/**
-	 * The same constraint over different terms, positions one-to-one — a fresh
-	 * instance of the schema this propagator's body denotes. How a carried
-	 * coupling replays onto a consumption's fresh variables.
-	 */
-	public Propagator<F> watching(Array<? extends Term<?>> terms) {
-		return new Propagator<>(storeClass, name, terms, body, empty, doom);
-	}
-
-	/** The schema re-instantiated over the renamed terms — {@link #watching}. */
-	@Override
-	public Fiber<Atom<F>> rename(Renaming renaming) {
-		return watchedTerms.foldLeft(
-						Fiber.<List<Term<?>>> done(List.empty()),
-						(acc, term) -> acc.flatMap(terms ->
-								renaming.apply(term).map(terms::append)))
-				.map(terms -> watching(Array.ofAll(terms)));
-	}
-
-	/** Re-examine against the current state. Reads anything, mutates nothing. */
-	public Verdict propagate(Package state) {
-		return body.apply(watchedTerms, state);
 	}
 
 	/**
@@ -146,7 +86,7 @@ public final class Propagator<F extends Factor<F>> implements Atom<F> {
 	 * watched term does not trigger on its members' bindings (suspensions use
 	 * the structural variant; no FD constraint watches composites).
 	 */
-	public boolean watches(Package state, Term<?> changed) {
+	public final boolean watches(Package state, Term<?> changed) {
 		for (Term<?> watchedTerm : watchedTerms) {
 			if (Watches.matches(state.substitution(), watchedTerm, changed)) {
 				return true;
@@ -155,8 +95,116 @@ public final class Propagator<F extends Factor<F>> implements Atom<F> {
 		return false;
 	}
 
+	/** The schema re-instantiated over the renamed terms — {@link #watching}. */
+	@Override
+	public final Fiber<Atom<F>> rename(Renaming renaming) {
+		return watchedTerms.foldLeft(
+						Fiber.<List<Term<?>>> done(List.empty()),
+						(acc, term) -> acc.flatMap(terms ->
+								renaming.apply(term).map(terms::append)))
+				.map(terms -> watching(Array.ofAll(terms)));
+	}
+
+	/** The statement: registration seeds the family when absent; doom is the schema's. */
+	@Override
+	public final Posting posting() {
+		return Propagation.activate(this,
+				p -> p.getStores().containsKey(getFactorClass()) ? p : p.withStore(empty()),
+				this::doomed);
+	}
+
+	@Override
+	public final boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (!(o instanceof Propagator)) {
+			return false;
+		}
+		Propagator<?> that = (Propagator<?>) o;
+		return getFactorClass().equals(that.getFactorClass())
+				&& name().equals(that.name())
+				&& watchedTerms.equals(that.watchedTerms);
+	}
+
+	@Override
+	public final int hashCode() {
+		return Objects.hash(getFactorClass(), name(), watchedTerms);
+	}
+
 	@Override
 	public String toString() {
-		return name + watchedTerms;
+		return name() + watchedTerms;
+	}
+
+	/**
+	 * The ad-hoc leaf: a schema from its parts, complete at construction.
+	 * The name contract is the CALLER's here — the name must uniquely
+	 * determine the body's semantics within the family.
+	 */
+	public static <F extends Factor<F>> Propagator<F> of(
+			F empty,
+			String name,
+			Iterable<? extends Term<?>> watchedTerms,
+			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
+		return of(empty, name, watchedTerms, body, p -> false);
+	}
+
+	/** {@link #of} with the author's doom check. */
+	public static <F extends Factor<F>> Propagator<F> of(
+			F empty,
+			String name,
+			Iterable<? extends Term<?>> watchedTerms,
+			BiFunction<Array<? extends Term<?>>, Package, Verdict> body,
+			Predicate<Package> doom) {
+		return new Leaf<>(Array.ofAll(watchedTerms), empty, name, body, doom);
+	}
+
+	private static final class Leaf<F extends Factor<F>> extends Propagator<F> {
+		private final F empty;
+		private final String name;
+		private final BiFunction<Array<? extends Term<?>>, Package, Verdict> body;
+		private final Predicate<Package> doom;
+
+		private Leaf(Array<? extends Term<?>> watchedTerms, F empty, String name,
+				BiFunction<Array<? extends Term<?>>, Package, Verdict> body,
+				Predicate<Package> doom) {
+			super(watchedTerms);
+			this.empty = empty;
+			this.name = name;
+			this.body = body;
+			this.doom = doom;
+		}
+
+		@Override
+		public Verdict propagate(Package state) {
+			return body.apply(watchedTerms(), state);
+		}
+
+		@Override
+		public Propagator<F> watching(Array<? extends Term<?>> terms) {
+			return new Leaf<>(terms, empty, name, body, doom);
+		}
+
+		@Override
+		protected F empty() {
+			return empty;
+		}
+
+		@Override
+		protected boolean doomed(Package state) {
+			return doom.test(state);
+		}
+
+		@Override
+		public String name() {
+			return name;
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public Class<? extends F> getFactorClass() {
+			return (Class<? extends F>) empty.getClass();
+		}
 	}
 }

@@ -158,9 +158,9 @@ public class VerificationTest {
 		// the item (the named-schema contract), and the statement follows it
 		Term<?> x = lvar();
 		Posting first = Propagation.activate(
-				Propagator.of(NogoodConstraints.class, "same-schema", Array.of(x), (watched, pkg) -> null));
+				Propagator.of(NogoodConstraints.EMPTY, "same-schema", Array.of(x), (watched, pkg) -> null));
 		Posting second = Propagation.activate(
-				Propagator.of(NogoodConstraints.class, "same-schema", Array.of(x), (watched, pkg) -> null));
+				Propagator.of(NogoodConstraints.EMPTY, "same-schema", Array.of(x), (watched, pkg) -> null));
 
 		assertThat(first).isEqualTo(second);
 		assertThat(first.terms()).containsExactly(x);

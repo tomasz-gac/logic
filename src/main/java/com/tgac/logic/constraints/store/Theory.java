@@ -171,11 +171,18 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		return slots.get(new Slot(family, name, surface));
 	}
 
-	/** One kind's atoms, streamed — the factor's kind-specific iteration. */
+	/**
+	 * One kind's atoms, streamed — the factor's kind-specific iteration.
+	 * Buckets are keyed by CONCRETE class and matched by assignability, so
+	 * an abstract kind (Propagator's schema subclasses) streams all its
+	 * implementors; the scan is over the handful of distinct classes, not
+	 * the atoms.
+	 */
 	public <K> java.util.stream.Stream<K> kind(Class<K> kind) {
-		return kinds.get(kind)
-				.map(bucket -> bucket.toJavaStream().map(kind::cast))
-				.getOrElse(java.util.stream.Stream::empty);
+		return kinds.toJavaStream()
+				.filter(entry -> kind.isAssignableFrom(entry._1))
+				.flatMap(entry -> entry._2.toJavaStream())
+				.map(kind::cast);
 	}
 
 	/**

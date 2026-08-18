@@ -8,6 +8,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import com.tgac.functional.algebra.laws.AbsorbingLaws;
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
+import com.tgac.functional.algebra.laws.PartialOrderLaws;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.lattice.Propagator;
@@ -19,7 +20,7 @@ import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-@LawsFor(FiniteDomainConstraints.class)
+@LawsFor({FiniteDomainConstraints.class, LeqO.class, AddO.class, MulO.class, SeparateO.class})
 public class FiniteDomainConstraintsLawsTest {
 
 	@AfterClass
@@ -29,8 +30,20 @@ public class FiniteDomainConstraintsLawsTest {
 
 	private static final LVar<?> X = (LVar<?>) lvar().asVar().get();
 	private static final LVar<?> Y = (LVar<?>) lvar().asVar().get();
-	private static final Propagator KEEP = Propagator.of(FiniteDomainConstraints.class, "keep",
+	private static final Propagator KEEP = Propagator.of(FiniteDomainConstraints.empty(), "keep",
 			Collections.singletonList(X), (watched, state) -> Verdict.keep());
+
+	@Test
+	public void schemaAtomsOrderStructurally() {
+		// the FD schemas ride the structural default: a schema atom entails
+		// exactly itself; distinct schemas and distinct terms are incomparable
+		PartialOrderLaws.check(Arrays.asList(
+				new LeqO(X, Y),
+				new LeqO(Y, X),
+				new AddO(X, Y, X),
+				new MulO(X, Y, X),
+				new SeparateO(X, Y)));
+	}
 
 	@Test
 	public void storeLattice() {

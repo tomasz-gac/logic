@@ -144,7 +144,7 @@ public class LatticeFactorTest {
 		Unifiable<Integer> y = lvar();
 		FlatConstraints original = FlatConstraints.empty()
 				.withValue(x, FlatSet.of(1, 2))
-				.meet(Propagator.of(FlatConstraints.class, "even",
+				.meet(Propagator.of(FlatConstraints.empty(), "even",
 						java.util.Collections.singletonList(y),
 						(watched, state) -> Verdict.keep()));
 		assertThat(FlatConstraints.empty().absorb(original.theory()))
@@ -198,7 +198,7 @@ public class LatticeFactorTest {
 	/** A parked constraint: once its variable grounds, even passes, odd fails. */
 	private static Goal evenO(Unifiable<Integer> x) {
 		return Propagation.activate(
-				Propagator.of(FlatConstraints.class, "even",
+				Propagator.of(FlatConstraints.empty(), "even",
 						Collections.<Term<?>> singletonList(x),
 						(watched, pkg) -> {
 							Term<?> w = pkg.walk(watched.get(0));

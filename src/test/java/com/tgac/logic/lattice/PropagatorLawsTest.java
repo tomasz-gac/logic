@@ -37,7 +37,7 @@ public class PropagatorLawsTest {
 	}
 
 	private static Propagator<FlatConstraints> propagator(String name, Unifiable<Integer> term) {
-		return Propagator.of(FlatConstraints.class, name,
+		return Propagator.of(FlatConstraints.empty(), name,
 				Collections.singletonList(term),
 				(watched, state) -> Verdict.keep());
 	}

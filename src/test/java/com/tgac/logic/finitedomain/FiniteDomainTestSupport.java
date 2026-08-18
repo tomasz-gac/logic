@@ -28,7 +28,7 @@ public final class FiniteDomainTestSupport {
 	/** A keeper watching a fresh var — value-distinct per call (fresh var). */
 	public static Propagator keeper() {
 		LVar<?> x = (LVar<?>) lvar().asVar().get();
-		return Propagator.of(FiniteDomainConstraints.class, "keep",
+		return Propagator.of(FiniteDomainConstraints.empty(), "keep",
 				Collections.<Term<?>> singletonList(x), (watched, state) -> Verdict.keep());
 	}
 }

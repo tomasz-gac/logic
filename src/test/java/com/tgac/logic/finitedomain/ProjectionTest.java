@@ -45,7 +45,7 @@ public class ProjectionTest {
 	}
 
 	private static Propagator keeper(Unifiable<?>... watched) {
-		return Propagator.of(FiniteDomainConstraints.class, "keep",
+		return Propagator.of(FiniteDomainConstraints.empty(), "keep",
 				Arrays.<Term<?>> asList(watched), (terms, pkg) -> Verdict.keep());
 	}
 
@@ -106,7 +106,7 @@ public class ProjectionTest {
 
 		Unifiable<Integer> z = lvar();
 		assertThat(keeper(x, z)).isNotEqualTo(posted);
-		assertThat(Propagator.of(FiniteDomainConstraints.class, "other",
+		assertThat(Propagator.of(FiniteDomainConstraints.empty(), "other",
 				Arrays.<Term<?>> asList(x, y), (terms, pkg) -> Verdict.keep()))
 				.isNotEqualTo(posted);
 	}
@@ -292,7 +292,7 @@ public class ProjectionTest {
 		// replay is a renaming: the constraint applies to the target vars,
 		// and the original vars stay independent (no aliasing)
 		Unifiable<Integer> orig = lvar();
-		Propagator notSeven = Propagator.of(FiniteDomainConstraints.class, "not_seven",
+		Propagator notSeven = Propagator.of(FiniteDomainConstraints.empty(), "not_seven",
 				Arrays.<Term<?>> asList(orig), (terms, pkg) -> {
 					Term<?> watched = pkg.walk(terms.get(0));
 					return watched.isVal() && Integer.valueOf(7).equals(watched.get())

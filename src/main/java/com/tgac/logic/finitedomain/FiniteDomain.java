@@ -41,7 +41,7 @@ public class FiniteDomain {
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	private static long cmpOrder(Substitutions s, Term<?> l, Term<?> r, IntPredicate satisfied) {
+	static long cmpOrder(Substitutions s, Term<?> l, Term<?> r, IntPredicate satisfied) {
 		Term<?> lw = s.walk(l);
 		Term<?> rw = s.walk(r);
 		if (lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get() instanceof Comparable) {
@@ -50,7 +50,7 @@ public class FiniteDomain {
 		return 1;
 	}
 
-	private static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
+	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
 		return Option.of(us.toJavaStream()
 						.map(p::walk)
 						.flatMap(v -> v.asVal()
@@ -63,26 +63,12 @@ public class FiniteDomain {
 				.filter(uds -> uds.size() == us.size());
 	}
 
-	private static <T> Propagator<FiniteDomainConstraints> prop(String name, Array<Unifiable<T>> us,
-			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
-		return Propagator.of(FiniteDomainConstraints.class, name, us, body);
-	}
-
-	/**
-	 * Posting-time entry: the Propagator<FiniteDomainConstraints> watching its terms as a statement —
-	 * parked in the FD store at imposition, first examination queued, wakes
-	 * re-examining the same parked object (constraint-kernel.md).
-	 */
-	private static Posting fdPosting(Propagator<FiniteDomainConstraints> item, Predicate<Package> doomed) {
-		return Propagation.activate(item, FiniteDomainConstraints::register, doomed);
-	}
-
 	@SuppressWarnings("unchecked")
-	private static <T> Array<? extends Term<T>> typed(Array<? extends Term<?>> watched) {
+	static <T> Array<? extends Term<T>> typed(Array<? extends Term<?>> watched) {
 		return (Array<? extends Term<T>>) watched;
 	}
 
-	private static <T> BiFunction<Array<? extends Term<?>>, Package, Verdict> gated(
+	static <T> BiFunction<Array<? extends Term<?>>, Package, Verdict> gated(
 			Function<Array<VarWithDomain<T>>, Verdict> verdict) {
 		return (watched, s) -> letDomain(s, FiniteDomain.<T> typed(watched))
 				.filter(uds -> uds.toJavaStream()
@@ -104,38 +90,29 @@ public class FiniteDomain {
 	}
 
 	public static <T> Posting leq(Unifiable<T> less, Unifiable<T> more) {
-		return fdPosting(leqProp(less, more),
-				p -> cmpOrder(p.substitution(), less, more, c -> c <= 0) == 0);
+		return new LeqO(less, more).posting();
 	}
 
 	public static <T> Posting lss(Unifiable<T> less, Unifiable<T> more) {
 		return Posting.all(
 				p -> cmpOrder(p.substitution(), less, more, c -> c < 0) == 0,
-				fdPosting(leqProp(less, more), p -> false),
+				new LeqO(less, more).posting(),
 				separate(less, more));
 	}
 
 	public static <T> Posting gtr(Unifiable<T> more, Unifiable<T> less) {
 		return Posting.all(
 				p -> cmpOrder(p.substitution(), more, less, c -> c > 0) == 0,
-				fdPosting(leqProp(less, more), p -> false),
+				new LeqO(less, more).posting(),
 				separate(more, less));
 	}
 
 	public static <T> Posting geq(Unifiable<T> more, Unifiable<T> less) {
-		return fdPosting(leqProp(less, more),
-				p -> cmpOrder(p.substitution(), more, less, c -> c >= 0) == 0);
+		// more >= less violated ⟺ less <= more violated: the schema's own doom
+		return new LeqO(less, more).posting();
 	}
 
-	private static <T> Propagator<FiniteDomainConstraints> leqProp(Unifiable<T> less, Unifiable<T> more) {
-		return prop("leq",
-				Array.of(less, more),
-				FiniteDomain.<T> gated(vds ->
-						Tuple.of(vds.get(0), vds.get(1))
-								.apply(FiniteDomain::leqVerdict)));
-	}
-
-	private static <T> Verdict leqVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
+	static <T> Verdict leqVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
 		Domain<T> lessDom = lss.<T> getDomain().atMost(mor.<T> getDomain().max());
 		Domain<T> moreDom = mor.<T> getDomain().atLeast(lss.<T> getDomain().min());
 		if (lessDom.isEmpty() || moreDom.isEmpty()) {
@@ -161,18 +138,10 @@ public class FiniteDomain {
 	}
 
 	static <T> Posting addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return fdPosting(prop("add",
-						Array.of(a, b, rhs),
-						FiniteDomain.<T> gated(vds ->
-								Tuple.of(vds.get(0), vds.get(1), vds.get(2))
-										.apply((u, v, w) ->
-												addVerdict(u, v, w,
-														u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
-														u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max())))),
-				p -> false);
+		return new AddO(a, b, rhs).posting();
 	}
 
-	private static <T> Verdict addVerdict(
+	static <T> Verdict addVerdict(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
 			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
@@ -211,18 +180,10 @@ public class FiniteDomain {
 	}
 
 	static <T> Posting mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return fdPosting(prop("mul",
-						Array.of(a, b, rhs),
-						FiniteDomain.<T> gated(vds ->
-								Tuple.of(vds.get(0), vds.get(1), vds.get(2))
-										.apply((u, v, w) ->
-												mulVerdict(u, v, w,
-														u.<T> getDomain().min(), v.<T> getDomain().min(), w.<T> getDomain().min(),
-														u.<T> getDomain().max(), v.<T> getDomain().max(), w.<T> getDomain().max())))),
-				p -> false);
+		return new MulO(a, b, rhs).posting();
 	}
 
-	private static <T> Verdict mulVerdict(
+	static <T> Verdict mulVerdict(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
 			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
@@ -297,48 +258,10 @@ public class FiniteDomain {
 	}
 
 	public static <T> Posting separate(Unifiable<T> l, Unifiable<T> r) {
-		return fdPosting(separateProp(l, r), p -> {
-			Term<?> lw = p.substitution().walk(l);
-			Term<?> rw = p.substitution().walk(r);
-			return lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get().equals(rw.get());
-		});
+		return new SeparateO(l, r).posting();
 	}
 
-	private static <T> Propagator<FiniteDomainConstraints> separateProp(Unifiable<T> l, Unifiable<T> r) {
-		return prop("separate",
-				Array.of(l, r),
-				(watched, s) -> letDomain(s, FiniteDomain.<T> typed(watched))
-						.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
-						.map(ds -> ds.apply((ld, rd) -> {
-							Option<Tuple2<Arithmetic<T>, Arithmetic<T>>> zip = MiniKanren.zip(
-									getSingleElement(ld.getDomain()),
-									getSingleElement(rd.getDomain()));
-							if (zip.isDefined() && zip.get().apply(Objects::equals)) {
-								return Verdict.fail();
-							}
-							if (ld.getDomain().isDisjoint(rd.getDomain())) {
-								return Verdict.subsumed();
-							}
-							if (ld.getDomain() instanceof Singleton) {
-								return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
-										(FiniteDomainConstraints) store,
-										Collections.<VarWithDomain<?>> singletonList(VarWithDomain.of(
-												rd.getUnifiable(),
-												rd.<T> getDomain().difference(ld.getDomain())))));
-							}
-							if (rd.getDomain() instanceof Singleton) {
-								return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
-										(FiniteDomainConstraints) store,
-										Collections.<VarWithDomain<?>> singletonList(VarWithDomain.of(
-												ld.getUnifiable(),
-												ld.<T> getDomain().difference(rd.getDomain())))));
-							}
-							return Verdict.keep();
-						}))
-						.getOrElse(Verdict::keep));
-	}
-
-	private static <T> Option<Arithmetic<T>> getSingleElement(Domain<T> dom) {
+	static <T> Option<Arithmetic<T>> getSingleElement(Domain<T> dom) {
 		return Option.of(dom)
 				.flatMap(Types.<Singleton<T>> castAs(Singleton.class))
 				.map(Singleton::getValue);

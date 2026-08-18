@@ -38,8 +38,8 @@ public class ParametersTest {
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
 
-		Propagator constraint = Propagator.of(
-				FiniteDomainConstraints.class, "keep",
+		Propagator<FiniteDomainConstraints> constraint = Propagator.of(
+				FiniteDomainConstraints.empty(), "keep",
 				Arrays.asList(prefix.get()._1),
 				(watched, st) -> Verdict.keep());
 
