@@ -12,7 +12,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.interpreter.Scope;
 import com.tgac.functional.fibers.interpreter.StepListener;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
-import com.tgac.functional.fibers.schedulers.ForkJoinScheduler;
+import com.tgac.functional.fibers.schedulers.DepthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -20,7 +20,6 @@ import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Reified;
-import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,7 +58,6 @@ public class SchedulingBenchmarkTest {
 		}
 		return g;
 	}
-
 
 	static Goal nonOverlapConde(Strip a, Strip b) {
 		return Conde.of(java.util.Arrays.asList(
@@ -115,7 +113,6 @@ public class SchedulingBenchmarkTest {
 		return ops;
 	}
 
-
 	private static <T> long steps(Goal goal, Unifiable<T> out) {
 		AtomicLong count = new AtomicLong();
 		StepListener counting = new StepListener() {
@@ -128,9 +125,6 @@ public class SchedulingBenchmarkTest {
 				.collect(Collectors.toList());
 		return count.get();
 	}
-
-
-
 
 	/**
 	 * The permutation lane: branch on TOTAL ORDERS directly — one branch per
@@ -189,6 +183,39 @@ public class SchedulingBenchmarkTest {
 		// the residue of the dead interior: real, shallow, ~10% at this size
 		assertThat(orderSteps).isLessThan(condeSteps);
 		assertThat(orderSteps).isBetween(45_800L, 46_400L);
+	}
+
+	private static <T> long depthFirstStepsToFirst(Goal goal, Unifiable<T> out) {
+		AtomicLong count = new AtomicLong();
+		StepListener counting = new StepListener() {
+			@Override
+			public void onStep(Fiber<?> node, Scope scope, String name) {
+				count.incrementAndGet();
+			}
+		};
+		goal.solve(out, fiber -> DepthFirstScheduler.of(fiber).withListener(counting))
+				.limit(1)
+				.forEach(r -> {
+				});
+		return count.get();
+	}
+
+	@Test
+	public void theGenesisProblemAtItsRealParameters() {
+		// the 2021 question as asked: ten strips, one space, horizon 500,
+		// FIRST answer. Scheduler must match query semantics: depth-first
+		// walks one packed branch straight to a schedule (ascending value
+		// order + DFS IS greedy packing); fair breadth-first materializes
+		// every labelling fan and drowns — measured DNF at nine minutes for
+		// n=5. The engine's genesis problem, pinned at milliseconds.
+		List<Strip> ten = sameSpace(10);
+		long steps = depthFirstStepsToFirst(
+				schedule(ten, 500, SchedulingBenchmarkTest::nonOverlapConde), starts(ten));
+		assertThat(steps).isBetween(1_600L, 2_000L);
+
+		List<Strip> byOrder = sameSpace(10);
+		long orderSteps = depthFirstStepsToFirst(scheduleByOrder(byOrder, 500), starts(byOrder));
+		assertThat(orderSteps).isBetween(850L, 1_100L);
 	}
 
 	@Test
