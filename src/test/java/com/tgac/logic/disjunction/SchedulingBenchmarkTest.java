@@ -132,6 +132,65 @@ public class SchedulingBenchmarkTest {
 
 
 
+	/**
+	 * The permutation lane: branch on TOTAL ORDERS directly — one branch per
+	 * acyclic order, each posting its chain of leqs. Raced against the
+	 * pairwise-orientation basis to price the dead interior: measured
+	 * (Aug 2026) the gap is only ~10% at n=5 (51.5k vs 46.1k) and ~15% at
+	 * n=6 (396k vs 335k) — NOT the 2^C(n,2)/n! separation the tournament
+	 * argument predicts, because FD bounds propagation refutes cyclic
+	 * orientation prefixes at depth ~3, before they multiply. Both lanes
+	 * run near answer-bound (~430–550 steps per answer). The tournament
+	 * explosion belongs to engines whose arithmetic cannot prune open
+	 * variables (core.logic 2021), not to this one; here the branch basis
+	 * buys the shallow-refutation residue only.
+	 */
+	static Goal ordered(List<Strip> remaining, Strip prev) {
+		if (remaining.isEmpty()) {
+			return Goal.success();
+		}
+		List<Goal> branches = new ArrayList<>();
+		for (Strip s : remaining) {
+			List<Strip> rest = new ArrayList<>(remaining);
+			rest.remove(s);
+			Goal link = prev == null ? Goal.success()
+					: FiniteDomain.leq(prev.end, s.start);
+			branches.add(link.and(Goal.defer(() -> ordered(rest, s))));
+		}
+		return Conde.of(branches);
+	}
+
+	static Goal scheduleByOrder(List<Strip> ss, long horizon) {
+		return strips(ss, horizon).and(ordered(ss, null));
+	}
+
+	private static List<Reified<LList<Long>>> answers(Goal goal, Unifiable<LList<Long>> out) {
+		return goal.solve(out, TestSchedulers.factory()).collect(Collectors.toList());
+	}
+
+	@Test
+	public void theBranchBasisRaceAtFive() throws Exception {
+		// same answers, different search basis: pairwise orientations
+		// (2^10 = 1024 interior, 904 cyclic corpses) vs total orders (120)
+		List<Strip> pairwise = sameSpace(5);
+		long condeSteps = steps(
+				schedule(pairwise, 5, SchedulingBenchmarkTest::nonOverlapConde), starts(pairwise));
+
+		List<Strip> byOrder = sameSpace(5);
+		long orderSteps = steps(scheduleByOrder(byOrder, 5), starts(byOrder));
+
+		// answer-set parity: both lanes enumerate the 120 packed schedules
+		List<Strip> a = sameSpace(5);
+		List<Strip> b = sameSpace(5);
+		assertThat(new java.util.HashSet<>(answers(scheduleByOrder(a, 5), starts(a))))
+				.isEqualTo(new java.util.HashSet<>(
+						answers(schedule(b, 5, SchedulingBenchmarkTest::nonOverlapConde), starts(b))));
+
+		// the residue of the dead interior: real, shallow, ~10% at this size
+		assertThat(orderSteps).isLessThan(condeSteps);
+		assertThat(orderSteps).isBetween(45_800L, 46_400L);
+	}
+
 	@Test
 	public void theRaceAtFive() {
 		// n=5, one space, tight horizon: 120 schedules
