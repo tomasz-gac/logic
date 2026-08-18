@@ -7,6 +7,8 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Watches;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
@@ -14,6 +16,7 @@ import io.vavr.collection.Array;
 import io.vavr.collection.List;
 import io.vavr.collection.Traversable;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -36,6 +39,10 @@ public final class Propagator<F extends Factor<F>> implements Atom<F> {
 	private final Array<? extends Term<?>> watchedTerms;
 	private final BiFunction<Array<? extends Term<?>>, Package, Verdict> body;
 
+	/** Statement context — the family's empty and the doom check; outside identity. */
+	private final F empty;
+	private final Predicate<Package> doom;
+
 	/**
 	 * A propagator from its owning store, name, watched terms and body. The
 	 * body is POSITIONAL — it reads its variables through the watched array it
@@ -56,7 +63,28 @@ public final class Propagator<F extends Factor<F>> implements Atom<F> {
 			String name,
 			Iterable<? extends Term<?>> watchedTerms,
 			BiFunction<Array<? extends Term<?>>, Package, Verdict> body) {
-		return new Propagator<>(storeClass, name, Array.ofAll(watchedTerms), body);
+		return new Propagator<>(storeClass, name, Array.ofAll(watchedTerms), body, null, null);
+	}
+
+	/** This propagator with its statement context — what {@link #posting} needs. */
+	public Propagator<F> stated(F empty, Predicate<Package> doom) {
+		return new Propagator<>(storeClass, name, watchedTerms, body, empty, doom);
+	}
+
+	/**
+	 * The statement: registration seeds the family when absent; the doom
+	 * check is the constraint author's. Refuses loudly without context —
+	 * a propagator is only stateable as configured by its family.
+	 */
+	@Override
+	public Posting posting() {
+		if (empty == null) {
+			throw new IllegalStateException(
+					"no statement context: " + this + " — configure with stated(empty, doom)");
+		}
+		return Propagation.activate(this,
+				p -> p.getStores().containsKey(storeClass) ? p : p.withStore(empty),
+				doom == null ? p -> false : doom);
 	}
 
 	/** The terms whose variables this propagator watches — as stated, un-walked. */
@@ -94,7 +122,7 @@ public final class Propagator<F extends Factor<F>> implements Atom<F> {
 	 * coupling replays onto a consumption's fresh variables.
 	 */
 	public Propagator<F> watching(Array<? extends Term<?>> terms) {
-		return new Propagator<>(storeClass, name, terms, body);
+		return new Propagator<>(storeClass, name, terms, body, empty, doom);
 	}
 
 	/** The schema re-instantiated over the renamed terms — {@link #watching}. */

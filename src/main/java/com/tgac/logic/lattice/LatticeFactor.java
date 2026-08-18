@@ -65,7 +65,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 
 	@SuppressWarnings("unchecked")
 	private Imposition<L, S> imposition(Term<?> target, L value) {
-		return new Imposition<>((Class<S>) getClass(), target, value);
+		return new Imposition<>((Class<S>) getClass(), target, value, create(Theory.empty()));
 	}
 
 	private Option<Imposition<L, S>> valueAtom(Term<?> v) {
@@ -231,7 +231,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	@SuppressWarnings("unchecked")
 	public Posting impose(Term<?> target, L value) {
 		return Propagation.activate(
-				new Imposition<>((Class<S>) getClass(), target, value),
+				imposition(target, value),
 				p -> p.getStores().containsKey(getClass()) ? p
 						: p.withStore(create(Theory.empty())),
 				p -> doomedAt(p, target, value));

@@ -4,6 +4,7 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: surface and payload — the unit families accumulate and split into.
 
 import com.tgac.functional.algebra.PartialOrder;
+import com.tgac.logic.constraints.Posting;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Traversable;
@@ -45,4 +46,13 @@ public interface Atom<F extends Factor<F>> extends PartialOrder<Atom<F>> {
 	Traversable<Term<?>> watched();
 
 	Fiber<Atom<F>> rename(Renaming renaming);
+
+	/**
+	 * This atom as its own statement: the activation through the chokepoint,
+	 * registration and doom riding with the atom instead of with call sites.
+	 * Statement context is family knowledge — kinds that need configuration
+	 * (a propagator's doom, a family's empty for registration) carry it from
+	 * construction and refuse loudly when unset.
+	 */
+	Posting posting();
 }

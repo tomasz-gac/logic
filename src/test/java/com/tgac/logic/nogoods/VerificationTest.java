@@ -127,6 +127,11 @@ public class VerificationTest {
 			}
 
 			@Override
+			public Posting posting() {
+				throw new UnsupportedOperationException("orphan test atom");
+			}
+
+			@Override
 			public Class<? extends NogoodConstraints> getFactorClass() {
 				return NogoodConstraints.class;
 			}

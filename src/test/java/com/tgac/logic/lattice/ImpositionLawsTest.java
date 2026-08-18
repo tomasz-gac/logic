@@ -31,7 +31,7 @@ public class ImpositionLawsTest {
 	private static final Unifiable<Integer> Y = lvar();
 
 	private static Imposition<FlatSet, FlatConstraints> on(Unifiable<Integer> target, Object... values) {
-		return new Imposition<>(FlatConstraints.class, target, FlatSet.of(values));
+		return new Imposition<>(FlatConstraints.class, target, FlatSet.of(values), FlatConstraints.empty());
 	}
 
 	@Test
@@ -81,8 +81,8 @@ public class ImpositionLawsTest {
 		// same target, same domain type, DIFFERENT lattice family: without the
 		// family in the slot condition these would dominate each other
 		Unifiable<Integer> x = lvar();
-		Imposition mine = new Imposition<>(FlatConstraints.class, x, FlatSet.of(1));
-		Imposition other = new Imposition(OtherFamily.class, x, FlatSet.of(1, 2));
+		Imposition mine = new Imposition<>(FlatConstraints.class, x, FlatSet.of(1), FlatConstraints.empty());
+		Imposition other = new Imposition(OtherFamily.class, x, FlatSet.of(1, 2), null);
 		assertThat(mine.leq((Imposition<FlatSet, FlatConstraints>) other)).isFalse();
 		assertThat(other.leq(mine)).isFalse();
 	}
@@ -91,8 +91,8 @@ public class ImpositionLawsTest {
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public void combineRefusesDifferentFamiliesLoudly() {
 		Unifiable<Integer> x = lvar();
-		Imposition mine = new Imposition<>(FlatConstraints.class, x, FlatSet.of(1));
-		Imposition other = new Imposition(OtherFamily.class, x, FlatSet.of(1, 2));
+		Imposition mine = new Imposition<>(FlatConstraints.class, x, FlatSet.of(1), FlatConstraints.empty());
+		Imposition other = new Imposition(OtherFamily.class, x, FlatSet.of(1, 2), null);
 		assertThatThrownBy(() -> mine.combine(other))
 				.isInstanceOf(IllegalArgumentException.class);
 	}

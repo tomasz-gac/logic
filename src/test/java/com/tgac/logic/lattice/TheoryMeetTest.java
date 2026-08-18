@@ -25,7 +25,7 @@ public class TheoryMeetTest {
 	private static final Unifiable<Integer> Z = lvar();
 
 	private static Imposition<FlatSet, FlatConstraints> on(Unifiable<Integer> target, Object... values) {
-		return new Imposition<>(FlatConstraints.class, target, FlatSet.of(values));
+		return new Imposition<>(FlatConstraints.class, target, FlatSet.of(values), FlatConstraints.empty());
 	}
 
 	@Test

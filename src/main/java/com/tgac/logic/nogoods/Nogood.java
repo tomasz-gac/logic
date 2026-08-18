@@ -6,6 +6,8 @@ package com.tgac.logic.nogoods;
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.UnifyGoal;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Renaming;
@@ -158,6 +160,21 @@ public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
 		return new java.util.HashSet<>(conjunct instanceof Posting.AllOf ?
 				((Posting.AllOf) conjunct).getParts().toJavaList() :
 				Collections.singletonList(conjunct));
+	}
+
+	/**
+	 * The statement: registration is the family's, and the doom check is
+	 * born-violated — a conjunct already ENTAILED is failure forever
+	 * (entailment is monotone under binding growth); binding-shaped
+	 * conjuncts answer through the synchronous face, store-shaped claim
+	 * nothing.
+	 */
+	@Override
+	public Posting posting() {
+		return Propagation.activate(this, NogoodConstraints::register,
+				p -> forbidden.exists(conjunct -> Trial.now(conjunct, p)
+						.map(Trial.Outcome::isEntailed)
+						.getOrElse(false)));
 	}
 
 	/** Each conjunct transcribes itself wrapped; the envelope follows. */
