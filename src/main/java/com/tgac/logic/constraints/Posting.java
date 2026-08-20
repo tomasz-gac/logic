@@ -8,6 +8,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.NamedGoal;
@@ -259,21 +260,21 @@ public interface Posting extends Goal, Bounded {
 		}
 	}
 
-	/** The absorbed factor held directly — equality is the factor's own. */
+	/** The absorbed theory held directly — equality is the theory's own. */
 	@Getter
-	@EqualsAndHashCode(of = "factor")
+	@EqualsAndHashCode(of = "theory")
 	class Absorption implements Posting {
-		private final Factor<?> factor;
+		private final Theory<?> theory;
 		private final List<Term<?>> declared;
 
-		Absorption(Factor<?> factor, List<Term<?>> declared) {
-			this.factor = factor;
+		Absorption(Theory<?> theory, List<Term<?>> declared) {
+			this.theory = theory;
 			this.declared = declared;
 		}
 
 		@Override
 		public Cont<Package, Nothing> apply(Package pkg) {
-			return Propagation.absorption(factor).apply(pkg);
+			return Propagation.absorption(theory).apply(pkg);
 		}
 
 		@Override
@@ -288,7 +289,7 @@ public interface Posting extends Goal, Bounded {
 
 		@Override
 		public String toString() {
-			return "absorb(" + factor + ")";
+			return "absorb(" + theory + ")";
 		}
 	}
 

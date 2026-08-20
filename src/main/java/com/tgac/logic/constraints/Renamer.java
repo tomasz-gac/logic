@@ -57,7 +57,7 @@ final class Renamer implements Posting.Visitor<Fiber<Posting>> {
 
 	@Override
 	public Fiber<Posting> visit(Posting.Absorption absorption) {
-		return absorption.getFactor().rename(renaming)
+		return absorption.getTheory().rename(renaming)
 				.flatMap(renamed -> absorption.getDeclared().foldLeft(
 								Fiber.<List<Term<?>>> done(List.empty()),
 								(acc, term) -> acc.flatMap(terms ->

@@ -11,6 +11,7 @@ import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -42,7 +43,7 @@ import lombok.Value;
  * from a package by {@link #ofRelevant} (call side, the key citizen) or
  * {@link #ofAll} (answer side, walking + slot canonicalization), and
  * leaves by {@link #restate} — imposing itself under a renaming, each
- * factor riding {@code Posting.absorb}.
+ * theory riding {@code Posting.absorb} wholesale.
  */
 @Value
 public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
@@ -50,25 +51,25 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	/** The empty conjunct: ⊗'s 1 and the region ⊤ — no knowledge, TRUE. */
 	public static final Residues TRUE = new Residues(HashMap.empty());
 
-	Map<Class<?>, Factor<?>> factors;
+	Map<Class<?>, Theory<?>> theories;
 
-	public static Residues of(Map<Class<?>, Factor<?>> factors) {
-		return factors.isEmpty() ? TRUE : new Residues(factors);
+	public static Residues of(Map<Class<?>, Theory<?>> theories) {
+		return theories.isEmpty() ? TRUE : new Residues(theories);
 	}
 
 	public boolean isTrue() {
-		return factors.isEmpty();
+		return theories.isEmpty();
 	}
 
-	/** ⊗: pointwise factor meet; a class only one side knows joins whole. */
+	/** ⊗: pointwise theory meet; a class only one side knows joins whole. */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public Residues meet(Residues other) {
-		Map<Class<?>, Factor<?>> result = factors;
-		for (Tuple2<Class<?>, Factor<?>> factor : other.factors) {
-			Factor<?> mine = result.getOrElse(factor._1, null);
-			result = result.put(factor._1, mine == null
-					? factor._2
-					: ((Factor) mine).meet(factor._2));
+		Map<Class<?>, Theory<?>> result = theories;
+		for (Tuple2<Class<?>, Theory<?>> theory : other.theories) {
+			Theory<?> mine = result.getOrElse(theory._1, null);
+			result = result.put(theory._1, mine == null
+					? theory._2
+					: ((Theory) mine).meet(theory._2));
 		}
 		return of(result);
 	}
@@ -93,8 +94,8 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	@Override
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public boolean leq(Residues other) {
-		for (Tuple2<Class<?>, Factor<?>> knowledge : other.factors) {
-			Factor<?> mine = factors.getOrElse(knowledge._1, null);
+		for (Tuple2<Class<?>, Theory<?>> knowledge : other.theories) {
+			Theory<?> mine = theories.getOrElse(knowledge._1, null);
 			if (mine == null || !((PartialOrder) mine).leq(knowledge._2)) {
 				return false;
 			}
@@ -160,7 +161,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 
 	private static Fiber<Residues> ofRelevant(Package callerPkg, java.util.Map<LVar<?>, Any<?>> callVars) {
 		return callerPkg.getStores().values().foldLeft(
-						Fiber.<Map<Class<?>, Factor<?>>> done(HashMap.empty()),
+						Fiber.<Map<Class<?>, Theory<?>>> done(HashMap.empty()),
 						(acc, store) -> acc.flatMap(residues -> {
 							if (!(store instanceof Factor) || ((Factor<?>) store).isEmpty()) {
 								return Fiber.done(residues);
@@ -168,13 +169,13 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 							return ((Factor<?>) store).project(callVars)
 									.map(keyed -> keyed.isEmpty()
 											? residues
-											: residues.put(store.getClass(), keyed));
+											: residues.put(store.getClass(), keyed.theory()));
 						}))
 				.map(Residues::of);
 	}
 
 	/**
-	 * The answer-side crossing: each store's factor normalized against the
+	 * The answer-side crossing: each store's theory normalized against the
 	 * answer's substitutions (spent entries drop — the ground-answer fast
 	 * path is a factor that normalizes to empty), then slot-canonicalized:
 	 * live slot vars go to their anys, so residues from SEPARATE
@@ -187,25 +188,25 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 		Renaming canonicalization = Renaming.of(anyVars);
 		return resolution(answerPkg.substitution()).flatMap(resolution ->
 						answerPkg.getStores().values().foldLeft(
-								Fiber.<Map<Class<?>, Factor<?>>> done(HashMap.empty()),
+								Fiber.<Map<Class<?>, Theory<?>>> done(HashMap.empty()),
 								(acc, store) -> acc.flatMap(residues -> {
 									if (!(store instanceof Factor) || ((Factor<?>) store).isEmpty()) {
 										return Fiber.done(residues);
 									}
 									return normalized((Factor<?>) store, resolution, canonicalization)
-											.map(factor -> factor.isEmpty()
+											.map(theory -> theory.isEmpty()
 													? residues
-													: residues.put(store.getClass(), factor));
+													: residues.put(store.getClass(), theory));
 								})))
 				.map(Residues::of);
 	}
 
-	/** One store's answer factor: resolved, then slot-canonical — empty when spent. */
-	private static <S extends Factor<S>> Fiber<Factor<?>> normalized(
+	/** One store's answer theory: resolved, then slot-canonical — empty when spent. */
+	private static <S extends Factor<S>> Fiber<Theory<?>> normalized(
 			Factor<S> store, Renaming resolution, Renaming canonicalization) {
 		return store.rename(resolution).flatMap(resolved -> resolved.isEmpty()
-				? Fiber.done(resolved)
-				: resolved.rename(canonicalization).map(factor -> factor));
+				? Fiber.done(resolved.theory())
+				: resolved.theory().rename(canonicalization).map(theory -> theory));
 	}
 
 	/**
@@ -235,20 +236,20 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 */
 	public Goal restate(Renaming renaming) {
 		Goal restated = Goal.success();
-		for (Tuple2<Class<?>, Factor<?>> factor : factors) {
-			restated = Conjunction.of(restated, imposed(factor._2, renaming));
+		for (Tuple2<Class<?>, Theory<?>> theory : theories) {
+			restated = Conjunction.of(restated, imposed(theory._2, renaming));
 		}
 		return restated;
 	}
 
-	/** One factor's imposition: rename runs in the goal's fiber, absorb states it. */
-	private static <S extends Factor<S>> Goal imposed(Factor<S> factor, Renaming renaming) {
-		return pkg -> Cont.suspend(k -> factor.rename(renaming)
+	/** One theory's imposition: rename runs in the goal's fiber, absorb states it wholesale. */
+	private static <S extends Factor<S>> Goal imposed(Theory<S> theory, Renaming renaming) {
+		return pkg -> Cont.suspend(k -> theory.rename(renaming)
 				.flatMap(renamed -> Propagation.absorb(renamed).apply(pkg).apply(k)));
 	}
 
 	@Override
 	public String toString() {
-		return factors.toString();
+		return theories.toString();
 	}
 }

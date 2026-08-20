@@ -61,14 +61,14 @@ public class ProjectionTest {
 				.withDomain(varOf(x), dom(1, 2));
 
 		assertThat(Constraints.unify(x, lval(7))
-				.and(Propagation.absorb(incoming))
+				.and(Propagation.absorb(incoming.theory()))
 				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(0);
 
 		FiniteDomainConstraints wide = FiniteDomainConstraints.empty()
 				.withDomain(varOf(x), dom(5, 7, 9));
 		assertThat(Constraints.unify(x, lval(7))
-				.and(Propagation.absorb(wide))
+				.and(Propagation.absorb(wide.theory()))
 				.solve(x, TestSchedulers.factory())
 				.count()).isEqualTo(1);
 	}
@@ -261,7 +261,7 @@ public class ProjectionTest {
 		Package p = FiniteDomainTestSupport.withDomain(x, dom(1, 2));
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p);
 
-		List<Integer> values = Propagation.absorb(store)
+		List<Integer> values = Propagation.absorb(store.theory())
 				.solve(x, TestSchedulers.factory())
 				.map(Term::<Integer>get)
 				.sorted()
@@ -305,7 +305,7 @@ public class ProjectionTest {
 		Unifiable<Integer> fresh = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed = new java.util.HashMap<>();
 		seed.put(varOf(orig), fresh);
-		assertThat(Propagation.absorb(store.rename(Renaming.minting(seed)).ground())
+		assertThat(Propagation.absorb(store.rename(Renaming.minting(seed)).ground().theory())
 				.and(Constraints.unify(fresh, lval(7)))
 				.solve(fresh, TestSchedulers.factory())
 				.count()).isEqualTo(0);
@@ -313,7 +313,7 @@ public class ProjectionTest {
 		Unifiable<Integer> fresh2 = lvar();
 		java.util.Map<LVar<?>, Term<?>> seed2 = new java.util.HashMap<>();
 		seed2.put(varOf(orig), fresh2);
-		assertThat(Propagation.absorb(store.rename(Renaming.minting(seed2)).ground())
+		assertThat(Propagation.absorb(store.rename(Renaming.minting(seed2)).ground().theory())
 				.and(Constraints.unify(orig, lval(7)))
 				.and(Constraints.unify(fresh2, lval(3)))
 				.solve(fresh2, TestSchedulers.factory())

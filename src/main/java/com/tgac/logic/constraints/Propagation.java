@@ -12,6 +12,7 @@ import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Doomed;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
@@ -111,7 +112,7 @@ public final class Propagation {
 	}
 
 	/** The imposition body behind the {@link #activate} constructors. */
-	static Goal activation(Atom item) {
+	static Goal activation(Atom<?> item) {
 		return s -> enqueue(s.withStored(item), new Agenda.Stated(item));
 	}
 
@@ -125,34 +126,38 @@ public final class Propagation {
 	 * between (the two run inside one drain). How tabling seeds a master
 	 * from its key and replays an answer's delta.
 	 */
-	public static Posting absorb(Factor<?> factor) {
-		return new Posting.Absorption(factor, List.empty());
+	public static Posting absorb(Theory<?> theory) {
+		return new Posting.Absorption(theory, List.empty());
 	}
 
-	/** {@link #absorb} declaring the factor's watched surface alongside. */
-	public static Posting absorb(Factor<?> factor, List<Term<?>> terms) {
-		return new Posting.Absorption(factor, terms);
+	/** {@link #absorb} declaring the theory's watched surface alongside. */
+	public static Posting absorb(Theory<?> theory, List<Term<?>> terms) {
+		return new Posting.Absorption(theory, terms);
 	}
 
 	/** The imposition body behind the {@link #absorb} constructors. */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	static Goal absorption(Factor factor) {
+	static Goal absorption(Theory theory) {
 		return p -> {
-			if (factor.isEmpty()) {
+			if (theory.isEmpty()) {
 				return Cont.just(p);
 			}
-			Factor resident = (Factor) p.getStores()
-					.get(factor.getClass()).getOrNull();
+			Atom<?> head = (Atom<?>) theory.atoms().head();
+			Class<?> family = head.getFactorClass();
+			Factor resident = (Factor) p.getStores().get((Class) family).getOrNull();
 			if (resident == null) {
-				return enqueue(p.putStore(factor), new Agenda.Absorbed(factor));
+				// the atom's empty is the family identity's constructive
+				// face — the theory seeds its own residence
+				Factor met = (Factor) ((Factor) head.empty()).absorb(theory);
+				return enqueue(p.putStore(met), new Agenda.Absorbed(family));
 			}
-			if (resident.theory().leq(factor.theory())) {
+			if (resident.theory().leq(theory)) {
 				// the covering door guard: the resident already entails the
 				// incoming knowledge — no meet, no re-normalization, no trials
 				return Cont.just(p);
 			}
-			Factor met = (Factor) resident.absorb(factor.theory());
-			return enqueue(p.putStore(met), new Agenda.Absorbed(factor));
+			Factor met = (Factor) resident.absorb(theory);
+			return enqueue(p.putStore(met), new Agenda.Absorbed(family));
 		};
 	}
 
@@ -458,25 +463,25 @@ public final class Propagation {
 			}
 		}
 
-		/** A factor was met into its store — the owning store re-normalizes. */
+		/** A theory was met into its store — the owning store re-normalizes. */
 		static final class Absorbed extends Item {
-			final Factor<?> factor;
+			final Class<?> family;
 
-			Absorbed(Factor<?> factor) {
-				this.factor = factor;
+			Absorbed(Class<?> family) {
+				this.family = family;
 			}
 
 			@Override
 			Goal apply() {
 				return s -> reviseAll(s,
-						(cs, p) -> factor.getClass() == cs.getClass() ?
+						(cs, p) -> family == cs.getClass() ?
 								getRevisionFiber("Propagation.Absorbed", cs, p, cs.normalize(p)):
 								Fiber.done(Revision.unchanged()));
 			}
 
 			@Override
 			public String toString() {
-				return "absorbed(" + factor + ")";
+				return "absorbed(" + family.getSimpleName() + ")";
 			}
 		}
 

@@ -6,8 +6,6 @@ package com.tgac.logic.constraints.store;
 import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
@@ -248,18 +246,6 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 
 	public boolean isEmpty() {
 		return atoms.isEmpty();
-	}
-
-	/**
-	 * The theory as its own statement: the fold of its atoms' postings.
-	 * Registration and doom ride with each atom ({@link Atom#posting}), the
-	 * conjunction stays inside the posting vocabulary, and the empty theory
-	 * states as success — knowledge-free, imposition-free.
-	 */
-	public Posting stated() {
-		return Posting.all(atoms.toJavaStream()
-				.map(Propagation::activate)
-				.toArray(Posting[]::new));
 	}
 
 	/**

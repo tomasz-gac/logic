@@ -41,7 +41,7 @@ public class ExcludedFactorTest {
 				.withDomain(varOf(x), EnumeratedDomain.range(1L, 3L));
 
 		List<Long> answers = x.unifies(7L)
-				.and(exclude(Propagation.absorb(factor)))
+				.and(exclude(Propagation.absorb(factor.theory())))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
@@ -58,7 +58,7 @@ public class ExcludedFactorTest {
 				.withDomain(varOf(x), EnumeratedDomain.range(1L, 11L));
 
 		Goal g = dom(x, EnumeratedDomain.range(2L, 5L))
-				.and(exclude(Propagation.absorb(factor)));
+				.and(exclude(Propagation.absorb(factor.theory())));
 		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
 	}
 
@@ -72,7 +72,7 @@ public class ExcludedFactorTest {
 				.withDomain(varOf(x), EnumeratedDomain.range(2L, 5L));
 
 		List<Long> answers = dom(x, EnumeratedDomain.range(0L, 7L))
-				.and(exclude(Propagation.absorb(factor)))
+				.and(exclude(Propagation.absorb(factor.theory())))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.sorted()
