@@ -12,6 +12,10 @@ import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
+import com.tgac.logic.lattice.Imposition;
+import io.vavr.collection.HashSet;
+import io.vavr.control.Option;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
@@ -42,6 +46,18 @@ public class ProjectionTest {
 
 	private static LVar<?> varOf(Unifiable<?> u) {
 		return (LVar<?>) u.asVar().get();
+	}
+
+	/** The key crossing, theory-side: the covered half in canonical names. */
+	private static com.tgac.functional.fibers.Fiber<Theory<FiniteDomainConstraints>> projected(
+			FiniteDomainConstraints store, java.util.Map<LVar<?>, Any<?>> slots) {
+		return store.theory().split(new java.util.ArrayList<>(slots.keySet()))._1
+				.rename(Renaming.of(slots));
+	}
+
+	private static Option<Domain<?>> domainOf(Theory<FiniteDomainConstraints> theory, Term<?> target) {
+		return theory.atom(FiniteDomainConstraints.class, "imposition", HashSet.of(target))
+				.map(a -> (Domain<?>) ((Imposition<?, ?>) a).getValue());
 	}
 
 	private static Propagator keeper(Unifiable<?>... watched) {
@@ -185,14 +201,14 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
 				.withDomain(varOf(y), dom(7, 8));
 
-		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
-		assertThat(keyed.getDomain(Any.of(0)).get()).isEqualTo(dom(1, 2, 3));
-		assertThat(keyed.getDomain(Any.of(1)).get()).isEqualTo(dom(7, 8));
+		Theory<FiniteDomainConstraints> keyed = projected(store, slots(varOf(x), varOf(y))).ground();
+		assertThat(domainOf(keyed, Any.of(0)).get()).isEqualTo(dom(1, 2, 3));
+		assertThat(domainOf(keyed, Any.of(1)).get()).isEqualTo(dom(7, 8));
 
 		// unconstrained var: absent name = ⊤; order is the caller's
-		FiniteDomainConstraints sparse = store.project(slots(varOf(z), varOf(y))).ground();
-		assertThat(sparse.getDomain(Any.of(0)).isDefined()).isFalse();
-		assertThat(sparse.getDomain(Any.of(1)).get()).isEqualTo(dom(7, 8));
+		Theory<FiniteDomainConstraints> sparse = projected(store, slots(varOf(z), varOf(y))).ground();
+		assertThat(domainOf(sparse, Any.of(0)).isDefined()).isFalse();
+		assertThat(domainOf(sparse, Any.of(1)).get()).isEqualTo(dom(7, 8));
 	}
 
 	@Test
@@ -206,9 +222,10 @@ public class ProjectionTest {
 				.withDomain(varOf(y), dom(1, 2, 3))
 				.meet(keeper(x, y, lval(4)));
 
-		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
-		assertThat(keyed.getConstraints()).hasSize(1);
-		Propagator carried = keyed.getConstraints().head();
+		Theory<FiniteDomainConstraints> keyed = projected(store, slots(varOf(x), varOf(y))).ground();
+		List<Propagator> carriedAll = keyed.kind(Propagator.class).collect(Collectors.toList());
+		assertThat(carriedAll).hasSize(1);
+		Propagator carried = carriedAll.get(0);
 		assertThat(carried.watchedTerms()).containsExactly(Any.of(0), Any.of(1), lval(4));
 	}
 
@@ -224,13 +241,13 @@ public class ProjectionTest {
 				.withDomain(varOf(w), dom(2, 3))
 				.meet(keeper(x, w, lval(6)));
 
-		Tuple2<FiniteDomainConstraints, FiniteDomainConstraints> halves =
-				store.split(Arrays.asList(varOf(x)));
-		assertThat(halves._1.getDomain(varOf(x)).isDefined()).isTrue();
-		assertThat(halves._1.getConstraints()).isEmpty();
-		assertThat(halves._2.getDomain(varOf(w)).isDefined()).isTrue();
-		assertThat(halves._2.getConstraints()).hasSize(1);
-		assertThat(halves._1.meet(halves._2)).isEqualTo(store);
+		Tuple2<Theory<FiniteDomainConstraints>, Theory<FiniteDomainConstraints>> halves =
+				store.theory().split(Arrays.asList(varOf(x)));
+		assertThat(domainOf(halves._1, varOf(x)).isDefined()).isTrue();
+		assertThat(halves._1.kind(Propagator.class).count()).isZero();
+		assertThat(domainOf(halves._2, varOf(w)).isDefined()).isTrue();
+		assertThat(halves._2.kind(Propagator.class).count()).isEqualTo(1L);
+		assertThat(halves._1.meet(halves._2)).isEqualTo(store.theory());
 	}
 
 	@Test
@@ -243,13 +260,13 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.meet(keeper(x, y));
 
-		FiniteDomainConstraints first = store.project(slots(varOf(x), varOf(y))).ground();
-		FiniteDomainConstraints again = store.project(slots(varOf(x), varOf(y))).ground();
+		Theory<FiniteDomainConstraints> first = projected(store, slots(varOf(x), varOf(y))).ground();
+		Theory<FiniteDomainConstraints> again = projected(store, slots(varOf(x), varOf(y))).ground();
 		assertThat(first).isEqualTo(again);
 
 		FiniteDomainConstraints reposted = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.meet(keeper(x, y));
-		assertThat(reposted.project(slots(varOf(x), varOf(y))).ground())
+		assertThat(projected(reposted, slots(varOf(x), varOf(y))).ground())
 				.isEqualTo(first);
 	}
 
@@ -280,11 +297,12 @@ public class ProjectionTest {
 		FiniteDomainConstraints store = (FiniteDomainConstraints) FiniteDomainConstraints.getFDStore(p)
 				.meet(posted);
 
-		FiniteDomainConstraints keyed = store.project(slots(varOf(x), varOf(y))).ground();
-		FiniteDomainConstraints seeded = keyed.rename(
+		Theory<FiniteDomainConstraints> keyed = projected(store, slots(varOf(x), varOf(y))).ground();
+		Theory<FiniteDomainConstraints> seeded = keyed.rename(
 				Renaming.restating(targets(x, y))).ground();
-		assertThat(seeded.getConstraints().head()).isEqualTo(posted);
-		assertThat(seeded.getDomain(varOf(x)).get()).isEqualTo(dom(1, 2));
+		assertThat(seeded.kind(Propagator.class).collect(Collectors.toList()))
+				.containsExactly(posted);
+		assertThat(domainOf(seeded, varOf(x)).get()).isEqualTo(dom(1, 2));
 	}
 
 	@Test

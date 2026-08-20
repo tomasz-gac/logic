@@ -1,21 +1,13 @@
 package com.tgac.logic.constraints.store;
 
-import com.tgac.functional.algebra.PartialOrder;
-import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
-import com.tgac.logic.unification.Any;
-import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
-import io.vavr.Tuple2;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
-public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, PartialOrder<S> {
+public interface Factor<S extends Factor<S>> extends Packaged {
 
 	/**
 	 * The statement meet: parks {@code c} in the family — pure, context-free,
@@ -23,12 +15,6 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 	 * context is present.
 	 */
 	S meet(Atom<S> c);
-
-	/**
-	 * Scheduled for deletion into {@code leq}: containment of an atom is
-	 * entailment of its singleton factor.
-	 */
-	boolean contains(Atom<S> c);
 
 	/**
 	 * Whether the store currently holds no constraints.
@@ -47,24 +33,6 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 	 * destination's context, exactly as meet always was; the door queues it.
 	 */
 	S absorb(Theory<S> incoming);
-
-	/** The store meet: the factor product. Accumulation descends the extension. */
-	S meet(S other);
-
-	@Override
-	default S combine(S other) {
-		return meet(other);
-	}
-
-	/**
-	 * Entailment as the algebra reads it: this ⊑ other iff meeting other adds
-	 * nothing. Correct only where {@code equals} compares NORMAL FORMS — a
-	 * family holding denormalized factors must override.
-	 */
-	@Override
-	default boolean leq(S other) {
-		return meet(other).equals(this);
-	}
 
 	/**
 	 * Re-establish normal form against {@code state} after a meet brought in
@@ -133,28 +101,10 @@ public interface Factor<S extends Factor<S>> extends Packaged, Semilattice<S>, P
 	<A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p);
 
 	/**
-	 * Lossless factoring: (the knowledge expressible over {@code vars}, the
-	 * remainder) — {@code _1 ∧ _2 = this}. The store decides what is
-	 * separable (custody); the CALLER decides what to do with the halves:
-	 * keys keep {@code _1} and discard the caller-private remainder.
-	 */
-	Tuple2<S, S> split(List<LVar<?>> vars);
-
-	/**
 	 * This store's knowledge under changed names. A {@link Fiber} because
 	 * term rewriting rides the engine's traversals — callers compose, never
 	 * {@code get}.
 	 */
 	Fiber<S> rename(Renaming renaming);
-
-	/**
-	 * This store's knowledge about the mapped vars in canonical names — each
-	 * var to its any, the correspondence reify built, carried as data.
-	 * The comparable key citizen. Projecting an empty map of an empty store
-	 * is the empty store: the triviality test is {@code isEmpty}.
-	 */
-	default Fiber<S> project(Map<LVar<?>, Any<?>> slots) {
-		return split(new ArrayList<>(slots.keySet()))._1.rename(Renaming.of(slots));
-	}
 
 }

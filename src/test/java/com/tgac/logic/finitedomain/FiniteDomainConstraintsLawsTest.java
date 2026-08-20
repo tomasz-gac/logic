@@ -5,11 +5,12 @@ package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.unification.LVar.lvar;
 
-import com.tgac.functional.algebra.laws.AbsorbingLaws;
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.PartialOrderLaws;
+import com.tgac.functional.algebra.laws.AbsorbingLaws;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
@@ -47,6 +48,24 @@ public class FiniteDomainConstraintsLawsTest {
 
 	@Test
 	public void storeLattice() {
+		// the lattice lives on the THEORY; the factor is its execution carrier
+		List<Theory<FiniteDomainConstraints>> samples = Arrays.asList(
+				FiniteDomainConstraints.empty().theory(),
+				FiniteDomainConstraints.empty()
+						.withDomain(X, Interval.of(0L, 10L)).theory(),
+				FiniteDomainConstraints.empty()
+						.withDomain(X, Interval.of(3L, 6L))
+						.withDomain(Y, Interval.of(2L, 7L)).theory(),
+				((FiniteDomainConstraints) FiniteDomainConstraints.empty().meet(KEEP))
+						.withDomain(Y, Interval.of(5L, 15L)).theory());
+		SemilatticeLaws.checkLeqReversesAccumulation(samples);
+	}
+
+	@Test
+	public void theFamilyInternalFactorSemilattice() {
+		// LatticeFactor declares Semilattice & Absorbing family-internally —
+		// its cascade's termination theorem needs the premise; combine is
+		// absorb with the terminal-bottom guard on both sides
 		List<FiniteDomainConstraints> samples = Arrays.asList(
 				FiniteDomainConstraints.empty(),
 				FiniteDomainConstraints.empty()
@@ -54,10 +73,19 @@ public class FiniteDomainConstraintsLawsTest {
 				FiniteDomainConstraints.empty()
 						.withDomain(X, Interval.of(3L, 6L))
 						.withDomain(Y, Interval.of(2L, 7L)),
-				((FiniteDomainConstraints) FiniteDomainConstraints.empty().meet(KEEP))
-						.withDomain(Y, Interval.of(5L, 15L)),
 				FiniteDomainConstraints.bottom());
-		SemilatticeLaws.checkLeqReversesAccumulation(samples);
+		SemilatticeLaws.check(samples);
 		AbsorbingLaws.check(samples);
+	}
+
+	@Test
+	public void bottomIsAbsorbingAtTheExecutionFace() {
+		// with factor meets gone, the absorber's law surface is absorb:
+		// bottom refuses knowledge, and a theory carrying bottom lands there
+		org.junit.Assert.assertTrue(FiniteDomainConstraints.bottom().isAbsorbing());
+		org.junit.Assert.assertTrue(FiniteDomainConstraints.bottom()
+				.absorb(FiniteDomainConstraints.empty()
+						.withDomain(X, Interval.of(0L, 10L)).theory())
+				.isAbsorbing());
 	}
 }

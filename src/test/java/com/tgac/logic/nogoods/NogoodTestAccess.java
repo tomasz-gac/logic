@@ -18,10 +18,6 @@ public final class NogoodTestAccess {
 		return NogoodConstraints.of(nogoods);
 	}
 
-	public static boolean factorLeq(Object a, Object b) {
-		return ((NogoodConstraints) a).leq((NogoodConstraints) b);
-	}
-
 	public static boolean theoryLeq(Object a, Object b) {
 		return ((NogoodConstraints) a).theory().leq(((NogoodConstraints) b).theory());
 	}

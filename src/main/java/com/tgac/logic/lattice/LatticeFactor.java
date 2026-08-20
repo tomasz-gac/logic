@@ -7,6 +7,7 @@ import static com.tgac.logic.unification.LVal.lval;
 
 import com.tgac.functional.algebra.Absorbing;
 import com.tgac.functional.algebra.MonotoneDrain;
+import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
@@ -51,7 +52,7 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor<L, S>>
-		implements Factor<S>, Absorbing {
+		implements Factor<S>, Semilattice<S>, Absorbing {
 
 	/**
 	 * The resident theory: an {@link Imposition} per constrained NAME (a live
@@ -117,38 +118,34 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 * {@link Domain#stabilized} guard) and discharge only ever REMOVES propagators
 	 * (knowledge gone redundant — the factor rises, the region stands).
 	 */
+	/**
+	 * FAMILY-INTERNAL: the cascade drains this store as its lattice point,
+	 * and {@code MonotoneDrain}'s termination theorem types its premise —
+	 * contraction on a finite-height semilattice. The declaration lives on
+	 * this class, not the {@link Factor} interface: the kernel requires no
+	 * algebra of a factor; the family whose fixpoint leans on the theorem
+	 * declares it. (Interim: constraint-pairs-theory-with-factor.md moves
+	 * the drained state to the theory itself.)
+	 */
 	@Override
-	public S meet(S other) {
+	public S combine(S other) {
 		if (isAbsorbing() || other.isAbsorbing()) {
 			return bottomStore();
 		}
-		return absorb(other.theory);
+		return absorb(other.theory());
 	}
 
 	@Override
 	public S absorb(Theory<S> incoming) {
+		if (isAbsorbing()) {
+			// the absorber is terminal: a dead branch's store accepts no
+			// knowledge — resurrection would un-refute the refuted
+			return bottomStore();
+		}
 		S met = create(theory.meet(incoming));
 		return met.impositions().anyMatch(i -> (i.getValue()).isAbsorbing()) ?
 				bottomStore() :
 				met;
-	}
-
-	/**
-	 * Entailment checked slotwise, without materializing the meet: every
-	 * name {@code other} constrains must be at-least-as-narrow here, and
-	 * every constraint {@code other} holds must ride here too. The same
-	 * order the meet derives, at an early-exit, allocation-free cost —
-	 * subsumption keys, entailment matching and answer dedup all fold this.
-	 */
-	@Override
-	public boolean leq(S other) {
-		if (isAbsorbing()) {
-			return true;
-		}
-		if (other.isAbsorbing()) {
-			return false;
-		}
-		return theory.leq(other.theory);
 	}
 
 	@Override
@@ -174,11 +171,6 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	@Override
 	public Theory<S> theory() {
 		return theory;
-	}
-
-	@Override
-	public boolean contains(Atom<S> c) {
-		return c instanceof Propagator && theory.atoms().contains(c);
 	}
 
 	/**
@@ -380,7 +372,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			S stepped = current;
 			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
 			for (Propagator<S> p : parked) {
-				if (!stepped.contains(p)) {
+				if (!stepped.theory().atoms().contains(p)) {
 					// an earlier verdict of this same trigger removed it
 					continue;
 				}
@@ -461,16 +453,6 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		} else {
 			return unifiable;
 		}
-	}
-
-	/**
-	 * Lossless factoring: values partition by name membership, a propagator
-	 * goes to the covered half iff every watched VAR is supplied (grounds
-	 * are always covered). {@code _1 ∧ _2 = this}.
-	 */
-	@Override
-	public Tuple2<S, S> split(List<LVar<?>> vars) {
-		return theory.split(vars).map(this::create, this::create);
 	}
 
 	/**

@@ -160,16 +160,20 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	}
 
 	private static Fiber<Residues> ofRelevant(Package callerPkg, java.util.Map<LVar<?>, Any<?>> callVars) {
+		java.util.List<LVar<?>> slots = new java.util.ArrayList<>(callVars.keySet());
+		Renaming canonical = Renaming.of(callVars);
 		return callerPkg.getStores().values().foldLeft(
 						Fiber.<Map<Class<?>, Theory<?>>> done(HashMap.empty()),
 						(acc, store) -> acc.flatMap(residues -> {
 							if (!(store instanceof Factor) || ((Factor<?>) store).isEmpty()) {
 								return Fiber.done(residues);
 							}
-							return ((Factor<?>) store).project(callVars)
+							// the key citizen: the covered half of the name
+							// cut, in canonical names — pure theory work
+							return ((Factor<?>) store).theory().split(slots)._1.rename(canonical)
 									.map(keyed -> keyed.isEmpty()
 											? residues
-											: residues.put(store.getClass(), keyed.theory()));
+											: residues.put(store.getClass(), keyed));
 						}))
 				.map(Residues::of);
 	}

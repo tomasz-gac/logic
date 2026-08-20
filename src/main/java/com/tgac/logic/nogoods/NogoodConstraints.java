@@ -74,32 +74,9 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 						nogood.getForbidden().toJavaStream().map(Nogood::of));
 	}
 
-	/** The theory meet: union, same-surface fusion, subsumption deletion. */
-	@Override
-	public NogoodConstraints meet(NogoodConstraints other) {
-		return absorb(other.theory);
-	}
-
 	@Override
 	public NogoodConstraints absorb(Theory<NogoodConstraints> incoming) {
 		return new NogoodConstraints(theory.meet(incoming));
-	}
-
-	/** The covering order — {¬A} entails {¬(A ∧ B)} with no shared residents. */
-	@Override
-	public boolean leq(NogoodConstraints other) {
-		return theory.leq(other.theory);
-	}
-
-	/**
-	 * Lossless factoring: a nogood goes to the covered half iff every name it
-	 * touches, deeply, is supplied — compound at the crossings, never
-	 * distributed (nogood-store.md §7). {@code _1 ∧ _2 = this}.
-	 */
-	@Override
-	public Tuple2<NogoodConstraints, NogoodConstraints> split(java.util.List<LVar<?>> vars) {
-		return theory.split(vars)
-				.map(NogoodConstraints::new, NogoodConstraints::new);
 	}
 
 	@Override
@@ -120,11 +97,6 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	@Override
 	public NogoodConstraints meet(Atom<NogoodConstraints> c) {
 		return new NogoodConstraints(theory.meet(Theory.of(List.of((Nogood) c))));
-	}
-
-	@Override
-	public boolean contains(Atom<NogoodConstraints> c) {
-		return theory.atoms().contains(c);
 	}
 
 	@Override

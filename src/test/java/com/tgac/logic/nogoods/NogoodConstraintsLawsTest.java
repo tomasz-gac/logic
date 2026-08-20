@@ -11,13 +11,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.LinkedHashSet;
 import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-@LawsFor(NogoodConstraints.class)
+@LawsFor(Theory.class)
 public class NogoodConstraintsLawsTest {
 
 	@AfterClass
@@ -58,17 +59,17 @@ public class NogoodConstraintsLawsTest {
 		// {¬(x≡1)} entails {¬(x≡1 ∧ y≡2)} with no shared residents at all
 		NogoodConstraints stronger = NogoodConstraints.of(LinkedHashSet.of(X_APART));
 		NogoodConstraints weaker = NogoodConstraints.of(LinkedHashSet.of(NOT_BOTH));
-		assertThat(stronger.leq(weaker)).isTrue();
-		assertThat(weaker.leq(stronger)).isFalse();
+		assertThat(stronger.theory().leq(weaker.theory())).isTrue();
+		assertThat(weaker.theory().leq(stronger.theory())).isFalse();
 	}
 
 	@Test
 	public void nogoodUnionIsAMeetSemilattice() {
-		java.util.List<NogoodConstraints> samples = Arrays.asList(
-				NogoodConstraints.of(LinkedHashSet.empty()),
-				NogoodConstraints.of(LinkedHashSet.of(X_APART)),
-				NogoodConstraints.of(LinkedHashSet.of(Y_APART, NOT_BOTH)),
-				NogoodConstraints.of(LinkedHashSet.of(X_APART, NOT_BOTH)));
+		java.util.List<Theory<NogoodConstraints>> samples = Arrays.asList(
+				NogoodConstraints.of(LinkedHashSet.empty()).theory(),
+				NogoodConstraints.of(LinkedHashSet.of(X_APART)).theory(),
+				NogoodConstraints.of(LinkedHashSet.of(Y_APART, NOT_BOTH)).theory(),
+				NogoodConstraints.of(LinkedHashSet.of(X_APART, NOT_BOTH)).theory());
 		SemilatticeLaws.checkLeqReversesAccumulation(samples);
 	}
 }

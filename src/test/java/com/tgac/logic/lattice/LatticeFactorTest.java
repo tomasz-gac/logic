@@ -217,12 +217,12 @@ public class LatticeFactorTest {
 				.withValue(x, FlatSet.of(1, 2))
 				.withValue(y, FlatSet.of(3, 4));
 
-		Tuple2<FlatConstraints, FlatConstraints> parts = store.split(
+		Tuple2<Theory<FlatConstraints>, Theory<FlatConstraints>> parts = store.theory().split(
 				Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()));
-		assertThat(parts._1.getValue(x).get()).isEqualTo(FlatSet.of(1, 2));
-		assertThat(parts._1.getValue(y).isDefined()).isFalse();
-		assertThat(parts._2.getValue(y).get()).isEqualTo(FlatSet.of(3, 4));
-		assertThat(parts._1.meet(parts._2)).isEqualTo(store);
+		assertThat(parts._1.atoms()).allMatch(a -> a.watched().contains(x.getObjectTerm()));
+		assertThat(((Imposition<?, ?>) parts._1.atoms().head()).getValue()).isEqualTo(FlatSet.of(1, 2));
+		assertThat(((Imposition<?, ?>) parts._2.atoms().head()).getValue()).isEqualTo(FlatSet.of(3, 4));
+		assertThat(parts._1.meet(parts._2)).isEqualTo(store.theory());
 
 		// canonical rename makes structurally equal stores compare equal cross-lineage
 		Unifiable<Integer> z = lvar();

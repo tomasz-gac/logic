@@ -10,6 +10,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Tabled;
@@ -49,12 +50,12 @@ public class NogoodProjectionTest {
 		Nogood aboutXY = over(x.unifies(1), y.unifies(2));
 		NogoodConstraints whole = store(aboutX, aboutXY);
 
-		io.vavr.Tuple2<NogoodConstraints, NogoodConstraints> parts = whole.split(
+		io.vavr.Tuple2<Theory<NogoodConstraints>, Theory<NogoodConstraints>> parts = whole.theory().split(
 				Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()));
 
-		assertThat(parts._1.getNogoods()).containsExactly(aboutX);
-		assertThat(parts._2.getNogoods()).containsExactly(aboutXY);
-		assertThat(parts._1.meet(parts._2)).isEqualTo(whole);
+		assertThat(parts._1.atoms()).containsExactly(aboutX);
+		assertThat(parts._2.atoms()).containsExactly(aboutXY);
+		assertThat(parts._1.meet(parts._2)).isEqualTo(whole.theory());
 	}
 
 	@Test

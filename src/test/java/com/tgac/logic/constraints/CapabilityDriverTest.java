@@ -81,25 +81,13 @@ public class CapabilityDriverTest {
 			return this;
 		}
 
-		@Override
-		public boolean contains(Atom<EmittingFactor> c) {
-			return false;
-		}
 
-		@Override
-		public Tuple2<EmittingFactor, EmittingFactor> split(List<LVar<?>> vars) {
-			throw new UnsupportedOperationException("driver fixtures do not split");
-		}
 
 		@Override
 		public Fiber<EmittingFactor> rename(Renaming renaming) {
 			throw new UnsupportedOperationException("driver fixtures do not rename");
 		}
 
-		@Override
-		public EmittingFactor meet(EmittingFactor other) {
-			throw new UnsupportedOperationException("driver fixtures do not meet");
-		}
 
 		@Override
 		public Fiber<Revision> normalize(Package state) {
