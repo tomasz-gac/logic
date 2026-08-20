@@ -11,6 +11,7 @@ import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Doomed;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
@@ -95,18 +96,18 @@ public final class Propagation {
 	}
 
 	/**
-	 * The statement entry for store items: parks {@code item} in its store (which
-	 * must already be registered) and queues its first examination — the owning
-	 * store's statement-delta {@code normalize} decides everything decidable at statement time.
+	 * The one statement entry for store items: registration seeds an absent
+	 * resident from the atom's own {@link Atom#empty}, doom is read through
+	 * the declared {@link Doomed} capability (absent means the atom claims
+	 * nothing), and the item parks in its store for its first examination —
+	 * the owning store's statement-delta {@code normalize} decides
+	 * everything decidable at statement time.
 	 */
-	public static Posting activate(Atom item) {
-		return new Posting.Activation(item, UnaryOperator.identity(), p -> false);
-	}
-
-	/** {@link #activate} with the owning store's registration and doom check. */
-	public static Posting activate(Atom item, UnaryOperator<Package> registration,
-			Predicate<Package> doomed) {
-		return new Posting.Activation(item, registration, doomed);
+	public static Posting activate(Atom<?> item) {
+		return new Posting.Activation(item,
+				p -> p.getStores().containsKey(item.getFactorClass()) ? p
+						: p.withStore(item.empty()),
+				item instanceof Doomed ? ((Doomed) item)::doomed : p -> false);
 	}
 
 	/** The imposition body behind the {@link #activate} constructors. */

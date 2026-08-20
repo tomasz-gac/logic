@@ -62,9 +62,9 @@ public interface Posting extends Goal, Bounded {
 	 * This posting under changed names — the crossing keeps every row WRAPPED
 	 * (nogood-store.md §7): terms rename through the {@link Renaming}, ground
 	 * data rides unchanged, items re-instantiate over the renamed terms.
-	 * Labels are presentation and drop; doom checks
-	 * capture lexical terms and reset to the safe default; registrations are
-	 * store-generic and carry. Content that cannot transcribe refuses loudly
+	 * Labels are presentation and drop; doom and registration ride the
+	 * item's own capabilities, so a rebuilt activation reads them from the
+	 * renamed atom. Content that cannot transcribe refuses loudly
 	 * with its name — the boundary never crosses knowledge silently.
 	 */
 	default Fiber<Posting> rename(Renaming renaming) {

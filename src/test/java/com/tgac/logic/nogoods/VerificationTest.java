@@ -116,10 +116,10 @@ public class VerificationTest {
 
 	@Test
 	public void aPostingPostingRefusesWhenItsStoreIsAbsent() {
-		// Package.withStored silently no-ops on an unregistered store; a
-		// dropped statement would read "unchanged" — the false cross-off
-		// direction, which can veto a satisfiable branch. Residence is
-		// asserted after literal instead
+		// the activation door seeds an absent store from the atom's own
+		// empty; an atom that cannot supply one refuses loudly at
+		// imposition instead of reading as a silent no-op — the false
+		// cross-off direction, which can veto a satisfiable branch
 		Atom<NogoodConstraints> orphan = new Atom<NogoodConstraints>() {
 			@Override
 			public Fiber<Atom<NogoodConstraints>> rename(Renaming renaming) {
@@ -127,7 +127,7 @@ public class VerificationTest {
 			}
 
 			@Override
-			public Posting posting() {
+			public NogoodConstraints empty() {
 				throw new UnsupportedOperationException("orphan test atom");
 			}
 
@@ -149,7 +149,7 @@ public class VerificationTest {
 
 		assertThatThrownBy(() -> new BreadthFirstScheduler<>(Trial.imposed(
 				Propagation.activate(orphan), Package.empty())).get())
-				.isInstanceOf(IllegalStateException.class);
+				.isInstanceOf(UnsupportedOperationException.class);
 	}
 
 	@Test

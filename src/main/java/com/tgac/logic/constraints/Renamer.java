@@ -52,8 +52,7 @@ final class Renamer implements Posting.Visitor<Fiber<Posting>> {
 	@Override
 	public Fiber<Posting> visit(Posting.Activation activation) {
 		return activation.getItem().rename(renaming)
-				.map(renamed -> Propagation.activate(
-						renamed, activation.getRegistration(), p -> false));
+				.map(Propagation::activate);
 	}
 
 	@Override

@@ -33,12 +33,12 @@ final class LeqO extends Propagator<FiniteDomainConstraints> {
 	}
 
 	@Override
-	protected FiniteDomainConstraints empty() {
+	public FiniteDomainConstraints empty() {
 		return FiniteDomainConstraints.empty();
 	}
 
 	@Override
-	protected boolean doomed(Package state) {
+	public boolean doomed(Package state) {
 		return FiniteDomain.cmpOrder(state.substitution(),
 				watchedTerms().get(0), watchedTerms().get(1), c -> c <= 0) == 0;
 	}

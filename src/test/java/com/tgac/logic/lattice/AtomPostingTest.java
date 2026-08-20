@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.lattice.LatticeFactorTest.FlatConstraints;
 import com.tgac.logic.lattice.LatticeFactorTest.FlatSet;
 import com.tgac.logic.nogoods.Nogood;
@@ -24,10 +25,10 @@ public class AtomPostingTest {
 		Unifiable<Integer> x = lvar();
 		Imposition<FlatSet, FlatConstraints> imposition =
 				new Imposition<>(FlatConstraints.class, x, FlatSet.of(1, 2), FlatConstraints.empty());
-		// no store registered beforehand: the posting seeds it
-		assertThat(imposition.posting().and(x.unifies(1))
+		// no store registered beforehand: the activation seeds it
+		assertThat(Propagation.activate(imposition).and(x.unifies(1))
 				.solve(x, TestSchedulers.factory()).count()).isEqualTo(1L);
-		assertThat(imposition.posting().and(x.unifies(3))
+		assertThat(Propagation.activate(imposition).and(x.unifies(3))
 				.solve(x, TestSchedulers.factory()).count()).isZero();
 	}
 
@@ -35,9 +36,9 @@ public class AtomPostingTest {
 	public void aNogoodStatesItself() {
 		Unifiable<Integer> x = lvar();
 		Nogood nogood = Nogood.of(Posting.bind(x, lval(1)));
-		assertThat(nogood.posting().and(x.unifies(1))
+		assertThat(Propagation.activate(nogood).and(x.unifies(1))
 				.solve(x, TestSchedulers.factory()).count()).isZero();
-		assertThat(nogood.posting().and(x.unifies(2))
+		assertThat(Propagation.activate(nogood).and(x.unifies(2))
 				.solve(x, TestSchedulers.factory()).count()).isEqualTo(1L);
 	}
 
@@ -54,10 +55,10 @@ public class AtomPostingTest {
 							return ((Integer) w.get()) % 2 == 0 ? Verdict.subsumed() : Verdict.fail();
 						});
 		assertThat(FlatConstraints.empty().impose(x, FlatSet.of(1, 2, 3, 4))
-				.and(even.posting()).and(x.unifies(4))
+				.and(Propagation.activate(even)).and(x.unifies(4))
 				.solve(x, TestSchedulers.factory()).count()).isEqualTo(1L);
 		assertThat(FlatConstraints.empty().impose(x, FlatSet.of(1, 2, 3, 4))
-				.and(even.posting()).and(x.unifies(3))
+				.and(Propagation.activate(even)).and(x.unifies(3))
 				.solve(x, TestSchedulers.factory()).count()).isZero();
 	}
 

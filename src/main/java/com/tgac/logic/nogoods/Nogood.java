@@ -10,7 +10,9 @@ import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.UnifyGoal;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Doomed;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashSet;
@@ -38,7 +40,7 @@ import lombok.Value;
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
+public class Nogood implements Atom<NogoodConstraints>, Doomed, Semilattice<Nogood> {
 	LinkedHashSet<Posting> forbidden;
 	HashSet<Term<?>> surface;
 
@@ -162,19 +164,22 @@ public class Nogood implements Atom<NogoodConstraints>, Semilattice<Nogood> {
 				Collections.singletonList(conjunct));
 	}
 
+	@Override
+	public NogoodConstraints empty() {
+		return NogoodConstraints.EMPTY;
+	}
+
 	/**
-	 * The statement: registration is the family's, and the doom check is
-	 * born-violated — a conjunct already ENTAILED is failure forever
+	 * Born-violated: a conjunct already ENTAILED is failure forever
 	 * (entailment is monotone under binding growth); binding-shaped
 	 * conjuncts answer through the synchronous face, store-shaped claim
 	 * nothing.
 	 */
 	@Override
-	public Posting posting() {
-		return Propagation.activate(this, NogoodConstraints::register,
-				p -> forbidden.exists(conjunct -> Trial.now(conjunct, p)
-						.map(Trial.Outcome::isEntailed)
-						.getOrElse(false)));
+	public boolean doomed(Package p) {
+		return forbidden.exists(conjunct -> Trial.now(conjunct, p)
+				.map(Trial.Outcome::isEntailed)
+				.getOrElse(false));
 	}
 
 	/** Each conjunct transcribes itself wrapped; the envelope follows. */

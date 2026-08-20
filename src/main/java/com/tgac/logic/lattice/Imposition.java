@@ -8,6 +8,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Doomed;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.constraints.Posting;
@@ -33,7 +34,7 @@ import lombok.Value;
  */
 @Value
 @EqualsAndHashCode(of = {"storeClass", "target", "value"})
-public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Atom<F>, Semilattice<Imposition<L, F>> {
+public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Atom<F>, Doomed, Semilattice<Imposition<L, F>> {
 	Class<? extends F> storeClass;
 	Term<?> target;
 	@Getter
@@ -42,21 +43,19 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 	/** The family's empty — the registration seed; statement context, outside identity. */
 	F empty;
 
-	/**
-	 * The statement: registration seeds the family when absent; doomed under
-	 * partial knowledge exactly when the value cannot stand against the live
-	 * state — a ground target the value refuses, or a live entry it meets to
-	 * bottom.
-	 */
 	@Override
-	public Posting posting() {
-		return Propagation.activate(this,
-				p -> p.getStores().containsKey(storeClass) ? p : p.withStore(empty),
-				this::doomed);
+	public F empty() {
+		return empty;
 	}
 
+	/**
+	 * Doomed under partial knowledge exactly when the value cannot stand
+	 * against the live state — a ground target the value refuses, or a live
+	 * entry it meets to bottom.
+	 */
+	@Override
 	@SuppressWarnings("unchecked")
-	private boolean doomed(Package p) {
+	public boolean doomed(Package p) {
 		Term<?> walked = p.substitution().walk(target);
 		if (walked.asVal().isDefined()) {
 			return !value.admits(walked.get());

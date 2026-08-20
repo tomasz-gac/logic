@@ -228,25 +228,8 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 * stand against the live state: a ground target the value refuses, or a
 	 * live entry it meets to bottom.
 	 */
-	@SuppressWarnings("unchecked")
 	public Posting impose(Term<?> target, L value) {
-		return Propagation.activate(
-				imposition(target, value),
-				p -> p.getStores().containsKey(getClass()) ? p
-						: p.withStore(create(Theory.empty())),
-				p -> doomedAt(p, target, value));
-	}
-
-	@SuppressWarnings("unchecked")
-	private boolean doomedAt(Package p, Term<?> target, L value) {
-		Term<?> w = p.substitution().walk(target);
-		if (w.asVal().isDefined()) {
-			return !value.admits(w.get());
-		}
-		return p.getStores().get(getClass())
-				.map(store -> (S) store)
-				.flatMap(live -> live.getValue(w))
-				.exists(existing -> existing.meet(value).isAbsorbing());
+		return Propagation.activate(imposition(target, value));
 	}
 
 	/**

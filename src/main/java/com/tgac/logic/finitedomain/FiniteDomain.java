@@ -90,26 +90,26 @@ public class FiniteDomain {
 	}
 
 	public static <T> Posting leq(Unifiable<T> less, Unifiable<T> more) {
-		return new LeqO(less, more).posting();
+		return Propagation.activate(new LeqO(less, more));
 	}
 
 	public static <T> Posting lss(Unifiable<T> less, Unifiable<T> more) {
 		return Posting.all(
 				p -> cmpOrder(p.substitution(), less, more, c -> c < 0) == 0,
-				new LeqO(less, more).posting(),
+				Propagation.activate(new LeqO(less, more)),
 				separate(less, more));
 	}
 
 	public static <T> Posting gtr(Unifiable<T> more, Unifiable<T> less) {
 		return Posting.all(
 				p -> cmpOrder(p.substitution(), more, less, c -> c > 0) == 0,
-				new LeqO(less, more).posting(),
+				Propagation.activate(new LeqO(less, more)),
 				separate(more, less));
 	}
 
 	public static <T> Posting geq(Unifiable<T> more, Unifiable<T> less) {
 		// more >= less violated ⟺ less <= more violated: the schema's own doom
-		return new LeqO(less, more).posting();
+		return Propagation.activate(new LeqO(less, more));
 	}
 
 	static <T> Verdict leqVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
@@ -138,7 +138,7 @@ public class FiniteDomain {
 	}
 
 	static <T> Posting addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return new AddO(a, b, rhs).posting();
+		return Propagation.activate(new AddO(a, b, rhs));
 	}
 
 	static <T> Verdict addVerdict(
@@ -180,7 +180,7 @@ public class FiniteDomain {
 	}
 
 	static <T> Posting mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return new MulO(a, b, rhs).posting();
+		return Propagation.activate(new MulO(a, b, rhs));
 	}
 
 	static <T> Verdict mulVerdict(
@@ -258,7 +258,7 @@ public class FiniteDomain {
 	}
 
 	public static <T> Posting separate(Unifiable<T> l, Unifiable<T> r) {
-		return new SeparateO(l, r).posting();
+		return Propagation.activate(new SeparateO(l, r));
 	}
 
 	static <T> Option<Arithmetic<T>> getSingleElement(Domain<T> dom) {

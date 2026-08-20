@@ -36,7 +36,7 @@ final class MulO extends Propagator<FiniteDomainConstraints> {
 	}
 
 	@Override
-	protected FiniteDomainConstraints empty() {
+	public FiniteDomainConstraints empty() {
 		return FiniteDomainConstraints.empty();
 	}
 

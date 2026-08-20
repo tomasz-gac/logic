@@ -7,6 +7,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Doomed;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Watches;
@@ -39,7 +40,7 @@ import java.util.function.Predicate;
  * <p>Postable by construction: every propagator carries its complete
  * statement context — there is no unconfigured state to construct.
  */
-public abstract class Propagator<F extends Factor<F>> implements Atom<F> {
+public abstract class Propagator<F extends Factor<F>> implements Atom<F>, Doomed {
 
 	private final Array<? extends Term<?>> watchedTerms;
 
@@ -59,14 +60,16 @@ public abstract class Propagator<F extends Factor<F>> implements Atom<F> {
 	public abstract Propagator<F> watching(Array<? extends Term<?>> terms);
 
 	/** The family's empty — the statement's registration seed. */
-	protected abstract F empty();
+	@Override
+	public abstract F empty();
 
 	/**
 	 * Born-violated under the current bindings? Failure found at pricing is
 	 * failure forever — the check must be monotone under binding growth.
 	 * Default: the author claims nothing.
 	 */
-	protected boolean doomed(Package state) {
+	@Override
+	public boolean doomed(Package state) {
 		return false;
 	}
 
@@ -103,14 +106,6 @@ public abstract class Propagator<F extends Factor<F>> implements Atom<F> {
 						(acc, term) -> acc.flatMap(terms ->
 								renaming.apply(term).map(terms::append)))
 				.map(terms -> watching(Array.ofAll(terms)));
-	}
-
-	/** The statement: registration seeds the family when absent; doom is the schema's. */
-	@Override
-	public final Posting posting() {
-		return Propagation.activate(this,
-				p -> p.getStores().containsKey(getFactorClass()) ? p : p.withStore(empty()),
-				this::doomed);
 	}
 
 	@Override
@@ -187,12 +182,12 @@ public abstract class Propagator<F extends Factor<F>> implements Atom<F> {
 		}
 
 		@Override
-		protected F empty() {
+		public F empty() {
 			return empty;
 		}
 
 		@Override
-		protected boolean doomed(Package state) {
+		public boolean doomed(Package state) {
 			return doom.test(state);
 		}
 

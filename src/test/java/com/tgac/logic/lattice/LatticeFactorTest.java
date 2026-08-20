@@ -206,9 +206,7 @@ public class LatticeFactorTest {
 								return Verdict.keep();
 							}
 							return ((Integer) w.get()) % 2 == 0 ? Verdict.subsumed() : Verdict.fail();
-						}),
-				s -> s.getStores().containsKey(FlatConstraints.class) ? s : s.withStore(FlatConstraints.empty()),
-				p -> false);
+						}));
 	}
 
 	@Test
