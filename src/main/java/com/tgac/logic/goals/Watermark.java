@@ -3,7 +3,6 @@ package com.tgac.logic.goals;
 // ABOUTME: The birth watermark a closed sub-solve carries: a variable born before
 // ABOUTME: the mark may not surface unbound inside — the closed-aggregate age check.
 
-import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Prefix;
@@ -60,19 +59,12 @@ public class Watermark implements Packaged {
 	}
 
 	/**
-	 * Refuses a stated {@code item} whose terms mention a variable older than
-	 * the mark that is still free in {@code pkg} — the statement seam: a
-	 * constraint on an outer variable binds nothing yet makes every answer
-	 * conditional on it. Deep-walking first admits terms whose old variables
-	 * are already bound to values.
-	 */
-	public static void check(Package pkg, Atom item) {
-		markOn(pkg).forEach(watermark -> refuseOldFreeNames(pkg, watermark, item.watched().toJavaStream()));
-	}
-
-	/**
 	 * Refuses {@code watched} terms mentioning a variable older than the
-	 * mark that is still free in {@code pkg} — the suspension seam. The
+	 * mark that is still free in {@code pkg} — the statement and suspension
+	 * seams (a stated item's watched surface arrives through here too: a
+	 * constraint on an outer variable binds nothing yet makes every answer
+	 * conditional on it; deep-walking first admits terms whose old
+	 * variables are already bound to values). The
 	 * watched set is the body's DECLARED read surface: reads never pass the
 	 * binding or statement seams, so the declaration is the one place a
 	 * read of outer state can refuse, whether the body would run inline or

@@ -15,6 +15,7 @@ import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
@@ -233,14 +234,14 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	@SuppressWarnings("unchecked")
 	protected Goal reexamineOwn(Term<?> x) {
 		return s -> Cont.defer(() -> {
-			S live = (S) s.getStore(getClass());
+			S live = (S) ((Constraint) Constraint.in(s, (Class) getClass()).get()).getFactor();
 			return live.cascade(s, live, new ArrayList<>(), new ArrayList<>(),
 							new ArrayDeque<>(Collections.<Term<?>> singletonList(x)))
 					.map(revision -> revision.<Cont<Package, Nothing>> match(
 							() -> Cont.complete(Nothing.nothing()),
 							() -> Cont.just(s),
 							upd -> {
-								Package updated = s.putStore(upd.factor());
+								Package updated = Constraint.put(s, (Factor<?>) upd.factor());
 								return upd.inferred().stream()
 										.<Goal> map(Propagation::resolve)
 										.reduce(Goal.success(), Goal::and)
@@ -309,7 +310,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			factor = factor.spent(entry.getTarget());
 		}
 		for (Propagator<S> propagator : props().collect(Collectors.toList())) {
-			factor = consume(examine(propagator, state.putStore(factor), factor),
+			factor = consume(examine(propagator, Constraint.put(state, factor), factor),
 					factor, inferred, runs, queue);
 			if (factor == null) {
 				return Fiber.done(Revision.fail());
@@ -343,7 +344,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		List<Goal> runs = new ArrayList<>();
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
 		S factor = consume(
-				examine((Propagator<S>) item, state.putStore(this), self()),
+				examine((Propagator<S>) item, Constraint.put(state, this), self()),
 				self(), inferred, runs, queue);
 		if (factor == null) {
 			return Fiber.done(Revision.fail());
@@ -376,7 +377,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 					// an earlier verdict of this same trigger removed it
 					continue;
 				}
-				Package live = state.putStore(stepped);
+				Package live = Constraint.put(state, stepped);
 				if (!p.watches(live, next)) {
 					continue;
 				}

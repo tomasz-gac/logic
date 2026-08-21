@@ -1,5 +1,6 @@
 package com.tgac.logic.constraints;
 
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
@@ -111,7 +112,9 @@ public class CapabilityDriverTest {
 	private static Package root(Packaged... stores) {
 		Package p = Package.empty().withStore(Table.empty());
 		for (Packaged s : stores) {
-			p = p.putStore(s);
+			p = s instanceof Factor
+					? Constraint.put(p, (Factor<?>) s)
+					: p.putStore(s);
 		}
 		return p;
 	}

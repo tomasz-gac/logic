@@ -11,6 +11,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Package;
@@ -35,7 +36,7 @@ public class ActivationDoorTest {
 		Package state = new BreadthFirstScheduler<>(Trial.imposed(
 				Propagation.activate(on(X, 1, 2)), Package.empty())).get().head();
 
-		FlatConstraints store = state.getStore(FlatConstraints.class);
+		FlatConstraints store = Constraint.in(state, FlatConstraints.class).get().getFactor();
 		assertThat(store.getValue((Term<?>) X).get()).isEqualTo(FlatSet.of(1, 2));
 	}
 

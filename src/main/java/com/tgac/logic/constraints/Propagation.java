@@ -107,14 +107,13 @@ public final class Propagation {
 	 */
 	public static Posting activate(Atom<?> item) {
 		return new Posting.Activation(item,
-				p -> p.getStores().containsKey(item.getFactorClass()) ? p
-						: p.withStore(item.empty()),
+				p -> Constraint.register(p, item.empty()),
 				item instanceof Doomed ? ((Doomed) item)::doomed : p -> false);
 	}
 
 	/** The imposition body behind the {@link #activate} constructors. */
 	static Goal activation(Atom<?> item) {
-		return s -> enqueue(s.withStored(item), new Agenda.Stated(item));
+		return s -> enqueue(Constraint.stated(s, item), new Agenda.Stated(item));
 	}
 
 	/**
@@ -145,13 +144,13 @@ public final class Propagation {
 			}
 			Atom<?> head = (Atom<?>) theory.atoms().head();
 			Class<?> family = head.getFactorClass();
-			Constraint pair = (Constraint) p.getStores().get((Class) family).getOrNull();
+			Constraint pair = (Constraint) Constraint.in(p, (Class) family).getOrNull();
 			Factor resident = pair == null ? null : (Factor) pair.getFactor();
 			if (resident == null) {
 				// the atom's empty is the family identity's constructive
 				// face — the theory seeds its own residence
 				Factor met = (Factor) ((Factor) head.empty()).absorb(theory);
-				return enqueue(p.putStore(met), new Agenda.Absorbed(family));
+				return enqueue(Constraint.put(p, met), new Agenda.Absorbed(family));
 			}
 			if (resident.theory().leq(theory)) {
 				// the covering door guard: the resident already entails the
@@ -159,7 +158,7 @@ public final class Propagation {
 				return Cont.just(p);
 			}
 			Factor met = (Factor) resident.absorb(theory);
-			return enqueue(p.putStore(met), new Agenda.Absorbed(family));
+			return enqueue(Constraint.put(p, met), new Agenda.Absorbed(family));
 		};
 	}
 
@@ -203,7 +202,7 @@ public final class Propagation {
 												.flatMap(revision -> revision.match(
 														MFiber::none,            // fail: branch dies
 														() -> MFiber.mdone(pkg), // unchanged
-														upd -> MFiber.mdone(queue(pkg.putStore(
+														upd -> MFiber.mdone(queue(Constraint.put(pkg,
 																ownFactor(cs, upd)), upd))))),
 								Exceptions.throwingBiOp(UnsupportedOperationException::new))
 						.map(Cont::<Package, Nothing>just)

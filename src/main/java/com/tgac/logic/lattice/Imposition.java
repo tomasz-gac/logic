@@ -5,16 +5,13 @@ package com.tgac.logic.lattice;
 
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.store.Renaming;
-import com.tgac.logic.goals.Packaged;
-import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Doomed;
 import com.tgac.logic.constraints.store.Factor;
-import com.tgac.logic.unification.Term;
-import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Package;
+import com.tgac.logic.unification.Term;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Traversable;
 import lombok.EqualsAndHashCode;
@@ -55,14 +52,14 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 	 * entry it meets to bottom.
 	 */
 	@Override
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public boolean doomed(Package p) {
 		Term<?> walked = p.substitution().walk(target);
 		if (walked.asVal().isDefined()) {
 			return !value.admits(walked.get());
 		}
-		return p.getStores().get(storeClass)
-				.map(entry -> ((Constraint<?>) entry).getFactor())
+		return Constraint.in(p, (Class<F>) storeClass)
+				.map(Constraint::getFactor)
 				.flatMap(store -> ((LatticeFactor<L, ?>) store).getValue(walked))
 				.exists(existing -> existing.meet(value).isAbsorbing());
 	}

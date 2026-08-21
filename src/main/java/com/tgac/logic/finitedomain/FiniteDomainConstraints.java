@@ -4,11 +4,11 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: record is membership, singleton collapse and the equal-domain guard.
 
 import com.tgac.functional.reflection.Types;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.lattice.Imposition;
 import com.tgac.logic.lattice.LatticeFactor;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.unification.Term;
@@ -39,7 +39,7 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 	}
 
 	public static Package register(Package p) {
-		return p.withStore(EMPTY);
+		return Constraint.register(p, EMPTY);
 	}
 
 	public static FiniteDomainConstraints empty() {
@@ -51,7 +51,10 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 	}
 
 	public static FiniteDomainConstraints getFDStore(Package p) {
-		return p.getStore(FiniteDomainConstraints.class);
+		return Constraint.in(p, FiniteDomainConstraints.class)
+				.map(Constraint::getFactor)
+				.getOrElseThrow(() -> new IllegalStateException(
+						"No store associated with package"));
 	}
 
 	public static <T> Option<Domain<T>> getDom(Package p, Term<T> x) {

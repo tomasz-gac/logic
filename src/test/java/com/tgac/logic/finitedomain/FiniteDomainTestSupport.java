@@ -5,6 +5,7 @@ package com.tgac.logic.finitedomain;
 
 import static com.tgac.logic.unification.LVar.lvar;
 
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
@@ -22,7 +23,7 @@ public final class FiniteDomainTestSupport {
 		Package p = FiniteDomainConstraints.register(Package.empty());
 		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
 				.withDomain((LVar<?>) x.asVar().get(), d);
-		return p.putStore(store);
+		return Constraint.put(p, store);
 	}
 
 	/** A keeper watching a fresh var — value-distinct per call (fresh var). */

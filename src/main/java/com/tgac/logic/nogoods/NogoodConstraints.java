@@ -6,6 +6,7 @@ package com.tgac.logic.nogoods;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Constrained;
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
@@ -55,7 +56,7 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	}
 
 	public static Package register(Package a) {
-		return a.withStore(EMPTY);
+		return Constraint.register(a, EMPTY);
 	}
 
 	/**

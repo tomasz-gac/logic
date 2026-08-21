@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
@@ -34,7 +35,7 @@ public class AbsorbTheoryTest {
 	}
 
 	private static FlatConstraints store(Package state) {
-		return state.getStore(FlatConstraints.class);
+		return Constraint.in(state, FlatConstraints.class).get().getFactor();
 	}
 
 	@Test

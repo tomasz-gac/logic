@@ -131,8 +131,9 @@ public class NormalizeAgreementLawsTest {
 					? FiniteDomain.leq(x, y)
 					: exclude(conflicting ? x.unifies(x) : x.unifies(lval((long) r.nextInt(5))));
 			Atom atom = ((Posting.Activation) posting).getItem();
-			Package parked = p.withStored(atom);
-			Factor<?> cs = (Factor<?>) parked.getStore(atom.getFactorClass());
+			Package parked = Constraint.stated(p, atom);
+			Factor<?> cs = ((Constraint<?>) parked.getStores()
+					.get(atom.getFactorClass()).get()).getFactor();
 
 			exercised++;
 			Revision delta = run((Fiber<Revision>) ((Factor) cs).stated(atom, parked));

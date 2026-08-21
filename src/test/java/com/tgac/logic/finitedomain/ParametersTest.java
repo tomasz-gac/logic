@@ -4,6 +4,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.Utils;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -64,7 +65,7 @@ public class ParametersTest {
 		Unifiable<Long> i = LVar.lvar();
 
 		List<Package> collect = Utils.collect(EnforceConstraintsFD.forceAns(i)
-				.apply(Package.empty().withStore(
+				.apply(Constraint.register(Package.empty(), 
 						FiniteDomainConstraints.empty()
 								.withDomain(i.asVar().get(), EnumeratedDomain.range(0L, 10L)))));
 
@@ -82,7 +83,7 @@ public class ParametersTest {
 
 		List<Package> collect = Utils.collect(
 				EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
-						.apply(Package.empty().withStore(FiniteDomainConstraints.empty()
+						.apply(Constraint.register(Package.empty(), FiniteDomainConstraints.empty()
 								.withDomain(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
 								.withDomain(j.asVar().get(), EnumeratedDomain.range(0L, 3L)))));
 
