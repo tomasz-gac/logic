@@ -81,8 +81,8 @@ public class NormalizeAgreementLawsTest {
 				}
 				exercised++;
 				Factor<?> cs = (Factor<?>) ((Constraint<?>) store).getFactor();
-				Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize(kept, extended));
-				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(extended));
+				Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize(cs.theory(), kept, extended));
+				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(cs.theory(), extended));
 
 				Option<Object> deltaLanding = landing(delta, cs);
 				Option<Object> wholesaleLanding = landing(wholesale, cs);
@@ -136,8 +136,8 @@ public class NormalizeAgreementLawsTest {
 					.get(atom.getFactorClass()).get()).getFactor();
 
 			exercised++;
-			Revision delta = run((Fiber<Revision>) ((Factor) cs).stated(atom, parked));
-			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(parked));
+			Revision delta = run((Fiber<Revision>) ((Factor) cs).stated(atom, cs.theory(), parked));
+			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(cs.theory(), parked));
 			Option<Object> deltaLanding = landing(delta, cs);
 			Option<Object> wholesaleLanding = landing(wholesale, cs);
 			if (!deltaLanding.isDefined()) {

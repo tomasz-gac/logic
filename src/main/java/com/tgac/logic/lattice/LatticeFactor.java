@@ -251,7 +251,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	@Override
-	public Fiber<Revision> normalize(Prefix prefix, Package state) {
+	public Fiber<Revision> normalize(Theory<S> incoming, Prefix prefix, Package state) {
 		// each newly bound value must lie in its variable's lattice value; a
 		// var-var binding aliases the two, so the value follows the representative;
 		// every bound variable's watchers re-examine, then the cascade drains
@@ -286,7 +286,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 * the met state, and the cascade drains.
 	 */
 	@Override
-	public Fiber<Revision> normalize(Package state) {
+	public Fiber<Revision> normalize(Theory<S> incoming, Package state) {
 		if (isAbsorbing()) {
 			return Fiber.done(Revision.fail());
 		}
@@ -320,7 +320,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	@Override
-	public Fiber<Revision> stated(Atom<S> item, Package state) {
+	public Fiber<Revision> stated(Atom<S> item, Theory<S> incoming, Package state) {
 		if (item instanceof Imposition) {
 			// update's verification/collapse/narrowing routing, inside the
 			// store's method: the item is a message, the values map keeps
@@ -434,7 +434,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	@Override
-	public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p) {
+	public <A> Term<A> reify(Theory<S> incoming, Term<A> unifiable, Renaming renaming, Package p) {
 		Set<LVar<?>> varsWithValues = impositions()
 				.map(Imposition::getTarget)
 				.map(p::walk)

@@ -431,7 +431,7 @@ public final class Propagation {
 							// each store's revise is COMPLETE: custody, its own watchers of the
 							// newly bound variables, and its own cascade
 							return ((Goal) s2 -> reviseAll(s2, (cs, p) ->
-									getRevisionFiber("Propagation.Bind", cs, p, cs.normalize(kept, p))))
+									getRevisionFiber("Propagation.Bind", cs, p, ((Factor) cs).normalize(cs.theory(), kept, p))))
 									.and(ripen(kept))
 									.apply(extended);
 						})
@@ -456,7 +456,7 @@ public final class Propagation {
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> item.getFactorClass() == cs.getClass() ?
-								getRevisionFiber("Propagation.Stated", cs, p, cs.stated(item, p)) :
+								getRevisionFiber("Propagation.Stated", cs, p, ((Factor) cs).stated(item, cs.theory(), p)) :
 								Fiber.done(Revision.unchanged()));
 			}
 
@@ -478,7 +478,7 @@ public final class Propagation {
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> family == cs.getClass() ?
-								getRevisionFiber("Propagation.Absorbed", cs, p, cs.normalize(p)):
+								getRevisionFiber("Propagation.Absorbed", cs, p, ((Factor) cs).normalize(cs.theory(), p)):
 								Fiber.done(Revision.unchanged()));
 			}
 

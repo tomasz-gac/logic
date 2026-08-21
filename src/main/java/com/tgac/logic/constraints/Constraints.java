@@ -85,13 +85,14 @@ public class Constraints {
 	}
 
 	/** Every store renders its residual constraints into the reified answer. */
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Renaming renaming) {
 		return p.getStores().values()
 				.toJavaStream()
 				.filter(Constraint.class::isInstance)
 				.map(entry -> (Factor<?>) ((Constraint<?>) entry).getFactor())
 				.reduce(Try.success(unifiable),
-						(l, cs) -> l.flatMap(u -> Try.of(() -> cs.reify(u, renaming, p))),
+						(l, cs) -> l.flatMap(u -> Try.of(() -> (Term<A>) ((Factor) cs).reify(cs.theory(), u, renaming, p))),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))
 				.get();
 	}

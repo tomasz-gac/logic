@@ -106,7 +106,7 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	}
 
 	@Override
-	public Fiber<Revision> normalize(Package state) {
+	public Fiber<Revision> normalize(Theory<NogoodConstraints> incoming, Package state) {
 		return Verification.verify(residents(), state.withoutStore(NogoodConstraints.class))
 				.map(kept -> kept.isDefined() ?
 						revisedTo(LinkedHashSet.ofAll(kept.get())) :
@@ -121,9 +121,9 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	}
 
 	@Override
-	public Fiber<Revision> normalize(Prefix prefix, Package state) {
+	public Fiber<Revision> normalize(Theory<NogoodConstraints> incoming, Prefix prefix, Package state) {
 		// the reaction was always wholesale — revise is normalize by another trigger
-		return normalize(state);
+		return normalize(incoming, state);
 	}
 
 	/**
@@ -135,7 +135,7 @@ public final class NogoodConstraints implements Factor<NogoodConstraints> {
 	 * whose every literal pruned stays invisible, as it always was.
 	 */
 	@Override
-	public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package s) {
+	public <A> Term<A> reify(Theory<NogoodConstraints> incoming, Term<A> unifiable, Renaming renaming, Package s) {
 		// renameSubstitutions is the answer's canonical seed: a live name it
 		// binds is part of the rendered answer
 		List<Atom<?>> residuals = List.empty();

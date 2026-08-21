@@ -120,7 +120,7 @@ public class LatticeFactorTest {
 		FlatConstraints inadmissible = FlatConstraints.empty()
 				.withValue(lval(5), FlatSet.of(1, 2));
 		boolean failed = new BreadthFirstScheduler<>(
-				inadmissible.normalize(Package.empty()))
+				inadmissible.normalize(inadmissible.theory(), Package.empty()))
 				.get()
 				.match(() -> true, () -> false, upd -> false);
 		assertThat(failed).isTrue();
@@ -128,7 +128,7 @@ public class LatticeFactorTest {
 		FlatConstraints admissible = FlatConstraints.empty()
 				.withValue(lval(1), FlatSet.of(1, 2));
 		FlatConstraints spent = new BreadthFirstScheduler<>(
-				admissible.normalize(Package.empty()))
+				admissible.normalize(admissible.theory(), Package.empty()))
 				.get()
 				.match(() -> null, () -> null, upd -> (FlatConstraints) upd.factor());
 		assertThat(spent).isNotNull();

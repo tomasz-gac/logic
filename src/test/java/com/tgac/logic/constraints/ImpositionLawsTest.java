@@ -9,8 +9,10 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Factor;
+import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -123,7 +125,7 @@ public class ImpositionLawsTest {
 				exercised++;
 				Factor<?> cs = (Factor<?>) ((Constraint<?>) store).getFactor();
 				final long s = seed;
-				new BreadthFirstScheduler<>(cs.normalize(p)).get().match(
+				new BreadthFirstScheduler<>((Fiber<Revision>) ((Factor) cs).normalize(((Factor<?>) cs).theory(), p)).get().match(
 						() -> {
 							throw new AssertionError(
 									"seed " + s + ": quiescent normalize failed: " + cs);

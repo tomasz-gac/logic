@@ -48,7 +48,7 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public Fiber<Revision> normalize(Prefix prefix, Package state) {
+		public Fiber<Revision> normalize(Theory<EmittingFactor> incoming, Prefix prefix, Package state) {
 			return Fiber.done(reaction.apply(prefix, state));
 		}
 
@@ -58,7 +58,7 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public <A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p) {
+		public <A> Term<A> reify(Theory<EmittingFactor> incoming, Term<A> unifiable, Renaming renaming, Package p) {
 			return unifiable;
 		}
 
@@ -91,7 +91,7 @@ public class CapabilityDriverTest {
 
 
 		@Override
-		public Fiber<Revision> normalize(Package state) {
+		public Fiber<Revision> normalize(Theory<EmittingFactor> incoming, Package state) {
 			return null;
 		}
 	}

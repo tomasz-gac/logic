@@ -42,7 +42,7 @@ public interface Factor<S extends Factor<S>> extends Packaged {
 	 * answers no queries before its normalization ran — meet is completed by
 	 * normalize.
 	 */
-	Fiber<Revision> normalize(Package state);
+	Fiber<Revision> normalize(Theory<S> theory, Package state);
 
 	/**
 	 * Revise this store against newly applied bindings — AC-3's REVISE, cKanren's
@@ -64,7 +64,7 @@ public interface Factor<S extends Factor<S>> extends Packaged {
 	 * @param prefix - exactly the newly applied bindings
 	 * @param state - the extended live package to verify and read domains against
 	 */
-	Fiber<Revision> normalize(Prefix prefix, Package state);
+	Fiber<Revision> normalize(Theory<S> theory, Prefix prefix, Package state);
 
 	/**
 	 * Commit this store's constraints before {@code x} is reified: finite domains
@@ -85,8 +85,8 @@ public interface Factor<S extends Factor<S>> extends Packaged {
 	 * families override with a first-examination fast path (examine one
 	 * item, not the family).
 	 */
-	default Fiber<Revision> stated(Atom<S> item, Package state) {
-		return normalize(state);
+	default Fiber<Revision> stated(Atom<S> item, Theory<S> theory, Package state) {
+		return normalize(theory, state);
 	}
 
 	/**
@@ -98,7 +98,7 @@ public interface Factor<S extends Factor<S>> extends Packaged {
 	 * @param unifiable - the reified answer built so far
 	 * @param renaming - the crossing into the answer namespace
 	 */
-	<A> Term<A> reify(Term<A> unifiable, Renaming renaming, Package p);
+	<A> Term<A> reify(Theory<S> theory, Term<A> unifiable, Renaming renaming, Package p);
 
 	/**
 	 * This store's knowledge under changed names. A {@link Fiber} because
