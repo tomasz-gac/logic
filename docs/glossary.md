@@ -25,8 +25,7 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **Cont** — the stack-safe continuation monad goals are built from. *(functional README)*
 - [x] **Term / Unifiable / Reified** — structural root / solver input / solver output; `instantiate` is the only Reified→Unifiable bridge. *(CLAUDE.md)*
 - [x] **LVar / LVal** — logic variable / wrapped value. *(unification/)*
-- [x] **Hole** — a canonical slot name (`_.n`); what a slot looks like inside a term; carries alpha-normal keys and the ∀-binder marking. *(tabled-constraints §4.1)*
-- [x] **Unknown** — the one name type: what a substitution may key and a walk may chase. `LVar` (live, identity) and `Hole` (canonical, numbered) implement it; the unifier still binds only LVars — Prefix keeps the privilege. *(unification/)*
+- [x] **Any** — a canonical slot name (`_.n`), pure position: what a slot looks like inside a term; alpha-normal keys, the ∀-binder marking; ontic — certified unconstrained. Retires *Hole* (the rename shipped with the Name ratification). *(unification/)*
 - [x] **walk / walkAll** — resolve a term through substitutions, shallow / deep. *(unification/)*
 - [x] **reify** — render an answer against canonical names; constrained stores attach their residuals. *(unification/)*
 - [x] **alpha-equivalence** — equality of reified terms up to variable naming; plain `equals` on `Reified`. *(unification/)*
@@ -58,13 +57,19 @@ rating pass can stop at any section boundary and still be useful.
 
 - [x] **stores are branches as data** — the founding sentence: a constraint store is a compressed set of branches; finite compression exits by EXPANSION (enforce/labelling), infinite compression exits by EXPRESSION (reify/`Constrained`); the compression is also what the optimizer and the crossings move around. *(condition.md)*
 - [x] **Constrained** — the rendered answer-with-residuals carrier: reify's output when expressed infinities ride the term. *(separate/)*
-- [x] **ConstraintStore** — a store with the two triggers (revise, stated) answered by `Fiber<Revision>`; may read anything, may swap only its OWN factor. *(constraint-kernel)*
-- [x] **revise** — bindings arrived; the store's COMPLETE reaction (custody, own watchers, own cascade). *(constraint-kernel)*
-- [x] **absorb** — meet a whole factor into the resident store + queue normalize; the bulk statement entry. *(constraint-kernel)*
+- [x] **Factor** — the execution face of a store: the delta and wholesale normalize triggers, stated, enforce, reify, answered by `Fiber<Revision>`; may read anything, may swap only its OWN slice; carries no algebra of its own. Retires *ConstraintStore*, *Absorbable*, *Projectable* (their capabilities live on Theory). *(constraint-kernel §3)*
+- [x] **normalize(Prefix, ·)** — bindings arrived; the store's COMPLETE delta reaction (custody, own watchers, own cascade). Retires *revise* as vocabulary; the agreement law against the wholesale pass lives in the overload. *(constraint-kernel)*
+- [x] **absorb** — the wholesale door: meet an incoming THEORY into the resident store (seeding from the atoms' own empty when absent, skipping under the covering guard) + queue normalize. *(constraint-kernel §2)*
 - [~] **normalize (store)** — re-establish normal form after a meet brought foreign knowledge; may fail. *(constraint-kernel)*
 - [x] **Revision** — a store's answer: unchanged / fail / updated(own factor + consequences: inferred prefixes, runs). *(constraint-kernel)*
 - [?] **custody** — a store understands only its own state; the driver combines verdicts it does not inspect. *(constraint-kernel)*
-- [x] **factor** — one store's slice of the package's knowledge product. *(constraint-kernel)*
+- [x] **factor** — one store's slice of the package's knowledge product; since the migration, the slice's KNOWLEDGE is its theory and the factor is its interpreter. *(constraint-kernel)*
+- [x] **Theory** — a factor's knowledge as syntax: a family-homogeneous atom set in normal form (slot-mates fused, dominated atoms deleted); meet = index merge, leq = covering, split = the name cut, rename = the crossing. What crosses, what keys, what Residues carries. *(constraint-kernel §3)*
+- [x] **Atom** — one constraint item, the unit theory: family (nominal `getFactorClass` + constructive `empty`), name, watched surface, rename. Capabilities declared, never assumed: Semilattice fusion, Doomed, sharp leq. *(constraint-kernel §3)*
+- [?] **covering order** — grade two of the leq tower (structural ⊂ covering ⊂ family-semantic): every atom of the wider theory entailed by SOME atom of the narrower; sharp as far as atom-leq overrides reach, blind to conjunctive entailment by construction. *(Theory)*
+- [?] **subsumption deletion** — digestion's second phase: an atom strictly dominated by another drops (¬A beside ¬(A∧B) adds nothing); what makes covering antisymmetric on normal forms. *(Theory)*
+- [x] **Doomed** — the pricing capability: a cheap own-semantics born-violated check, monotone under binding growth; read by the activation door, absent means price 1. *(constraints/store)*
+- [x] **Constraint (pair)** — DESIGN (ratified Aug 2026, unbuilt): the package's constraint entry as Constraint{Theory, Factor} — knowledge outside, behavior and memo beside it; Revision returns the pair. Distinct from and superseding the unratified one-type proposal in design/constraint.md. *(constraint-pairs-theory-with-factor note)*
 - [~] **Watches** — the shared chain matcher: which items wake on which terms. *(constraints/store)*
 - [x] **suspension** — a parked (terms, ripeness, body) triple owned by the DRIVER, not a store: Propagation parks it, ripens it after bindings, splices the body into the run lane. *(condition.md §8.1)*
 - [x] **ripeness** — the condition under which a suspension's body may run (e.g. deep-groundness). *(projection/)*
@@ -80,8 +85,7 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **PartialOrder / leq** — the entailment order alone: a ⊑ b = "a knows at least as much"; the direction commitment a bare Semilattice withholds. *(functional algebra)*
 - [x] **meet / join** — narrow by conjunction / widen by union; every store accumulates by meet; join is the second face, exposed as a projection when needed. *(lattice.md)*
 - [x] **Domain\<L\>** — what a LatticeStore requires of a per-name value: meet, order, membership, collapse-to-point, stabilization — the admission test as a capability record. *(lattice/)*
-- [~] **Absorbable** — the arrival capability: pure `meet` + `normalize`; store-level Semilattice+PartialOrder. *(constraints/store)*
-- [x] **Projectable** — the departure capability: `split` (lossless factoring over vars) + `rename`; project = split∘canonical-rename. Participation in tabling requires it. *(constraints/store)*
+- [?] **the key form** — `theory.split(vars)._1.rename(canonical)`: the covered half of the name cut in canonical names, structurally comparable across packages. Retires *Absorbable* and *Projectable* (arrival = the absorb door; departure = Theory's own split/rename — every resident family crosses). *(constraint-kernel §3)*
 - [~] **Renaming** — one final class: a seed map `Unknown → Term` plus an optional mint-on-miss; `apply` is one walkAll under the seed. Factories: `of` (seed only, misses pass through), `minting` (fresh name per miss — the existential), `restating` (Hole-keyed targets). Callers build the seed; Residues' resolution is the main one. *(constraints/store)*
 - [~] **Semiring** — (⊕ merge alternatives, ⊗ chain steps, 0, 1); distributivity is the rearrangement license — the law that makes per-arrival delivery inside a fixpoint equal final-value delivery. *(functional algebra)*
 - [x] **IdempotentSemiring** — a⊕a=a: dedup is lawful, at-least-once delivery safe. *(functional algebra)*
@@ -115,7 +119,7 @@ rating pass can stop at any section boundary and still be useful.
 
 ## 6. The constraint ring (the July–August unification)
 
-- [~] **Residues** — ONE region of constraint knowledge: per-store factors conjoined; the ⊗-monoid (meet, TRUE); leq = containment, narrower entails wider. *(condition.md §3)*
+- [~] **Residues** — ONE region of constraint knowledge: per-store THEORIES conjoined; the ⊗-monoid (meet, TRUE); leq = containment (theory covering, pointwise), narrower entails wider. *(condition.md §3)*
 - [x] **about / all / restate** — Residues' three doors, each speaking pairs of (reified image, factors): `about(world, anchor)` extracts the knowledge touching the anchor, `all(world, anchor)` extracts the whole normalized delta (existential witnesses included), `restate(image, factors, anchor)` re-states an extraction into a consumer world under one shared minting Renaming — the existential's scope. *(tabling/Residues)*
 - [x] **conjunct** — one Residues value inside a Condition; one derivation's region. *(condition.md)*
 - [~] **Condition** — a term's proven space: a DNF of Residues kept in absorption normal form; ⊕ = region union, ⊗ = cross-meet, 1 = TRUE (ground), bounded. *(condition.md §4)*
@@ -156,7 +160,7 @@ rating pass can stop at any section boundary and still be useful.
 - [~] **constructive negation** ⋯import — negation computed as the complement of a SEALED answer region, delivered as constraints; "negation is the ultimate outside reader". *(condition.md §8.5)*
 - [~] **clause learning / tabling the failures** ⋯import — a learned nogood is "⊥ GIVEN R"; ¬R is a co-store clause; nogoods are born at 1 and stream; the fair scheduler prunes the frontier instead of backjumping. *(condition.md §8.6)*
 - [?] **annotation seam** — PARKED: explanations, source attribution and provenance as one ring threaded through the kernel's meets; three customers, first payer builds it. *(condition.md §8.6)*
-- [~] **suspensions as factors / debt certificate** — a suspension enters conditions as (name, actuals); restate re-imposes the obligation, not its consequences; bodies must be state-independent. *(condition.md §8.1)*
+- [x] **suspensions cross as schemas** — RULED (Aug 2026): suspensions never become store or theory citizens (agenda-fixpoint safety); what crosses is a named positional description — (name, watched actuals), predicate and body excluded — re-parking through the driver's own door in the consumer's scope. Retires *suspensions as factors*. *(suspensions-cross-as-schemas note, #136)*
 - [x] **(actuals, template)** — the assembler's call-value = the suspension transcription: arguments as terms + a body-maker whose closure is excluded from identity. *(assembler / §8.1)*
 - [~] **two rings, one value shape** — "what I've PROVEN" (bounded answer ring) vs "what to RUN" (closed program ring; star = defineRecursive = minting the name); solve-to-seal connects them. *(condition.md §8.1)*
 - [~] **equivalence inflation** — the named failure mode: "can model" silently becoming "is". *(method.md)*

@@ -292,6 +292,16 @@ than incidents. Three are now well-posed:
 
 ### 8.1 Are suspensions `Residues`?
 
+**RULED (August 2026): no.** Suspensions never become store or theory
+citizens — the driver treats them specially for the agenda fixpoint to be
+safe. What CAN cross is a named positional description that re-parks
+through the driver's own door in the consumer's scope:
+`docs/notes/suspensions-cross-as-schemas.md` holds the design, task #136
+its execution. The section below is kept as the question's history — its
+factor-admission framing is superseded; its transcription insight (the
+(actuals, template) call-value, the SLG delay-list reading) survives
+inside the note.
+
 Today a parked suspension at a tabled boundary refuses loudly (the answer
 would owe a condition its key cannot carry). Under the ring, the question
 becomes precise: **a suspension participates iff it can be a factor** — that

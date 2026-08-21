@@ -170,6 +170,18 @@ move earns a place here after it has fired at least twice.
   only while nothing in the subtree suspends → Exhaustion over the seal);
   fire-and-forget `fork()` (eventual execution is backstopped by joins
   nobody performs → `pool.execute`).
+- **Design churn is a phase error, not a work cost.** When execution and
+  design run interleaved, every design advance invalidates scaffolding
+  built two commits earlier — capabilities constructed and deleted within
+  days, doors built three ways before landing once. The Factor/Theory/Atom
+  arc paid this thrice (stated(), per-kind posting(), per-atom restate)
+  and its measured performance benefit was zero; its real products were
+  structure, laws, and the bugs the movement surfaced. The rule "arcs
+  open with design" is necessary but not sufficient: when mid-arc
+  discoveries outgrow the opening design, STOP and re-open design as its
+  own phase instead of steering the dig while digging. An arc whose
+  charter is finished before its first commit (the Constraint pair) is
+  what the churn purchased.
 - **Instruments are scaffolding; refusals are product.** Hunt diagnostics
   — lifecycle traces, tagged audits, state dumps in messages — are torn
   out with the hunt; "keep it, zero cost when off" was overruled twice
