@@ -6,6 +6,7 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
@@ -21,9 +22,10 @@ public final class FiniteDomainTestSupport {
 
 	public static <T> Package withDomain(Unifiable<T> x, Domain<T> d) {
 		Package p = FiniteDomainConstraints.register(Package.empty());
-		FiniteDomainConstraints store = FiniteDomainConstraints.getFDStore(p)
-				.withDomain((LVar<?>) x.asVar().get(), d);
-		return Constraint.put(p, store);
+		Theory<FiniteDomainConstraints> theory = FiniteDomainConstraints.withDomain(
+				Theory.empty(), (LVar<?>) x.asVar().get(), d);
+		return p.putStore(FiniteDomainConstraints.class,
+				Constraint.of(theory, FiniteDomainConstraints.empty()));
 	}
 
 	/** A keeper watching a fresh var — value-distinct per call (fresh var). */

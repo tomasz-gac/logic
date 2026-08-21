@@ -13,6 +13,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -111,6 +112,7 @@ public class ImpositionLawsTest {
 	}
 
 	@Test
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public void quiescentNormalizeIsAFixpoint() {
 		// a delivered world is post-drain: every resident store's normalize
 		// answers unchanged (or an equal replacement) — quiescence is real
@@ -123,18 +125,19 @@ public class ImpositionLawsTest {
 					continue;
 				}
 				exercised++;
-				Factor<?> cs = (Factor<?>) ((Constraint<?>) store).getFactor();
+				Constraint<?> pair = (Constraint<?>) store;
+				Factor<?> cs = pair.getFactor();
 				final long s = seed;
-				new BreadthFirstScheduler<>((Fiber<Revision>) ((Factor) cs).normalize(((Factor<?>) cs).theory(), p)).get().match(
+				new BreadthFirstScheduler<>((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), p)).get().match(
 						() -> {
 							throw new AssertionError(
 									"seed " + s + ": quiescent normalize failed: " + cs);
 						},
 						() -> null,
 						updated -> {
-							assertThat((Object) updated.factor())
+							assertThat((Object) updated.constraint().getTheory())
 									.describedAs("seed %d: quiescent normalize moved: %s", s, cs)
-									.isEqualTo(cs);
+									.isEqualTo(pair.getTheory());
 							return null;
 						});
 			}

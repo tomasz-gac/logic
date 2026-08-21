@@ -27,8 +27,8 @@ import org.junit.Test;
 
 public class NogoodProjectionTest {
 
-	private static NogoodConstraints store(Nogood... nogoods) {
-		return NogoodConstraints.of(LinkedHashSet.of(nogoods));
+	private static Theory<NogoodConstraints> store(Nogood... nogoods) {
+		return Theory.of(LinkedHashSet.of(nogoods));
 	}
 
 	private static Nogood over(com.tgac.logic.constraints.Posting... literals) {
@@ -48,14 +48,14 @@ public class NogoodProjectionTest {
 		Unifiable<Integer> y = lvar();
 		Nogood aboutX = over(x.unifies(3));
 		Nogood aboutXY = over(x.unifies(1), y.unifies(2));
-		NogoodConstraints whole = store(aboutX, aboutXY);
+		Theory<NogoodConstraints> whole = store(aboutX, aboutXY);
 
-		io.vavr.Tuple2<Theory<NogoodConstraints>, Theory<NogoodConstraints>> parts = whole.theory().split(
+		io.vavr.Tuple2<Theory<NogoodConstraints>, Theory<NogoodConstraints>> parts = whole.split(
 				Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()));
 
 		assertThat(parts._1.atoms()).containsExactly(aboutX);
 		assertThat(parts._2.atoms()).containsExactly(aboutXY);
-		assertThat(parts._1.meet(parts._2)).isEqualTo(whole.theory());
+		assertThat(parts._1.meet(parts._2)).isEqualTo(whole);
 	}
 
 	@Test
@@ -63,8 +63,8 @@ public class NogoodProjectionTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> z = lvar();
 
-		NogoodConstraints a = store(over(x.unifies(3))).rename(toHole(x, 0)).ground();
-		NogoodConstraints b = store(over(z.unifies(3))).rename(toHole(z, 0)).ground();
+		Theory<NogoodConstraints> a = store(over(x.unifies(3))).rename(toHole(x, 0)).ground();
+		Theory<NogoodConstraints> b = store(over(z.unifies(3))).rename(toHole(z, 0)).ground();
 
 		assertThat(a).isEqualTo(b);
 	}
@@ -74,9 +74,9 @@ public class NogoodProjectionTest {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> z = lvar();
 
-		NogoodConstraints a = store(over(dom(x, EnumeratedDomain.range(0L, 5L))))
+		Theory<NogoodConstraints> a = store(over(dom(x, EnumeratedDomain.range(0L, 5L))))
 				.rename(toHole(x, 0)).ground();
-		NogoodConstraints b = store(over(dom(z, EnumeratedDomain.range(0L, 5L))))
+		Theory<NogoodConstraints> b = store(over(dom(z, EnumeratedDomain.range(0L, 5L))))
 				.rename(toHole(z, 0)).ground();
 
 		assertThat(a).isEqualTo(b);
@@ -95,8 +95,8 @@ public class NogoodProjectionTest {
 								com.tgac.logic.unification.LVal.lval(3))
 						.get());
 
-		NogoodConstraints viaResolution = store(over(resolved)).rename(toHole(x, 0)).ground();
-		NogoodConstraints viaBind = store(over(z.unifies(3))).rename(toHole(z, 0)).ground();
+		Theory<NogoodConstraints> viaResolution = store(over(resolved)).rename(toHole(x, 0)).ground();
+		Theory<NogoodConstraints> viaBind = store(over(z.unifies(3))).rename(toHole(z, 0)).ground();
 
 		assertThat(viaResolution).isEqualTo(viaBind);
 	}

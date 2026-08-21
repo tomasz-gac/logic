@@ -7,6 +7,7 @@ import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVal;
@@ -90,9 +91,10 @@ public class Constraints {
 		return p.getStores().values()
 				.toJavaStream()
 				.filter(Constraint.class::isInstance)
-				.map(entry -> (Factor<?>) ((Constraint<?>) entry).getFactor())
+				.map(entry -> (Constraint<?>) entry)
 				.reduce(Try.success(unifiable),
-						(l, cs) -> l.flatMap(u -> Try.of(() -> (Term<A>) ((Factor) cs).reify(cs.theory(), u, renaming, p))),
+						(l, cs) -> l.flatMap(u -> Try.of(() ->
+								(Term<A>) ((Factor) cs.getFactor()).reify((Theory) cs.getTheory(), u, renaming, p))),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))
 				.get();
 	}

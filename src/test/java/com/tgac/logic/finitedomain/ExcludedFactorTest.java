@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
@@ -37,11 +38,11 @@ public class ExcludedFactorTest {
 		// refuted reading: the excluded factor's imposition fails against
 		// the base — ¬(x ∈ 1..2) with x = 7 discharges, the answer flows
 		Unifiable<Long> x = lvar();
-		FiniteDomainConstraints factor = FiniteDomainConstraints.empty()
-				.withDomain(varOf(x), EnumeratedDomain.range(1L, 3L));
+		Theory<FiniteDomainConstraints> factor = FiniteDomainConstraints.withDomain(
+				Theory.empty(), varOf(x), EnumeratedDomain.range(1L, 3L));
 
 		List<Long> answers = x.unifies(7L)
-				.and(exclude(Propagation.absorb(factor.theory())))
+				.and(exclude(Propagation.absorb(factor)))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList());
@@ -54,11 +55,11 @@ public class ExcludedFactorTest {
 		// factor — meeting it adds nothing, the sole literal is entailed,
 		// every branch fails
 		Unifiable<Long> x = lvar();
-		FiniteDomainConstraints factor = FiniteDomainConstraints.empty()
-				.withDomain(varOf(x), EnumeratedDomain.range(1L, 11L));
+		Theory<FiniteDomainConstraints> factor = FiniteDomainConstraints.withDomain(
+				Theory.empty(), varOf(x), EnumeratedDomain.range(1L, 11L));
 
 		Goal g = dom(x, EnumeratedDomain.range(2L, 5L))
-				.and(exclude(Propagation.absorb(factor.theory())));
+				.and(exclude(Propagation.absorb(factor)));
 		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
 	}
 
@@ -68,11 +69,11 @@ public class ExcludedFactorTest {
 		// brings new knowledge at registration, so the nogood stays; the
 		// ground floor excludes exactly the factor's region
 		Unifiable<Long> x = lvar();
-		FiniteDomainConstraints factor = FiniteDomainConstraints.empty()
-				.withDomain(varOf(x), EnumeratedDomain.range(2L, 5L));
+		Theory<FiniteDomainConstraints> factor = FiniteDomainConstraints.withDomain(
+				Theory.empty(), varOf(x), EnumeratedDomain.range(2L, 5L));
 
 		List<Long> answers = dom(x, EnumeratedDomain.range(0L, 7L))
-				.and(exclude(Propagation.absorb(factor.theory())))
+				.and(exclude(Propagation.absorb(factor)))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.sorted()

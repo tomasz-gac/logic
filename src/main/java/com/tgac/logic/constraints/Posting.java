@@ -185,7 +185,7 @@ public interface Posting extends Goal, Bounded {
 		}
 
 		/**
-		 * Package.withStored silently no-ops on an unregistered store, and a
+		 * The statement park silently no-ops on an unregistered family, and a
 		 * dropped statement would read "unchanged" — the false cross-off
 		 * direction, which can veto a satisfiable branch. Residence is
 		 * asserted after imposition.

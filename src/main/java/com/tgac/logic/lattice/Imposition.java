@@ -65,10 +65,10 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 		if (walked.asVal().isDefined()) {
 			return !value.admits(walked.get());
 		}
-		return Constraint.in(p, (Class<F>) storeClass)
-				.map(Constraint::getFactor)
-				.flatMap(store -> ((LatticeFactor<L, ?>) store).getValue(walked))
-				.exists(existing -> existing.meet(value).isAbsorbing());
+		return Constraint.in(p, (Class) storeClass)
+				.flatMap(pair -> ((LatticeFactor) ((Constraint) pair).getFactor())
+						.getValue(((Constraint) pair).getTheory(), walked))
+				.exists(existing -> ((L) existing).meet(value).isAbsorbing());
 	}
 
 	/** Same family, same target only — the slot condition, guarded loudly. */

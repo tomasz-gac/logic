@@ -42,15 +42,6 @@ public abstract class Revision {
 				Collections.emptyList(), Collections.emptyList());
 	}
 
-	/**
-	 * {@link #updated(Constraint)} from a factor still holding its theory —
-	 * the transitional face; dies when residence moves.
-	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	public static Updated updated(Factor<?> replacement) {
-		return updated(Constraint.of(((Factor) replacement).theory(), (Factor) replacement));
-	}
-
 	public abstract <R> R match(
 			Supplier<R> onFail,
 			Supplier<R> onUnchanged,
@@ -117,11 +108,6 @@ public abstract class Revision {
 
 		public Constraint<?> constraint() {
 			return constraint;
-		}
-
-		/** The interpreter half — transitional; dies when residence moves. */
-		public Factor<?> factor() {
-			return constraint.getFactor();
 		}
 
 		public List<Prefix> inferred() {

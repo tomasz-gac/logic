@@ -1,13 +1,11 @@
 package com.tgac.logic.lattice;
 
-// ABOUTME: The generic constraint store over a component lattice: a resident theory
-// ABOUTME: of impositions and propagators; instances supply only their capability record.
+// ABOUTME: The generic constraint behavior over a component lattice: normalize, stated
+// ABOUTME: and the cascade drain a theory of impositions and propagators; instances supply their capability record.
 
 import static com.tgac.logic.unification.LVal.lval;
 
-import com.tgac.functional.algebra.Absorbing;
 import com.tgac.functional.algebra.MonotoneDrain;
-import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
@@ -36,160 +34,83 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 
 /**
- * The store residue that never mentions its value domain
- * (docs/design/lattice-store.md): entries keyed by NAME — a live {@link LVar}
- * or a canonical Any — carrying a value of the component lattice {@code L},
- * plus the propagator kernel (named, value-equal, watched, cascaded, deduped).
- * Pointwise meet, slotwise leq, revise/normalize/stated, split and rename are
- * all inherited; the value's capability record ({@link Domain}) supplies
- * verification, collapse and the termination guard, and a concrete store
- * supplies only its construction seams {@link #create} and
- * {@link #bottomStore} plus its {@code enforce}.
+ * The store behavior that never mentions its value domain
+ * (docs/design/lattice-store.md): the resident theory holds entries keyed by
+ * NAME — a live {@link LVar} or a canonical Any — carrying a value of the
+ * component lattice {@code L}, plus the propagator kernel (named, value-equal,
+ * watched, cascaded, deduped). Verification, collapse and the termination
+ * guard come from the value's capability record ({@link Domain}); a concrete
+ * store supplies only its {@code enforce}. The class is stateless: every
+ * trigger receives the pair's theory and answers with a revised one.
  */
-@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor<L, S>>
-		implements Factor<S>, Semilattice<S>, Absorbing {
-
-	/**
-	 * The resident theory: an {@link Imposition} per constrained NAME (a live
-	 * LVar or a canonical Any) plus the parked propagators. The values-map
-	 * face is the theory's slot index read by surface.
-	 */
-	protected final Theory<S> theory;
-
-	/** The same store kind over different contents. */
-	protected abstract S create(Theory<S> theory);
+		implements Factor<S> {
 
 	@SuppressWarnings("unchecked")
 	private Imposition<L, S> imposition(Term<?> target, L value) {
-		return new Imposition<>((Class<S>) getClass(), target, value, create(Theory.empty()));
+		return new Imposition<>((Class<S>) getClass(), target, value, self());
 	}
 
-	private Option<Imposition<L, S>> valueAtom(Term<?> v) {
+	private Option<Imposition<L, S>> valueAtom(Theory<S> theory, Term<?> v) {
 		return theory.atom(getClass(), "imposition", HashSet.of(v)).map(Types.cast());
 	}
 
 	@SuppressWarnings("unchecked")
-	protected java.util.stream.Stream<Imposition<L, S>> impositions() {
+	protected Stream<Imposition<L, S>> impositions(Theory<S> theory) {
 		return theory.kind(Imposition.class).map(i -> (Imposition<L, S>) i);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected java.util.stream.Stream<Propagator<S>> props() {
+	protected Stream<Propagator<S>> props(Theory<S> theory) {
 		return theory.kind(Propagator.class).map(p -> (Propagator<S>) p);
 	}
 
-	/** The factor without its entry at {@code name} — spent bookkeeping drops. */
-	protected S spent(Term<?> name) {
-		return valueAtom(name)
-				.map(atom -> create(theory.without(atom)))
-				.getOrElse(this::self);
+	/** The theory without its entry at {@code name} — spent bookkeeping drops. */
+	protected Theory<S> spent(Theory<S> theory, Term<?> name) {
+		return valueAtom(theory, name)
+				.map(theory::without)
+				.getOrElse(theory);
 	}
-
-	/**
-	 * The canonical dead store: meets and cascades transition to it on failure,
-	 * so ⊥ IS the branch death and has exactly one representative per kind.
-	 */
-	protected abstract S bottomStore();
 
 	@SuppressWarnings("unchecked")
 	private S self() {
 		return (S) this;
 	}
 
-	public Option<L> getValue(Term<?> v) {
-		return valueAtom(v).map(Imposition::getValue);
+	/** The live package with {@code theory} in residence — what examinations read. */
+	private Package resident(Package state, Theory<S> theory) {
+		return state.putStore(getClass(), Constraint.of(theory, self()));
+	}
+
+	public Option<L> getValue(Theory<S> theory, Term<?> v) {
+		return valueAtom(theory, v).map(Imposition::getValue);
 	}
 
 	/** Narrowing write: the value FUSES with any existing entry at {@code x}. */
-	public S withValue(Term<?> x, L value) {
-		return create(theory.with(imposition(x, value)));
-	}
-
-	/**
-	 * The store as a product order in the KNOWLEDGE direction: values
-	 * pointwise (a missing name is ⊤), propagators by set union — more
-	 * constraints is more knowledge, smaller region, lower. The cascade
-	 * still terminates against this order: values strictly narrow (the
-	 * {@link Domain#stabilized} guard) and discharge only ever REMOVES propagators
-	 * (knowledge gone redundant — the factor rises, the region stands).
-	 */
-	/**
-	 * FAMILY-INTERNAL: the cascade drains this store as its lattice point,
-	 * and {@code MonotoneDrain}'s termination theorem types its premise —
-	 * contraction on a finite-height semilattice. The declaration lives on
-	 * this class, not the {@link Factor} interface: the kernel requires no
-	 * algebra of a factor; the family whose fixpoint leans on the theorem
-	 * declares it. (Interim: constraint-pairs-theory-with-factor.md moves
-	 * the drained state to the theory itself.)
-	 */
-	@Override
-	public S combine(S other) {
-		if (isAbsorbing() || other.isAbsorbing()) {
-			return bottomStore();
-		}
-		return absorb(other.theory());
-	}
-
-	@Override
-	public S absorb(Theory<S> incoming) {
-		if (isAbsorbing()) {
-			// the absorber is terminal: a dead branch's store accepts no
-			// knowledge — resurrection would un-refute the refuted
-			return bottomStore();
-		}
-		S met = create(theory.meet(incoming));
-		return met.impositions().anyMatch(i -> (i.getValue()).isAbsorbing()) ?
-				bottomStore() :
-				met;
-	}
-
-	@Override
-	public boolean isAbsorbing() {
-		return this == bottomStore();
-	}
-
-	@Override
-	public boolean isEmpty() {
-		return !isAbsorbing() && theory.isEmpty();
-	}
-
-	@Override
-	public S meet(Atom<S> c) {
-		// an Imposition is a MESSAGE, not parkable content: its value enters
-		// only through stated's routing (verification, collapse, inference) —
-		// a silent park would put un-vetted knowledge in front of normalize
-		return c instanceof Propagator ?
-				create(theory.with(c)) :
-				self();
-	}
-
-	@Override
-	public Theory<S> theory() {
-		return theory;
+	public Theory<S> withValue(Theory<S> theory, Term<?> x, L value) {
+		return theory.with(imposition(x, value));
 	}
 
 	/**
 	 * cKanren's process-δ as a value: applying "target ⊂ value" against a
-	 * state and this factor. A ground target is a membership check; a
+	 * state and this family's theory. A ground target is a membership check; a
 	 * variable's previous value is met — a bottom meet fails, a stabilized
 	 * one is the termination guard of wake-on-narrowing, a collapse to a
 	 * point becomes an inferred binding (the value map is deliberately NOT
 	 * updated — stale value information under a binding is fine, values are
 	 * consulted only for unbound variables), and anything else narrows the
-	 * factor with a re-examination note.
+	 * theory with a re-examination note.
 	 */
-	public Update update(Package state, Term<?> target, L value) {
+	public Update update(Theory<S> theory, Package state, Term<?> target, L value) {
 		if (target.isVal()) {
 			return value.admits(target.get()) ? Update.unchanged() : Update.fail();
 		}
 		LVar<?> x = target.asVar().get();
-		L previous = getValue(x).getOrNull();
+		L previous = getValue(theory, x).getOrNull();
 		L effective;
 		if (previous != null) {
 			effective = previous.meet(value);
@@ -207,10 +128,10 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			// only open variables collapse, so the mint succeeds; the defensive
 			// branch mirrors an already-bound no-op
 			return Prefix.binding(state.substitution(), x, lval(point.get()))
-					.<Update> map(prefix -> Update.applied(this).withInferred(prefix))
+					.<Update> map(prefix -> Update.applied(theory).withInferred(prefix))
 					.getOrElse(Update.unchanged());
 		}
-		return Update.applied(withValue(x, effective)).withReexamine(x);
+		return Update.applied(withValue(theory, x, effective)).withReexamine(x);
 	}
 
 	/**
@@ -227,21 +148,21 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 
 	/**
 	 * Posting-position re-examination of this store's own watchers of
-	 * {@code x}: the live store drains its cascade (a fiber — long cascades
+	 * {@code x}: the live theory drains its cascade (a fiber — long cascades
 	 * stay fairly stepped) and the collapses it yields re-enter through the
 	 * chokepoint like any other inferred bindings.
 	 */
 	@SuppressWarnings("unchecked")
 	protected Goal reexamineOwn(Term<?> x) {
 		return s -> Cont.defer(() -> {
-			S live = (S) ((Constraint) Constraint.in(s, (Class) getClass()).get()).getFactor();
-			return live.cascade(s, live, new ArrayList<>(), new ArrayList<>(),
+			Constraint<S> live = Constraint.in(s, (Class<S>) getClass()).get();
+			return cascade(s, live.getTheory(), live.getTheory(), new ArrayList<>(), new ArrayList<>(),
 							new ArrayDeque<>(Collections.<Term<?>> singletonList(x)))
 					.map(revision -> revision.<Cont<Package, Nothing>> match(
 							() -> Cont.complete(Nothing.nothing()),
 							() -> Cont.just(s),
 							upd -> {
-								Package updated = Constraint.put(s, (Factor<?>) upd.factor());
+								Package updated = s.putStore(getClass(), upd.constraint());
 								return upd.inferred().stream()
 										.<Goal> map(Propagation::resolve)
 										.reduce(Goal.success(), Goal::and)
@@ -255,31 +176,31 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		// each newly bound value must lie in its variable's lattice value; a
 		// var-var binding aliases the two, so the value follows the representative;
 		// every bound variable's watchers re-examine, then the cascade drains
-		S factor = self();
+		Theory<S> current = incoming;
 		List<Prefix> inferred = new ArrayList<>();
 		List<Goal> runs = new ArrayList<>();
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
 		for (Tuple2<LVar<?>, Term<?>> binding : prefix.bindings()) {
 			queue.add(binding._1);
-			L value = factor.getValue(binding._1).getOrNull();
+			L value = getValue(current, binding._1).getOrNull();
 			if (value == null) {
 				continue;
 			}
-			factor = consume(factor.update(state, state.walk(binding._2), value),
-					factor, inferred, runs, queue);
-			if (factor == null) {
+			current = consume(update(current, state, state.walk(binding._2), value),
+					current, inferred, runs, queue);
+			if (current == null) {
 				return Fiber.done(Revision.fail());
 			}
 			// the entry is spent the moment its verification passed (ground) or
 			// its value followed the representative (alias) — prune it here,
-			// while we already hold it, so the factor never drifts
-			factor = factor.spent(binding._1);
+			// while we already hold it, so the theory never drifts
+			current = spent(current, binding._1);
 		}
-		return cascade(state, factor, inferred, runs, queue);
+		return cascade(state, incoming, current, inferred, runs, queue);
 	}
 
 	/**
-	 * Wholesale self-reaction — a factor was met into this store
+	 * Wholesale self-reaction — a theory was met into this store
 	 * ({@link Propagation#absorb}): entries whose name no longer lives at its
 	 * root verify against the binding (fail on miss) or follow the
 	 * representative, every propagator takes its first examination against
@@ -287,14 +208,14 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	 */
 	@Override
 	public Fiber<Revision> normalize(Theory<S> incoming, Package state) {
-		if (isAbsorbing()) {
+		if (incoming.isAbsorbing()) {
 			return Fiber.done(Revision.fail());
 		}
-		S factor = self();
+		Theory<S> current = incoming;
 		List<Prefix> inferred = new ArrayList<>();
 		List<Goal> runs = new ArrayList<>();
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-		for (Imposition<L, S> entry : impositions().collect(Collectors.toList())) {
+		for (Imposition<L, S> entry : impositions(incoming).collect(Collectors.toList())) {
 			Term<?> walked = state.walk(entry.getTarget());
 			if (walked == entry.getTarget() && walked.asVar().isDefined()) {
 				continue;    // a live var at its root
@@ -302,40 +223,49 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			// anything else verifies: a rebound name follows its representative,
 			// and a GROUND-keyed entry (the theory crossing keeps val-resolved
 			// targets) takes its membership check instead of lingering unread
-			factor = consume(factor.update(state, walked, entry.getValue()),
-					factor, inferred, runs, queue);
-			if (factor == null) {
+			current = consume(update(current, state, walked, entry.getValue()),
+					current, inferred, runs, queue);
+			if (current == null) {
 				return Fiber.done(Revision.fail());
 			}
-			factor = factor.spent(entry.getTarget());
+			current = spent(current, entry.getTarget());
 		}
-		for (Propagator<S> propagator : props().collect(Collectors.toList())) {
-			factor = consume(examine(propagator, Constraint.put(state, factor), factor),
-					factor, inferred, runs, queue);
-			if (factor == null) {
+		for (Propagator<S> propagator : props(incoming).collect(Collectors.toList())) {
+			current = consume(examine(propagator, resident(state, current), current),
+					current, inferred, runs, queue);
+			if (current == null) {
 				return Fiber.done(Revision.fail());
 			}
 		}
-		return cascade(state, factor, inferred, runs, queue);
+		return cascade(state, incoming, current, inferred, runs, queue);
 	}
 
 	@Override
 	public Fiber<Revision> stated(Atom<S> item, Theory<S> incoming, Package state) {
 		if (item instanceof Imposition) {
-			// update's verification/collapse/narrowing routing, inside the
-			// store's method: the item is a message, the values map keeps
-			// the knowledge
+			// the statement door fused the value into its slot; the statement
+			// delta re-states the fused value through update's routing —
+			// verification, collapse inference, or a narrowing wake — against
+			// the theory with the slot stripped, so the routing sees exactly
+			// the knowledge the door combined
 			Imposition<L, S> imposition = (Imposition<L, S>) item;
+			Term<?> target = imposition.getTarget();
+			L fused = valueAtom(incoming, target).map(Imposition::getValue)
+					.getOrElse(imposition.getValue());
+			if (fused.isAbsorbing()) {
+				return Fiber.done(Revision.fail());
+			}
 			List<Prefix> inferred = new ArrayList<>();
 			List<Goal> runs = new ArrayList<>();
 			ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-			S factor = consume(
-					update(state, state.walk(imposition.getTarget()), imposition.getValue()),
-					self(), inferred, runs, queue);
-			if (factor == null) {
+			Theory<S> stripped = spent(incoming, target);
+			Theory<S> current = consume(
+					update(stripped, state, state.walk(target), fused),
+					stripped, inferred, runs, queue);
+			if (current == null) {
 				return Fiber.done(Revision.fail());
 			}
-			return cascade(state, factor, inferred, runs, queue);
+			return cascade(state, incoming, current, inferred, runs, queue);
 		}
 		if (!(item instanceof Propagator)) {
 			return Fiber.done(Revision.unchanged());
@@ -343,58 +273,64 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		List<Prefix> inferred = new ArrayList<>();
 		List<Goal> runs = new ArrayList<>();
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-		S factor = consume(
-				examine((Propagator<S>) item, Constraint.put(state, this), self()),
-				self(), inferred, runs, queue);
-		if (factor == null) {
+		Theory<S> current = consume(
+				examine((Propagator<S>) item, resident(state, incoming), incoming),
+				incoming, inferred, runs, queue);
+		if (current == null) {
 			return Fiber.done(Revision.fail());
 		}
-		return cascade(state, factor, inferred, runs, queue);
+		return cascade(state, incoming, current, inferred, runs, queue);
 	}
 
 	/**
 	 * This store's propagation loop: one iteration is one term whose watchers
 	 * re-examine; verdict updates discover further terms. The loop is the
-	 * unchecked {@link MonotoneDrain}: the store is the descending state
-	 * (values narrow, subsumption discharges propagators) and a failing
-	 * update transitions to ⊥, short-circuiting the drain — but the
-	 * contraction laws hold by construction, not verification:
-	 * {@link #update} couples re-examination to strict narrowing
-	 * (DomainUpdateContractTest pins it), so the per-step leq/equals sweeps
-	 * of the checked twin would verify what the toolkit cannot express
-	 * violating. Synchronous, so the whole cascade stays one fiber step; a
-	 * store hosting expensive propagators would use the fibered
+	 * unchecked {@link MonotoneDrain} over the THEORY — {@link Theory}'s own
+	 * {@code Semilattice}+{@code Absorbing} declarations type the termination
+	 * theorem's premise, and the theory is the descending state (values
+	 * narrow, subsumption discharges propagators). A failing update stops the
+	 * drain and fails the revision — but the contraction laws hold by
+	 * construction, not verification: {@link #update} couples re-examination
+	 * to strict narrowing (DomainUpdateContractTest pins it), so the per-step
+	 * leq/equals sweeps of the checked twin would verify what the toolkit
+	 * cannot express violating. Synchronous, so the whole cascade stays one
+	 * fiber step; a store hosting expensive propagators would use the fibered
 	 * {@code Worklist} twin instead — granularity is the store author's choice.
+	 * Unchanged is measured against the RESIDENT theory, not the working
+	 * start: a caller that stripped or spent entries before cascading has
+	 * already moved, and the driver must land the replacement.
 	 */
-	protected Fiber<Revision> cascade(Package state, S start,
+	protected Fiber<Revision> cascade(Package state, Theory<S> resident, Theory<S> start,
 			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
-		java.util.List<Propagator<S>> parked = start.props().collect(Collectors.toList());
-		S factor = MonotoneDrain.drainUnsafe(start, queue, (current, next) -> {
-			S stepped = current;
+		List<Propagator<S>> parked = props(start).collect(Collectors.toList());
+		boolean[] dead = {false};
+		Theory<S> outcome = MonotoneDrain.drainUnsafe(start, queue, (current, next) -> {
+			Theory<S> stepped = current;
 			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
 			for (Propagator<S> p : parked) {
-				if (!stepped.theory().atoms().contains(p)) {
+				if (!stepped.atoms().contains(p)) {
 					// an earlier verdict of this same trigger removed it
 					continue;
 				}
-				Package live = Constraint.put(state, stepped);
+				Package live = resident(state, stepped);
 				if (!p.watches(live, next)) {
 					continue;
 				}
 				stepped = consume(examine(p, live, stepped), stepped, inferred, runs, discovered);
 				if (stepped == null) {
-					return MonotoneDrain.Step.stop(bottomStore());
+					dead[0] = true;
+					return MonotoneDrain.Step.stop(current);
 				}
 			}
 			return MonotoneDrain.Step.proceed(stepped, discovered);
 		});
-		if (factor.isAbsorbing()) {
+		if (dead[0] || outcome.isAbsorbing()) {
 			return Fiber.done(Revision.fail());
 		}
-		if (factor == this && inferred.isEmpty() && runs.isEmpty()) {
+		if (outcome == resident && inferred.isEmpty() && runs.isEmpty()) {
 			return Fiber.done(Revision.unchanged());
 		}
-		Revision.Updated result = Revision.updated(factor);
+		Revision.Updated result = Revision.updated(Constraint.of(outcome, self()));
 		for (Prefix prefix : inferred) {
 			result = result.withInferred(prefix);
 		}
@@ -406,42 +342,42 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		return Fiber.done(result);
 	}
 
-	/** One propagator's verdict as an {@link Update} step against the factor. */
-	private Update examine(Propagator<S> p, Package live, S factor) {
+	/** One propagator's verdict as an {@link Update} step against the theory. */
+	private Update examine(Propagator<S> p, Package live, Theory<S> theory) {
 		return p.propagate(live).match(
 				Update::fail,
 				Update::unchanged,
-				() -> Update.applied(create(factor.theory.without(p))),
-				f -> f.apply(live, factor));
+				() -> Update.applied(theory.without(p)),
+				f -> f.apply(live, theory));
 	}
 
 	/**
-	 * Threads one step: the new factor (null when the branch died), payloads
+	 * Threads one step: the new theory (null when the branch died), payloads
 	 * accumulated, re-examination notes queued.
 	 */
 	@SuppressWarnings("unchecked")
-	private S consume(Update step, S factor,
+	private Theory<S> consume(Update step, Theory<S> theory,
 			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
 		return step.match(
 				() -> null,
-				() -> factor,
+				() -> theory,
 				applied -> {
 					inferred.addAll(applied.inferred());
 					runs.addAll(applied.runs());
 					queue.addAll(applied.reexamine());
-					return (S) applied.factor();
+					return (Theory<S>) applied.theory();
 				});
 	}
 
 	@Override
 	public <A> Term<A> reify(Theory<S> incoming, Term<A> unifiable, Renaming renaming, Package p) {
-		Set<LVar<?>> varsWithValues = impositions()
+		Set<LVar<?>> varsWithValues = impositions(incoming)
 				.map(Imposition::getTarget)
 				.map(p::walk)
 				.flatMap(u -> u.asVar().toJavaStream())
 				.collect(Collectors.toSet());
 
-		Set<LVar<?>> constrainedVarsWithoutValues = props()
+		Set<LVar<?>> constrainedVarsWithoutValues = props(incoming)
 				.map(Propagator::watchedTerms)
 				.flatMap(ts -> StreamSupport.stream(ts.spliterator(), false))
 				.map(p::walk)
@@ -454,54 +390,5 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		} else {
 			return unifiable;
 		}
-	}
-
-	/**
-	 * Values re-keyed through the renaming — an entry whose name resolves
-	 * to a value is spent bookkeeping (verified when it bound) and drops;
-	 * propagators re-watch their renamed terms.
-	 */
-	@Override
-	public Fiber<S> rename(Renaming renaming) {
-		Fiber<Theory<S>> renamed = Fiber.done(Theory.empty());
-		for (Imposition<L, S> entry : impositions().collect(Collectors.toList())) {
-			// Imposition.rename keeps a val-resolved target (the faithful
-			// crossing); dropping it here is this store's OPTIMIZATION — safe
-			// either way, since normalize verifies ground-keyed entries
-			renamed = renamed.flatMap(t -> renaming.apply(entry.getTarget())
-					.map(target -> target.asVal().isDefined() ? t
-							: t.with(imposition(target, entry.getValue()))));
-		}
-		for (Propagator<S> propagator : props().collect(Collectors.toList())) {
-			renamed = renamed.flatMap(t -> propagator.rename(renaming).map(t::with));
-		}
-		return renamed.map(this::create);
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) {
-			return true;
-		}
-		if (o == null || getClass() != o.getClass()) {
-			return false;
-		}
-		LatticeFactor<?, ?> that = (LatticeFactor<?, ?>) o;
-		if (isAbsorbing() || that.isAbsorbing()) {
-			// ⊥ has exactly one representative per kind — identity, never structure,
-			// so an empty live store can never compare equal to the dead one
-			return false;
-		}
-		return theory.equals(that.theory);
-	}
-
-	@Override
-	public int hashCode() {
-		return theory.hashCode();
-	}
-
-	@Override
-	public String toString() {
-		return getClass().getSimpleName() + "(" + theory + ")";
 	}
 }

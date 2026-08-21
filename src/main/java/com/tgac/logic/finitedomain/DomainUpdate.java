@@ -1,8 +1,9 @@
 package com.tgac.logic.finitedomain;
 
-// ABOUTME: FD's domain-update entry: "target ⊂ dom" against a state and factor, and
+// ABOUTME: FD's domain-update entry: "target ⊂ dom" against a state and theory, and
 // ABOUTME: the batch fold verdicts use; the process-δ primitive is LatticeStore.update.
 
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Update;
 import com.tgac.logic.unification.Prefix;
@@ -17,7 +18,7 @@ import java.util.List;
  * wake-on-narrowing, a singleton collapses to an inferred binding (the domain
  * map is deliberately NOT updated — stale domain information under a binding
  * is fine, domains are consulted only for unbound variables), and anything
- * else narrows the factor with a re-examination note. All expressed as the
+ * else narrows the theory with a re-examination note. All expressed as the
  * toolkit's {@link Update} steps by the store's inherited update primitive;
  * this class carries the FD-typed entry and the batch fold.
  */
@@ -27,36 +28,37 @@ final class DomainUpdate {
 	}
 
 	@SuppressWarnings("unchecked")
-	static Update apply(Package state, FiniteDomainConstraints factor, Term<?> target, Domain<?> dom) {
-		return factor.update(state, target, (Domain<Object>) dom);
+	static Update apply(Package state, Theory<FiniteDomainConstraints> theory, Term<?> target, Domain<?> dom) {
+		return FiniteDomainConstraints.empty().update(theory, state, target, (Domain<Object>) dom);
 	}
 
 	/**
-	 * Folds a batch of updates into one {@link Update}, threading the factor:
+	 * Folds a batch of updates into one {@link Update}, threading the theory:
 	 * fail short-circuits, narrowings accumulate re-examination terms, collapses
 	 * accumulate inferred prefixes.
 	 */
-	static Update narrowAll(Package state, FiniteDomainConstraints factor,
+	@SuppressWarnings("unchecked")
+	static Update narrowAll(Package state, Theory<FiniteDomainConstraints> theory,
 			List<FiniteDomain.VarWithDomain<?>> updates) {
-		FiniteDomainConstraints current = factor;
+		Theory<FiniteDomainConstraints> current = theory;
 		List<Prefix> inferred = new ArrayList<>();
 		List<Term<?>> reexamine = new ArrayList<>();
 		for (FiniteDomain.VarWithDomain<?> update : updates) {
 			Update step = apply(state, current, update.getUnifiable(), update.getDomain());
-			FiniteDomainConstraints before = current;
+			Theory<FiniteDomainConstraints> before = current;
 			current = step.match(
 					() -> null,
 					() -> before,
 					applied -> {
 						inferred.addAll(applied.inferred());
 						reexamine.addAll(applied.reexamine());
-						return (FiniteDomainConstraints) applied.factor();
+						return (Theory<FiniteDomainConstraints>) applied.theory();
 					});
 			if (current == null) {
 				return Update.fail();
 			}
 		}
-		if (current == factor && inferred.isEmpty() && reexamine.isEmpty()) {
+		if (current == theory && inferred.isEmpty() && reexamine.isEmpty()) {
 			return Update.unchanged();
 		}
 		Update.Applied result = Update.applied(current);

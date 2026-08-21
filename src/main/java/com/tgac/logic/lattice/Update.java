@@ -1,9 +1,9 @@
 package com.tgac.logic.lattice;
 
-// ABOUTME: A propagator's application to its OWN store's factor — the intra-store
+// ABOUTME: A propagator's application to its OWN store's theory — the intra-store
 // ABOUTME: answer type, distinct from the store→driver Revision.
 
-import com.tgac.logic.constraints.store.Factor;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Term;
@@ -15,7 +15,7 @@ import java.util.function.Supplier;
 
 /**
  * What a {@code Verdict.update} function answers its administering store: the
- * updated factor, inferred bindings, run goals, and — the part that never leaves
+ * updated theory, inferred bindings, run goals, and — the part that never leaves
  * the store — the terms whose watchers the store's own cascade must re-examine.
  * Keeping re-examination here (and not on {@code Revision}) makes leaking an
  * intra-store note to the driver unrepresentable.
@@ -33,8 +33,8 @@ public abstract class Update {
 		return Unchanged.INSTANCE;
 	}
 
-	public static Applied applied(Factor<?> factor) {
-		return new Applied(factor,
+	public static Applied applied(Theory<?> theory) {
+		return new Applied(theory,
 				Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
 	}
 
@@ -74,14 +74,14 @@ public abstract class Update {
 	}
 
 	public static final class Applied extends Update {
-		private final Factor<?> factor;
+		private final Theory<?> theory;
 		private final List<Prefix> inferred;
 		private final List<Term<?>> reexamine;
 		private final List<Goal> runs;
 
-		private Applied(Factor<?> factor, List<Prefix> inferred,
+		private Applied(Theory<?> theory, List<Prefix> inferred,
 				List<Term<?>> reexamine, List<Goal> runs) {
-			this.factor = factor;
+			this.theory = theory;
 			this.inferred = inferred;
 			this.reexamine = reexamine;
 			this.runs = runs;
@@ -89,21 +89,21 @@ public abstract class Update {
 
 		/** An inferred binding delta — routed to the driver via the store's Revision. */
 		public Applied withInferred(Prefix prefix) {
-			return new Applied(factor, appended(inferred, prefix), reexamine, runs);
+			return new Applied(theory, appended(inferred, prefix), reexamine, runs);
 		}
 
 		/** A term the owning store's cascade must re-examine. Never leaves the store. */
 		public Applied withReexamine(Term<?> x) {
-			return new Applied(factor, inferred, appended(reexamine, x), runs);
+			return new Applied(theory, inferred, appended(reexamine, x), runs);
 		}
 
 		/** A goal for the run lane — routed to the driver via the store's Revision. */
 		public Applied withRun(Goal goal) {
-			return new Applied(factor, inferred, reexamine, appended(runs, goal));
+			return new Applied(theory, inferred, reexamine, appended(runs, goal));
 		}
 
-		public Factor<?> factor() {
-			return factor;
+		public Theory<?> theory() {
+			return theory;
 		}
 
 		public List<Prefix> inferred() {
@@ -126,7 +126,7 @@ public abstract class Update {
 
 		@Override
 		public String toString() {
-			return "applied(" + factor
+			return "applied(" + theory
 					+ (inferred.isEmpty() ? "" : ", bind" + inferred)
 					+ (reexamine.isEmpty() ? "" : ", reexamine" + reexamine)
 					+ (runs.isEmpty() ? "" : ", runs" + runs) + ")";

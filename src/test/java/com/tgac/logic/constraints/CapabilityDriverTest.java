@@ -63,34 +63,6 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public boolean isEmpty() {
-			return true;
-		}
-
-		@Override
-		public Theory<EmittingFactor> theory() {
-			return Theory.empty();
-		}
-
-		@Override
-		public EmittingFactor meet(Atom<EmittingFactor> c) {
-			return this;
-		}
-
-		@Override
-		public EmittingFactor absorb(Theory<EmittingFactor> incoming) {
-			return this;
-		}
-
-
-
-		@Override
-		public Fiber<EmittingFactor> rename(Renaming renaming) {
-			throw new UnsupportedOperationException("driver fixtures do not rename");
-		}
-
-
-		@Override
 		public Fiber<Revision> normalize(Theory<EmittingFactor> incoming, Package state) {
 			return null;
 		}
@@ -109,14 +81,20 @@ public class CapabilityDriverTest {
 		}
 	}
 
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	private static Package root(Packaged... stores) {
 		Package p = Package.empty().withStore(Table.empty());
 		for (Packaged s : stores) {
 			p = s instanceof Factor
-					? Constraint.put(p, (Factor<?>) s)
+					? p.putStore(s.getClass(), Constraint.of((Theory) Theory.empty(), (Factor) s))
 					: p.putStore(s);
 		}
 		return p;
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static Revision.Updated updated(Factor<?> replacement) {
+		return Revision.updated(Constraint.of((Theory) Theory.empty(), (Factor) replacement));
 	}
 
 	private static long solutions(Package root) {
@@ -132,7 +110,7 @@ public class CapabilityDriverTest {
 		// cross-family swap the driver must refuse by name - putStore would
 		// otherwise silently overwrite ANOTHER family's factor
 		Package root = root(
-				new FactorA((prefix, state) -> Revision.updated(
+				new FactorA((prefix, state) -> updated(
 						new FactorB((pf, st) -> Revision.unchanged()))));
 
 		assertThatThrownBy(() -> solutions(root))
@@ -146,9 +124,9 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new FactorA((prefix, state) -> Revision.updated(new FactorA((pf, st) -> Revision.unchanged()))
+				new FactorA((prefix, state) -> updated(new FactorA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())),
-				new FactorB((prefix, state) -> Revision.updated(new FactorB((pf, st) -> Revision.unchanged()))
+				new FactorB((prefix, state) -> updated(new FactorB((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(2L)).get())));
 
 		// two stores infer q=1 and q=2 in one pass: the branch is inconsistent and
@@ -161,9 +139,9 @@ public class CapabilityDriverTest {
 		LVar<Long> q = LVar.<Long> lvar().asVar().get();
 
 		Package root = root(
-				new FactorA((prefix, state) -> Revision.updated(new FactorA((pf, st) -> Revision.unchanged()))
+				new FactorA((prefix, state) -> updated(new FactorA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())),
-				new FactorB((prefix, state) -> Revision.updated(new FactorB((pf, st) -> Revision.unchanged()))
+				new FactorB((prefix, state) -> updated(new FactorB((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())));
 
 		assertThat(solutions(root)).isEqualTo(1);
@@ -179,7 +157,7 @@ public class CapabilityDriverTest {
 		};
 
 		Package root = root(
-				new FactorA((prefix, state) -> Revision.updated(new FactorA((pf, st) -> Revision.unchanged()))
+				new FactorA((prefix, state) -> updated(new FactorA((pf, st) -> Revision.unchanged()))
 						.withInferred(Prefix.binding(state.substitution(), q, lval(1L)).get())));
 
 		Unifiable<Long> x = lvar();
@@ -207,7 +185,7 @@ public class CapabilityDriverTest {
 
 		Package root = root(
 				new FactorA((prefix, state) ->
-						Revision.updated(new FactorA((pf, st) -> Revision.unchanged()))
+						updated(new FactorA((pf, st) -> Revision.unchanged()))
 								.withSuspend(Suspension.of(
 										Collections.emptyList(), st -> true, probe))));
 

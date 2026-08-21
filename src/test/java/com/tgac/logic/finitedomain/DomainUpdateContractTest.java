@@ -6,6 +6,7 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Update;
@@ -16,8 +17,8 @@ public class DomainUpdateContractTest {
 
 	private static final LVar<?> X = (LVar<?>) lvar().asVar().get();
 
-	private static FiniteDomainConstraints store(Domain<Long> dom) {
-		return FiniteDomainConstraints.empty().withDomain(X, dom);
+	private static Theory<FiniteDomainConstraints> store(Domain<Long> dom) {
+		return FiniteDomainConstraints.withDomain(Theory.empty(), X, dom);
 	}
 
 	private static String kind(Update step) {

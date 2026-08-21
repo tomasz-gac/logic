@@ -14,6 +14,7 @@ import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
@@ -80,12 +81,13 @@ public class NormalizeAgreementLawsTest {
 					continue;
 				}
 				exercised++;
-				Factor<?> cs = (Factor<?>) ((Constraint<?>) store).getFactor();
-				Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize(cs.theory(), kept, extended));
-				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(cs.theory(), extended));
+				Constraint<?> pair = (Constraint<?>) store;
+				Factor<?> cs = pair.getFactor();
+				Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), kept, extended));
+				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), extended));
 
-				Option<Object> deltaLanding = landing(delta, cs);
-				Option<Object> wholesaleLanding = landing(wholesale, cs);
+				Option<Object> deltaLanding = landing(delta, pair);
+				Option<Object> wholesaleLanding = landing(wholesale, pair);
 				if (!deltaLanding.isDefined()) {
 					failures++;
 				}
@@ -132,14 +134,15 @@ public class NormalizeAgreementLawsTest {
 					: exclude(conflicting ? x.unifies(x) : x.unifies(lval((long) r.nextInt(5))));
 			Atom atom = ((Posting.Activation) posting).getItem();
 			Package parked = Constraint.stated(p, atom);
-			Factor<?> cs = ((Constraint<?>) parked.getStores()
-					.get(atom.getFactorClass()).get()).getFactor();
+			Constraint<?> pair = (Constraint<?>) parked.getStores()
+					.get(atom.getFactorClass()).get();
+			Factor<?> cs = pair.getFactor();
 
 			exercised++;
-			Revision delta = run((Fiber<Revision>) ((Factor) cs).stated(atom, cs.theory(), parked));
-			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(cs.theory(), parked));
-			Option<Object> deltaLanding = landing(delta, cs);
-			Option<Object> wholesaleLanding = landing(wholesale, cs);
+			Revision delta = run((Fiber<Revision>) ((Factor) cs).stated(atom, (Theory) pair.getTheory(), parked));
+			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), parked));
+			Option<Object> deltaLanding = landing(delta, pair);
+			Option<Object> wholesaleLanding = landing(wholesale, pair);
 			if (!deltaLanding.isDefined()) {
 				failures++;
 			}
@@ -164,12 +167,12 @@ public class NormalizeAgreementLawsTest {
 		return new BreadthFirstScheduler<>(normalize).get();
 	}
 
-	/** Failure = none; otherwise the factor the revision leaves resident. */
-	private static Option<Object> landing(Revision revision, Factor<?> cs) {
+	/** Failure = none; otherwise the theory the revision leaves resident. */
+	private static Option<Object> landing(Revision revision, Constraint<?> pair) {
 		return revision.match(
 				Option::none,
-				() -> Option.of(cs),
-				updated -> Option.of(updated.factor()));
+				() -> Option.of(pair.getTheory()),
+				updated -> Option.of(updated.constraint().getTheory()));
 	}
 
 

@@ -7,6 +7,7 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.goals.Watermark;
 import io.vavr.control.Option;
+import java.util.Collections;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -39,30 +40,29 @@ public class Constraint<S extends Factor<S>> implements Packaged {
 		return pkg.getStores().get(family).map(entry -> (Constraint<S>) entry);
 	}
 
-	/** A factor takes residence: paired with its theory, keyed by its family. */
+	/** The registration seed: an absent family takes residence with empty knowledge. */
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	public static Package put(Package pkg, Factor<?> factor) {
-		return pkg.putStore(factor.getClass(),
-				Constraint.of(((Factor) factor).theory(), (Factor) factor));
-	}
-
-	/** {@link #put} only when the family is absent — the registration seed. */
 	public static Package register(Package pkg, Factor<?> factor) {
-		return pkg.getStores().containsKey(factor.getClass()) ? pkg : put(pkg, factor);
+		return pkg.getStores().containsKey(factor.getClass()) ? pkg
+				: pkg.putStore(factor.getClass(),
+						Constraint.of((Theory) Theory.empty(), (Factor) factor));
 	}
 
 	/**
-	 * The statement park: {@code atom} meets its resident family — unchanged
-	 * when the family is absent. The watermark's statement seam is checked
-	 * here, where the atom's watched surface is known.
+	 * The statement park: {@code atom} meets its resident family's theory —
+	 * unchanged when the family is absent. The watermark's statement seam is
+	 * checked here, where the atom's watched surface is known.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public static Package stated(Package pkg, Atom<?> atom) {
 		Watermark.check(pkg, atom.watched());
-		return pkg.getStores().get(atom.getFactorClass())
-				.map(entry -> (Factor) ((Constraint) entry).getFactor().meet((Atom) atom))
-				.map(met -> put(pkg, (Factor<?>) met))
-				.getOrElse(pkg);
+		Constraint pair = (Constraint) pkg.getStores().get(atom.getFactorClass()).getOrNull();
+		if (pair == null) {
+			return pkg;
+		}
+		Theory met = pair.getTheory()
+				.meet(Theory.of((Iterable) Collections.singletonList(atom)));
+		return pkg.putStore(atom.getFactorClass(), Constraint.of(met, (Factor) pair.getFactor()));
 	}
 
 	@Override

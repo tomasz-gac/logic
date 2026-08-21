@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.category.Nothing;
 import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.Utils;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
@@ -47,7 +48,8 @@ public class ParametersTest {
 		Package[] box = new Package[1];
 		Package pkg = Package.of(HashMap.empty(),
 				LinkedHashMap.of(FiniteDomainConstraints.class,
-						FiniteDomainConstraints.empty().meet(constraint)));
+						Constraint.of(Theory.<FiniteDomainConstraints> empty().with(constraint),
+								FiniteDomainConstraints.empty())));
 		Propagation.resolve(TestAccess.prefix(prefix))
 				.apply(pkg)
 				.run(v -> {
@@ -65,9 +67,10 @@ public class ParametersTest {
 		Unifiable<Long> i = LVar.lvar();
 
 		List<Package> collect = Utils.collect(EnforceConstraintsFD.forceAns(i)
-				.apply(Constraint.register(Package.empty(), 
-						FiniteDomainConstraints.empty()
-								.withDomain(i.asVar().get(), EnumeratedDomain.range(0L, 10L)))));
+				.apply(Package.empty().putStore(FiniteDomainConstraints.class,
+						Constraint.of(FiniteDomainConstraints.withDomain(Theory.empty(),
+										i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
+								FiniteDomainConstraints.empty()))));
 
 		Assertions.assertThat(collect.stream()
 						.map(p -> TestAccess.get(p, i.asVar().get()).get())
@@ -83,9 +86,12 @@ public class ParametersTest {
 
 		List<Package> collect = Utils.collect(
 				EnforceConstraintsFD.forceAns(lval(Tuple.of(i, j)))
-						.apply(Constraint.register(Package.empty(), FiniteDomainConstraints.empty()
-								.withDomain(i.asVar().get(), EnumeratedDomain.range(0L, 3L))
-								.withDomain(j.asVar().get(), EnumeratedDomain.range(0L, 3L)))));
+						.apply(Package.empty().putStore(FiniteDomainConstraints.class,
+								Constraint.of(FiniteDomainConstraints.withDomain(
+												FiniteDomainConstraints.withDomain(Theory.empty(),
+														i.asVar().get(), EnumeratedDomain.range(0L, 3L)),
+												j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
+										FiniteDomainConstraints.empty()))));
 
 		List<Tuple2<Long, Long>> results = collect.stream()
 				.map(p -> Tuple.of(TestAccess.get(p, i.asVar().get()).get(),

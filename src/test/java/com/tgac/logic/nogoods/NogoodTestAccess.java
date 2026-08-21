@@ -4,6 +4,7 @@ package com.tgac.logic.nogoods;
 // ABOUTME: compare them by factor leq and by theory covering.
 
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.store.Theory;
 import io.vavr.collection.LinkedHashSet;
 
 public final class NogoodTestAccess {
@@ -15,10 +16,11 @@ public final class NogoodTestAccess {
 		for (Posting posting : forbidden) {
 			nogoods = nogoods.add(Nogood.of(posting));
 		}
-		return NogoodConstraints.of(nogoods);
+		return Theory.of(nogoods);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static boolean theoryLeq(Object a, Object b) {
-		return ((NogoodConstraints) a).theory().leq(((NogoodConstraints) b).theory());
+		return ((Theory<NogoodConstraints>) a).leq((Theory<NogoodConstraints>) b);
 	}
 }

@@ -4,7 +4,6 @@ package com.tgac.logic.constraints;
 // ABOUTME: worklist that makes the fixpoint explicit, and verdict administration.
 
 import com.tgac.functional.Exceptions;
-import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.debug.ProfilerStore;
@@ -145,20 +144,19 @@ public final class Propagation {
 			Atom<?> head = (Atom<?>) theory.atoms().head();
 			Class<?> family = head.getFactorClass();
 			Constraint pair = (Constraint) Constraint.in(p, (Class) family).getOrNull();
-			Factor resident = pair == null ? null : (Factor) pair.getFactor();
-			if (resident == null) {
+			if (pair == null) {
 				// the atom's empty is the family identity's constructive
 				// face — the theory seeds its own residence
-				Factor met = (Factor) ((Factor) head.empty()).absorb(theory);
-				return enqueue(Constraint.put(p, met), new Agenda.Absorbed(family));
+				return enqueue(p.putStore((Class) family, Constraint.of(theory, (Factor) head.empty())),
+						new Agenda.Absorbed(family));
 			}
-			if (resident.theory().leq(theory)) {
+			if (pair.getTheory().leq(theory)) {
 				// the covering door guard: the resident already entails the
 				// incoming knowledge — no meet, no re-normalization, no trials
 				return Cont.just(p);
 			}
-			Factor met = (Factor) resident.absorb(theory);
-			return enqueue(Constraint.put(p, met), new Agenda.Absorbed(family));
+			Constraint met = Constraint.of(pair.getTheory().meet(theory), (Factor) pair.getFactor());
+			return enqueue(p.putStore((Class) family, met), new Agenda.Absorbed(family));
 		};
 	}
 
@@ -193,7 +191,7 @@ public final class Propagation {
 	 */
 	private static Cont<Package, Nothing> reviseAll(
 			Package s,
-			BiFunction<Factor<?>, Package, Fiber<Revision>> trigger) {
+			BiFunction<Constraint<?>, Package, Fiber<Revision>> trigger) {
 		return Cont.defer(() ->
 				constraintStores(s)
 						.reduce(MFiber.mdone(s),
@@ -215,11 +213,11 @@ public final class Propagation {
 	 * replacement would silently overwrite ANOTHER store's factor.
 	 */
 	/** Custody, pair-typed: a revision may only replace its own entry. */
-	private static Package landed(Package pkg, Factor<?> author, Revision.Updated upd) {
+	private static Package landed(Package pkg, Constraint<?> author, Revision.Updated upd) {
 		Constraint<?> own = upd.constraint();
-		if (own.getFactor().getClass() != author.getClass()) {
+		if (own.getFactor().getClass() != author.getFactor().getClass()) {
 			throw new IllegalStateException("a revision may only replace its own factor: "
-					+ author.getClass().getSimpleName() + " answered with "
+					+ author.getFactor().getClass().getSimpleName() + " answered with "
 					+ own.getFactor().getClass().getSimpleName());
 		}
 		return pkg.putStore(own.getFactor().getClass(), own);
@@ -278,11 +276,10 @@ public final class Propagation {
 				.getOrElse(false);
 	}
 
-	@SuppressWarnings("unchecked")
-	private static Stream<Factor<?>> constraintStores(Package p) {
+	private static Stream<Constraint<?>> constraintStores(Package p) {
 		return p.getStores().values().toJavaStream()
 				.filter(Constraint.class::isInstance)
-				.map(entry -> (Factor<?>) ((Constraint<?>) entry).getFactor());
+				.map(entry -> (Constraint<?>) entry);
 	}
 
 	/**
@@ -399,9 +396,9 @@ public final class Propagation {
 			abstract Goal apply();
 		}
 
-		private static Fiber<Revision> getRevisionFiber(String name, Factor<?> cs, Package p, Fiber<Revision> revise) {
+		private static Fiber<Revision> getRevisionFiber(String name, Constraint<?> cs, Package p, Fiber<Revision> revise) {
 			return ProfilerStore.from(p).isDefined() ?
-					Fiber.named(origin -> name + " @ " +  cs.getClass().getSimpleName(), revise) :
+					Fiber.named(origin -> name + " @ " +  cs.getFactor().getClass().getSimpleName(), revise) :
 					revise;
 		}
 
@@ -431,7 +428,8 @@ public final class Propagation {
 							// each store's revise is COMPLETE: custody, its own watchers of the
 							// newly bound variables, and its own cascade
 							return ((Goal) s2 -> reviseAll(s2, (cs, p) ->
-									getRevisionFiber("Propagation.Bind", cs, p, ((Factor) cs).normalize(cs.theory(), kept, p))))
+									getRevisionFiber("Propagation.Bind", cs, p,
+											((Factor) cs.getFactor()).normalize((Theory) cs.getTheory(), kept, p))))
 									.and(ripen(kept))
 									.apply(extended);
 						})
@@ -455,8 +453,9 @@ public final class Propagation {
 			@Override
 			Goal apply() {
 				return s -> reviseAll(s,
-						(cs, p) -> item.getFactorClass() == cs.getClass() ?
-								getRevisionFiber("Propagation.Stated", cs, p, ((Factor) cs).stated(item, cs.theory(), p)) :
+						(cs, p) -> item.getFactorClass() == cs.getFactor().getClass() ?
+								getRevisionFiber("Propagation.Stated", cs, p,
+										((Factor) cs.getFactor()).stated(item, (Theory) cs.getTheory(), p)) :
 								Fiber.done(Revision.unchanged()));
 			}
 
@@ -477,8 +476,9 @@ public final class Propagation {
 			@Override
 			Goal apply() {
 				return s -> reviseAll(s,
-						(cs, p) -> family == cs.getClass() ?
-								getRevisionFiber("Propagation.Absorbed", cs, p, ((Factor) cs).normalize(cs.theory(), p)):
+						(cs, p) -> family == cs.getFactor().getClass() ?
+								getRevisionFiber("Propagation.Absorbed", cs, p,
+										((Factor) cs.getFactor()).normalize((Theory) cs.getTheory(), p)):
 								Fiber.done(Revision.unchanged()));
 			}
 

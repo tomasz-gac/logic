@@ -1,6 +1,5 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.finitedomain.FiniteDomainConstraints.getFDStore;
 import static com.tgac.logic.unification.LVal.lval;
 
 import com.tgac.functional.Exceptions;
@@ -30,12 +29,12 @@ class EnforceConstraintsFD {
 
 	public static <T> Goal enforceConstraints(Term<T> x) {
 		return a -> forceAns(x)
-				.and(a1 -> Tuple.of(getFDStore(a1).getDomains()
+				.and(a1 -> Tuple.of(FiniteDomainConstraints.getDomains(a1)
 								.keySet()
 								.toJavaStream()
 								.collect(Collectors.toSet()))
 						.apply(xs -> {
-							verifyAllConstrainedHaveDomain(getFDStore(a1).getConstraints(), xs);
+							verifyAllConstrainedHaveDomain(FiniteDomainConstraints.getConstraints(a1), xs);
 							return Goal.condu(Goal.defer(() -> forceAns(lval(xs))));
 						})
 						.apply(a1))

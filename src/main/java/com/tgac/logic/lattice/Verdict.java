@@ -3,8 +3,8 @@ package com.tgac.logic.lattice;
 // ABOUTME: The outcome a propagator reports after re-examining its constraint — the
 // ABOUTME: framework administers the parked lifecycle; bodies only ever report.
 
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Packaged;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -38,13 +38,13 @@ public abstract class Verdict {
 	}
 
 	/**
-	 * Stay parked AND apply this update to my OWN store's factor. Administered by
+	 * Stay parked AND apply this update to my OWN store's theory. Administered by
 	 * the owning store, never the driver: the function receives the live state and
-	 * the store's current factor and answers an {@link Update} — which cannot
+	 * the store's current theory and answers an {@link Update} — which cannot
 	 * express touching anyone else's factor, and whose re-examination notes
 	 * never leave the store.
 	 */
-	public static Verdict update(BiFunction<Package, Packaged, Update> f) {
+	public static Verdict update(BiFunction<Package, Theory<?>, Update> f) {
 		return new UpdateCase(f);
 	}
 
@@ -52,14 +52,14 @@ public abstract class Verdict {
 			Supplier<R> onFail,
 			Supplier<R> onKeep,
 			Supplier<R> onSubsumed,
-			Function<BiFunction<Package, Packaged, Update>, R> onUpdate);
+			Function<BiFunction<Package, Theory<?>, Update>, R> onUpdate);
 
 	private static final class Fail extends Verdict {
 		static final Fail INSTANCE = new Fail();
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<BiFunction<Package, Packaged, Update>, R> onUpdate) {
+				Function<BiFunction<Package, Theory<?>, Update>, R> onUpdate) {
 			return onFail.get();
 		}
 
@@ -74,7 +74,7 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<BiFunction<Package, Packaged, Update>, R> onUpdate) {
+				Function<BiFunction<Package, Theory<?>, Update>, R> onUpdate) {
 			return onKeep.get();
 		}
 
@@ -89,7 +89,7 @@ public abstract class Verdict {
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<BiFunction<Package, Packaged, Update>, R> onUpdate) {
+				Function<BiFunction<Package, Theory<?>, Update>, R> onUpdate) {
 			return onSubsumed.get();
 		}
 
@@ -100,15 +100,15 @@ public abstract class Verdict {
 	}
 
 	private static final class UpdateCase extends Verdict {
-		private final BiFunction<Package, Packaged, Update> f;
+		private final BiFunction<Package, Theory<?>, Update> f;
 
-		private UpdateCase(BiFunction<Package, Packaged, Update> f) {
+		private UpdateCase(BiFunction<Package, Theory<?>, Update> f) {
 			this.f = f;
 		}
 
 		@Override
 		public <R> R match(Supplier<R> onFail, Supplier<R> onKeep, Supplier<R> onSubsumed,
-				Function<BiFunction<Package, Packaged, Update>, R> onUpdate) {
+				Function<BiFunction<Package, Theory<?>, Update>, R> onUpdate) {
 			return onUpdate.apply(f);
 		}
 

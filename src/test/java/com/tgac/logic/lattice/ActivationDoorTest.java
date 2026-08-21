@@ -14,6 +14,7 @@ import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Renaming;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.LatticeFactorTest.FlatConstraints;
 import com.tgac.logic.lattice.LatticeFactorTest.FlatSet;
@@ -36,8 +37,8 @@ public class ActivationDoorTest {
 		Package state = new BreadthFirstScheduler<>(Trial.imposed(
 				Propagation.activate(on(X, 1, 2)), Package.empty())).get().head();
 
-		FlatConstraints store = Constraint.in(state, FlatConstraints.class).get().getFactor();
-		assertThat(store.getValue((Term<?>) X).get()).isEqualTo(FlatSet.of(1, 2));
+		Theory<FlatConstraints> theory = Constraint.in(state, FlatConstraints.class).get().getTheory();
+		assertThat(FlatConstraints.empty().getValue(theory, (Term<?>) X).get()).isEqualTo(FlatSet.of(1, 2));
 	}
 
 	@Test

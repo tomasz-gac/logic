@@ -3,6 +3,7 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: The separate schema: l ≠ r — singleton collapse prunes the other
 // ABOUTME: side; doomed the moment both sides walk to the same ground value.
 
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.FiniteDomain.VarWithDomain;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Singleton;
@@ -36,6 +37,7 @@ final class SeparateO extends Propagator<FiniteDomainConstraints> {
 				.getOrElse(Verdict::keep);
 	}
 
+	@SuppressWarnings("unchecked")
 	private static <T> Verdict verdict(VarWithDomain<T> ld, VarWithDomain<T> rd) {
 		Option<Tuple2<Arithmetic<T>, Arithmetic<T>>> zip = MiniKanren.zip(
 				FiniteDomain.getSingleElement(ld.getDomain()),
@@ -47,15 +49,15 @@ final class SeparateO extends Propagator<FiniteDomainConstraints> {
 			return Verdict.subsumed();
 		}
 		if (ld.getDomain() instanceof Singleton) {
-			return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
-					(FiniteDomainConstraints) store,
+			return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+					(Theory<FiniteDomainConstraints>) theory,
 					Collections.<VarWithDomain<?>> singletonList(VarWithDomain.of(
 							rd.getUnifiable(),
 							rd.<T> getDomain().difference(ld.getDomain())))));
 		}
 		if (rd.getDomain() instanceof Singleton) {
-			return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
-					(FiniteDomainConstraints) store,
+			return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+					(Theory<FiniteDomainConstraints>) theory,
 					Collections.<VarWithDomain<?>> singletonList(VarWithDomain.of(
 							ld.getUnifiable(),
 							ld.<T> getDomain().difference(rd.getDomain())))));

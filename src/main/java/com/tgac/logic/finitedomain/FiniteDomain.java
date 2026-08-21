@@ -3,6 +3,7 @@ package com.tgac.logic.finitedomain;
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
@@ -112,6 +113,7 @@ public class FiniteDomain {
 		return Propagation.activate(new LeqO(less, more));
 	}
 
+	@SuppressWarnings("unchecked")
 	static <T> Verdict leqVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
 		Domain<T> lessDom = lss.<T> getDomain().atMost(mor.<T> getDomain().max());
 		Domain<T> moreDom = mor.<T> getDomain().atLeast(lss.<T> getDomain().min());
@@ -122,8 +124,8 @@ public class FiniteDomain {
 			// ground and consistent: nothing left to watch
 			return Verdict.subsumed();
 		}
-		return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
-				(FiniteDomainConstraints) store,
+		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+				(Theory<FiniteDomainConstraints>) theory,
 				Arrays.<VarWithDomain<?>> asList(
 						VarWithDomain.of(lss.getUnifiable(), lessDom),
 						VarWithDomain.of(mor.getUnifiable(), moreDom))));
@@ -141,6 +143,7 @@ public class FiniteDomain {
 		return Propagation.activate(new AddO(a, b, rhs));
 	}
 
+	@SuppressWarnings("unchecked")
 	static <T> Verdict addVerdict(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
@@ -163,8 +166,8 @@ public class FiniteDomain {
 				wMin.subtract(vMax),
 				wMax.subtract(vMin).next());
 
-		return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
-				(FiniteDomainConstraints) store,
+		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+				(Theory<FiniteDomainConstraints>) theory,
 				Arrays.<VarWithDomain<?>> asList(
 						VarWithDomain.of(w.getUnifiable(), wi),
 						VarWithDomain.of(v.getUnifiable(), vi),
@@ -183,6 +186,7 @@ public class FiniteDomain {
 		return Propagation.activate(new MulO(a, b, rhs));
 	}
 
+	@SuppressWarnings("unchecked")
 	static <T> Verdict mulVerdict(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
 			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
@@ -214,8 +218,8 @@ public class FiniteDomain {
 		// result is zero, so we cannot infer any u or v bounds information
 		if (wi.min().equals(wi.max()) && wi.min().isZero()) {
 			Domain<T> wiZero = wi;
-			return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
-					(FiniteDomainConstraints) store,
+			return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+					(Theory<FiniteDomainConstraints>) theory,
 					Collections.<VarWithDomain<?>> singletonList(
 							VarWithDomain.of(w.getUnifiable(), wiZero))));
 		}
@@ -226,8 +230,8 @@ public class FiniteDomain {
 		vi = quotientBounds(wMin, wMax, uMin, uMax).getOrElse(() -> v.<T> getDomain());
 
 		Domain<T> wiF = wi, uiF = ui, viF = vi;
-		return Verdict.update((state, store) -> DomainUpdate.narrowAll(state,
-				(FiniteDomainConstraints) store,
+		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+				(Theory<FiniteDomainConstraints>) theory,
 				Arrays.<VarWithDomain<?>> asList(
 						VarWithDomain.of(w.getUnifiable(), wiF),
 						VarWithDomain.of(u.getUnifiable(), uiF),

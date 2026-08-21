@@ -34,8 +34,12 @@ public class AbsorbTheoryTest {
 		return new BreadthFirstScheduler<>(Trial.imposed(Propagation.absorb(theory), into)).get().head();
 	}
 
-	private static FlatConstraints store(Package state) {
-		return Constraint.in(state, FlatConstraints.class).get().getFactor();
+	private static Theory<FlatConstraints> theory(Package state) {
+		return Constraint.in(state, FlatConstraints.class).get().getTheory();
+	}
+
+	private static FlatSet value(Package state, Unifiable<Integer> target) {
+		return FlatConstraints.empty().getValue(theory(state), (Term<?>) target).get();
 	}
 
 	@Test
@@ -44,8 +48,8 @@ public class AbsorbTheoryTest {
 
 		Package state = absorbed(theory, Package.empty());
 
-		assertThat(store(state).getValue((Term<?>) X).get()).isEqualTo(FlatSet.of(1, 2));
-		assertThat(store(state).getValue((Term<?>) Y).get()).isEqualTo(FlatSet.of(5, 6));
+		assertThat(value(state, X)).isEqualTo(FlatSet.of(1, 2));
+		assertThat(value(state, Y)).isEqualTo(FlatSet.of(5, 6));
 	}
 
 	@Test
@@ -54,7 +58,7 @@ public class AbsorbTheoryTest {
 
 		Package state = absorbed(Theory.of(Collections.singletonList(on(X, 2, 3, 4))), seeded);
 
-		assertThat(store(state).getValue((Term<?>) X).get()).isEqualTo(FlatSet.of(2, 3));
+		assertThat(value(state, X)).isEqualTo(FlatSet.of(2, 3));
 	}
 
 	@Test
@@ -68,7 +72,7 @@ public class AbsorbTheoryTest {
 
 		Package state = absorbed(Theory.of(Collections.singletonList(on(X, 2, 3))), seeded);
 
-		assertThat(store(state).getValue((Term<?>) X).get()).isEqualTo(FlatSet.of(2));
+		assertThat(value(state, X)).isEqualTo(FlatSet.of(2));
 	}
 
 	@Test
@@ -79,7 +83,7 @@ public class AbsorbTheoryTest {
 		Package state = absorbed(Theory.of(
 				Collections.singletonList((Atom<FlatConstraints>) even)), Package.empty());
 
-		assertThat(store(state).theory().atoms()).contains(even);
+		assertThat(theory(state).atoms()).contains(even);
 	}
 
 	@Test

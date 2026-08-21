@@ -21,7 +21,6 @@ import com.tgac.logic.unification.Name;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
-import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
 import java.util.Collections;
 import java.util.List;
@@ -36,7 +35,7 @@ import org.junit.Test;
  * asserted here (ground verification, narrowing, collapse to an inferred
  * binding, named propagators waking on their terms, split and canonical rename)
  * is inherited machinery; the component lattice carries its capability record
- * and the store supplies only its construction seams.
+ * and the store supplies only its {@code enforce}.
  */
 public class LatticeFactorTest {
 
@@ -81,29 +80,15 @@ public class LatticeFactorTest {
 		}
 	}
 
-	/** The store: nothing but its construction seams. */
+	/** The store behavior: stateless, nothing but its {@code enforce}. */
 	static final class FlatConstraints extends LatticeFactor<FlatSet, FlatConstraints> {
-		private static final FlatConstraints EMPTY =
-				new FlatConstraints(Theory.empty());
-		private static final FlatConstraints BOTTOM =
-				new FlatConstraints(Theory.empty());
+		private static final FlatConstraints EMPTY = new FlatConstraints();
 
-		private FlatConstraints(Theory<FlatConstraints> theory) {
-			super(theory);
+		private FlatConstraints() {
 		}
 
 		static FlatConstraints empty() {
 			return EMPTY;
-		}
-
-		@Override
-		protected FlatConstraints create(Theory<FlatConstraints> theory) {
-			return new FlatConstraints(theory);
-		}
-
-		@Override
-		protected FlatConstraints bottomStore() {
-			return BOTTOM;
 		}
 
 		@Override
@@ -112,42 +97,46 @@ public class LatticeFactorTest {
 		}
 	}
 
+	/** A one-entry theory: {@code target ⊂ values}. */
+	static Theory<FlatConstraints> valued(Term<?> target, Object... values) {
+		return Theory.of(Collections.singletonList(
+				new Imposition<>(FlatConstraints.class, target, FlatSet.of(values),
+						FlatConstraints.empty())));
+	}
+
 	@Test
 	public void aGroundKeyedEntryVerifiesAtNormalize() {
 		// a ground-keyed imposition can enter through the theory crossing
 		// (Imposition.rename keeps val-resolved targets); normalize must
 		// verify it against the domain, not skip it as live-at-root
-		FlatConstraints inadmissible = FlatConstraints.empty()
-				.withValue(lval(5), FlatSet.of(1, 2));
 		boolean failed = new BreadthFirstScheduler<>(
-				inadmissible.normalize(inadmissible.theory(), Package.empty()))
+				FlatConstraints.empty().normalize(valued(lval(5), 1, 2), Package.empty()))
 				.get()
 				.match(() -> true, () -> false, upd -> false);
 		assertThat(failed).isTrue();
 
-		FlatConstraints admissible = FlatConstraints.empty()
-				.withValue(lval(1), FlatSet.of(1, 2));
-		FlatConstraints spent = new BreadthFirstScheduler<>(
-				admissible.normalize(admissible.theory(), Package.empty()))
+		Theory<FlatConstraints> spent = new BreadthFirstScheduler<>(
+				FlatConstraints.empty().normalize(valued(lval(1), 1, 2), Package.empty()))
 				.get()
-				.match(() -> null, () -> null, upd -> (FlatConstraints) upd.factor());
+				.<Theory<FlatConstraints>> match(() -> null, () -> null,
+						upd -> (Theory<FlatConstraints>) upd.constraint().getTheory());
 		assertThat(spent).isNotNull();
 		assertThat(spent.isEmpty()).isTrue();
 	}
 
 	@Test
-	public void theoryRoundTripRebuildsTheFactorThroughAbsorb() {
-		// the crossing there and back, now PURE for the lattice family too:
-		// residence dissolved the imposition-message deferral — the factor IS
-		// its theory, so absorbing its theory into empty rebuilds it
+	@SuppressWarnings("unchecked")
+	public void theTheoryCrossesWholeThroughTheDoorMeet() {
+		// the crossing there and back is pure value work now: the resident
+		// theory IS the knowledge, so the door's meet into an empty resident
+		// reproduces it exactly — impositions and propagators alike
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		FlatConstraints original = FlatConstraints.empty()
-				.withValue(x, FlatSet.of(1, 2))
-				.meet(Propagator.of(FlatConstraints.empty(), "even",
-						java.util.Collections.singletonList(y),
+		Theory<FlatConstraints> original = valued((Term<?>) x, 1, 2)
+				.with(Propagator.of(FlatConstraints.empty(), "even",
+						Collections.<Term<?>> singletonList(y),
 						(watched, state) -> Verdict.keep()));
-		assertThat(FlatConstraints.empty().absorb(original.theory()))
+		assertThat(Theory.<FlatConstraints> empty().meet(original))
 				.isEqualTo(original);
 	}
 
@@ -213,21 +202,20 @@ public class LatticeFactorTest {
 	public void splitPartitionsByNameAndRenameReKeys() {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
-		FlatConstraints store = FlatConstraints.empty()
-				.withValue(x, FlatSet.of(1, 2))
-				.withValue(y, FlatSet.of(3, 4));
+		Theory<FlatConstraints> theory = valued((Term<?>) x, 1, 2)
+				.meet(valued((Term<?>) y, 3, 4));
 
-		Tuple2<Theory<FlatConstraints>, Theory<FlatConstraints>> parts = store.theory().split(
+		Tuple2<Theory<FlatConstraints>, Theory<FlatConstraints>> parts = theory.split(
 				Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()));
 		assertThat(parts._1.atoms()).allMatch(a -> a.watched().contains(x.getObjectTerm()));
 		assertThat(((Imposition<?, ?>) parts._1.atoms().head()).getValue()).isEqualTo(FlatSet.of(1, 2));
 		assertThat(((Imposition<?, ?>) parts._2.atoms().head()).getValue()).isEqualTo(FlatSet.of(3, 4));
-		assertThat(parts._1.meet(parts._2)).isEqualTo(store.theory());
+		assertThat(parts._1.meet(parts._2)).isEqualTo(theory);
 
-		// canonical rename makes structurally equal stores compare equal cross-lineage
+		// canonical rename makes structurally equal theories compare equal cross-lineage
 		Unifiable<Integer> z = lvar();
-		FlatConstraints a = FlatConstraints.empty().withValue(x, FlatSet.of(5, 6));
-		FlatConstraints b = FlatConstraints.empty().withValue(z, FlatSet.of(5, 6));
+		Theory<FlatConstraints> a = valued((Term<?>) x, 5, 6);
+		Theory<FlatConstraints> b = valued((Term<?>) z, 5, 6);
 		assertThat(a.rename(Renaming.of(Collections.<Name<?>, Term<?>> singletonMap(x.asVar().get(), Any.of(0)))).ground())
 				.isEqualTo(b.rename(Renaming.of(Collections.<Name<?>, Term<?>> singletonMap(z.asVar().get(), Any.of(0)))).ground());
 	}

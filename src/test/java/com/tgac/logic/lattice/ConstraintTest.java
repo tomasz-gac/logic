@@ -38,10 +38,9 @@ public class ConstraintTest {
 	public void identityIsTheTheoryHalfAlone() {
 		// crossings and marshal read only the knowledge; the factor half is
 		// behavior plus a droppable memo — two entries with one theory are
-		// one constraint regardless of their interpreters' private state
+		// one constraint
 		Constraint<FlatConstraints> a = Constraint.of(on(1, 2), FlatConstraints.empty());
-		Constraint<FlatConstraints> b = Constraint.of(on(1, 2),
-				FlatConstraints.empty().withValue(X, FlatSet.of(9)));
+		Constraint<FlatConstraints> b = Constraint.of(on(1, 2), FlatConstraints.empty());
 
 		assertThat(a).isEqualTo(b);
 		assertThat(a.hashCode()).isEqualTo(b.hashCode());

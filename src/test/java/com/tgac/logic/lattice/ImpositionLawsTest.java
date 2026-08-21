@@ -113,7 +113,6 @@ public class ImpositionLawsTest {
 	/** A second family token; never instantiated — the class is the point. */
 	private static abstract class OtherFamily extends LatticeFactor<FlatSet, OtherFamily> {
 		private OtherFamily() {
-			super(null);
 		}
 	}
 

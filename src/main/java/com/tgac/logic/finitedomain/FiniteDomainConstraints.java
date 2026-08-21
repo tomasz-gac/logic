@@ -12,6 +12,7 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.LatticeFactor;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.unification.Term;
+import io.vavr.Tuple;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
@@ -26,16 +27,9 @@ import java.util.stream.Collectors;
  */
 class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomainConstraints> {
 
-	private static final FiniteDomainConstraints EMPTY =
-			new FiniteDomainConstraints(Theory.empty());
+	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints();
 
-	// the canonical dead store: any-empty-domain meets normalize to it, and the
-	// cascade transitions to it on a failing update, so ⊥ IS the branch death
-	private static final FiniteDomainConstraints BOTTOM =
-			new FiniteDomainConstraints(Theory.empty());
-
-	private FiniteDomainConstraints(Theory<FiniteDomainConstraints> theory) {
-		super(theory);
+	private FiniteDomainConstraints() {
 	}
 
 	public static Package register(Package p) {
@@ -44,21 +38,6 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 
 	public static FiniteDomainConstraints empty() {
 		return EMPTY;
-	}
-
-	static FiniteDomainConstraints bottom() {
-		return BOTTOM;
-	}
-
-	public static FiniteDomainConstraints getFDStore(Package p) {
-		return Constraint.in(p, FiniteDomainConstraints.class)
-				.map(Constraint::getFactor)
-				.getOrElseThrow(() -> new IllegalStateException(
-						"No store associated with package"));
-	}
-
-	public static <T> Option<Domain<T>> getDom(Package p, Term<T> x) {
-		return getFDStore(p).getDomain(x);
 	}
 
 	/**
@@ -71,35 +50,34 @@ class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomain
 	}
 
 	// cKanren domains — keyed by NAME: a live LVar or a canonical Any
-	public LinkedHashMap<Term<?>, Domain<?>> getDomains() {
-		return LinkedHashMap.ofEntries(impositions()
-				.map(i -> io.vavr.Tuple.of(i.getTarget(), (Domain<?>) i.getValue()))
-				.collect(Collectors.toList()));
+	public static LinkedHashMap<Term<?>, Domain<?>> getDomains(Package p) {
+		return Constraint.in(p, FiniteDomainConstraints.class)
+				.map(pair -> LinkedHashMap.<Term<?>, Domain<?>> ofEntries(
+						EMPTY.impositions(pair.getTheory())
+								.map(i -> Tuple.<Term<?>, Domain<?>> of(i.getTarget(), i.getValue()))
+								.collect(Collectors.toList())))
+				.getOrElse(LinkedHashMap.empty());
 	}
 
 	// cKanren constraints
-	public HashSet<Propagator<FiniteDomainConstraints>> getConstraints() {
-		return HashSet.ofAll(props().collect(Collectors.toList()));
+	public static HashSet<Propagator<FiniteDomainConstraints>> getConstraints(Package p) {
+		return Constraint.in(p, FiniteDomainConstraints.class)
+				.map(pair -> HashSet.ofAll(EMPTY.props(pair.getTheory())
+						.collect(Collectors.toList())))
+				.getOrElse(HashSet.empty());
 	}
 
-	public <T> Option<Domain<T>> getDomain(Term<T> v) {
-		return getValue(v)
-				.flatMap(Types.castAs(Domain.class));
-	}
-
+	/** Narrowing write on a theory: the domain fuses with any existing entry at {@code x}. */
 	@SuppressWarnings("unchecked")
-	public FiniteDomainConstraints withDomain(Term<?> x, Domain<?> xd) {
-		return withValue(x, (Domain<Object>) xd);
+	public static Theory<FiniteDomainConstraints> withDomain(
+			Theory<FiniteDomainConstraints> theory, Term<?> x, Domain<?> xd) {
+		return EMPTY.withValue(theory, x, (Domain<Object>) xd);
 	}
 
-	@Override
-	protected FiniteDomainConstraints create(Theory<FiniteDomainConstraints> theory) {
-		return new FiniteDomainConstraints(theory);
-	}
-
-	@Override
-	protected FiniteDomainConstraints bottomStore() {
-		return BOTTOM;
+	public static <T> Option<Domain<T>> getDom(Package p, Term<T> x) {
+		return Constraint.in(p, FiniteDomainConstraints.class)
+				.flatMap(pair -> EMPTY.getValue(pair.getTheory(), x))
+				.flatMap(Types.castAs(Domain.class));
 	}
 
 	@Override

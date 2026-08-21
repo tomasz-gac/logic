@@ -29,42 +29,42 @@ public class NogoodConstraintsLawsTest {
 			Posting.bind(X, lval(1)), Posting.bind(Y, lval(2))));
 
 	@Test
-	public void theoryRoundTripRebuildsTheFactor() {
-		// the crossing there and back, pure for nogoods (the factor IS the bag):
-		// theory() → fold meet(Atom) into the empty family ≡ the original —
-		// exact on a subsumption-free factor (the crossing deletes dominated atoms)
-		NogoodConstraints factor = NogoodConstraints.of(
-				LinkedHashSet.of(X_APART, Y_APART));
-		NogoodConstraints rebuilt = factor.theory().atoms()
-				.foldLeft(NogoodConstraints.EMPTY, NogoodConstraints::meet);
-		assertThat(rebuilt).isEqualTo(factor);
+	public void theoryRoundTripRebuildsThroughTheStatementDoor() {
+		// the crossing there and back, pure for nogoods (the theory IS the bag):
+		// stating each atom through the door's meet rebuilds the original —
+		// exact on a subsumption-free theory (the crossing deletes dominated atoms)
+		Theory<NogoodConstraints> theory = Theory.of(LinkedHashSet.of(X_APART, Y_APART));
+		Theory<NogoodConstraints> rebuilt = theory.atoms()
+				.foldLeft(Theory.<NogoodConstraints> empty(),
+						(t, atom) -> t.meet(Theory.of(LinkedHashSet.of((Nogood) atom))));
+		assertThat(rebuilt).isEqualTo(theory);
 	}
 
 	@Test
 	public void theStoreDeletesDominatedNogoods() {
-		// subsumption deletion, live in the store: ¬(x≡1) states everything
+		// subsumption deletion, live in the theory: ¬(x≡1) states everything
 		// ¬(x≡1 ∧ y≡2) does, so the dominated resident drops — fewer trials
 		// per revision, same knowledge
-		assertThat(NogoodConstraints.of(LinkedHashSet.of(X_APART, NOT_BOTH)))
-				.isEqualTo(NogoodConstraints.of(LinkedHashSet.of(X_APART)));
+		assertThat(Theory.of(LinkedHashSet.of(X_APART, NOT_BOTH)))
+				.isEqualTo(Theory.of(LinkedHashSet.of(X_APART)));
 	}
 
 	@Test
 	public void theStoreOrderIsCoveringNotContainment() {
 		// {¬(x≡1)} entails {¬(x≡1 ∧ y≡2)} with no shared residents at all
-		NogoodConstraints stronger = NogoodConstraints.of(LinkedHashSet.of(X_APART));
-		NogoodConstraints weaker = NogoodConstraints.of(LinkedHashSet.of(NOT_BOTH));
-		assertThat(stronger.theory().leq(weaker.theory())).isTrue();
-		assertThat(weaker.theory().leq(stronger.theory())).isFalse();
+		Theory<NogoodConstraints> stronger = Theory.of(LinkedHashSet.of(X_APART));
+		Theory<NogoodConstraints> weaker = Theory.of(LinkedHashSet.of(NOT_BOTH));
+		assertThat(stronger.leq(weaker)).isTrue();
+		assertThat(weaker.leq(stronger)).isFalse();
 	}
 
 	@Test
 	public void nogoodUnionIsAMeetSemilattice() {
 		java.util.List<Theory<NogoodConstraints>> samples = Arrays.asList(
-				NogoodConstraints.of(LinkedHashSet.empty()).theory(),
-				NogoodConstraints.of(LinkedHashSet.of(X_APART)).theory(),
-				NogoodConstraints.of(LinkedHashSet.of(Y_APART, NOT_BOTH)).theory(),
-				NogoodConstraints.of(LinkedHashSet.of(X_APART, NOT_BOTH)).theory());
+				Theory.<NogoodConstraints> empty(),
+				Theory.of(LinkedHashSet.of(X_APART)),
+				Theory.of(LinkedHashSet.of(Y_APART, NOT_BOTH)),
+				Theory.of(LinkedHashSet.of(X_APART, NOT_BOTH)));
 		SemilatticeLaws.checkLeqReversesAccumulation(samples);
 	}
 }

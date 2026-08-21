@@ -198,7 +198,7 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 									if (!(store instanceof Constraint) || ((Constraint<?>) store).getTheory().isEmpty()) {
 										return Fiber.done(residues);
 									}
-									return normalized(((Constraint<?>) store).getFactor(), resolution, canonicalization)
+									return normalized(((Constraint<?>) store).getTheory(), resolution, canonicalization)
 											.map(theory -> theory.isEmpty()
 													? residues
 													: residues.put(((Constraint<?>) store).getFactor().getClass(), theory));
@@ -208,10 +208,10 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 
 	/** One store's answer theory: resolved, then slot-canonical — empty when spent. */
 	private static <S extends Factor<S>> Fiber<Theory<?>> normalized(
-			Factor<S> store, Renaming resolution, Renaming canonicalization) {
-		return store.rename(resolution).flatMap(resolved -> resolved.isEmpty()
-				? Fiber.done(resolved.theory())
-				: resolved.theory().rename(canonicalization).map(theory -> theory));
+			Theory<S> theory, Renaming resolution, Renaming canonicalization) {
+		return theory.rename(resolution).flatMap(resolved -> resolved.isEmpty()
+				? Fiber.<Theory<?>> done(resolved)
+				: resolved.rename(canonicalization).map(renamed -> renamed));
 	}
 
 	/**
