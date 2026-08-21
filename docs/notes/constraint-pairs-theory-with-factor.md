@@ -16,9 +16,12 @@
   ckanren-era "Constraint" and the ruling must retire-or-distinguish,
   never alias.
 - **obligations**: (1) the Revision protocol cut: Revision returns the
-  updated THEORY, not a replacement factor; the memo (family-private,
-  reconstructible, cache = f(theory)) rides the Factor half of the
-  pair, swapped copy-on-write as today; (2) Theory implements Absorbing
+  updated Constraint{Theory, Factor} — the family updates its knowledge
+  and its own memo in one return, because only the factor knows the
+  incremental delta; reconstruction from the theory (cache = f(theory))
+  is the memo's DROPPABILITY guarantee — marshal never serializes it, a
+  fresh consumer rebuilds once — not its update path; crossings and
+  marshal read only the Theory half; (2) Theory implements Absorbing
   by a digest-time capability read (atom instanceof Absorbing —
   Imposition declares it by its value's own absorption): the ⊥-scan
   LatticeFactor.absorb already runs, moved to digestion, cached; (3)
