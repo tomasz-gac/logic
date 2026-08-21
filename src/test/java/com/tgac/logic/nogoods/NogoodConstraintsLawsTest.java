@@ -18,13 +18,8 @@ import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-@LawsFor(Theory.class)
 public class NogoodConstraintsLawsTest {
 
-	@AfterClass
-	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(NogoodConstraintsLawsTest.class);
-	}
 
 	private static final Unifiable<Integer> X = lvar();
 	private static final Unifiable<Integer> Y = lvar();

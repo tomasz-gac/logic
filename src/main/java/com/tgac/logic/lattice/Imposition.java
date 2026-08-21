@@ -3,6 +3,7 @@ package com.tgac.logic.lattice;
 // ABOUTME: A domain value keyed to its target, as a Atom item — the statement
 // ABOUTME: unit of a lattice store. Consumed by stated, never resident.
 
+import com.tgac.functional.algebra.Absorbing;
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Atom;
@@ -32,7 +33,7 @@ import lombok.Value;
  */
 @Value
 @EqualsAndHashCode(of = {"storeClass", "target", "value"})
-public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Atom<F>, Doomed, Semilattice<Imposition<L, F>> {
+public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Atom<F>, Doomed, Absorbing, Semilattice<Imposition<L, F>> {
 	Class<? extends F> storeClass;
 	Term<?> target;
 	@Getter
@@ -44,6 +45,12 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 	@Override
 	public F empty() {
 		return empty;
+	}
+
+	/** {@code target ⊂ ∅}: refutational knowledge — the theory's ⊥ marker. */
+	@Override
+	public boolean isAbsorbing() {
+		return value.isAbsorbing();
 	}
 
 	/**

@@ -3,6 +3,7 @@ package com.tgac.logic.constraints.store;
 // ABOUTME: The plan-space value: a family-homogeneous set of atoms with the
 // ABOUTME: covering order — syntax of knowledge, no context, laws once.
 
+import com.tgac.functional.algebra.Absorbing;
 import com.tgac.functional.algebra.PartialOrder;
 import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
@@ -49,9 +50,10 @@ import lombok.Value;
  */
 
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>, PartialOrder<Theory<F>> {
+public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>, PartialOrder<Theory<F>>, Absorbing {
 
 	private final LinkedHashSet<Atom<F>> atoms;
+
 
 	/**
 	 * The slot index, derived from {@code atoms} (excluded from equality):
@@ -72,6 +74,14 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	private final LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kinds;
 
 	/**
+	 * The ⊥ flag, computed at digestion (excluded from equality — equality
+	 * is the atoms): an atom declaring the {@link Absorbing} capability and
+	 * answering true makes the whole theory refutational. A legal plan
+	 * value; only execution reads it as failure.
+	 */
+	private final boolean absorbing;
+
+	/**
 	 * The collision key: same family, same name, same held watched
 	 * collection = same slot. The family rides in the key because atom
 	 * names are unique only WITHIN a family (every lattice family names
@@ -89,7 +99,16 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	}
 
 	public static <F extends Factor<F>> Theory<F> empty() {
-		return new Theory<>(LinkedHashSet.empty(), LinkedHashMap.empty(), LinkedHashMap.empty());
+		return new Theory<>(LinkedHashSet.empty(), LinkedHashMap.empty(), LinkedHashMap.empty(), false);
+	}
+
+	@Override
+	public boolean isAbsorbing() {
+		return absorbing;
+	}
+
+	private static boolean absorbs(Atom<?> atom) {
+		return atom instanceof Absorbing && ((Absorbing) atom).isAbsorbing();
 	}
 
 	public static <F extends Factor<F>> Theory<F> of(Iterable<? extends Atom<F>> atoms) {
@@ -139,9 +158,10 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		LinkedHashSet<Atom<F>> flat = LinkedHashSet.ofAll(slots.values());
 		LinkedHashSet<Atom<F>> kept = minimal(flat);
 		if (kept.size() == flat.size()) {
-			return new Theory<>(flat, slots, kindsOf(flat));
+			return new Theory<>(flat, slots, kindsOf(flat), flat.exists(Theory::absorbs));
 		}
-		return new Theory<>(kept, slots.filterValues(kept::contains), kindsOf(kept));
+		return new Theory<>(kept, slots.filterValues(kept::contains), kindsOf(kept),
+				kept.exists(Theory::absorbs));
 	}
 
 	private static <F extends Factor<F>> LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kindsOf(
@@ -196,7 +216,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		Option<Atom<F>> occupant = slots.get(slot);
 		if (!occupant.isDefined()) {
 			return new Theory<>(atoms.add(atom), slots.put(slot, atom),
-					kindAdded(kinds, atom));
+					kindAdded(kinds, atom), absorbing || absorbs(atom));
 		}
 		Atom<F> prior = occupant.get();
 		if (prior.equals(atom)) {
@@ -205,7 +225,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		if (prior instanceof Semilattice && atom instanceof Semilattice) {
 			Atom<F> fused = fuse(prior, atom);
 			return new Theory<>(atoms.remove(prior).add(fused), slots.put(slot, fused),
-					kindAdded(kindRemoved(kinds, prior), fused));
+					kindAdded(kindRemoved(kinds, prior), fused), absorbing || absorbs(fused));
 		}
 		throw new IllegalStateException(
 				"slot-mates that cannot combine — the kind must hold its collection: "
@@ -239,8 +259,12 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		Slot slot = slotOf(atom);
 		return slots.get(slot)
 				.filter(atom::equals)
-				.map(occupant -> new Theory<F>(atoms.remove(occupant), slots.remove(slot),
-						kindRemoved(kinds, occupant)))
+				.map(occupant -> {
+					LinkedHashSet<Atom<F>> left = atoms.remove(occupant);
+					return new Theory<F>(left, slots.remove(slot),
+							kindRemoved(kinds, occupant),
+							absorbing && left.exists(Theory::absorbs));
+				})
 				.getOrElse(this);
 	}
 
@@ -264,6 +288,17 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	@Override
 	public Theory<F> combine(Theory<F> other) {
 		return meet(other);
+	}
+
+	/**
+	 * ⊥ absorbs: accumulation against a refuted branch contributes nothing —
+	 * the guard the factor order carried before residence moved. The
+	 * covering order itself stays pure syntax; only absorption reads the
+	 * flag, exactly like execution does.
+	 */
+	@Override
+	public boolean absorbedBy(Theory<F> other) {
+		return other.absorbing || combine(other).equals(other);
 	}
 
 	/**

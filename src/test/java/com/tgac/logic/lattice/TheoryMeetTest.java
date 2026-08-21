@@ -6,6 +6,10 @@ package com.tgac.logic.lattice;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tgac.functional.algebra.laws.AbsorbingLaws;
+import com.tgac.functional.algebra.laws.LawCoverage;
+import com.tgac.functional.algebra.laws.LawsFor;
+import com.tgac.functional.algebra.laws.PartialOrderLaws;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Theory;
@@ -18,7 +22,13 @@ import java.util.stream.Collectors;
 import java.util.Collections;
 import org.junit.Test;
 
+@LawsFor(Theory.class)
 public class TheoryMeetTest {
+
+	@org.junit.AfterClass
+	public static void lawClaimsExercised() {
+		LawCoverage.verifyClaimsExercised(TheoryMeetTest.class);
+	}
 
 	private static final Unifiable<Integer> X = lvar();
 	private static final Unifiable<Integer> Y = lvar();
@@ -60,6 +70,22 @@ public class TheoryMeetTest {
 				.meet(Theory.of(Collections.singletonList(on(X, 2))));
 		assertThat(met.atoms()).hasSize(1);
 		assertThat((((Imposition) met.atoms().head()).getValue()).isAbsorbing()).isTrue();
+	}
+
+	@Test
+	public void theTheoryReadsItsOwnBottomAtDigestion() {
+		// the ⊥ scan is digestion's business, read through the declared
+		// Absorbing capability: a theory carrying an absorbing atom IS
+		// absorbing; live knowledge and the unit are not
+		Theory<FlatConstraints> bottom = Theory
+				.of(Collections.singletonList(on(X, 1)))
+				.meet(Theory.of(Collections.singletonList(on(X, 2))));
+		assertThat(bottom.isAbsorbing()).isTrue();
+		assertThat(Theory.of(Collections.singletonList(on(X, 1, 2))).isAbsorbing()).isFalse();
+		assertThat(Theory.<FlatConstraints> empty().isAbsorbing()).isFalse();
+		// the incremental door agrees with digestion
+		assertThat(Theory.of(Collections.singletonList(on(X, 1)))
+				.with(on(X, 2)).isAbsorbing()).isTrue();
 	}
 
 	@Test
@@ -127,5 +153,19 @@ public class TheoryMeetTest {
 				Theory.of(Collections.singletonList(on(X, 2))),
 				Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 5))));
 		SemilatticeLaws.checkLeqReversesAccumulation(samples);
+		PartialOrderLaws.check(samples);
+	}
+
+	@Test
+	public void theBottomTheoryIsTheAbsorber() {
+		// ⊥ (an absorbing atom in residence) absorbs every meet and is
+		// terminal in accumulation — the drain's short-circuit, lawful
+		java.util.List<Theory<FlatConstraints>> samples = Arrays.asList(
+				Theory.empty(),
+				Theory.of(Collections.singletonList(on(X, 1, 2))),
+				Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 5))),
+				Theory.of(Collections.singletonList(on(X, 1)))
+						.meet(Theory.of(Collections.singletonList(on(X, 2)))));
+		AbsorbingLaws.check(samples);
 	}
 }

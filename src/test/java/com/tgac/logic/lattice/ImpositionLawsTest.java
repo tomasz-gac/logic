@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
+import com.tgac.functional.algebra.laws.AbsorbingLaws;
 import com.tgac.functional.algebra.laws.PartialOrderLaws;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.constraints.store.Atom;
@@ -53,6 +54,18 @@ public class ImpositionLawsTest {
 				on(X, 2, 3),
 				on(X, 1, 2, 3));
 		SemilatticeLaws.check(samples);
+	}
+
+	@Test
+	public void theEmptyDomainImpositionIsTheAbsorber() {
+		// x ⊂ ∅ absorbs every same-slot meet and is terminal — refutational
+		// knowledge as a lawful plan value
+		java.util.List<Imposition<FlatSet, FlatConstraints>> samples = Arrays.asList(
+				on(X),
+				on(X, 1),
+				on(X, 1, 2),
+				on(X, 1, 2, 3));
+		AbsorbingLaws.check(samples);
 	}
 
 	@Test

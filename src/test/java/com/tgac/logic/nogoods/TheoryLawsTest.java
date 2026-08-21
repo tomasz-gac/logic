@@ -19,13 +19,8 @@ import java.util.Collections;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-@LawsFor(Theory.class)
 public class TheoryLawsTest {
 
-	@AfterClass
-	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(TheoryLawsTest.class);
-	}
 
 	private static final Unifiable<Integer> X = lvar();
 	private static final Unifiable<Integer> Y = lvar();
