@@ -292,13 +292,14 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 
 	/**
 	 * ⊥ absorbs: accumulation against a refuted branch contributes nothing —
-	 * the guard the factor order carried before residence moved. The
-	 * covering order itself stays pure syntax; only absorption reads the
-	 * flag, exactly like execution does.
+	 * the guard the factor order carried before residence moved. The live
+	 * half IS the covering order read backwards: meeting me into {@code
+	 * other} adds nothing iff other already entails every atom of mine —
+	 * allocation-free, early-exit, never a scratch meet.
 	 */
 	@Override
 	public boolean absorbedBy(Theory<F> other) {
-		return other.absorbing || combine(other).equals(other);
+		return other.absorbing || other.leq(this);
 	}
 
 	/**
