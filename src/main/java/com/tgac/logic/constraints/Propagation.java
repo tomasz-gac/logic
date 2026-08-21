@@ -11,6 +11,7 @@ import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Doomed;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Factor;
@@ -144,7 +145,8 @@ public final class Propagation {
 			}
 			Atom<?> head = (Atom<?>) theory.atoms().head();
 			Class<?> family = head.getFactorClass();
-			Factor resident = (Factor) p.getStores().get((Class) family).getOrNull();
+			Constraint pair = (Constraint) p.getStores().get((Class) family).getOrNull();
+			Factor resident = pair == null ? null : (Factor) pair.getFactor();
 			if (resident == null) {
 				// the atom's empty is the family identity's constructive
 				// face — the theory seeds its own residence
@@ -278,8 +280,8 @@ public final class Propagation {
 	@SuppressWarnings("unchecked")
 	private static Stream<Factor<?>> constraintStores(Package p) {
 		return p.getStores().values().toJavaStream()
-				.filter(Factor.class::isInstance)
-				.map(Factor.class::cast);
+				.filter(Constraint.class::isInstance)
+				.map(entry -> (Factor<?>) ((Constraint<?>) entry).getFactor());
 	}
 
 	/**

@@ -10,6 +10,7 @@ import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Emitter;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
@@ -198,9 +199,9 @@ public class Tabling {
 
 	/** Remove every constraint-store factor: absence is ⊤, posting re-registers. */
 	private static Package stripConstraints(Package pkg) {
-		return pkg.getStores().values().toJavaStream()
-				.filter(Factor.class::isInstance)
-				.reduce(pkg, (p, c) -> p.withoutStore(c.getClass()),
+		return pkg.getStores().toJavaStream()
+				.filter(entry -> entry._2 instanceof Constraint)
+				.reduce(pkg, (p, entry) -> p.withoutStore(entry._1),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new));
 	}
 

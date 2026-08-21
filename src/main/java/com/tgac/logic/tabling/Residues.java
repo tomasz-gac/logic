@@ -9,6 +9,7 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Theory;
@@ -165,15 +166,15 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 		return callerPkg.getStores().values().foldLeft(
 						Fiber.<Map<Class<?>, Theory<?>>> done(HashMap.empty()),
 						(acc, store) -> acc.flatMap(residues -> {
-							if (!(store instanceof Factor) || ((Factor<?>) store).isEmpty()) {
+							if (!(store instanceof Constraint) || ((Constraint<?>) store).getTheory().isEmpty()) {
 								return Fiber.done(residues);
 							}
 							// the key citizen: the covered half of the name
 							// cut, in canonical names — pure theory work
-							return ((Factor<?>) store).theory().split(slots)._1.rename(canonical)
+							return ((Constraint<?>) store).getTheory().split(slots)._1.rename(canonical)
 									.map(keyed -> keyed.isEmpty()
 											? residues
-											: residues.put(store.getClass(), keyed));
+											: residues.put(((Constraint<?>) store).getFactor().getClass(), keyed));
 						}))
 				.map(Residues::of);
 	}
@@ -194,13 +195,13 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 						answerPkg.getStores().values().foldLeft(
 								Fiber.<Map<Class<?>, Theory<?>>> done(HashMap.empty()),
 								(acc, store) -> acc.flatMap(residues -> {
-									if (!(store instanceof Factor) || ((Factor<?>) store).isEmpty()) {
+									if (!(store instanceof Constraint) || ((Constraint<?>) store).getTheory().isEmpty()) {
 										return Fiber.done(residues);
 									}
-									return normalized((Factor<?>) store, resolution, canonicalization)
+									return normalized(((Constraint<?>) store).getFactor(), resolution, canonicalization)
 											.map(theory -> theory.isEmpty()
 													? residues
-													: residues.put(store.getClass(), theory));
+													: residues.put(((Constraint<?>) store).getFactor().getClass(), theory));
 								})))
 				.map(Residues::of);
 	}

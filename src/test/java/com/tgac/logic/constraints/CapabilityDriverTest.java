@@ -68,7 +68,7 @@ public class CapabilityDriverTest {
 
 		@Override
 		public Theory<EmittingFactor> theory() {
-			throw new UnsupportedOperationException("driver fixtures have no theory");
+			return Theory.empty();
 		}
 
 		@Override

@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
@@ -75,11 +76,11 @@ public class NormalizeAgreementLawsTest {
 			Package extended = p.withSubstitutions(examined.get()._1);
 
 			for (Object store : extended.getStores().values()) {
-				if (!(store instanceof Factor)) {
+				if (!(store instanceof Constraint)) {
 					continue;
 				}
 				exercised++;
-				Factor<?> cs = (Factor<?>) store;
+				Factor<?> cs = (Factor<?>) ((Constraint<?>) store).getFactor();
 				Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize(kept, extended));
 				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(extended));
 
@@ -131,8 +132,7 @@ public class NormalizeAgreementLawsTest {
 					: exclude(conflicting ? x.unifies(x) : x.unifies(lval((long) r.nextInt(5))));
 			Atom atom = ((Posting.Activation) posting).getItem();
 			Package parked = p.withStored(atom);
-			Factor<?> cs = (Factor<?>) parked.getStores()
-					.get(atom.getFactorClass()).get();
+			Factor<?> cs = (Factor<?>) parked.getStore(atom.getFactorClass());
 
 			exercised++;
 			Revision delta = run((Fiber<Revision>) ((Factor) cs).stated(atom, parked));

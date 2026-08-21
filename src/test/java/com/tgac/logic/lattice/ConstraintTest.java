@@ -30,8 +30,8 @@ public class ConstraintTest {
 
 		Constraint<FlatConstraints> entry = Constraint.of(theory, factor);
 
-		assertThat(entry.theory()).isSameAs(theory);
-		assertThat(entry.factor()).isSameAs(factor);
+		assertThat(entry.getTheory()).isSameAs(theory);
+		assertThat(entry.getFactor()).isSameAs(factor);
 	}
 
 	@Test

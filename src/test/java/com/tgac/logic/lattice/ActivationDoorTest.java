@@ -35,8 +35,7 @@ public class ActivationDoorTest {
 		Package state = new BreadthFirstScheduler<>(Trial.imposed(
 				Propagation.activate(on(X, 1, 2)), Package.empty())).get().head();
 
-		FlatConstraints store = (FlatConstraints) state.getStores()
-				.get(FlatConstraints.class).get();
+		FlatConstraints store = state.getStore(FlatConstraints.class);
 		assertThat(store.getValue((Term<?>) X).get()).isEqualTo(FlatSet.of(1, 2));
 	}
 

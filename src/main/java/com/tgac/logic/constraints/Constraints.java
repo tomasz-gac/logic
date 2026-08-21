@@ -4,6 +4,7 @@ import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Goal;
@@ -76,8 +77,8 @@ public class Constraints {
 	/** Every store commits its constraints before {@code x} is reified. */
 	private static <T> Goal enforce(Package p, Term<T> x) {
 		return p.getStores().values().toJavaStream()
-				.filter(Factor.class::isInstance)
-				.map(Factor.class::cast)
+				.filter(Constraint.class::isInstance)
+				.map(entry -> (Factor<?>) ((Constraint<?>) entry).getFactor())
 				.map(cs -> cs.enforce(x))
 				.reduce(Goal::and)
 				.orElseGet(Goal::success);
@@ -87,8 +88,8 @@ public class Constraints {
 	private static <A> Term<A> reifyConstraints(Package p, Term<A> unifiable, Renaming renaming) {
 		return p.getStores().values()
 				.toJavaStream()
-				.filter(Factor.class::isInstance)
-				.map(cs -> (Factor<?>) cs)
+				.filter(Constraint.class::isInstance)
+				.map(entry -> (Factor<?>) ((Constraint<?>) entry).getFactor())
 				.reduce(Try.success(unifiable),
 						(l, cs) -> l.flatMap(u -> Try.of(() -> cs.reify(u, renaming, p))),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))

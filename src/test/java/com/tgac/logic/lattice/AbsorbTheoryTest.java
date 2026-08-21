@@ -34,7 +34,7 @@ public class AbsorbTheoryTest {
 	}
 
 	private static FlatConstraints store(Package state) {
-		return (FlatConstraints) state.getStores().get(FlatConstraints.class).get();
+		return state.getStore(FlatConstraints.class);
 	}
 
 	@Test

@@ -1,6 +1,8 @@
 package com.tgac.logic.goals;
 
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
+import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
@@ -56,12 +58,23 @@ public class Package {
 		if (stores.get(empty.getClass()).isDefined()) {
 			return this;
 		} else {
-			return Package.of(substitutions, stores.put(empty.getClass(), empty));
+			return Package.of(substitutions, stores.put(empty.getClass(), entryOf(empty)));
 		}
 	}
 
 	public Package putStore(Packaged store) {
-		return Package.of(substitutions, stores.put(store.getClass(), store));
+		return Package.of(substitutions, stores.put(store.getClass(), entryOf(store)));
+	}
+
+	/**
+	 * A factor enters as its {@link Constraint} pair — knowledge beside its
+	 * interpreter, keyed by the family class; luggage rides plain.
+	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	private static Packaged entryOf(Packaged store) {
+		return store instanceof Factor
+				? Constraint.of(((Factor) store).theory(), (Factor) store)
+				: store;
 	}
 
 	public Package withoutStore(Class<? extends Packaged> cls) {
@@ -71,9 +84,10 @@ public class Package {
 	/** The payload registered under {@code cls}; throws when absent. */
 	@SuppressWarnings("unchecked")
 	public <T extends Packaged> T getStore(Class<T> cls) {
-		return (T) stores.get(cls)
+		Packaged entry = stores.get(cls)
 				.getOrElseThrow(() -> new IllegalStateException(
 						"No store associated with package"));
+		return (T) (entry instanceof Constraint ? ((Constraint<?>) entry).getFactor() : entry);
 	}
 
 	/** Prepends {@code c} into its store; unchanged when the store is absent. */
@@ -82,18 +96,19 @@ public class Package {
 		Watermark.check(this, c);
 		Class<? extends Packaged> key = c.getFactorClass();
 		return stores.get(key)
-				.map(cs -> (Packaged) ((com.tgac.logic.constraints.store.Factor) cs).meet(c))
-				.map(cs -> Package.of(substitutions, stores.put(key, cs)))
+				.map(cs -> (Packaged) ((Constraint) cs).getFactor().meet(c))
+				.map(cs -> Package.of(substitutions, stores.put(key, entryOf(cs))))
 				.getOrElse(this);
 	}
 
 
 	/** Applies {@code f} to the payload registered under {@code cls}; unchanged when absent. */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public <T extends Packaged> Package updateStore(Class<T> cls, UnaryOperator<T> f) {
 		return stores.get(cls)
-				.map(s -> (Packaged) f.apply((T) s))
-				.map(s -> Package.of(substitutions, stores.put(cls, s)))
+				.map(s -> s instanceof Constraint ? (T) ((Constraint) s).getFactor() : (T) s)
+				.map(s -> (Packaged) f.apply(s))
+				.map(s -> Package.of(substitutions, stores.put(cls, entryOf(s))))
 				.getOrElse(this);
 	}
 }

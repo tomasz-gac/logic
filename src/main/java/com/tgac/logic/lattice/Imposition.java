@@ -7,6 +7,7 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.goals.Packaged;
+import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Doomed;
 import com.tgac.logic.constraints.store.Factor;
@@ -61,6 +62,7 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 			return !value.admits(walked.get());
 		}
 		return p.getStores().get(storeClass)
+				.map(entry -> ((Constraint<?>) entry).getFactor())
 				.flatMap(store -> ((LatticeFactor<L, ?>) store).getValue(walked))
 				.exists(existing -> existing.meet(value).isAbsorbing());
 	}
