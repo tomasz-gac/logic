@@ -202,8 +202,8 @@ public final class Propagation {
 												.flatMap(revision -> revision.match(
 														MFiber::none,            // fail: branch dies
 														() -> MFiber.mdone(pkg), // unchanged
-														upd -> MFiber.mdone(queue(Constraint.put(pkg,
-																ownFactor(cs, upd)), upd))))),
+														upd -> MFiber.mdone(queue(
+																landed(pkg, cs, upd), upd))))),
 								Exceptions.throwingBiOp(UnsupportedOperationException::new))
 						.map(Cont::<Package, Nothing>just)
 						.getOrElse(() -> Cont.complete(Nothing.nothing())));
@@ -214,13 +214,15 @@ public final class Propagation {
 	 * enforced: package store entries are keyed by class, so a foreign-class
 	 * replacement would silently overwrite ANOTHER store's factor.
 	 */
-	private static Factor<?> ownFactor(Factor<?> author, Revision.Updated upd) {
-		if (upd.factor().getClass() != author.getClass()) {
+	/** Custody, pair-typed: a revision may only replace its own entry. */
+	private static Package landed(Package pkg, Factor<?> author, Revision.Updated upd) {
+		Constraint<?> own = upd.constraint();
+		if (own.getFactor().getClass() != author.getClass()) {
 			throw new IllegalStateException("a revision may only replace its own factor: "
 					+ author.getClass().getSimpleName() + " answered with "
-					+ upd.factor().getClass().getSimpleName());
+					+ own.getFactor().getClass().getSimpleName());
 		}
-		return upd.factor();
+		return pkg.putStore(own.getFactor().getClass(), own);
 	}
 
 	/** Queues a revision's harvest: binds to the agenda, suspensions ripe-or-parked. */

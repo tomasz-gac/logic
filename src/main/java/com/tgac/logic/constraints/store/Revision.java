@@ -36,10 +36,19 @@ public abstract class Revision {
 		return Unchanged.INSTANCE;
 	}
 
-	/** Replace my factor; add consequences with the {@code with*} builders. */
-	public static Updated updated(Factor<?> replacement) {
+	/** Replace my entry; add consequences with the {@code with*} builders. */
+	public static Updated updated(Constraint<?> replacement) {
 		return new Updated(replacement,
 				Collections.emptyList(), Collections.emptyList());
+	}
+
+	/**
+	 * {@link #updated(Constraint)} from a factor still holding its theory —
+	 * the transitional face; dies when residence moves.
+	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public static Updated updated(Factor<?> replacement) {
+		return updated(Constraint.of(((Factor) replacement).theory(), (Factor) replacement));
 	}
 
 	public abstract <R> R match(
@@ -78,12 +87,12 @@ public abstract class Revision {
 	}
 
 	public static final class Updated extends Revision {
-		private final Factor<?> factor;
+		private final Constraint<?> constraint;
 		private final List<Prefix> inferred;
 		private final List<Suspension> suspensions;
 
-		private Updated(Factor<?> factor, List<Prefix> inferred, List<Suspension> suspensions) {
-			this.factor = factor;
+		private Updated(Constraint<?> constraint, List<Prefix> inferred, List<Suspension> suspensions) {
+			this.constraint = constraint;
 			this.inferred = inferred;
 			this.suspensions = suspensions;
 		}
@@ -94,7 +103,7 @@ public abstract class Revision {
 		 * being swallowed by a map merge.
 		 */
 		public Updated withInferred(Prefix prefix) {
-			return new Updated(factor,
+			return new Updated(constraint,
 					appended(inferred, prefix), suspensions);
 		}
 
@@ -103,11 +112,16 @@ public abstract class Revision {
 		 * ripe. The degenerate always-ripe form is a plain run.
 		 */
 		public Updated withSuspend(Suspension suspension) {
-			return new Updated(factor, inferred, appended(suspensions, suspension));
+			return new Updated(constraint, inferred, appended(suspensions, suspension));
 		}
 
+		public Constraint<?> constraint() {
+			return constraint;
+		}
+
+		/** The interpreter half — transitional; dies when residence moves. */
 		public Factor<?> factor() {
-			return factor;
+			return constraint.getFactor();
 		}
 
 		public List<Prefix> inferred() {
@@ -126,7 +140,7 @@ public abstract class Revision {
 
 		@Override
 		public String toString() {
-			return "updated(" + factor
+			return "updated(" + constraint
 					+ (inferred.isEmpty() ? "" : ", bind" + inferred)
 					+ (suspensions.isEmpty() ? "" : ", " + suspensions) + ")";
 		}
