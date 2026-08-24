@@ -11,7 +11,9 @@ import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Name;
 import io.vavr.collection.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The name DICTIONARY knowledge needs to cross a boundary. A name is a live
@@ -65,6 +67,16 @@ public final class Renaming {
 	/** Whether this renaming maps {@code name} anywhere but itself. */
 	public boolean renames(Term<?> name) {
 		return target(name) != name;
+	}
+
+	/**
+	 * The seeded names this renaming rewrites — enumerable for fixed seeds.
+	 * A minting renaming's domain grows as it mints, so callers selecting
+	 * work by domain must hold the seed fixed ({@code Theory.renamedReporting}
+	 * is for fixed-seed renamings; a minting replay renames everything).
+	 */
+	public Set<Name<?>> domain() {
+		return new LinkedHashSet<>(targets.keySet());
 	}
 
 	/** Leaving with existential minting: {@code seed} maps names to targets; every miss mints a fresh var. */

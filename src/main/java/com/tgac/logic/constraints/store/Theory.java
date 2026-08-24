@@ -9,6 +9,7 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
+import com.tgac.logic.unification.Name;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -16,6 +17,8 @@ import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.Traversable;
 import io.vavr.control.Option;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import lombok.AccessLevel;
@@ -74,6 +77,14 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	private final LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kinds;
 
 	/**
+	 * The watchers index, derived like {@code slots} (excluded from equality):
+	 * NAME — a live LVar or a canonical Any — → the atoms whose watched
+	 * surface holds it. What {@link #renamedReporting} selects work by, so a
+	 * crossing prices at the touched atoms, not the theory.
+	 */
+	private final LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> watchers;
+
+	/**
 	 * The ⊥ flag, computed at digestion (excluded from equality — equality
 	 * is the atoms): an atom declaring the {@link Absorbing} capability and
 	 * answering true makes the whole theory refutational. A legal plan
@@ -99,7 +110,8 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	}
 
 	public static <F extends Factor<F>> Theory<F> empty() {
-		return new Theory<>(LinkedHashSet.empty(), LinkedHashMap.empty(), LinkedHashMap.empty(), false);
+		return new Theory<>(LinkedHashSet.empty(), LinkedHashMap.empty(), LinkedHashMap.empty(),
+				LinkedHashMap.empty(), false);
 	}
 
 	@Override
@@ -158,10 +170,11 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		LinkedHashSet<Atom<F>> flat = LinkedHashSet.ofAll(slots.values());
 		LinkedHashSet<Atom<F>> kept = minimal(flat);
 		if (kept.size() == flat.size()) {
-			return new Theory<>(flat, slots, kindsOf(flat), flat.exists(Theory::absorbs));
+			return new Theory<>(flat, slots, kindsOf(flat), watchersOf(flat),
+					flat.exists(Theory::absorbs));
 		}
 		return new Theory<>(kept, slots.filterValues(kept::contains), kindsOf(kept),
-				kept.exists(Theory::absorbs));
+				watchersOf(kept), kept.exists(Theory::absorbs));
 	}
 
 	private static <F extends Factor<F>> LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kindsOf(
@@ -170,6 +183,44 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 				kinds.put(atom.getClass(), kinds.get(atom.getClass())
 						.getOrElse(LinkedHashSet.empty())
 						.add(atom)));
+	}
+
+	private static <F extends Factor<F>> LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> watchersOf(
+			LinkedHashSet<Atom<F>> atoms) {
+		LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> index = LinkedHashMap.empty();
+		for (Atom<F> atom : atoms) {
+			index = watcherAdded(index, atom);
+		}
+		return index;
+	}
+
+	private static <F extends Factor<F>> LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> watcherAdded(
+			LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> index, Atom<F> atom) {
+		LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> result = index;
+		for (Term<?> term : atom.watched()) {
+			for (Iterator<Name<?>> names = MiniKanren.namesIn(term).iterator(); names.hasNext(); ) {
+				Name<?> name = names.next();
+				result = result.put(name, result.get(name)
+						.getOrElse(LinkedHashSet.empty())
+						.add(atom));
+			}
+		}
+		return result;
+	}
+
+	private static <F extends Factor<F>> LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> watcherRemoved(
+			LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> index, Atom<F> atom) {
+		LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> result = index;
+		for (Term<?> term : atom.watched()) {
+			for (Iterator<Name<?>> names = MiniKanren.namesIn(term).iterator(); names.hasNext(); ) {
+				Name<?> name = names.next();
+				LinkedHashSet<Atom<F>> bucket = result.get(name)
+						.getOrElse(LinkedHashSet.empty())
+						.remove(atom);
+				result = bucket.isEmpty() ? result.remove(name) : result.put(name, bucket);
+			}
+		}
+		return result;
 	}
 
 	/**
@@ -216,7 +267,8 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		Option<Atom<F>> occupant = slots.get(slot);
 		if (!occupant.isDefined()) {
 			return new Theory<>(atoms.add(atom), slots.put(slot, atom),
-					kindAdded(kinds, atom), absorbing || absorbs(atom));
+					kindAdded(kinds, atom), watcherAdded(watchers, atom),
+					absorbing || absorbs(atom));
 		}
 		Atom<F> prior = occupant.get();
 		if (prior.equals(atom)) {
@@ -225,7 +277,9 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		if (prior instanceof Semilattice && atom instanceof Semilattice) {
 			Atom<F> fused = fuse(prior, atom);
 			return new Theory<>(atoms.remove(prior).add(fused), slots.put(slot, fused),
-					kindAdded(kindRemoved(kinds, prior), fused), absorbing || absorbs(fused));
+					kindAdded(kindRemoved(kinds, prior), fused),
+					watcherAdded(watcherRemoved(watchers, prior), fused),
+					absorbing || absorbs(fused));
 		}
 		throw new IllegalStateException(
 				"slot-mates that cannot combine — the kind must hold its collection: "
@@ -263,6 +317,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 					LinkedHashSet<Atom<F>> left = atoms.remove(occupant);
 					return new Theory<F>(left, slots.remove(slot),
 							kindRemoved(kinds, occupant),
+							watcherRemoved(watchers, occupant),
 							absorbing && left.exists(Theory::absorbs));
 				})
 				.getOrElse(this);
@@ -288,6 +343,85 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	@Override
 	public Theory<F> combine(Theory<F> other) {
 		return meet(other);
+	}
+
+	/**
+	 * {@link #meet}, reporting: the met theory plus exactly the atoms that
+	 * CHANGED — inserted, or fused to a new occupant. Covered and duplicate
+	 * atoms are absent, and so is an incoming atom the domination filter
+	 * killed (covered knowledge wakes no one). An empty report means the
+	 * meet moved nothing and the receiver rides through by identity — what
+	 * the doors read to skip.
+	 */
+	public Revised<F> metReporting(Theory<F> other) {
+		LinkedHashMap<Slot, Atom<F>> merged = slots;
+		List<Atom<F>> candidates = new ArrayList<>();
+		for (Tuple2<Slot, Atom<F>> entry : other.slots) {
+			Option<Atom<F>> occupant = merged.get(entry._1);
+			if (!occupant.isDefined()) {
+				merged = merged.put(entry._1, entry._2);
+				candidates.add(entry._2);
+				continue;
+			}
+			Atom<F> prior = occupant.get();
+			if (prior.equals(entry._2)) {
+				continue;
+			}
+			if (prior instanceof Semilattice && entry._2 instanceof Semilattice) {
+				Atom<F> fused = fuse(prior, entry._2);
+				if (!fused.equals(prior)) {
+					merged = merged.put(entry._1, fused);
+					candidates.add(fused);
+				}
+				continue;
+			}
+			throw new IllegalStateException(
+					"slot-mates that cannot combine — the kind must hold its collection: "
+							+ prior + " vs " + entry._2);
+		}
+		if (candidates.isEmpty()) {
+			return new Revised<>(this, LinkedHashSet.empty());
+		}
+		Theory<F> met = pruned(merged);
+		// a candidate the domination filter killed was covered knowledge; on a
+		// subsumption-free receiver its death implies the meet moved nothing else
+		LinkedHashSet<Atom<F>> changed = LinkedHashSet.ofAll(candidates)
+				.filter(met.atoms::contains);
+		return changed.isEmpty() ? new Revised<>(this, changed) : new Revised<>(met, changed);
+	}
+
+	/**
+	 * {@link #rename}, reporting and indexed: only atoms whose watched
+	 * surface holds a name in the renaming's domain are renamed; the rest
+	 * ride by identity. Changed is read AFTER re-digestion — a renamed atom
+	 * that collided reports its fusion, one that deduplicated against an
+	 * untouched resident reports nothing. Fixed-seed renamings only; a
+	 * minting renaming's domain grows as it mints, so replay keeps the
+	 * plain {@link #rename}.
+	 */
+	public Fiber<Revised<F>> renamedReporting(Renaming renaming) {
+		LinkedHashSet<Atom<F>> touched = LinkedHashSet.empty();
+		for (Name<?> name : renaming.domain()) {
+			touched = touched.addAll(watchers.get(name).getOrElse(LinkedHashSet.empty()));
+		}
+		if (touched.isEmpty()) {
+			return Fiber.done(new Revised<>(this, LinkedHashSet.empty()));
+		}
+		LinkedHashSet<Atom<F>> untouched = atoms.removeAll(touched);
+		Fiber<LinkedHashSet<Atom<F>>> renamed = Fiber.done(untouched);
+		for (Atom<F> atom : touched) {
+			renamed = renamed.flatMap(acc -> atom.rename(renaming).map(acc::add));
+		}
+		return renamed.map(all -> {
+			Theory<F> result = digested(all);
+			LinkedHashSet<Atom<F>> changed = result.atoms.filter(a -> !untouched.contains(a));
+			return new Revised<>(result, changed);
+		});
+	}
+
+	/** The atoms whose watched surface holds {@code name} — the index read. */
+	public LinkedHashSet<Atom<F>> watchers(Name<?> name) {
+		return watchers.get(name).getOrElse(LinkedHashSet.empty());
 	}
 
 	/**
