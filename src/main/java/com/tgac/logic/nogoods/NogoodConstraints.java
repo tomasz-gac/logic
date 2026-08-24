@@ -12,6 +12,7 @@ import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Theory;
+import com.tgac.logic.constraints.store.Verifier;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Name;
@@ -41,7 +42,7 @@ import java.util.stream.Stream;
  * resident nogood store would cause (its own revise re-verifying inside every
  * trial) is unrepresentable.
  */
-public final class NogoodConstraints implements Factor<NogoodConstraints> {
+public final class NogoodConstraints implements Factor<NogoodConstraints>, Verifier {
 	public static final NogoodConstraints EMPTY = new NogoodConstraints();
 
 	private NogoodConstraints() {

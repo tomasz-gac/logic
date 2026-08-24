@@ -15,6 +15,7 @@ import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
 import com.tgac.logic.constraints.store.Theory;
+import com.tgac.logic.constraints.store.Verifier;
 import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Exhaustion;
@@ -275,7 +276,20 @@ public final class Propagation {
 				.getOrElse(false);
 	}
 
+	/**
+	 * The revision fold's order: value families in store order, then the
+	 * {@link Verifier}s — a trial-based family presupposes a base where
+	 * every value family has reacted to the current trigger, and the fold
+	 * honors it structurally (registration order must never decide whether
+	 * a veto fires).
+	 */
 	private static Stream<Constraint<?>> constraintStores(Package p) {
+		return Stream.concat(
+				pairs(p).filter(cs -> !(cs.getFactor() instanceof Verifier)),
+				pairs(p).filter(cs -> cs.getFactor() instanceof Verifier));
+	}
+
+	private static Stream<Constraint<?>> pairs(Package p) {
 		return p.getStores().values().toJavaStream()
 				.filter(Constraint.class::isInstance)
 				.map(entry -> (Constraint<?>) entry);
