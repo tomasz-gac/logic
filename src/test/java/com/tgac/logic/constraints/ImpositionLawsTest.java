@@ -128,7 +128,8 @@ public class ImpositionLawsTest {
 				Constraint<?> pair = (Constraint<?>) store;
 				Factor<?> cs = pair.getFactor();
 				final long s = seed;
-				new BreadthFirstScheduler<>((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), p)).get().match(
+				new BreadthFirstScheduler<>((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(),
+						pair.getTheory().atoms(), p)).get().match(
 						() -> {
 							throw new AssertionError(
 									"seed " + s + ": quiescent normalize failed: " + cs);

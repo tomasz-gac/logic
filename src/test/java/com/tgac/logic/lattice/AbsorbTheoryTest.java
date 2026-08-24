@@ -62,17 +62,18 @@ public class AbsorbTheoryTest {
 	}
 
 	@Test
-	public void aSingletonMeetStaysResidentUntilItsVariableIsTouched() {
-		// the meet {1,2} ∧ {2,3} is the singleton {2}: the wholesale door
-		// meets and re-normalizes, and wholesale normalize skips live-var
-		// entries — the point stays a domain until a binding or enforcement
-		// touches X (the stated door, whose update routing collapses
-		// eagerly, differs here by design)
+	public void aSingletonMeetCollapsesEagerlyOnEveryDoor() {
+		// the meet {1,2} ∧ {2,3} is the singleton {2}: with the rows merged
+		// there is ONE statement semantics — update's routing collapses a
+		// point to its binding on every door, and the spent entry drops
+		// (the stated/absorb asymmetry was ruled out with the merge)
 		Package seeded = absorbed(Theory.of(Collections.singletonList(on(X, 1, 2))), Package.empty());
 
 		Package state = absorbed(Theory.of(Collections.singletonList(on(X, 2, 3))), seeded);
 
-		assertThat(value(state, X)).isEqualTo(FlatSet.of(2));
+		assertThat(state.substitution().walk((Term<?>) X).get()).isEqualTo(2);
+		assertThat(FlatConstraints.empty().getValue(theory(state), (Term<?>) X).isDefined())
+				.isFalse();
 	}
 
 	@Test

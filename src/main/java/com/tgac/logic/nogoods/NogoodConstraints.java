@@ -73,8 +73,18 @@ public final class NogoodConstraints implements Factor<NogoodConstraints>, Verif
 		return Goal.success();
 	}
 
+	/**
+	 * The focus is ignored: verification is WHOLESALE by right — the one
+	 * law allows doing more, and a nogood's trials read the whole package
+	 * anyway.
+	 */
 	@Override
-	public Fiber<Revision> normalize(Theory<NogoodConstraints> incoming, Package state) {
+	public Fiber<Revision> normalize(Theory<NogoodConstraints> incoming,
+			LinkedHashSet<Atom<NogoodConstraints>> focus, Package state) {
+		return wholesale(incoming, state);
+	}
+
+	private Fiber<Revision> wholesale(Theory<NogoodConstraints> incoming, Package state) {
 		return Verification.verify(residents(incoming), state.withoutStore(NogoodConstraints.class))
 				.map(kept -> kept.isDefined() ?
 						revisedTo(incoming, LinkedHashSet.ofAll(kept.get())) :
@@ -91,7 +101,7 @@ public final class NogoodConstraints implements Factor<NogoodConstraints>, Verif
 	@Override
 	public Fiber<Revision> normalize(Theory<NogoodConstraints> incoming, Prefix prefix, Package state) {
 		// the reaction was always wholesale — revise is normalize by another trigger
-		return normalize(incoming, state);
+		return wholesale(incoming, state);
 	}
 
 	/**

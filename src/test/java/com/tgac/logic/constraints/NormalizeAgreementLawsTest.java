@@ -23,8 +23,10 @@ import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple2;
+import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
+import java.util.Collections;
 import java.util.Random;
 import org.junit.Test;
 
@@ -84,7 +86,8 @@ public class NormalizeAgreementLawsTest {
 				Constraint<?> pair = (Constraint<?>) store;
 				Factor<?> cs = pair.getFactor();
 				Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), kept, extended));
-				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), extended));
+				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(),
+						pair.getTheory().atoms(), extended));
 
 				Option<Object> deltaLanding = landing(delta, pair);
 				Option<Object> wholesaleLanding = landing(wholesale, pair);
@@ -133,14 +136,21 @@ public class NormalizeAgreementLawsTest {
 					? FiniteDomain.leq(x, y)
 					: exclude(conflicting ? x.unifies(x) : x.unifies(lval((long) r.nextInt(5))));
 			Atom atom = ((Posting.Activation) posting).getItem();
-			Package parked = Constraint.stated(p, atom);
+			Constraint<?> resident = (Constraint<?>) p.getStores()
+					.get(atom.getFactorClass()).get();
+			Theory met = resident.getTheory()
+					.meet(Theory.of((Iterable) Collections.singletonList(atom)));
+			Package parked = p.putStore(atom.getFactorClass(),
+					Constraint.of(met, (Factor) resident.getFactor()));
 			Constraint<?> pair = (Constraint<?>) parked.getStores()
 					.get(atom.getFactorClass()).get();
 			Factor<?> cs = pair.getFactor();
 
 			exercised++;
-			Revision delta = run((Fiber<Revision>) ((Factor) cs).stated(atom, (Theory) pair.getTheory(), parked));
-			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), parked));
+			Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(),
+					LinkedHashSet.of((Atom) atom), parked));
+			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(),
+					pair.getTheory().atoms(), parked));
 			Option<Object> deltaLanding = landing(delta, pair);
 			Option<Object> wholesaleLanding = landing(wholesale, pair);
 			if (!deltaLanding.isDefined()) {

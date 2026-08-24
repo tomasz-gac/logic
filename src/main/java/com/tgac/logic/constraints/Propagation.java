@@ -28,8 +28,10 @@ import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
+import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
+import java.util.Collections;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -110,8 +112,30 @@ public final class Propagation {
 	}
 
 	/** The imposition body behind the {@link #activate} constructors. */
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	static Goal activation(Atom<?> item) {
-		return s -> enqueue(Constraint.stated(s, item), new Agenda.Stated(item));
+		return s -> {
+			// the watermark's statement seam: the atom's watched surface is
+			// the body's declared read surface
+			Watermark.check(s, item.watched());
+			Constraint pair = (Constraint) Constraint.in(s, (Class) item.getFactorClass()).getOrNull();
+			if (pair == null) {
+				// registration precedes this body; the landed check refuses
+				// a genuinely unregistered family loudly
+				return Cont.just(s);
+			}
+			Theory met = pair.getTheory()
+					.meet(Theory.of((Iterable) Collections.singletonList(item)));
+			if (met == pair.getTheory()) {
+				// the statement covering guard: the resident already carries
+				// the atom's knowledge — identity meet, nothing to do
+				return Cont.just(s);
+			}
+			return enqueue(
+					s.putStore(item.getFactorClass(), Constraint.of(met, (Factor) pair.getFactor())),
+					new Agenda.Met(item.getFactorClass(),
+							LinkedHashSet.of((Atom<?>) item)));
+		};
 	}
 
 	/**
@@ -147,7 +171,7 @@ public final class Propagation {
 				// the atom's empty is the family identity's constructive
 				// face — the theory seeds its own residence
 				return enqueue(p.putStore((Class) family, Constraint.of(theory, (Factor) head.empty())),
-						new Agenda.Absorbed(family));
+						new Agenda.Met(family, theory.atoms()));
 			}
 			if (pair.getTheory().leq(theory)) {
 				// the covering door guard: the resident already entails the
@@ -155,7 +179,8 @@ public final class Propagation {
 				return Cont.just(p);
 			}
 			Constraint met = Constraint.of(pair.getTheory().meet(theory), pair.getFactor());
-			return enqueue(p.putStore((Class) family, met), new Agenda.Absorbed(family));
+			return enqueue(p.putStore((Class) family, met),
+					new Agenda.Met(family, theory.atoms()));
 		};
 	}
 
@@ -441,36 +466,20 @@ public final class Propagation {
 			}
 		}
 
-		/** A store item was just stated — its owning store examines it. */
-		static final class Stated extends Item {
-			final Atom<?> item;
-
-			Stated(Atom<?> item) {
-				this.item = item;
-			}
-
-			@Override
-			@SuppressWarnings({"unchecked", "rawtypes"})
-			Goal apply() {
-				return s -> reviseAll(s,
-						(cs, p) -> item.getFactorClass() == cs.getFactor().getClass() ?
-								getRevisionFiber("Propagation.Stated", cs, p,
-										((Factor) cs.getFactor()).stated(item, cs.getTheory(), p)) :
-								Fiber.done(Revision.unchanged()));
-			}
-
-			@Override
-			public String toString() {
-				return "stated(" + item + ")";
-			}
-		}
-
-		/** A theory was met into its store — the owning store re-normalizes. */
-		static final class Absorbed extends Item {
+		/**
+		 * Knowledge moved into a family — the door met it in, and the owning
+		 * store re-normalizes from the ARRIVED atoms: the posted atom, or an
+		 * absorbed theory's. The one focused trigger; the focus may exceed
+		 * the true change (the door's identity guard already skipped the
+		 * empty case).
+		 */
+		static final class Met extends Item {
 			final Class<?> family;
+			final LinkedHashSet<Atom<?>> atoms;
 
-			Absorbed(Class<?> family) {
+			Met(Class<?> family, LinkedHashSet<Atom<?>> atoms) {
 				this.family = family;
+				this.atoms = atoms;
 			}
 
 			@Override
@@ -478,14 +487,15 @@ public final class Propagation {
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> family == cs.getFactor().getClass() ?
-								getRevisionFiber("Propagation.Absorbed", cs, p,
-										((Factor) cs.getFactor()).normalize(cs.getTheory(), p)) :
+								getRevisionFiber("Propagation.Met", cs, p,
+										((Factor) cs.getFactor()).normalize(cs.getTheory(),
+												(LinkedHashSet) atoms, p)) :
 								Fiber.done(Revision.unchanged()));
 			}
 
 			@Override
 			public String toString() {
-				return "absorbed(" + family.getSimpleName() + ")";
+				return "met(" + family.getSimpleName() + " " + atoms + ")";
 			}
 		}
 

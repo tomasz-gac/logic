@@ -42,6 +42,20 @@ public class ActivationDoorTest {
 	}
 
 	@Test
+	public void aCoveredStatementRidesThroughByIdentity() {
+		// the statement covering guard: the resident already carries the
+		// atom's knowledge — the door's meet returns the receiver itself,
+		// nothing enqueues, the package is the SAME object
+		Package seeded = new BreadthFirstScheduler<>(Trial.imposed(
+				Propagation.activate(on(X, 1, 2)), Package.empty())).get().head();
+
+		Package again = new BreadthFirstScheduler<>(Trial.imposed(
+				Propagation.activate(on(X, 1, 2, 3)), seeded)).get().head();
+
+		assertThat(again).isSameAs(seeded);
+	}
+
+	@Test
 	public void doomIsReadThroughTheDeclaredCapability() {
 		// Imposition declares Doomed: a ground target the value refuses prices 0
 		assertThat(Propagation.activate(on(lval(5), 1, 2)).answers(Package.empty()))

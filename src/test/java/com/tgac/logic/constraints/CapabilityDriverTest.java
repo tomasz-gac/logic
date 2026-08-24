@@ -1,7 +1,7 @@
 package com.tgac.logic.constraints;
 
-import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Atom;
+import com.tgac.logic.constraints.store.Constraint;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,6 +25,7 @@ import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple2;
+import io.vavr.collection.LinkedHashSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -63,7 +64,8 @@ public class CapabilityDriverTest {
 		}
 
 		@Override
-		public Fiber<Revision> normalize(Theory<EmittingFactor> incoming, Package state) {
+		public Fiber<Revision> normalize(Theory<EmittingFactor> incoming,
+				LinkedHashSet<Atom<EmittingFactor>> focus, Package state) {
 			return null;
 		}
 	}

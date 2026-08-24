@@ -109,14 +109,16 @@ public class LatticeFactorTest {
 		// a ground-keyed imposition can enter through the theory crossing
 		// (Imposition.rename keeps val-resolved targets); normalize must
 		// verify it against the domain, not skip it as live-at-root
+		Theory<FlatConstraints> inadmissible = valued(lval(5), 1, 2);
 		boolean failed = new BreadthFirstScheduler<>(
-				FlatConstraints.empty().normalize(valued(lval(5), 1, 2), Package.empty()))
+				FlatConstraints.empty().normalize(inadmissible, inadmissible.atoms(), Package.empty()))
 				.get()
 				.match(() -> true, () -> false, upd -> false);
 		assertThat(failed).isTrue();
 
+		Theory<FlatConstraints> admissible = valued(lval(1), 1, 2);
 		Theory<FlatConstraints> spent = new BreadthFirstScheduler<>(
-				FlatConstraints.empty().normalize(valued(lval(1), 1, 2), Package.empty()))
+				FlatConstraints.empty().normalize(admissible, admissible.atoms(), Package.empty()))
 				.get()
 				.<Theory<FlatConstraints>> match(() -> null, () -> null,
 						upd -> (Theory<FlatConstraints>) upd.constraint().getTheory());

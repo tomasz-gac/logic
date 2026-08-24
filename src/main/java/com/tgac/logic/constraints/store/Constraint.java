@@ -5,9 +5,7 @@ package com.tgac.logic.constraints.store;
 
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
-import com.tgac.logic.goals.Watermark;
 import io.vavr.control.Option;
-import java.util.Collections;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -48,22 +46,6 @@ public class Constraint<S extends Factor<S>> implements Packaged {
 				Constraint.of((Theory) Theory.empty(), (Factor) factor));
 	}
 
-	/**
-	 * The statement park: {@code atom} meets its resident family's theory —
-	 * unchanged when the family is absent. The watermark's statement seam is
-	 * checked here, where the atom's watched surface is known.
-	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	public static Package stated(Package pkg, Atom<?> atom) {
-		Watermark.check(pkg, atom.watched());
-		Constraint pair = (Constraint) pkg.getStores().get(atom.getFactorClass()).getOrNull();
-		if (pair == null) {
-			return pkg;
-		}
-		Theory met = pair.getTheory()
-				.meet(Theory.of((Iterable) Collections.singletonList(atom)));
-		return pkg.putStore(atom.getFactorClass(), Constraint.of(met, (Factor) pair.getFactor()));
-	}
 
 	@Override
 	public String toString() {

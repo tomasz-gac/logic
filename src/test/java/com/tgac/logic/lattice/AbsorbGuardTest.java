@@ -34,14 +34,18 @@ public class AbsorbGuardTest {
 	}
 
 	@Test
-	public void absorbingWiderContentIsAlsoCovered() {
+	public void absorbingContentEntailedByABindingLandsEqual() {
+		// {x⊂{1}} collapses eagerly to x=1 and the entry spends — the
+		// knowledge now lives in the SUBSTITUTION, where the theory-level
+		// covering guard cannot see it. The wider absorb re-verifies against
+		// the binding and lands EQUAL (the trial's classifier reads equality,
+		// not identity); only theory-covered content skips by identity
 		Unifiable<Integer> x = lvar();
 		Theory<FlatConstraints> narrow = LatticeFactorTest.valued((Term<?>) x, 1);
 		Theory<FlatConstraints> wide = LatticeFactorTest.valued((Term<?>) x, 1, 2);
 
 		Package seeded = Utils.collect(Propagation.absorb(narrow).apply(Package.empty())).get(0);
-		// {x⊂{1}} entails {x⊂{1,2}}: covered, skipped
 		Package again = Utils.collect(Propagation.absorb(wide).apply(seeded)).get(0);
-		assertThat(again).isSameAs(seeded);
+		assertThat(again).isEqualTo(seeded);
 	}
 }

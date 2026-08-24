@@ -2,6 +2,7 @@ package com.tgac.logic.constraints.store;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.goals.Goal;
+import io.vavr.collection.LinkedHashSet;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.unification.Prefix;
@@ -16,14 +17,18 @@ import com.tgac.logic.unification.Term;
 public interface Factor<S extends Factor<S>> extends Packaged {
 
 	/**
-	 * Re-establish normal form against {@code state} after a meet brought in
-	 * foreign knowledge: re-verify the theory (a violated record or an
-	 * out-of-domain binding FAILS), take first examinations, run the internal
-	 * fixpoint. Same scheduling and routing contract as the prefix trigger.
-	 * A met theory answers no queries before its normalization ran — meet is
-	 * completed by normalize.
+	 * Re-establish normal form against {@code state} after knowledge moved:
+	 * {@code focus} is what ARRIVED — the posted atom, an absorbed theory's
+	 * atoms — and the ONE LAW binds the focused pass to the full one:
+	 * {@code normalize(T, F, P) == normalize(T, T.atoms(), P)} whenever the
+	 * focus contains the true change. A family may skip only what the focus
+	 * cannot have touched; doing more is always sound (the nogood family
+	 * verifies wholesale regardless). Verification fails the branch, first
+	 * examinations run, the internal fixpoint drains — the door's meet is
+	 * completed by this trigger, and a met theory answers no queries before
+	 * it ran.
 	 */
-	Fiber<Revision> normalize(Theory<S> theory, Package state);
+	Fiber<Revision> normalize(Theory<S> theory, LinkedHashSet<Atom<S>> focus, Package state);
 
 	/**
 	 * Revise this store against newly applied bindings — AC-3's REVISE, cKanren's
@@ -57,18 +62,6 @@ public interface Factor<S extends Factor<S>> extends Packaged {
 	 * @param x - the variable about to be reified
 	 */
 	<T> Goal enforce(Term<T> x);
-
-	/**
-	 * The statement delta: {@code item} was just parked (the statement door
-	 * met it into the resident theory) and only it is new. The agreement law
-	 * binds this to the wholesale pass — {@code stated(atom, T, P) ==
-	 * normalize(T, P)} where T already holds the atom — and the default IS
-	 * the wholesale pass; families override with a first-examination fast
-	 * path (examine one item, not the family).
-	 */
-	default Fiber<Revision> stated(Atom<S> item, Theory<S> theory, Package state) {
-		return normalize(theory, state);
-	}
 
 	/**
 	 * Render this store's residual constraints into the reified answer: after the

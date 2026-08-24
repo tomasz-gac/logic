@@ -27,6 +27,7 @@ import com.tgac.logic.unification.Term;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
+import io.vavr.collection.LinkedHashSet;
 import io.vavr.control.Option;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -200,14 +201,18 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	/**
-	 * Wholesale self-reaction — a theory was met into this store
-	 * ({@link Propagation#absorb}): entries whose name no longer lives at its
-	 * root verify against the binding (fail on miss) or follow the
-	 * representative, every propagator takes its first examination against
-	 * the met state, and the cascade drains.
+	 * The focused reaction — knowledge moved into this family
+	 * ({@link Propagation#activate} posted an atom, {@link Propagation#absorb}
+	 * met a theory): each arrived imposition takes update's routing against
+	 * the resident knowledge — verification (a ground or re-bound target
+	 * fails or spends), collapse inference (a point mints its binding), or a
+	 * narrowing wake — and each arrived propagator takes its first
+	 * examination; then the cascade drains. The unified statement semantics:
+	 * points collapse EAGERLY on every door (the stated/absorb asymmetry was
+	 * ruled out with the rows' merge).
 	 */
 	@Override
-	public Fiber<Revision> normalize(Theory<S> incoming, Package state) {
+	public Fiber<Revision> normalize(Theory<S> incoming, LinkedHashSet<Atom<S>> focus, Package state) {
 		if (incoming.isAbsorbing()) {
 			return Fiber.done(Revision.fail());
 		}
@@ -215,69 +220,31 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		List<Prefix> inferred = new ArrayList<>();
 		List<Goal> runs = new ArrayList<>();
 		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-		for (Imposition<L, S> entry : impositions(incoming).collect(Collectors.toList())) {
-			Term<?> walked = state.walk(entry.getTarget());
-			if (walked == entry.getTarget() && walked.asVar().isDefined()) {
-				continue;    // a live var at its root
+		for (Atom<S> atom : focus) {
+			if (atom instanceof Imposition) {
+				// the door fused the value into its slot; re-state the fused
+				// value through update's routing against the slot-stripped
+				// theory, so the routing sees exactly the combined knowledge
+				Imposition<L, S> imposition = (Imposition<L, S>) atom;
+				Term<?> target = imposition.getTarget();
+				L fused = valueAtom(current, target).map(Imposition::getValue)
+						.getOrElse(imposition.getValue());
+				if (fused.isAbsorbing()) {
+					return Fiber.done(Revision.fail());
+				}
+				Theory<S> stripped = spent(current, target);
+				current = consume(update(stripped, state, state.walk(target), fused),
+						stripped, inferred, runs, queue);
+			} else if (atom instanceof Propagator) {
+				if (!current.atoms().contains(atom)) {
+					continue;    // discharged earlier in this trigger, or never landed
+				}
+				current = consume(examine((Propagator<S>) atom, resident(state, current), current),
+						current, inferred, runs, queue);
 			}
-			// anything else verifies: a rebound name follows its representative,
-			// and a GROUND-keyed entry (the theory crossing keeps val-resolved
-			// targets) takes its membership check instead of lingering unread
-			current = consume(update(current, state, walked, entry.getValue()),
-					current, inferred, runs, queue);
 			if (current == null) {
 				return Fiber.done(Revision.fail());
 			}
-			current = spent(current, entry.getTarget());
-		}
-		for (Propagator<S> propagator : props(incoming).collect(Collectors.toList())) {
-			current = consume(examine(propagator, resident(state, current), current),
-					current, inferred, runs, queue);
-			if (current == null) {
-				return Fiber.done(Revision.fail());
-			}
-		}
-		return cascade(state, incoming, current, inferred, runs, queue);
-	}
-
-	@Override
-	public Fiber<Revision> stated(Atom<S> item, Theory<S> incoming, Package state) {
-		if (item instanceof Imposition) {
-			// the statement door fused the value into its slot; the statement
-			// delta re-states the fused value through update's routing —
-			// verification, collapse inference, or a narrowing wake — against
-			// the theory with the slot stripped, so the routing sees exactly
-			// the knowledge the door combined
-			Imposition<L, S> imposition = (Imposition<L, S>) item;
-			Term<?> target = imposition.getTarget();
-			L fused = valueAtom(incoming, target).map(Imposition::getValue)
-					.getOrElse(imposition.getValue());
-			if (fused.isAbsorbing()) {
-				return Fiber.done(Revision.fail());
-			}
-			List<Prefix> inferred = new ArrayList<>();
-			List<Goal> runs = new ArrayList<>();
-			ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-			Theory<S> stripped = spent(incoming, target);
-			Theory<S> current = consume(
-					update(stripped, state, state.walk(target), fused),
-					stripped, inferred, runs, queue);
-			if (current == null) {
-				return Fiber.done(Revision.fail());
-			}
-			return cascade(state, incoming, current, inferred, runs, queue);
-		}
-		if (!(item instanceof Propagator)) {
-			return Fiber.done(Revision.unchanged());
-		}
-		List<Prefix> inferred = new ArrayList<>();
-		List<Goal> runs = new ArrayList<>();
-		ArrayDeque<Term<?>> queue = new ArrayDeque<>();
-		Theory<S> current = consume(
-				examine((Propagator<S>) item, resident(state, incoming), incoming),
-				incoming, inferred, runs, queue);
-		if (current == null) {
-			return Fiber.done(Revision.fail());
 		}
 		return cascade(state, incoming, current, inferred, runs, queue);
 	}
