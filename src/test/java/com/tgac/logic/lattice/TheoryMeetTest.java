@@ -123,6 +123,25 @@ public class TheoryMeetTest {
 	}
 
 	@Test
+	public void aCoveredMeetReturnsTheReceiverItself() {
+		// identity-preserving meet: nothing moved — every incoming atom equal
+		// to or fused-equal with its occupant — so the receiver rides through
+		// BY REFERENCE; a door's no-op guard is ==
+		Theory<FlatConstraints> resident = Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 3)));
+		assertThat(resident.meet(Theory.of(Collections.singletonList(on(X, 1, 2)))))
+				.isSameAs(resident);
+		// a wider incoming fuses to the occupant's own value: still identity
+		assertThat(resident.meet(Theory.of(Collections.singletonList(on(X, 1, 2, 3)))))
+				.isSameAs(resident);
+	}
+
+	@Test
+	public void anEqualFuseKeepsTheOccupantThroughWith() {
+		Theory<FlatConstraints> resident = Theory.of(Collections.singletonList(on(X, 1, 2)));
+		assertThat(resident.with(on(X, 1, 2, 3))).isSameAs(resident);
+	}
+
+	@Test
 	public void withoutRemovesExactlyTheOccupant() {
 		Theory<FlatConstraints> theory = Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 3)));
 		assertThat(theory.without(on(X, 1, 2)).atoms()).containsExactly(on(Y, 3));

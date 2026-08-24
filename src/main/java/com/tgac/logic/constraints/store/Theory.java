@@ -17,7 +17,6 @@ import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.Traversable;
 import io.vavr.control.Option;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -153,9 +152,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 					if (occupant instanceof Semilattice && atom instanceof Semilattice) {
 						return slots.put(slot, fuse(occupant, atom));
 					}
-					throw new IllegalStateException(
-							"slot-mates that cannot combine — the kind must hold its collection: "
-									+ occupant + " vs " + atom);
+					throw uncombinable(occupant, atom);
 				})
 				.getOrElse(() -> slots.put(slot, atom));
 	}
@@ -163,6 +160,12 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private static <F extends Factor<F>> Atom<F> fuse(Atom<F> a, Atom<F> b) {
 		return (Atom<F>) ((Semilattice) a).combine((Semilattice) b);
+	}
+
+	private static IllegalStateException uncombinable(Atom<?> prior, Atom<?> atom) {
+		return new IllegalStateException(
+				"slot-mates that cannot combine — the kind must hold its collection: "
+						+ prior + " vs " + atom);
 	}
 
 	/** The domination filter over the fused slots; rebuilt only on a kill. */
@@ -276,14 +279,15 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		}
 		if (prior instanceof Semilattice && atom instanceof Semilattice) {
 			Atom<F> fused = fuse(prior, atom);
+			if (fused.equals(prior)) {
+				return this;
+			}
 			return new Theory<>(atoms.remove(prior).add(fused), slots.put(slot, fused),
 					kindAdded(kindRemoved(kinds, prior), fused),
 					watcherAdded(watcherRemoved(watchers, prior), fused),
 					absorbing || absorbs(fused));
 		}
-		throw new IllegalStateException(
-				"slot-mates that cannot combine — the kind must hold its collection: "
-						+ prior + " vs " + atom);
+		throw uncombinable(prior, atom);
 	}
 
 	private static <F extends Factor<F>> LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kindAdded(
@@ -331,36 +335,21 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	 * ⊗: insert/filter — union, fuse slot-mates, delete dominated. An index
 	 * merge: both sides' surfaces are already collected, so the fusion phase
 	 * is linear in the right-hand theory.
+	 *
+	 * <p>IDENTITY-PRESERVING: when nothing moves — every incoming atom equal
+	 * to its occupant or fusing back to it — the receiver returns ITSELF, so
+	 * a door's no-op guard is reference equality. (One corner rebuilds an
+	 * equal theory: an incoming atom the domination filter kills; the door
+	 * then queues a no-op the family answers cheaply.)
 	 */
 	public Theory<F> meet(Theory<F> other) {
 		LinkedHashMap<Slot, Atom<F>> merged = slots;
-		for (Tuple2<Slot, Atom<F>> entry : other.slots) {
-			merged = inserted(merged, entry._1, entry._2);
-		}
-		return pruned(merged);
-	}
-
-	@Override
-	public Theory<F> combine(Theory<F> other) {
-		return meet(other);
-	}
-
-	/**
-	 * {@link #meet}, reporting: the met theory plus exactly the atoms that
-	 * CHANGED — inserted, or fused to a new occupant. Covered and duplicate
-	 * atoms are absent, and so is an incoming atom the domination filter
-	 * killed (covered knowledge wakes no one). An empty report means the
-	 * meet moved nothing and the receiver rides through by identity — what
-	 * the doors read to skip.
-	 */
-	public Revised<F> metReporting(Theory<F> other) {
-		LinkedHashMap<Slot, Atom<F>> merged = slots;
-		List<Atom<F>> candidates = new ArrayList<>();
+		boolean moved = false;
 		for (Tuple2<Slot, Atom<F>> entry : other.slots) {
 			Option<Atom<F>> occupant = merged.get(entry._1);
 			if (!occupant.isDefined()) {
 				merged = merged.put(entry._1, entry._2);
-				candidates.add(entry._2);
+				moved = true;
 				continue;
 			}
 			Atom<F> prior = occupant.get();
@@ -371,52 +360,18 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 				Atom<F> fused = fuse(prior, entry._2);
 				if (!fused.equals(prior)) {
 					merged = merged.put(entry._1, fused);
-					candidates.add(fused);
+					moved = true;
 				}
 				continue;
 			}
-			throw new IllegalStateException(
-					"slot-mates that cannot combine — the kind must hold its collection: "
-							+ prior + " vs " + entry._2);
+			throw uncombinable(prior, entry._2);
 		}
-		if (candidates.isEmpty()) {
-			return new Revised<>(this, LinkedHashSet.empty());
-		}
-		Theory<F> met = pruned(merged);
-		// a candidate the domination filter killed was covered knowledge; on a
-		// subsumption-free receiver its death implies the meet moved nothing else
-		LinkedHashSet<Atom<F>> changed = LinkedHashSet.ofAll(candidates)
-				.filter(met.atoms::contains);
-		return changed.isEmpty() ? new Revised<>(this, changed) : new Revised<>(met, changed);
+		return moved ? pruned(merged) : this;
 	}
 
-	/**
-	 * {@link #rename}, reporting and indexed: only atoms whose watched
-	 * surface holds a name in the renaming's domain are renamed; the rest
-	 * ride by identity. Changed is read AFTER re-digestion — a renamed atom
-	 * that collided reports its fusion, one that deduplicated against an
-	 * untouched resident reports nothing. Fixed-seed renamings only; a
-	 * minting renaming's domain grows as it mints, so replay keeps the
-	 * plain {@link #rename}.
-	 */
-	public Fiber<Revised<F>> renamedReporting(Renaming renaming) {
-		LinkedHashSet<Atom<F>> touched = LinkedHashSet.empty();
-		for (Name<?> name : renaming.domain()) {
-			touched = touched.addAll(watchers.get(name).getOrElse(LinkedHashSet.empty()));
-		}
-		if (touched.isEmpty()) {
-			return Fiber.done(new Revised<>(this, LinkedHashSet.empty()));
-		}
-		LinkedHashSet<Atom<F>> untouched = atoms.removeAll(touched);
-		Fiber<LinkedHashSet<Atom<F>>> renamed = Fiber.done(untouched);
-		for (Atom<F> atom : touched) {
-			renamed = renamed.flatMap(acc -> atom.rename(renaming).map(acc::add));
-		}
-		return renamed.map(all -> {
-			Theory<F> result = digested(all);
-			LinkedHashSet<Atom<F>> changed = result.atoms.filter(a -> !untouched.contains(a));
-			return new Revised<>(result, changed);
-		});
+	@Override
+	public Theory<F> combine(Theory<F> other) {
+		return meet(other);
 	}
 
 	/** The atoms whose watched surface holds {@code name} — the index read. */
