@@ -45,7 +45,7 @@ public class Constraint<S extends Factor<S>> implements Packaged {
 	public static Package register(Package pkg, Factor<?> factor) {
 		return pkg.getStores().containsKey(factor.getClass()) ? pkg
 				: pkg.putStore(factor.getClass(),
-						Constraint.of((Theory) Theory.empty(), (Factor) factor));
+				Constraint.of((Theory) Theory.empty(), (Factor) factor));
 	}
 
 	/**

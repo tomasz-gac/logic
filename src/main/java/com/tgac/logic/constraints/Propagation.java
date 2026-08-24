@@ -6,16 +6,16 @@ package com.tgac.logic.constraints;
 import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.functional.fibers.MFiber;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Doomed;
-import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Suspension;
+import com.tgac.logic.constraints.store.Theory;
+import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
@@ -27,13 +27,12 @@ import com.tgac.logic.unification.Prefix;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
-import io.vavr.control.Option;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
+import io.vavr.control.Option;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 /**
@@ -155,7 +154,7 @@ public final class Propagation {
 				// incoming knowledge — no meet, no re-normalization, no trials
 				return Cont.just(p);
 			}
-			Constraint met = Constraint.of(pair.getTheory().meet(theory), (Factor) pair.getFactor());
+			Constraint met = Constraint.of(pair.getTheory().meet(theory), pair.getFactor());
 			return enqueue(p.putStore((Class) family, met), new Agenda.Absorbed(family));
 		};
 	}
@@ -208,11 +207,11 @@ public final class Propagation {
 	}
 
 	/**
-	 * A revision may only replace the store's OWN factor — the javadoc contract,
-	 * enforced: package store entries are keyed by class, so a foreign-class
-	 * replacement would silently overwrite ANOTHER store's factor.
+	 * Custody: a revision may only replace its own entry — the javadoc
+	 * contract, enforced. Package store entries are keyed by class, so a
+	 * foreign-class replacement would silently overwrite ANOTHER family's
+	 * pair.
 	 */
-	/** Custody, pair-typed: a revision may only replace its own entry. */
 	private static Package landed(Package pkg, Constraint<?> author, Revision.Updated upd) {
 		Constraint<?> own = upd.constraint();
 		if (own.getFactor().getClass() != author.getFactor().getClass()) {
@@ -371,8 +370,6 @@ public final class Propagation {
 			return new Suspensions(parked.remove(s));
 		}
 
-
-
 		@Override
 		public String toString() {
 			return "suspensions" + parked;
@@ -398,7 +395,7 @@ public final class Propagation {
 
 		private static Fiber<Revision> getRevisionFiber(String name, Constraint<?> cs, Package p, Fiber<Revision> revise) {
 			return ProfilerStore.from(p).isDefined() ?
-					Fiber.named(origin -> name + " @ " +  cs.getFactor().getClass().getSimpleName(), revise) :
+					Fiber.named(origin -> name + " @ " + cs.getFactor().getClass().getSimpleName(), revise) :
 					revise;
 		}
 
@@ -417,6 +414,7 @@ public final class Propagation {
 			 * every store with the kept delta, ripen suspensions.
 			 */
 			@Override
+			@SuppressWarnings({"unchecked", "rawtypes"})
 			Goal apply() {
 				return s -> s.substitution().extended(prefix)
 						.<Cont<Package, Nothing>> map(examined -> {
@@ -429,7 +427,7 @@ public final class Propagation {
 							// newly bound variables, and its own cascade
 							return ((Goal) s2 -> reviseAll(s2, (cs, p) ->
 									getRevisionFiber("Propagation.Bind", cs, p,
-											((Factor) cs.getFactor()).normalize((Theory) cs.getTheory(), kept, p))))
+											cs.getFactor().normalize((Theory) cs.getTheory(), kept, p))))
 									.and(ripen(kept))
 									.apply(extended);
 						})
@@ -444,18 +442,19 @@ public final class Propagation {
 
 		/** A store item was just stated — its owning store examines it. */
 		static final class Stated extends Item {
-			final Atom item;
+			final Atom<?> item;
 
-			Stated(Atom item) {
+			Stated(Atom<?> item) {
 				this.item = item;
 			}
 
 			@Override
+			@SuppressWarnings({"unchecked", "rawtypes"})
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> item.getFactorClass() == cs.getFactor().getClass() ?
 								getRevisionFiber("Propagation.Stated", cs, p,
-										((Factor) cs.getFactor()).stated(item, (Theory) cs.getTheory(), p)) :
+										((Factor) cs.getFactor()).stated(item, cs.getTheory(), p)) :
 								Fiber.done(Revision.unchanged()));
 			}
 
@@ -474,11 +473,12 @@ public final class Propagation {
 			}
 
 			@Override
+			@SuppressWarnings({"unchecked", "rawtypes"})
 			Goal apply() {
 				return s -> reviseAll(s,
 						(cs, p) -> family == cs.getFactor().getClass() ?
 								getRevisionFiber("Propagation.Absorbed", cs, p,
-										((Factor) cs.getFactor()).normalize((Theory) cs.getTheory(), p)):
+										((Factor) cs.getFactor()).normalize(cs.getTheory(), p)) :
 								Fiber.done(Revision.unchanged()));
 			}
 
@@ -528,8 +528,6 @@ public final class Propagation {
 		List<Goal> runs() {
 			return runs;
 		}
-
-
 
 		@Override
 		public String toString() {
