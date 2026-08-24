@@ -12,9 +12,11 @@ package com.tgac.logic.constraints.store;
  * trigger — a claim about knowledge can only be judged against knowledge
  * in normal form. The driver honors the presupposition structurally: the
  * revision fold visits marked families AFTER every unmarked one, so a
- * trial never samples a mid-trigger un-revised base. Queued work is the
- * presupposition's other half and stays {@code Propagation.settled}'s
- * business.
+ * trial never samples a mid-trigger un-revised base. Queued work needs no
+ * settling: verdicts against current knowledge are monotone — a late
+ * cross-off re-verifies when the queued work lands as its own trigger —
+ * and the trial base only strips the drain machinery
+ * ({@code Propagation.scratch}).
  *
  * <p>Verifiers are mutually UNORDERED: a second trial-based family would
  * sample this one's un-revised state. One exists today; ordering among

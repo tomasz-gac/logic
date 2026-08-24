@@ -18,7 +18,6 @@ import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.constraints.store.Verifier;
 import com.tgac.logic.debug.ProfilerStore;
 import com.tgac.logic.goals.Conjunction;
-import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
@@ -296,36 +295,24 @@ public final class Propagation {
 	}
 
 	/**
-	 * Completes any in-flight agenda on {@code p}: pending ITEMS drain to
-	 * exhaustion, and the settled package carries no agenda. Collected runs
-	 * are search, not knowledge — they stay with the real drain and are
-	 * discarded with the copy. none = a pending item failed: the branch this
-	 * package came from is doomed on the same items, deterministically.
-	 *
-	 * <p>The seam a scratch verification needs: a caller may sit mid-drain,
-	 * where evaluation on a copy would APPEND to the inherited agenda instead
-	 * of draining, and where verdicts would compare a quiescent trial result
-	 * against an unfinished original. Settling completes the knowledge first;
-	 * both sides of every later comparison are quiescent.
+	 * The scratch face of {@code p}: the drain machinery stripped. A trial
+	 * imposition must DRAIN, and a resident agenda would make {@code enqueue}
+	 * append instead — the imposition would never execute and every trial
+	 * would read "changed". Pending items and collected runs stay the real
+	 * drain's business: the scratch answers against CURRENT knowledge, which
+	 * is sound by monotonicity (entailment and refutation only grow with
+	 * knowledge — the binding lane's standing doctrine), and a late verdict
+	 * re-verifies when the queued work lands as its own trigger.
 	 */
-	public static Fiber<Option<Package>> settled(Package p) {
-		if (!p.getStores().get(Agenda.class).isDefined()) {
-			return Fiber.done(Option.of(p));
-		}
-		Goal settle = drainItems(s -> Cont.just(s.withoutStore(Agenda.class)));
-		return Exhaustion.collected(settle.apply(p))
-				.map(worlds -> worlds.isEmpty() ?
-						Option.none() :
-						Option.of(worlds.get(0)));
+	public static Package scratch(Package p) {
+		return p.withoutStore(Agenda.class);
 	}
 
 	/**
-	 * The item loop both drains share: pop and apply to exhaustion, then
-	 * hand the package — agenda resident, items done, collected runs intact
-	 * — to {@code atExhaustion}, where the two callers part ways:
-	 * {@link #drain()} splices the runs, {@link #settled(Package)} discards
-	 * them with the copy. The continuation is a plain call, not a composed
-	 * goal, so the loop prices exactly as the original single-loop drain.
+	 * The item loop: pop and apply to exhaustion, then hand the package —
+	 * agenda resident, items done, collected runs intact — to
+	 * {@code atExhaustion}. The continuation is a plain call, not a composed
+	 * goal, so the loop prices exactly as a single-loop drain.
 	 */
 	private static Goal drainItems(Function<Package, Cont<Package, Nothing>> atExhaustion) {
 		return Goal.defer(() -> s -> {

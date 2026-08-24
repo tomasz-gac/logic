@@ -49,15 +49,15 @@ public final class Verification {
 	 * the branch fails; otherwise the kept list — survivors simplified to their
 	 * remainders, satisfied nogoods absent.
 	 *
-	 * <p>Dispatch is PER NOGOOD, and so is the settle: binding-shaped nogoods
-	 * verify synchronously against the raw base (both hard verdicts are
-	 * monotone under binding growth, so pending agenda items can only convert
-	 * owed into decided later — the delay-safe direction, and a violation
-	 * here fails the branch before any settle is paid). Only the
-	 * package-shaped residue settles the base — evaluation and comparison
-	 * need quiescence there, so the pending ITEMS complete on the copy (runs
-	 * are search and stay with the real drain); a settle failure means the
-	 * branch is doomed on the same items, deterministically.
+	 * <p>Dispatch is PER NOGOOD, and both lanes answer against CURRENT
+	 * knowledge: the hard verdicts are monotone under knowledge growth, so
+	 * pending agenda items can only convert owed into decided later — the
+	 * delay-safe direction, re-verified when the queued work lands as its
+	 * own trigger. Binding-shaped nogoods verify synchronously against the
+	 * raw base; the package-shaped residue trials against the SCRATCH face
+	 * ({@code Propagation.scratch}: the drain machinery stripped, so a trial
+	 * imposition drains instead of appending to the inherited agenda). The
+	 * value-family half of the presupposition is verifier-last's.
 	 */
 	public static Fiber<Option<List<Nogood>>> verify(Stream<Nogood> nogoods, Package state) {
 		Map<Boolean, List<Nogood>> byShape = nogoods.collect(
@@ -73,10 +73,8 @@ public final class Verification {
 		if (byShape.get(false).isEmpty()) {
 			return Fiber.done(minimal);
 		}
-		return Propagation.settled(state).flatMap(settled -> !settled.isDefined() ?
-				Fiber.done(Option.none()) :
-				fold(byShape.get(false), settled.get())
-						.map(packagedKept -> packagedKept.map(minimal.get()::appendAll)));
+		return fold(byShape.get(false), Propagation.scratch(state))
+				.map(packagedKept -> packagedKept.map(minimal.get()::appendAll));
 	}
 
 	/**
