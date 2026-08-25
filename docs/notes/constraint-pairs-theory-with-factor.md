@@ -1,7 +1,8 @@
 # The package holds Class → Constraint{Theory, Factor}: knowledge outside, behavior beside it
 
-- **status**: argued (the human's ruling, Aug 2026, from the cascade
-  evidence; execution is the next arc's charter, not this one's)
+- **status**: GRADUATED (shipped as #137, Aug 2026 — the Constraint pair
+  is the package's store entry, identity the theory alone; as-built home
+  is constraint-kernel.md §§1,3; this note stays as the argument's record)
 - **evidence held**: demonstration — deleting Semilattice from Factor
   broke `MonotoneDrain.drainUnsafe`'s bound at the cascade call site:
   the drain's termination theorem (contraction on a finite-height

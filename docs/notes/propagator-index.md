@@ -1,55 +1,61 @@
-# The cascade's per-trigger propagator scan is the engine's measured per-step growth
+# A watcher index must migrate buckets, not rewrite atoms — and today it isn't worth building at all
 
-- **status**: argued (diagnosis measured, fix unbuilt; whether to build
-  or park with a trigger is the human's call)
-- **evidence held**: measurement — the all-answers benchmark (Aug 2026,
-  corelogic-bench/RESULTS.md): per-step cost grows 0.90 → 1.37 → 2.04
-  µs/step across n = 4..6 on the packed scheduling fixture, ratios
-  ×1.52/×1.49 against C(n,2) ratios ×1.67/×1.50 — the propagator
-  population's growth curve, not the answer set's (steps/answer grows
-  only 325 → 429 → 550 over the same span). Correlational: no
-  differential counter isolating the scan's wall-time share yet.
-- **imports**: watch lists ⋯import (CP solvers' per-variable constraint
-  indexing; receipt owed if built); revise, Watches (glossary).
-- **obligations**: (1) the differential receipt FIRST — a counter of
-  `watches` checks per solve showing the O(C(n,2)) sweep and its
-  wall-time share, before any index is built; (2) the custody law from
-  watched-revise.md, verbatim: an index keyed by watched-root goes stale
-  when an unrelated unification merges roots — re-key before the lookup
-  is read, failing test against a naive map first; (3) after: µs/step
-  flat across n on the same fixture, step pins unchanged (the index must
-  not change semantics, only lookup cost), chaos-harness
-  order-independence (indexed wakes change delivery order); (4) the
-  scaling ceiling documented: where the crossover against core.logic
-  moves once the sweep is gone.
-- **links**: watched-revise.md (the disjunction store's cousin of this
-  idea and the custody trap's first sighting),
-  disjunction-store-pays-in-products.md (the accounting discipline this
-  answers to: no honing without a payoff in evidence).
+The idea, corrected by measurement: finding a changed term's watchers by
+scanning all parked propagators (`p.watches(live, next)` per queue item)
+is quadratic in the constraint population, and an index by watched name
+would make it a lookup — but the index's DESIGN decides whether it can be
+cheap. An index **derived from the atoms' watched surfaces** (a digestion
+product, like slots and kinds) can only stay truthful if the atoms
+themselves stay textually renamed to representatives — which forces
+rewriting every watcher of a bound var into persistent maps at every
+bind. That trade was built and measured (the one-door arc, Aug 2026):
+the rewrite machinery cost ~2.5× wall-clock on the genesis fixture while
+the scan it replaced cost nearly nothing at reachable populations. The
+shape that survives is core.logic's: an index that is **first-class
+state, not a projection** — buckets of atom identities keyed by root
+name, maintained by bucket MIGRATION at var-var aliasing only (one
+id-set union, one entry drop; value binds maintain nothing — a bound
+name never rebinds, its bucket is consumed at that trigger and stale
+entries clean up at discharge), with every read, index lookup included,
+walking to the root first. It composes with walk-at-read instead of
+fighting it.
 
-`LatticeFactor.cascade` finds a changed term's watchers by scanning ALL
-parked propagators and asking each `p.watches(live, next)` — a linear
-sweep over the store's whole propagator population per queue item, each
-check itself walking substitution chains. On the scheduling fixture the
-population is the pairwise constraint set, O(C(n,2)), so every binding
-in every branch pays a quadratic-in-n sweep to find the few watchers
-that care. This is why the engine loses to core.logic above n ≈ 5:
-cKanren keeps per-variable constraint lists, so its binding cost is
-O(watchers-of-var) — higher constant (we win small n), flat scaling
-(they win large n). The idea: index parked propagators by the root
-representative of each watched term, migrate entries when roots merge,
-and let revise touch only the indexed bucket.
-
-What it buys: flat per-step cost in the constraint population — the
-crossover against per-variable-indexed engines moves out or disappears.
-What it does NOT buy: steps/answer (search shape) is untouched, and at
-today's fixture sizes the whole tax is ~2.4× against core.logic at
-n = 6 while ForkJoin buys back ~6× — this is a scaling lever, not a
-present emergency. The surgery is store-internal (`LatticeFactor` owns
-the scan; the chokepoint and store protocol don't move) but it is
-constraint-core territory all the same.
-
-Cheapest kill: the differential counter shows the sweep is NOT the
-dominant per-step term (e.g. the growth is really in package walks or
-domain ops) — then the index optimizes a minority share and the note
-refutes itself.
+- **status**: refuted as built, survivor shape named (the derived index
+  was built, measured, and reverted — archived with receipts on branch
+  `one-door-rename-lens`; the migrating-bucket variant is unbuilt and
+  currently fails its own payoff test)
+- **evidence held**: measurement — (1) the differential receipt this
+  note's obligation demanded, delivered Aug 2026: on the ratified
+  benchmark (corelogic-bench packed lane, all answers, fair BFS,
+  n = 3..7), index-based cascade wake vs the scan = IDENTICAL step
+  counts and only 5–8% wall-clock — the scan is not the per-step growth
+  term; the note's cheapest-kill clause fired. (2) The maintenance side:
+  the derived index's upkeep (watcherAdded/watcherRemoved at every
+  digestion door) alone cost ~20% on the same fixture with no reader —
+  the maintenance exceeded the lookup's savings. (3) The rewrite-per-bind
+  that kept the derived index truthful cost ~2.5× (n=5/6/7 =
+  268/3,256/41,926 ms vs 100/1,072/13,272 pre-arc; steps identical).
+  Per-step growth with n survives all variants — its cause is elsewhere
+  (open question, profiler-first).
+- **imports**: migrating constraint index ⋯import — core.logic 1.0.1
+  `ConstraintStore`: `km` maps var → constraint IDS (`cm` id → object),
+  `migrate` moves one bucket at var-var unification, `constraints-for`
+  looks up by walked root; constraint objects are immutable and walk
+  their rands at run. Receipt: source read Aug 2026
+  (clojure/core.logic, logic.clj — km/cm/addc/remc/migrate verbatim).
+- **obligations if ever built**: (1) a WORKLOAD receipt first — a real
+  fixture (pldb-scale population) where the scan's share of wall-clock
+  is measured dominant; no such fixture exists today and n ≤ 7 packed
+  refutes the need; (2) the custody discipline: a first-class index is
+  not derivable from the atoms, so every crossing that renames atoms
+  into a new namespace (table replay, absorb) must migrate or rebuild
+  buckets — staleness is silent, so each crossing needs its own failing
+  test first; (3) steps identical on the pinned fixtures and the chaos
+  harness green (bucket order changes examination order — on the
+  separate-pairs scratch shape the derived index shifted step counts
+  ±46% at n=6 with answer sets identical).
+- **links**: constraint-kernel.md §7 (the rename-on-bind foreclosure
+  this note's receipts underwrote), watched-revise.md (the custody
+  trap's first sighting), disjunction-store-pays-in-products.md (the
+  accounting discipline: no honing without a payoff in evidence —
+  honored here by the kill).

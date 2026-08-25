@@ -1,16 +1,19 @@
 # The constraint kernel
 
 **Status: AUTHORITATIVE (August 2026). This describes the engine as shipped
-at the end of the Factor/Theory/Atom migration (branch `constraint`) — the
-value plane (Theory, Atom), the execution plane (Factor), and the doors
-between them. The superseded design docs (constraint-propagation,
-capability-constraint-api, minimal-constraint-vocabulary, suspensions) were
-deleted; their reasoning survives in §7's lineage, the commit history, and
+at the end of the Constraint-pair migration (#137: knowledge outside the
+factor) and the one-door arc's kept half (#138: the `Met` row, the focused
+trigger, verifier-last) — the value plane (Theory, Atom), the execution
+plane (Factor), and the doors between them. The arc's other half —
+rename-on-bind and the watchers index — was built, measured, and REVERTED;
+§7's lineage records the refutation. The superseded design docs
+(constraint-propagation, capability-constraint-api,
+minimal-constraint-vocabulary, suspensions) were deleted;
+`docs/notes/constraint-pairs-theory-with-factor.md` graduated (its subject
+shipped as #137). Their reasoning survives in §7, the commit history, and
 the still-live companions: `fixpoint-machine.md` (the two-fixpoint model),
-`tabled-constraints.md` (the tabling merge, priced),
-`substitutions-migration.md` (the remaining step), and
-`docs/notes/constraint-pairs-theory-with-factor.md` (the ratified NEXT
-shape: knowledge outside the factor — not yet built).**
+`tabled-constraints.md` (the tabling merge, priced), and
+`substitutions-migration.md` (the remaining step).**
 
 ---
 
@@ -22,10 +25,13 @@ A `Package` is the immutable solver state, a product of factors:
   bindings. It has a read-only view type (`unification.Substitutions`) with no
   route to any store; code typed against it is structurally scoped to shared
   knowledge.
-- **Constraint store factors** — each `Factor` owns one slice
-  (`FiniteDomainConstraints`, `NogoodConstraints`), private to its family.
-  A factor's knowledge is its **Theory** — the set of atoms that state it,
-  held as a value (§3).
+- **Constraint store entries** — one `Constraint` pair per family
+  (`FiniteDomainConstraints`, `NogoodConstraints`): the **Theory** is the
+  knowledge — the set of atoms that state it, held as a value — and the
+  **Factor** is the family's execution behavior (§3). Identity is the
+  theory ALONE; a factor never holds the knowledge, but it MAY carry
+  private state of its own — a memo, reconstructible from the theory by
+  invariant, which is what makes it droppable.
 - **Driver-owned plumbing** — the transient `Agenda` (its presence marks a
   drain in flight; never survives to answers) and the persistent `Suspensions`
   store (parked search effects). Plain stores like `Table` and `DebugStore`
@@ -71,13 +77,17 @@ The two statement doors are GENERIC — nothing rides the call site:
   atom's own `empty()` (the family identity's constructive face; its
   nominal face is `getFactorClass()`), and doom is read through the
   declared `Doomed` capability — an atom without it claims nothing and
-  prices 1.
+  prices 1. The body is the DOOR MEET: the atom meets into the resident
+  theory, and the guard is identity — meet is identity-preserving, so a
+  covered statement returns the SAME theory object and the package rides
+  through untouched. Otherwise one queued `Met(family, {atom})`.
 - **`absorb(Theory)`** — the wholesale entry: family read from the atoms,
   an absent resident seeded the same way, then the COVERING GUARD
   (`resident.theory().leq(incoming)` → the package rides through
   untouched — no meet, no re-normalization, no trials) or one meet and
-  one queued normalize. The empty theory is success. The absorber is
-  terminal: a ⊥ resident refuses knowledge rather than resurrecting.
+  one queued `Met(family, incoming.atoms())`. The empty theory is
+  success. The absorber is terminal: a ⊥ resident refuses knowledge
+  rather than resurrecting.
 - **`Prefix`** — a delta of bindings, mintable only by the unifier
   (`MiniKanren.unifyPrefix`, a collecting Extender — born valid, O(delta)) or
   the checked `Prefix.binding`. `resolve` is the chokepoint: the ONLY way
@@ -92,13 +102,18 @@ The two statement doors are GENERIC — nothing rides the call site:
   as a refusal. An inferred binding is indistinguishable from a unification.
   Pure-relational fast path: no stores and no pending suspensions → apply
   the delta, skip all machinery.
-- The **agenda** holds three item kinds — `Bind(Prefix)`, `Stated(Atom)`,
-  `Absorbed(family)` — popped one per deferred step (the fairness quantum
-  between branches). A Bind revalidates its prefix against the live package
-  (open → bind the walked representative, agreeing → drop, contradicting →
-  the branch dies), extends once, folds every store's delta-normalize, then
-  ripens suspensions touched by the bound variables. Run-lane goals splice
-  after quiescence, when the agenda is removed.
+- The **agenda** holds two item kinds — `Bind(Prefix)` and `Met(family,
+  atoms)` — popped one per deferred step (the fairness quantum between
+  branches). A Bind revalidates its prefix against the live package (open →
+  bind the walked representative, agreeing → drop, contradicting → the
+  branch dies), extends once, folds every store's delta-normalize, then
+  ripens suspensions touched by the bound variables. A Met carries the
+  atoms that ARRIVED at a door — the statement's atom, an absorbed
+  theory's atoms; the focus is caller-known arithmetic, never a computed
+  diff — and folds the OWNING family's focused normalize (every other
+  store answers unchanged). The shared store fold visits `Verifier`
+  families LAST (§3). Run-lane goals splice after quiescence, when the
+  agenda is removed.
 - **Suspensions** are `(watched, ripe, body)`: parked persistently, re-examined
   when a watched chain binds, spliced through the run lane once ripe — fired
   once, forever. `ripe` is a `Predicate<Substitutions>` and MUST be monotone:
@@ -133,7 +148,9 @@ Everything else is DECLARED CAPABILITY, read by the kernel, never assumed:
 atom set in normal form. Every door digests: slot-mates fuse through the
 Semilattice capability, then SUBSUMPTION DELETION drops every atom
 strictly dominated by another. Its surface: `meet` (an index merge —
-union, fuse, prune), `leq` (the COVERING order: every atom of the wider
+union, fuse, prune; IDENTITY-PRESERVING: when nothing moves the receiver
+returns itself, so a door's no-op guard is reference equality), `leq`
+(the COVERING order: every atom of the wider
 theory entailed by some atom of this one — grade two of the leq tower,
 `structural ⊂ covering ⊂ family-semantic`, sharp exactly as far as the
 atom classes' own overrides reach, blind to conjunctive entailment by
@@ -145,28 +162,57 @@ Residues all carry theories, and the key form is
 `theory.split(vars)._1.rename(canonical)` — hole-named, structurally
 comparable across packages.
 
-**`Factor<S>`** is the execution face and carries no algebra of its own:
+**`Constraint<S>`** is one family's entry in the package: the Theory paired
+with its Factor. Identity is the theory ALONE (`@EqualsAndHashCode(of =
+"theory")`) — a factor may keep private state, but it must be a MEMO:
+reconstructible from the theory by invariant (droppability — marshal never
+carries it), so two entries with one theory are one constraint regardless
+of their interpreters' state. `Constraint.in` is the residence read;
+`register` seats an absent family with empty knowledge.
+
+**`Factor<S>`** is the execution face. It never HOLDS the knowledge —
+every trigger is handed the theory it interprets, and a `Revision` may
+swap the whole pair, factor included (today's factors happen to be
+stateless singletons; that is a fact, not a requirement):
 
 ```java
-Fiber<Revision> normalize(Prefix, Package);  // bindings arrived — the delta trigger
-Fiber<Revision> stated(Atom, Package);       // your item was stated — owner only
-Fiber<Revision> normalize(Package);          // a theory was met in — wholesale
+Fiber<Revision> normalize(Theory<S>, Prefix, Package);   // bindings arrived — the delta trigger
+Fiber<Revision> normalize(Theory<S>, LinkedHashSet<Atom<S>>, Package);
+                                    // knowledge arrived — the focused trigger
 // plus lifecycle: enforce (commit before reify), reify (render residue)
-// plus: meet(Atom) — the statement park; theory(); absorb(Theory); rename; isEmpty
 ```
 
-A store's reaction is COMPLETE: custody checks, re-examining its own watchers
-of the newly bound variables, and chasing its own cascade. The fiber return is
-the scheduling contract: cheap reactions are `Fiber.done(...)`; expensive ones
-defer between steps (`functional`'s `Worklist`). The hard laws are custody: a
-`Revision` can express at most the store's OWN replaced factor plus payloads.
-The lattice family (`LatticeFactor`) additionally declares
-`Semilattice & Absorbing` FAMILY-INTERNALLY — not on the interface — because
-its cascade drains the store as a lattice point and `MonotoneDrain`'s
-termination theorem types that premise; the kernel requires no algebra of a
-factor, the family whose fixpoint leans on the theorem declares it. (The
-ratified next step moves the drained state to the theory itself —
-`constraint-pairs-theory-with-factor.md`.)
+The focused trigger's contract is ONE LAW: `normalize(T, F, P) ≡
+normalize(T, T.atoms(), P)` whenever the focus contains the true change —
+a family may skip only what the focus cannot have touched; doing more is
+always sound (the nogood family ignores the focus and verifies wholesale
+by right). A store's reaction is COMPLETE: custody checks, re-examining
+its own watchers of the newly bound variables (the family WALKS its terms
+at examination — atoms stay as authored, and a rebound name follows its
+representative through the substitution at read time; see §7 for the
+measured refutation of the eager alternative), and chasing its own
+cascade. The fiber return is the scheduling contract: cheap reactions are
+`Fiber.done(...)`; expensive ones defer between steps (`functional`'s
+`Worklist`). The hard laws are custody: a `Revision` can express at most
+the store's OWN replaced pair plus payloads.
+
+**`Verifier`** is a marker for a family that verifies its claims by TRIAL
+against the rest of the package's knowledge (nogoods: sequential scratch
+imposition read three ways — fail = refuted, unchanged = crossed off, new
+= owed). The crossed-off reading is package EQUALITY, so a trial
+presupposes a base where every value family has finished reacting to the
+current trigger; the driver honors this structurally — the store fold
+visits marked families after every unmarked one — and the trial base only
+strips the drain machinery (`Propagation.scratch`). Queued work needs no
+settling: verdicts against current knowledge are monotone, and a late
+cross-off re-verifies when the queued work lands as its own trigger.
+Verifiers are mutually unordered; one exists today.
+
+The lattice family (`LatticeFactor`) declares no algebra of its own —
+its cascade drains the THEORY as the lattice point, and `Theory`'s own
+`Semilattice`, `PartialOrder` and `Absorbing` declarations type
+`MonotoneDrain`'s termination premise. The kernel requires no algebra of
+a factor; the value the fixpoint contracts over carries it.
 
 **The 2×2 vocabulary** — two effect kinds, two speaking positions, and nothing
 else crosses any boundary:
@@ -220,10 +266,10 @@ Suspension conditions in a store's own language (domain-shaped ripeness —
 adaptive labelling, guarded statement, prune-to-enumerate handovers) are
 propagators whose updates emit suspensions: private trigger, same lane.
 
-One known door asymmetry, deliberate until ruled otherwise: the STATED
-door's update routing collapses a singleton meet to its binding eagerly;
-the ABSORB door's wholesale normalize skips live-var entries, so a
-singleton stays resident as a domain until something touches its variable.
+The doors are symmetric: both statement and absorption queue the same
+`Met` item, the family's routing is one code path, and a singleton meet
+collapses to its binding eagerly at either door (the earlier stated/absorb
+asymmetry dissolved with the doors' merge — ruled out August 2026).
 
 ## 5. Structure has one owner
 
@@ -276,16 +322,36 @@ by suspensions before ever shipping a user; Neq → subsumed by
 restate → rejected for wholesale absorb when the ring-closure pin priced it
 (+26%); the Factor interface's algebra → shed when the census found its only
 live consumer was the lattice family's own cascade (the family now declares
-it; the shed also surfaced and fixed absorb's missing terminal-⊥ guard).
+it; the shed also surfaced and fixed absorb's missing terminal-⊥ guard);
+the stateful factor → the Constraint pair (#137: knowledge outside the
+factor, identity the theory alone, factor state demoted to reconstructible
+memo); the three trigger rows → two (#138's kept half: `Stated` and
+`Absorbed` merged into `Met` with the focused trigger and its one law,
+`stated()` died, the verifier fold moved structurally last — retiring the
+trial's settled() call — and the stated/absorb collapse asymmetry
+dissolved).
 Deliberately foreclosed (do not resurrect without new evidence): the
 data-shaped Neq→FD bridge as store coupling (its legitimate successor is a
 cross-theory rewriter at the solve seam — pair-note territory), cross-store
 narrowing vocabulary, engine-level fixpoint unification
 (`fixpoint-machine.md` §4/§9), suspensions as store or theory citizens (the
 driver treats them specially for agenda-fixpoint safety — ruled August
-2026). Still deferred: representation swaps (`substitutions-migration.md`
-§5, benchmark-gated), the Constraint pair
-(`constraint-pairs-theory-with-factor.md`, the next arc's charter).
+2026), and **rename-on-bind** (#138's reverted half, August 2026): keeping
+theory atoms textually renamed to representatives at every bind — so
+families could trust keys without walking — was built through review and
+REVERTED on measurement. Rewriting every watcher of a bound var into
+persistent maps at each bind cost ~2.5× wall-clock on the genesis fixture
+(corelogic-bench packed lane, all answers, steps identical), where walking
+at read was already correct for the dead-alias case the rename was
+scaffolding for: names only die at var-var aliasing, and every family
+examination resolves its terms through the substitution anyway. The
+watchers index the rename needed cost a further ~20% in per-digestion
+maintenance with no other reader, and died with it. Both are archived on
+branch `one-door-rename-lens` with their receipts; if watcher-wake cost
+ever matters at population scale, the shape that composes with
+walk-at-read is the migrating id-bucket index
+(`docs/notes/propagator-index.md`), not this one. Still deferred:
+representation swaps (`substitutions-migration.md` §5, benchmark-gated).
 
 The composition model in two rules, kept from the capability design: (B) domains
 couple to shared concepts, never to each other by name; (C) custody transfer,

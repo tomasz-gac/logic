@@ -70,15 +70,23 @@ Small, local, well-tested changes elsewhere don't need to ask.
   `DepthFirstScheduler` (Prolog order, used by tracing), `RoundRobin`, `ForkJoin`,
   `UnfairBreadthFirst`. All are drivers over `FiberStep`; they differ only in which frame
   they step next.
-- **Constraint stores** implement `ConstraintStore` (`constraints/store/`):
-  `FiniteDomainConstraints`, `NogoodConstraints` (forbidden conjunctions; disequality is
-  its one-literal case), the `LatticeStore` family. The driver (`constraints/Propagation`) speaks to them through two triggers — `revise`
-  (bindings arrived; the store's COMPLETE reaction: custody, own watchers, own
-  cascade) and `stated` (your item was stated) — each answered by a
-  `Fiber<Revision>` (own factor + consequences; fiber so long cascades stay fairly
-  stepped — see `functional`'s `Worklist`). How a store
-  computes it is its own business: FD administers its own propagators (now
-  `finitedomain`-private: Propagator/Verdict/Update), NogoodConstraints re-verifies its
+- **Constraint stores** live in the package as `Constraint` pairs
+  (`constraints/store/`): the `Theory` is the family's knowledge (an atom set
+  in normal form — the thing crossings rename and keys carry) and the
+  `Factor` is its behavior — it never holds the knowledge; any private
+  state must be a droppable memo (`FiniteDomainConstraints`,
+  `NogoodConstraints` — forbidden conjunctions; disequality is its
+  one-literal case). The driver (`constraints/Propagation`) speaks through
+  two triggers, each handed the theory — `normalize(theory, prefix, state)`
+  (bindings arrived; the store's COMPLETE reaction: custody, own watchers
+  walked at examination, own cascade) and `normalize(theory, focus, state)`
+  (knowledge arrived at a door; the `Met` agenda row carries the arrived
+  atoms) — each answered by a `Fiber<Revision>` (own pair + consequences;
+  fiber so long cascades stay fairly stepped — see `functional`'s
+  `Worklist`). A `Verifier` family (nogoods, trial-based) folds after every
+  value family. How a store computes it is its own business: the lattice
+  family administers its own propagators (`lattice`-private:
+  Propagator/Verdict/Update), NogoodConstraints re-verifies its
   nogoods wholesale through the trial; `constraints/store/Watches` is the shared chain matcher.
   SUSPENSIONS are NOT a store: they are Propagation's own first-class
   citizens — the driver parks them (its private `Suspensions` holder, an

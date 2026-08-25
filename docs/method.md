@@ -182,6 +182,24 @@ move earns a place here after it has fired at least twice.
   own phase instead of steering the dig while digging. An arc whose
   charter is finished before its first commit (the Constraint pair) is
   what the churn purchased.
+- **An invariant is a cost model.** Keeping data eagerly normal so reads
+  can trust it moves work from every read to every write; whether that
+  trade wins is a property of the workload mix, not of the design's
+  elegance. Ask where the writes are BEFORE building on such an
+  invariant, and demand a wall-clock receipt per phase — step pins are
+  blind to per-step cost, so a pinned suite stays green through a 3×
+  slowdown. Fired: rename-on-bind (the representative invariant rewrote
+  every watcher of a bound var so families could trust keys without
+  walking; ~2.5× on the genesis fixture, where nearly every step is a
+  bind — reverted with its refutation in constraint-kernel §7), and its
+  own watchers index (+20% maintenance at every digestion door, zero
+  readers after the revert). The lazy alternative — every read walks —
+  was correct the whole time: staleness that every read resolves is a
+  cost to keep, not a bug to fix. Corollary, from the same firing: the
+  bug the invariant "fixed" was one the invariant itself created
+  (families stopped walking, then an exemption broke a verifier);
+  before crediting a fix, check whether the design being fixed
+  manufactured the bug.
 - **Instruments are scaffolding; refusals are product.** Hunt diagnostics
   — lifecycle traces, tagged audits, state dumps in messages — are torn
   out with the hunt; "keep it, zero cost when off" was overruled twice

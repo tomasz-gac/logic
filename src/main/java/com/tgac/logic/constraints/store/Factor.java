@@ -10,9 +10,9 @@ import com.tgac.logic.unification.Term;
 
 /**
  * A family's execution behavior: the interpreter half of a {@link Constraint}
- * pair. Stateless — the knowledge lives in the pair's {@link Theory}, handed
- * to every trigger; whatever a factor keeps beside it is a private memo,
- * reconstructible from the theory by invariant.
+ * pair. The knowledge lives in the pair's {@link Theory}, handed to every
+ * trigger — never in the factor; a factor may keep private state, but only
+ * as a memo reconstructible from the theory by invariant.
  */
 public interface Factor<S extends Factor<S>> extends Packaged {
 
