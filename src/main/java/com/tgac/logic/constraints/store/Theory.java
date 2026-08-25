@@ -9,7 +9,6 @@ import com.tgac.functional.algebra.Semilattice;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.MiniKanren;
-import com.tgac.logic.unification.Name;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -17,7 +16,6 @@ import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.Traversable;
 import io.vavr.control.Option;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import lombok.AccessLevel;
@@ -76,14 +74,6 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	private final LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kinds;
 
 	/**
-	 * The watchers index, derived like {@code slots} (excluded from equality):
-	 * NAME — a live LVar or a canonical Any — → the atoms whose watched
-	 * surface holds it. What {@link #renamedReporting} selects work by, so a
-	 * crossing prices at the touched atoms, not the theory.
-	 */
-	private final LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> watchers;
-
-	/**
 	 * The ⊥ flag, computed at digestion (excluded from equality — equality
 	 * is the atoms): an atom declaring the {@link Absorbing} capability and
 	 * answering true makes the whole theory refutational. A legal plan
@@ -110,7 +100,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 
 	public static <F extends Factor<F>> Theory<F> empty() {
 		return new Theory<>(LinkedHashSet.empty(), LinkedHashMap.empty(), LinkedHashMap.empty(),
-				LinkedHashMap.empty(), false);
+				false);
 	}
 
 	@Override
@@ -173,11 +163,11 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		LinkedHashSet<Atom<F>> flat = LinkedHashSet.ofAll(slots.values());
 		LinkedHashSet<Atom<F>> kept = minimal(flat);
 		if (kept.size() == flat.size()) {
-			return new Theory<>(flat, slots, kindsOf(flat), watchersOf(flat),
+			return new Theory<>(flat, slots, kindsOf(flat),
 					flat.exists(Theory::absorbs));
 		}
 		return new Theory<>(kept, slots.filterValues(kept::contains), kindsOf(kept),
-				watchersOf(kept), kept.exists(Theory::absorbs));
+				kept.exists(Theory::absorbs));
 	}
 
 	private static <F extends Factor<F>> LinkedHashMap<Class<?>, LinkedHashSet<Atom<F>>> kindsOf(
@@ -186,44 +176,6 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 				kinds.put(atom.getClass(), kinds.get(atom.getClass())
 						.getOrElse(LinkedHashSet.empty())
 						.add(atom)));
-	}
-
-	private static <F extends Factor<F>> LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> watchersOf(
-			LinkedHashSet<Atom<F>> atoms) {
-		LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> index = LinkedHashMap.empty();
-		for (Atom<F> atom : atoms) {
-			index = watcherAdded(index, atom);
-		}
-		return index;
-	}
-
-	private static <F extends Factor<F>> LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> watcherAdded(
-			LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> index, Atom<F> atom) {
-		LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> result = index;
-		for (Term<?> term : atom.watched()) {
-			for (Iterator<Name<?>> names = MiniKanren.namesIn(term).iterator(); names.hasNext(); ) {
-				Name<?> name = names.next();
-				result = result.put(name, result.get(name)
-						.getOrElse(LinkedHashSet.empty())
-						.add(atom));
-			}
-		}
-		return result;
-	}
-
-	private static <F extends Factor<F>> LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> watcherRemoved(
-			LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> index, Atom<F> atom) {
-		LinkedHashMap<Name<?>, LinkedHashSet<Atom<F>>> result = index;
-		for (Term<?> term : atom.watched()) {
-			for (Iterator<Name<?>> names = MiniKanren.namesIn(term).iterator(); names.hasNext(); ) {
-				Name<?> name = names.next();
-				LinkedHashSet<Atom<F>> bucket = result.get(name)
-						.getOrElse(LinkedHashSet.empty())
-						.remove(atom);
-				result = bucket.isEmpty() ? result.remove(name) : result.put(name, bucket);
-			}
-		}
-		return result;
 	}
 
 	/**
@@ -270,7 +222,7 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 		Option<Atom<F>> occupant = slots.get(slot);
 		if (!occupant.isDefined()) {
 			return new Theory<>(atoms.add(atom), slots.put(slot, atom),
-					kindAdded(kinds, atom), watcherAdded(watchers, atom),
+					kindAdded(kinds, atom),
 					absorbing || absorbs(atom));
 		}
 		Atom<F> prior = occupant.get();
@@ -284,7 +236,6 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 			}
 			return new Theory<>(atoms.remove(prior).add(fused), slots.put(slot, fused),
 					kindAdded(kindRemoved(kinds, prior), fused),
-					watcherAdded(watcherRemoved(watchers, prior), fused),
 					absorbing || absorbs(fused));
 		}
 		throw uncombinable(prior, atom);
@@ -321,7 +272,6 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 					LinkedHashSet<Atom<F>> left = atoms.remove(occupant);
 					return new Theory<F>(left, slots.remove(slot),
 							kindRemoved(kinds, occupant),
-							watcherRemoved(watchers, occupant),
 							absorbing && left.exists(Theory::absorbs));
 				})
 				.getOrElse(this);
@@ -372,11 +322,6 @@ public final class Theory<F extends Factor<F>> implements Semilattice<Theory<F>>
 	@Override
 	public Theory<F> combine(Theory<F> other) {
 		return meet(other);
-	}
-
-	/** The atoms whose watched surface holds {@code name} — the index read. */
-	public LinkedHashSet<Atom<F>> watchers(Name<?> name) {
-		return watchers.get(name).getOrElse(LinkedHashSet.empty());
 	}
 
 	/**
