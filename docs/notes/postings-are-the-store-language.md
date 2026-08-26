@@ -13,9 +13,12 @@
   self-restating factors) from answers to the store face
 - **obligations**: (1) `restate` and its round-trip law —
   absorb(restate(F)) ≡ F modulo normalize — into the laws kit (#116)
-  beside the imposition law; (2) the FactSource probe: express a posted
-  lookup's constraints as postings and compile the pushable half to a
-  WHERE clause — the N+M receipt; (3) the marshal round-trip law
+  beside the imposition law; (2) DISCHARGED (Aug 2026, pldb `sql/`): the
+  FactSource probe ships — a lookup's region compiles per family to the
+  WHERE clause, the nogood compiler consumes literals through the closed
+  Posting.Visitor (the N+M receipt: one visitor, every posting row), and
+  the Renamer's resolution-as-binds row carried the crossing exactly as
+  this note's floor predicted; (3) the marshal round-trip law
   (unmarshal ∘ marshal = identity on the posting) with the payload slot
   and registry-name stability answered; (4) the depth-of-projection
   policy on `about` (below) — decide per caller, don't inherit;

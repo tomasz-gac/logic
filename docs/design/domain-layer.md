@@ -300,25 +300,30 @@ Real-data consistency adds one more concern:
 pin() → a solve-scoped snapshot handle or declared consistency capability
 ```
 
-The exact Java API should be designed against the first SQL implementation, but the semantic contract is:
+AS BUILT (August 2026, designed against the first SQL implementation as
+this section prescribed):
 
 ```java
-interface FactSource<S extends Snapshot> {
-    S pin();
-
-    Stream<Fact> enumerate(
-        S snapshot,
-        BoundPattern pattern,          // = (Relation, IndexedSeq<Optional<Object>>)
-        Optional<SourcePredicate> pushedCondition);
-
-    Estimate estimate(
-        S snapshot,
-        BoundPattern pattern,
-        Optional<SourcePredicate> pushedCondition);
-
-    Set<Mode> supportedModes();
+public interface FactSource {
+    Iterable<Fact> get(Relation relation, IndexedSeq<Optional<Object>> args);
+    default Iterable<Fact> get(Relation, IndexedSeq<Optional<Object>>, Residues region);
+    default long estimate(Relation relation, IndexedSeq<Optional<Object>> args);
+    default String id();     // source identity AS KNOWLEDGE: equal lookups
+                             // against one backend are one constraint
 }
 ```
+
+Deviations from the sketch, each deliberate: `pin()` became LIFECYCLE
+rather than a method — the SQL source pins at construction (auto-commit
+off, REPEATABLE READ where the driver's metadata admits it, the granted
+level recorded as the declared capability, the snapshot anchored by a
+first read) and `close()` rolls back; a method returns when something in
+the engine exists to call it. `supportedModes()` is UNBUILT — SQL answers
+every practical pattern, so the first mode-restricted source (REST) is
+its design customer, as pin's was SQL. And `pushedCondition` was
+SUPERSEDED by the REGION parameter (§4.4): instead of a pre-compiled
+source predicate, the probe carries the engine's own knowledge about its
+argument positions and each source compiles what it can.
 
 Relation ownership is decided by the RICH BOUND PATTERN: a source is a
 multi-relation backend (one PostgreSQL connection serves many
@@ -364,16 +369,24 @@ CONSTRAINTS (`TableConstraints`/`Support` — shipped, pldb
   through shared columns propagate SUPPORTS against each other instead
   of running nested remote loops: the join executes as propagation,
   branching deferred to `labelo`;
-- **solve-local source reuse** — the landed pool plus a FETCH-COVERAGE
-  LEDGER: the database answers "which landed facts match?"; the ledger
-  records which (source, relation, snapshot, bound-pattern) regions were
-  COMPLETELY enumerated and answers "is this local answer complete for
-  the requested region?". Without coverage, a partial fetch (orders for
-  customer 42) would be mistaken for a complete local relation (all
-  open orders). The landed pool and the table constraints share one
-  extensional source but are NOT one structure: the database stores
-  candidates; `TableConstraints` maintains branch-local narrowing state
-  (supports, propagators, inferred bindings) over them.
+- **solve-local source reuse** — SHIPPED in per-source form (August
+  2026, pldb `sql/`): `CachingFactSource` decorates ANY source with the
+  landed pool (an in-memory database, idempotent by fact value) plus the
+  fetch-coverage ledger, whose entries are (bound pattern, region) —
+  each fetch recorded with the region passed through it, sound by the
+  seam's own over-delivery law. A probe is served locally only on PROOF:
+  pattern subsumption AND the probe's region entailing a recorded one
+  (`Residues.leq`); anything short re-fetches idempotently. This is
+  CALL SUBSUMPTION at the data boundary — a lookup probe is a TCLP call
+  key (bound values + canonical holes + region), the ledger is a table
+  of calls the source has answered, and wide serves narrow, never the
+  reverse. Without coverage, a partial fetch (orders for customer 42)
+  would be mistaken for a complete local relation. The landed pool and
+  the table constraints share one extensional source but are NOT one
+  structure: the pool stores candidates; `TableConstraints` maintains
+  branch-local narrowing state over them. Still future: the CROSS-SOURCE
+  solve-level pool, and `SubsumptionMap` retrieval when ledger entry
+  counts grow.
 
 What it does not buy: remote join pushdown (that is Phase 6's compiled
 predicates); freedom from memory costs (landed rows are resident — the
@@ -411,25 +424,59 @@ Examples:
 
 Unsupported directions must be refused or deferred until enough variables become bound. They must not silently trigger a full remote scan unless that is an explicit capability.
 
-### 4.4 Optional condition pushdown
+### 4.4 Condition pushdown — SHIPPED (August 2026, pldb `sql/`)
 
-Current TCLP call state may contain a projected `Condition` over the source relation's variables.
+The probe carries its REGION: the package's knowledge about the lookup's
+argument positions, extracted as the name cut per family (coupled atoms
+stay home) and renamed to positional canonical names — the variable at
+argument position i becomes `_.i`, which is both the column resolution
+(no term traffic through the seam) and what keeps regions from different
+probes comparable for coverage. The parameter is ADVISORY by the
+over-delivery law: a source must return every fact matching pattern ∧
+region and may ignore the region wholly or per family — narrowing it did
+not apply stays local, enforced by propagation over the returned rows.
 
-Where a safe compiler exists, parts of that condition can be pushed into the backend:
+The SQL adapter compiles regions through a REGISTRY of per-family
+compilers keyed by factor class: one atom in, optionally one predicate
+out — a WHERE fragment with positionally bound parameters, never inlined
+text. The engine-core families are wired by default and overridable (FD:
+enumeration → IN, interval → BETWEEN, point → equality, union → its
+members disjoined, order and separateness propagators by name; nogoods:
+De Morgan over the registry itself — binding literals negate directly,
+store literals compile positively through their own family and take the
+complement). User families register their own compilers and their
+literals inside exclusions push the moment they do.
 
-```text
-x ∈ {1,2,3}        → WHERE x IN (...)
-amount ≤ limit     → WHERE amount <= ?
-valid_from ≤ now   → WHERE valid_from <= ?
-```
+The direction laws, as shipped and law-kit checked (the harness judges
+admission ENGINE-TRUE — a row is admitted iff imposing the posting with
+its values bound solves — against H2's selection of the compiled WHERE):
 
-Pushdown is an optimization. The source adapter must report which predicates it can compile. Anything not compiled remains in the local condition and is enforced by propagation or table constraints after rows return.
+- **Positive: weaker or equal.** Selection ⊇ admission, always; dropping
+  atoms or whole families is free. A missed pushdown costs bandwidth; an
+  unsound one changes answers.
+- **Negation flips the direction ONCE, at the conjunct boundary.** The
+  predicate value carries an EXACTNESS bit — factories say exact, a
+  compiler that approximates marks itself weakened — and the complement
+  is available only while exact, because a weakening's complement
+  under-delivers. Structural, not conventional: the unsound composition
+  is unrepresentable.
+- **Disjunctions push whole or not at all** (dropping a disjunct
+  strengthens); a fused nogood's conjunct level drops freely and marks
+  the result weakened when it does.
+- Double negation is boolean on BOTH sides — demonstrated against the
+  oracle, not assumed: the trial keeps ¬¬P ≡ P (a satisfied inner
+  exclusion discharges without trace), and the compiler's registry
+  self-delegation pushes the complement.
 
-The safe rule is:
+Convention, with its reason on file: columns backing relation properties
+are NON-NULL — SQL's three-valued logic drops a NULL row from both sides
+of a comparison, the silent under-delivery the laws forbid, while the
+engine has no null vocabulary at all.
 
-> Push down only a predicate whose source translation is known to be equivalent or stronger in the sound direction required by the query.
-
-A missed pushdown costs performance. An unsound pushdown changes answers.
+Deferred as ONE design decision: boolean nesting beyond the flat
+disjunction and arithmetic operands (`end = start + 1` — the expression
+layer). Reopening triggers: an `addo` atom crossing a region in a
+workload that matters, or a second SQL dialect forcing late rendering.
 
 ### 4.5 Pull and materialize
 
