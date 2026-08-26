@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
  * termination guard is exact domain equality — finite descent. Labelling
  * ({@link EnforceConstraintsFD}) is this store's {@code enforce}.
  */
-class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomainConstraints> {
+public class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, FiniteDomainConstraints> {
 
 	private static final FiniteDomainConstraints EMPTY = new FiniteDomainConstraints();
 
