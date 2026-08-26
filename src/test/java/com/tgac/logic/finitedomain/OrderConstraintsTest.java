@@ -11,7 +11,10 @@ import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.functional.Streams;
 import com.tgac.logic.Utils;
+import com.tgac.functional.monad.Cont;
 import com.tgac.logic.constraints.Constraints;
+import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
@@ -168,6 +171,48 @@ public class OrderConstraintsTest {
 				.collect(Collectors.toList());
 
 		Assertions.assertThat(xs).containsExactly(400L, 401L, 402L);
+	}
+
+	@Test
+	public void lssIsOneSharpAtom() {
+		// strict order as a single propagator: one landing, one region delta —
+		// not the leq-and-separate composition (two atoms, two wakes)
+		Unifiable<Long> x = lvar();
+		Posting posting = lss(x, lval(3L));
+		Assertions.assertThat(posting).isInstanceOf(Posting.Activation.class);
+		Assertions.assertThat(((Posting.Activation) posting).getItem().name()).isEqualTo("lss");
+		Posting flipped = FiniteDomain.gtr(x, lval(3L));
+		Assertions.assertThat(flipped).isInstanceOf(Posting.Activation.class);
+		Assertions.assertThat(((Posting.Activation) flipped).getItem().name()).isEqualTo("lss");
+	}
+
+	@Test
+	public void varVarLssNarrowsStrictBoundsBeforeLabelling() {
+		// x < y over two open domains: sharp bounds give x <= max(y)-1 and
+		// y >= min(x)+1 immediately — the composition's separate stays parked
+		// on two vars and sheds nothing until grounding
+		Unifiable<Long> x = lvar();
+		Unifiable<Long> y = lvar();
+		Package[] captured = new Package[1];
+		Goal probe = s -> {
+			captured[0] = s;
+			return Cont.just(s);
+		};
+		long answers = FiniteDomain.dom(x, EnumeratedDomain.range(1L, 5L))
+				.and(FiniteDomain.dom(y, EnumeratedDomain.range(1L, 5L)))
+				.and(lss(x, y))
+				.and(probe)
+				.solve(x, TestSchedulers.factory())
+				.count();
+		Assertions.assertThat(answers).isGreaterThan(0);
+		Assertions.assertThat(FiniteDomainConstraints.getDom(captured[0], captured[0].walk(x))
+						.map(d -> d.stream().collect(java.util.stream.Collectors.toList()))
+						.getOrNull())
+				.containsExactly(1L, 2L, 3L);
+		Assertions.assertThat(FiniteDomainConstraints.getDom(captured[0], captured[0].walk(y))
+						.map(d -> d.stream().collect(java.util.stream.Collectors.toList()))
+						.getOrNull())
+				.containsExactly(2L, 3L, 4L);
 	}
 
 	@Test

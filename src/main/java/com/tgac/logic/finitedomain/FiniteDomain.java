@@ -95,22 +95,35 @@ public class FiniteDomain {
 	}
 
 	public static <T> Posting lss(Unifiable<T> less, Unifiable<T> more) {
-		return Posting.all(
-				p -> cmpOrder(p.substitution(), less, more, c -> c < 0) == 0,
-				Propagation.activate(new LeqO(less, more)),
-				separate(less, more));
+		return Propagation.activate(new LssO(less, more));
 	}
 
 	public static <T> Posting gtr(Unifiable<T> more, Unifiable<T> less) {
-		return Posting.all(
-				p -> cmpOrder(p.substitution(), more, less, c -> c > 0) == 0,
-				Propagation.activate(new LeqO(less, more)),
-				separate(more, less));
+		// more > less IS less < more: one sharp atom, the schema's own doom
+		return Propagation.activate(new LssO(less, more));
 	}
 
 	public static <T> Posting geq(Unifiable<T> more, Unifiable<T> less) {
 		// more >= less violated ⟺ less <= more violated: the schema's own doom
 		return Propagation.activate(new LeqO(less, more));
+	}
+
+	@SuppressWarnings("unchecked")
+	static <T> Verdict lssVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
+		Domain<T> lessDom = lss.<T> getDomain().atMost(mor.<T> getDomain().max().prev());
+		Domain<T> moreDom = mor.<T> getDomain().atLeast(lss.<T> getDomain().min().next());
+		if (lessDom.isEmpty() || moreDom.isEmpty()) {
+			return Verdict.fail();
+		}
+		if (lss.getUnifiable().isVal() && mor.getUnifiable().isVal()) {
+			// ground and strictly ordered (nonempty above): nothing left to watch
+			return Verdict.subsumed();
+		}
+		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+				(Theory<FiniteDomainConstraints>) theory,
+				Arrays.<VarWithDomain<?>> asList(
+						VarWithDomain.of(lss.getUnifiable(), lessDom),
+						VarWithDomain.of(mor.getUnifiable(), moreDom))));
 	}
 
 	@SuppressWarnings("unchecked")

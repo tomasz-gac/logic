@@ -20,7 +20,7 @@ import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-@LawsFor({LeqO.class, AddO.class, MulO.class, SeparateO.class})
+@LawsFor({LeqO.class, LssO.class, AddO.class, MulO.class, SeparateO.class})
 public class FiniteDomainConstraintsLawsTest {
 
 	@AfterClass
@@ -40,6 +40,8 @@ public class FiniteDomainConstraintsLawsTest {
 		PartialOrderLaws.check(Arrays.asList(
 				new LeqO(X, Y),
 				new LeqO(Y, X),
+				new LssO(X, Y),
+				new LssO(Y, X),
 				new AddO(X, Y, X),
 				new MulO(X, Y, X),
 				new SeparateO(X, Y)));
