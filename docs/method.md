@@ -170,18 +170,30 @@ move earns a place here after it has fired at least twice.
   only while nothing in the subtree suspends → Exhaustion over the seal);
   fire-and-forget `fork()` (eventual execution is backstopped by joins
   nobody performs → `pool.execute`).
-- **Design churn is a phase error, not a work cost.** When execution and
-  design run interleaved, every design advance invalidates scaffolding
-  built two commits earlier — capabilities constructed and deleted within
-  days, doors built three ways before landing once. The Factor/Theory/Atom
-  arc paid this thrice (stated(), per-kind posting(), per-atom restate)
-  and its measured performance benefit was zero; its real products were
-  structure, laws, and the bugs the movement surfaced. The rule "arcs
-  open with design" is necessary but not sufficient: when mid-arc
-  discoveries outgrow the opening design, STOP and re-open design as its
-  own phase instead of steering the dig while digging. An arc whose
-  charter is finished before its first commit (the Constraint pair) is
-  what the churn purchased.
+- **Build, evaluate, tear down — the loop, not a failure mode.** Some
+  APIs and algebras can only be reasoned about once code exists (step 1
+  says so): build the candidate, evaluate it against real consumers,
+  tear it down without ceremony when the evaluation says so. The
+  Factor/Theory/Atom arc built its doors three ways before landing once,
+  and each teardown taught (stated(), per-kind posting(), per-atom
+  restate — the lineage records what each killed); the one-door arc
+  built rename-on-bind through review and REVERTED it on measurement —
+  the loop working at arc scale. LEDGER CLOSED (Aug 2026): the structure
+  those teardowns bought paid on its first downstream customer — the SQL
+  pushdown arc consumed Theory-as-syntax verbatim (split for extraction,
+  rename for the crossing, leq for coverage, atoms as compilable data)
+  and designed in days what factor-internal state could not have
+  expressed at all. The collaboration is what makes the loop affordable
+  (the human, Aug 2026): solo, the author's investment defends the
+  half-dead shape — sunk cost dulls the criticism; with the assistant
+  writing, teardown is cheap and the evaluator is unattached, so
+  evaluation actually bites. The failure mode that remains is REFUSING
+  THE TEARDOWN: patching around what evaluation condemned, or building
+  on against a charter mid-arc discoveries have outgrown — tear down
+  fully, or stop and re-charter; never steer the dig while digging.
+  (Amends the retired entry "Design churn is a phase error": its own
+  evidence — structure, laws, surfaced bugs — was the loop paying,
+  mislabeled as cost.)
 - **An invariant is a cost model.** Keeping data eagerly normal so reads
   can trust it moves work from every read to every write; whether that
   trade wins is a property of the workload mix, not of the design's
