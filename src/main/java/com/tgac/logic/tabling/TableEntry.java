@@ -25,7 +25,7 @@ import lombok.Getter;
 public class TableEntry<V> {
 	/** The call being tabled */
 	@Getter
-	private final Call call;
+	private final Call<?> call;
 
 	/**
 	 * The answer cell: KEYS-FINAL is its seal (docs/reference/table-completion.md
@@ -35,7 +35,7 @@ public class TableEntry<V> {
 
 	private final IdempotentSemiring<V> semiring;
 
-	public TableEntry(Call call, IdempotentSemiring<V> semiring) {
+	public TableEntry(Call<?> call, IdempotentSemiring<V> semiring) {
 		this.call = call;
 		this.semiring = semiring;
 		// consumers are frames awaiting the cell - growth and the seal wake

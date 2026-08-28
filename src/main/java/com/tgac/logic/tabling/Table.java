@@ -44,14 +44,15 @@ public class Table implements Packaged {
 			(BoundedSemiring<Object>) (BoundedSemiring<?>) Condition.RING;
 
 	/** Map from calls to their table entries */
-	private final ConcurrentHashMap<Call, TableEntry<Object>> entries = new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<Call<?>, TableEntry<Object>> entries = new ConcurrentHashMap<>();
 
 	/**
 	 * Per relation, every entry's argument pattern retrievable by subsumption
 	 * (general covers specific). Partitioning by relation lives HERE — the map
-	 * itself is one relation-agnostic key space.
+	 * itself is one relation-agnostic key space, keyed by the call's identity
+	 * token whatever its type.
 	 */
-	private final ConcurrentHashMap<Tabled<?>, SubsumptionMap<TableEntry<Object>>> subsumption =
+	private final ConcurrentHashMap<Object, SubsumptionMap<TableEntry<Object>>> subsumption =
 			new ConcurrentHashMap<>();
 
 	/** The algorithm: streaming vs closed/star. */
@@ -131,7 +132,7 @@ public class Table implements Packaged {
 	 * Get or create a table entry for the given call.
 	 * If this is the first time we've seen this call, a new TableEntry is created.
 	 */
-	public TableEntry<Object> getOrCreateEntry(Call call) {
+	public TableEntry<Object> getOrCreateEntry(Call<?> call) {
 		return entries.computeIfAbsent(call, c -> {
 			TableEntry<Object> entry = new TableEntry<>(c, mode.cellSemiring());
 			subsumption.computeIfAbsent(c.getRelation(), relation -> new SubsumptionMap<>())
@@ -147,7 +148,7 @@ public class Table implements Packaged {
 	 * entry is sound mid-stream by the subset property. The entry's answers
 	 * are a superset filtered by consumption (unify + the caller's own state).
 	 */
-	public TableEntry<Object> reusableSubsumer(Call key) {
+	public TableEntry<Object> reusableSubsumer(Call<?> key) {
 		TableEntry<Object> exact = getEntry(key);
 		if (exact != null) {
 			return exact;
@@ -175,7 +176,7 @@ public class Table implements Packaged {
 	 * A SEALED entry whose call subsumes {@code key}, or null. Retrieval by the
 	 * subsumption trie ({@link SubsumptionMap}); runs only on exact misses.
 	 */
-	public TableEntry<Object> findSealedSubsumer(Call key) {
+	public TableEntry<Object> findSealedSubsumer(Call<?> key) {
 		SubsumptionMap<TableEntry<Object>> patterns = subsumption.get(key.getRelation());
 		if (patterns == null) {
 			return null;
@@ -192,7 +193,7 @@ public class Table implements Packaged {
 		return null;
 	}
 
-	public TableEntry<Object> getEntry(Call call) {
+	public TableEntry<Object> getEntry(Call<?> call) {
 		return entries.get(call);
 	}
 
@@ -206,7 +207,7 @@ public class Table implements Packaged {
 	/**
 	 * Check if the table contains an entry for the given call.
 	 */
-	public boolean contains(Call call) {
+	public boolean contains(Call<?> call) {
 		return entries.containsKey(call);
 	}
 

@@ -8,28 +8,30 @@ import com.tgac.logic.unification.Reified;
 import lombok.Value;
 
 /**
- * A call to a tabled relation with specific arguments under specific
- * constraint knowledge.
+ * A call to a relation with specific arguments under specific constraint
+ * knowledge.
  *
- * Two calls are equal when they apply the same relation (by identity) to
- * alpha-equivalent arguments — reification makes plain equality decide
- * variance — under EQUAL residues: each projecting store's knowledge about
- * the call's free vars (positional, slot i = the i-th any in first-occurrence
- * order), keyed by store class. A constraint-free call has no residues, so
- * pre-TCLP keys are unchanged.
+ * The relation slot is generic: {@code R} is any identity token naming the
+ * relation — a goal's {@link Tabled}, or any other canonical identity a
+ * caller keys its tables by. Two calls are equal when they apply the same
+ * relation (by identity) to alpha-equivalent arguments — reification makes
+ * plain equality decide variance — under EQUAL residues: each projecting
+ * store's knowledge about the call's free vars (positional, slot i = the
+ * i-th any in first-occurrence order), keyed by store class. A
+ * constraint-free call has no residues, so pre-TCLP keys are unchanged.
  */
 @Value
-public class Call {
-	Tabled<?> relation;
+public class Call<R> {
+	R relation;
 	Reified<?> arguments;
 	Residues residues;
 
-	public static Call of(Tabled<?> relation, Reified<?> arguments) {
-		return new Call(relation, arguments, Residues.TRUE);
+	public static <R> Call<R> of(R relation, Reified<?> arguments) {
+		return new Call<>(relation, arguments, Residues.TRUE);
 	}
 
-	public static Call of(Tabled<?> relation, Reified<?> arguments, Residues residues) {
-		return new Call(relation, arguments, residues);
+	public static <R> Call<R> of(R relation, Reified<?> arguments, Residues residues) {
+		return new Call<>(relation, arguments, residues);
 	}
 
 	/**
@@ -45,7 +47,7 @@ public class Call {
 	 * among this call's answers (the subset property), so this call's entry —
 	 * open or sealed — may serve {@code other} through consume's filter.
 	 */
-	public boolean subsumes(Call other) {
+	public boolean subsumes(Call<?> other) {
 		return relation == other.relation
 				&& Subsumption.subsumes(arguments, other.arguments)
 				&& other.residues.leq(residues);

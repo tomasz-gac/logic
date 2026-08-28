@@ -120,7 +120,7 @@ public class Tabling {
 					// reified with anys) plus each store's slot-named factor
 					Reified<?> reifiedArgs = keyPair._1;
 					Residues keyResidues = keyPair._2;
-					Call key = Call.of(relation, reifiedArgs, keyResidues);
+					Call<Tabled<T>> key = Call.of(relation, reifiedArgs, keyResidues);
 					Reader reader = Reader.of(k, callerPkg, argsTerm);
 					Table table = reader.getTable();
 					// a weighted solve whose semiring cannot table (non-idempotent,
@@ -185,7 +185,7 @@ public class Tabling {
 		return p.getStores().get(Table.class)
 				.map(Table.class::cast)
 				.map(table -> {
-					Call key = Call.of(relation,
+					Call<Tabled<T>> key = Call.of(relation,
 							MiniKanren.reify(p.substitution(), argsTerm).ground());
 					TableEntry<?> entry = table.getEntry(key);
 					// a sealed subsumer's count bounds the instance's emissions

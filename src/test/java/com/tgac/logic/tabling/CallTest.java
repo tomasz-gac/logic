@@ -59,8 +59,29 @@ public class CallTest {
 
 	@Test
 	public void testToStringShowsArguments() {
-		Call call = Call.of(relation(), (Reified<?>) lval(Tuple.of(1, 4)));
+		Call<?> call = Call.of(relation(), (Reified<?>) lval(Tuple.of(1, 4)));
 
 		assertThat(call.toString()).contains("1").contains("4");
+	}
+
+	@Test
+	public void testAnyIdentityTokenKeysACall() {
+		// the relation slot is generic: any identity token keys the cache,
+		// and the whole subsumption stack answers for it — token identity,
+		// argument subsumption, residue entailment
+		Object token = new Object();
+		Call<Object> wide = Call.of(token, (Reified<?>) lval(Tuple.of(lval(1), Any.of(0))));
+		Call<Object> narrow = Call.of(token, (Reified<?>) lval(Tuple.of(lval(1), lval(2))));
+
+		assertThat(wide.subsumes(narrow)).isTrue();
+		assertThat(narrow.subsumes(wide)).isFalse();
+
+		Table table = Table.empty();
+		TableEntry<Object> entry = table.getOrCreateEntry(wide);
+		assertThat(table.reusableSubsumer(narrow)).isSameAs(entry);
+		assertThat(table.reusableSubsumer(
+				Call.of(new Object(), narrow.getArguments())))
+				.describedAs("a different token never shares entries")
+				.isNull();
 	}
 }
