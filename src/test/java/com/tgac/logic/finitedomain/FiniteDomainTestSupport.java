@@ -10,6 +10,7 @@ import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
+import com.tgac.logic.lattice.TestPropagators;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -31,7 +32,7 @@ public final class FiniteDomainTestSupport {
 	/** A keeper watching a fresh var — value-distinct per call (fresh var). */
 	public static Propagator keeper() {
 		LVar<?> x = (LVar<?>) lvar().asVar().get();
-		return Propagator.of(FiniteDomainConstraints.empty(), "keep",
+		return TestPropagators.of(FiniteDomainConstraints.empty(), "keep",
 				Collections.<Term<?>> singletonList(x), (watched, state) -> Verdict.keep());
 	}
 }

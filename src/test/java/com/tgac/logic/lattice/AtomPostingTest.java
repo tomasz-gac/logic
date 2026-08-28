@@ -45,7 +45,7 @@ public class AtomPostingTest {
 	@Test
 	public void aStatedPropagatorParksAndWakes() {
 		Unifiable<Integer> x = lvar();
-		Propagator<FlatConstraints> even = Propagator.of(FlatConstraints.empty(), "even",
+		Propagator<FlatConstraints> even = TestPropagators.of(FlatConstraints.empty(), "even",
 						Collections.singletonList(x),
 						(watched, state) -> {
 							Term<?> w = state.walk(watched.get(0));

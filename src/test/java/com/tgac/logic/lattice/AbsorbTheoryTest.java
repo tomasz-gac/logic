@@ -78,7 +78,7 @@ public class AbsorbTheoryTest {
 
 	@Test
 	public void absorbParksPropagatorAtoms() {
-		Propagator<FlatConstraints> even = Propagator.of(FlatConstraints.empty(), "even",
+		Propagator<FlatConstraints> even = TestPropagators.of(FlatConstraints.empty(), "even",
 				Collections.singletonList(X), (watched, state) -> Verdict.keep());
 
 		Package state = absorbed(Theory.of(

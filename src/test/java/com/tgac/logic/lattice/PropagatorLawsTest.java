@@ -16,7 +16,11 @@ import java.util.Collections;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-@LawsFor(Propagator.class)
+// the claim anchors at the leaf's enclosing class: LawCoverage matches
+// exercised samples by enclosure, and the identity under test — equals,
+// hashCode, the atom leq — is final on Propagator, so exercising the test
+// leaf exercises exactly the base's semantics
+@LawsFor(TestPropagators.class)
 public class PropagatorLawsTest {
 
 	@AfterClass
@@ -37,7 +41,7 @@ public class PropagatorLawsTest {
 	}
 
 	private static Propagator<FlatConstraints> propagator(String name, Unifiable<Integer> term) {
-		return Propagator.of(FlatConstraints.empty(), name,
+		return TestPropagators.of(FlatConstraints.empty(), name,
 				Collections.singletonList(term),
 				(watched, state) -> Verdict.keep());
 	}

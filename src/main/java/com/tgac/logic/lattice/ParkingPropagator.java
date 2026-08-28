@@ -1,11 +1,9 @@
 package com.tgac.logic.lattice;
 
-// ABOUTME: The parked constraint schema: an abstract base owning the watched
-// ABOUTME: terms, the identity contract, matching, rename and the statement.
+// ABOUTME: The parked constraint schema whose examination is a fiber: it may defer
+// ABOUTME: or park awaiting a channel before answering its verdict.
 
 import com.tgac.functional.fibers.Fiber;
-import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Atom;
 import com.tgac.logic.constraints.store.Doomed;
 import com.tgac.logic.constraints.store.Factor;
@@ -19,35 +17,30 @@ import io.vavr.collection.Traversable;
 import java.util.Objects;
 
 /**
- * The parked unit of the wake machinery (docs/reference/constraint-kernel.md
- * §2.2), as an abstract base: the class IS the schema. Shared here — the one
- * piece of instance state (the watched terms), the identity contract, the
- * walk-aware watch matching, rename-as-re-instantiation and the statement.
- * A subclass supplies exactly its schema: {@link #propagate}, its
- * re-instantiation {@link #watching}, its family ({@link #getFactorClass},
- * {@link #empty}), its {@link #name} and, where the author knows better than
- * never, its {@link #doomed} check.
+ * {@link Propagator}'s fiber-lane sibling: the same parked schema — watched
+ * terms, the identity contract, walk-aware watch matching,
+ * rename-as-re-instantiation — with an examination that is a {@link Fiber}:
+ * {@link #propagate} may defer, or park awaiting a channel, before answering
+ * its {@link Verdict}. A synchronous drive against this kind cannot be
+ * written; pricing ({@link #doomed}) stays synchronous — keep it cheap.
  *
- * <p>THE CLASS CONTRACT that licenses the identity: a schema carries NO
+ * <p>THE CLASS CONTRACT is the sync kind's, unchanged: a schema carries NO
  * instance state beyond the terms it watches — the name must uniquely
- * determine the verdict semantics within its family, so two posts of one
- * relation on the same terms are the same knowledge stated twice (the store
- * dedups them), and renamed instances compare equal wherever the renaming
- * agrees. Equality is (family, name, watched terms), final.
- *
- * <p>Postable by construction: every propagator carries its complete
- * statement context — there is no unconfigured state to construct.
+ * determine the verdict semantics within its family. Equality is (family,
+ * name, watched terms) WITHIN the kind, final: the examination lane is part
+ * of the kind, so a parking schema never equals a sync one, whatever they
+ * share.
  */
-public abstract class Propagator<F extends Factor<F>> implements Atom<F>, Doomed {
+public abstract class ParkingPropagator<F extends Factor<F>> implements Atom<F>, Doomed {
 
 	private final Array<? extends Term<?>> watchedTerms;
 
-	protected Propagator(Array<? extends Term<?>> watchedTerms) {
+	protected ParkingPropagator(Array<? extends Term<?>> watchedTerms) {
 		this.watchedTerms = watchedTerms;
 	}
 
-	/** Re-examine against the current state. Reads anything, mutates nothing. */
-	public abstract Verdict propagate(Package state);
+	/** Re-examine against the current state, as a fiber. Reads anything, mutates nothing. */
+	public abstract Fiber<Verdict> propagate(Package state);
 
 	/**
 	 * This schema re-instantiated over other terms — how a carried coupling
@@ -55,7 +48,7 @@ public abstract class Propagator<F extends Factor<F>> implements Atom<F>, Doomed
 	 * variables POSITIONALLY through the watched terms, never through
 	 * lexical capture, which is what makes this sound.
 	 */
-	public abstract Propagator<F> watching(Array<? extends Term<?>> terms);
+	public abstract ParkingPropagator<F> watching(Array<? extends Term<?>> terms);
 
 	/** The family's empty — the statement's registration seed. */
 	@Override
@@ -111,10 +104,10 @@ public abstract class Propagator<F extends Factor<F>> implements Atom<F>, Doomed
 		if (this == o) {
 			return true;
 		}
-		if (!(o instanceof Propagator)) {
+		if (!(o instanceof ParkingPropagator)) {
 			return false;
 		}
-		Propagator<?> that = (Propagator<?>) o;
+		ParkingPropagator<?> that = (ParkingPropagator<?>) o;
 		return getFactorClass().equals(that.getFactorClass())
 				&& name().equals(that.name())
 				&& watchedTerms.equals(that.watchedTerms);

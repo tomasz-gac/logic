@@ -22,6 +22,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
+import com.tgac.logic.lattice.TestPropagators;
 import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
@@ -68,7 +69,7 @@ public class ProjectionTest {
 	}
 
 	private static Propagator keeper(Unifiable<?>... watched) {
-		return Propagator.of(FiniteDomainConstraints.empty(), "keep",
+		return TestPropagators.of(FiniteDomainConstraints.empty(), "keep",
 				Arrays.<Term<?>> asList(watched), (terms, pkg) -> Verdict.keep());
 	}
 
@@ -127,7 +128,7 @@ public class ProjectionTest {
 
 		Unifiable<Integer> z = lvar();
 		assertThat(keeper(x, z)).isNotEqualTo(posted);
-		assertThat(Propagator.of(FiniteDomainConstraints.empty(), "other",
+		assertThat(TestPropagators.of(FiniteDomainConstraints.empty(), "other",
 				Arrays.<Term<?>> asList(x, y), (terms, pkg) -> Verdict.keep()))
 				.isNotEqualTo(posted);
 	}
@@ -315,7 +316,7 @@ public class ProjectionTest {
 		// replay is a renaming: the constraint applies to the target vars,
 		// and the original vars stay independent (no aliasing)
 		Unifiable<Integer> orig = lvar();
-		Propagator notSeven = Propagator.of(FiniteDomainConstraints.empty(), "not_seven",
+		Propagator notSeven = TestPropagators.of(FiniteDomainConstraints.empty(), "not_seven",
 				Arrays.<Term<?>> asList(orig), (terms, pkg) -> {
 					Term<?> watched = pkg.walk(terms.get(0));
 					return watched.isVal() && Integer.valueOf(7).equals(watched.get())

@@ -12,6 +12,7 @@ import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
+import com.tgac.logic.lattice.TestPropagators;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.TestAccess;
@@ -40,7 +41,7 @@ public class ParametersTest {
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
 
-		Propagator<FiniteDomainConstraints> constraint = Propagator.of(
+		Propagator<FiniteDomainConstraints> constraint = TestPropagators.of(
 				FiniteDomainConstraints.empty(), "keep",
 				Arrays.asList(prefix.get()._1),
 				(watched, st) -> Verdict.keep());

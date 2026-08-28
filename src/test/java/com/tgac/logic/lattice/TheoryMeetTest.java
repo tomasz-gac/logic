@@ -92,9 +92,9 @@ public class TheoryMeetTest {
 	public void atomsWithoutTheCapabilityUnionEvenOnACollidingSurface() {
 		// same watched surface, different names: a propagator never fuses —
 		// only family code (the atom kind) declares combinability
-		Propagator<FlatConstraints> even = Propagator.of(FlatConstraints.empty(), "even",
+		Propagator<FlatConstraints> even = TestPropagators.of(FlatConstraints.empty(), "even",
 				Collections.singletonList(X), (watched, state) -> Verdict.keep());
-		Propagator<FlatConstraints> odd = Propagator.of(FlatConstraints.empty(), "odd",
+		Propagator<FlatConstraints> odd = TestPropagators.of(FlatConstraints.empty(), "odd",
 				Collections.singletonList(X), (watched, state) -> Verdict.keep());
 		Theory<FlatConstraints> met = Theory
 				.of(Collections.singletonList((Atom<FlatConstraints>) even))
@@ -152,7 +152,7 @@ public class TheoryMeetTest {
 
 	@Test
 	public void kindStreamsExactlyThatKindsAtoms() {
-		Propagator<FlatConstraints> even = Propagator.of(FlatConstraints.empty(), "even",
+		Propagator<FlatConstraints> even = TestPropagators.of(FlatConstraints.empty(), "even",
 				Collections.singletonList(X), (watched, state) -> Verdict.keep());
 		Theory<FlatConstraints> theory = Theory.of(
 				Arrays.<Atom<FlatConstraints>> asList(on(X, 1, 2), even));

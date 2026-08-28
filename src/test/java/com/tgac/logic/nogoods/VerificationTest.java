@@ -24,6 +24,7 @@ import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.Packaged;
 import com.tgac.logic.lattice.Propagator;
+import com.tgac.logic.lattice.TestPropagators;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.Array;
@@ -158,9 +159,9 @@ public class VerificationTest {
 		// the item (the named-schema contract), and the statement follows it
 		Term<?> x = lvar();
 		Posting first = Propagation.activate(
-				Propagator.of(NogoodConstraints.EMPTY, "same-schema", Array.of(x), (watched, pkg) -> null));
+				TestPropagators.of(NogoodConstraints.EMPTY, "same-schema", Array.of(x), (watched, pkg) -> null));
 		Posting second = Propagation.activate(
-				Propagator.of(NogoodConstraints.EMPTY, "same-schema", Array.of(x), (watched, pkg) -> null));
+				TestPropagators.of(NogoodConstraints.EMPTY, "same-schema", Array.of(x), (watched, pkg) -> null));
 
 		assertThat(first).isEqualTo(second);
 		assertThat(first.terms()).containsExactly(x);

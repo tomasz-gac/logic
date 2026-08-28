@@ -13,6 +13,7 @@ import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
+import com.tgac.logic.lattice.TestPropagators;
 import com.tgac.logic.unification.LVar;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,7 +31,7 @@ public class FiniteDomainConstraintsLawsTest {
 
 	private static final LVar<?> X = (LVar<?>) lvar().asVar().get();
 	private static final LVar<?> Y = (LVar<?>) lvar().asVar().get();
-	private static final Propagator KEEP = Propagator.of(FiniteDomainConstraints.empty(), "keep",
+	private static final Propagator KEEP = TestPropagators.of(FiniteDomainConstraints.empty(), "keep",
 			Collections.singletonList(X), (watched, state) -> Verdict.keep());
 
 	@Test
