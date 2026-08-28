@@ -5,7 +5,6 @@ package com.tgac.logic.lattice;
 
 import static com.tgac.logic.unification.LVal.lval;
 
-import com.tgac.functional.algebra.MonotoneDrain;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
@@ -32,6 +31,7 @@ import io.vavr.control.Option;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -68,6 +68,11 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	@SuppressWarnings("unchecked")
 	protected Stream<Propagator<S>> props(Theory<S> theory) {
 		return theory.kind(Propagator.class).map(p -> (Propagator<S>) p);
+	}
+
+	@SuppressWarnings("unchecked")
+	protected Stream<ParkingPropagator<S>> parkingProps(Theory<S> theory) {
+		return theory.kind(ParkingPropagator.class).map(p -> (ParkingPropagator<S>) p);
 	}
 
 	/** The theory without its entry at {@code name} — spent bookkeeping drops. */
@@ -239,8 +244,25 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 				if (!current.atoms().contains(atom)) {
 					continue;    // discharged earlier in this trigger, or never landed
 				}
-				current = consume(examine((Propagator<S>) atom, resident(state, current), current),
-						current, inferred, runs, queue);
+				Propagator<S> p = (Propagator<S>) atom;
+				Package live = resident(state, current);
+				Theory<S> at = current;
+				current = consume(p.propagate(live).match(
+								Update::fail,
+								Update::unchanged,
+								() -> Update.applied(at.without(p)),
+								f -> f.apply(live, at)),
+						at, inferred, runs, queue);
+			} else if (atom instanceof ParkingPropagator) {
+				if (!current.atoms().contains(atom)) {
+					continue;    // discharged earlier in this trigger, or never landed
+				}
+				// the arrival examination rides the cascade: the atom watches
+				// its own terms, so enqueueing them examines it; co-watchers
+				// re-examine idempotently (keep changes nothing)
+				for (Term<?> watched : atom.watched()) {
+					queue.add(watched);
+				}
 			}
 			if (current == null) {
 				return Fiber.done(Revision.fail());
@@ -250,52 +272,131 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 	}
 
 	/**
-	 * This store's propagation loop: one iteration is one term whose watchers
-	 * re-examine; verdict updates discover further terms. The loop is the
-	 * unchecked {@link MonotoneDrain} over the THEORY — {@link Theory}'s own
-	 * {@code Semilattice}+{@code Absorbing} declarations type the termination
-	 * theorem's premise, and the theory is the descending state (values
-	 * narrow, subsumption discharges propagators). A failing update stops the
-	 * drain and fails the revision — but the contraction laws hold by
-	 * construction, not verification: {@link #update} couples re-examination
-	 * to strict narrowing (DomainUpdateContractTest pins it), so the per-step
-	 * leq/equals sweeps of the checked twin would verify what the toolkit
-	 * cannot express violating. Synchronous, so the whole cascade stays one
-	 * fiber step; a store hosting expensive propagators would use the fibered
-	 * {@code Worklist} twin instead — granularity is the store author's choice.
-	 * Unchanged is measured against the RESIDENT theory, not the working
-	 * start: a caller that stripped or spent entries before cascading has
-	 * already moved, and the driver must land the replacement.
+	 * This store's propagation loop: one queue term per round, its watchers
+	 * partitioned by kind and examined in turn — the SYNC {@link Propagator}s
+	 * in a plain loop, the {@link ParkingPropagator}s each awaited, the
+	 * theory threading from one lane into the other and on to the next
+	 * round. The loop stays SYNCHRONOUS until a round actually wakes a
+	 * parking watcher: a store without them drains its whole cascade in one
+	 * fiber step, exactly the pre-parking cost model, and the yield exists
+	 * precisely where a fiber genuinely runs. An examination that parks
+	 * waits on its own branch only, fairly stepped by whatever scheduler
+	 * drives the solve. Verdict updates discover further terms into the same
+	 * queue; a failing update fails the revision.
+	 * Termination is the monotone-drain argument: the theory only descends
+	 * (values narrow, subsumption discharges propagators), and
+	 * {@link #update} couples re-examination to strict narrowing
+	 * (DomainUpdateContractTest pins it). Unchanged is measured against the
+	 * RESIDENT theory, not the working start: a caller that stripped or
+	 * spent entries before cascading has already moved, and the driver must
+	 * land the replacement.
 	 */
-	protected Fiber<Revision> cascade(Package state, Theory<S> resident, Theory<S> start,
+	protected Fiber<Revision> cascade(Package state, Theory<S> resident, Theory<S> theory,
 			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue) {
-		List<Propagator<S>> parked = props(start).collect(Collectors.toList());
-		boolean[] dead = {false};
-		Theory<S> outcome = MonotoneDrain.drainUnsafe(start, queue, (current, next) -> {
-			Theory<S> stepped = current;
-			ArrayDeque<Term<?>> discovered = new ArrayDeque<>();
-			for (Propagator<S> p : parked) {
-				if (!stepped.atoms().contains(p)) {
-					// an earlier verdict of this same trigger removed it
-					continue;
-				}
-				Package live = resident(state, stepped);
-				if (!p.watches(live, next)) {
-					continue;
-				}
-				stepped = consume(examine(p, live, stepped), stepped, inferred, runs, discovered);
-				if (stepped == null) {
-					dead[0] = true;
-					return MonotoneDrain.Step.stop(current);
-				}
+		Theory<S> current = theory;
+		while (true) {
+			if (current.isAbsorbing()) {
+				return Fiber.done(Revision.fail());
 			}
-			return MonotoneDrain.Step.proceed(stepped, discovered);
-		});
-		if (dead[0] || outcome.isAbsorbing()) {
-			return Fiber.done(Revision.fail());
+			if (queue.isEmpty()) {
+				return Fiber.done(conclude(resident, current, inferred, runs));
+			}
+			Term<?> changed = queue.poll();
+			current = examineWatchersSync(state, current, changed, inferred, runs, queue,
+					props(current).iterator());
+			if (current == null) {
+				return Fiber.done(Revision.fail());
+			}
+			List<ParkingPropagator<S>> woken = wokenParking(state, current, changed);
+			if (woken.isEmpty()) {
+				// still synchronous — the round produced no fiber work
+				continue;
+			}
+			Theory<S> at = current;
+			return examineWatchers(state, at, changed, inferred, runs, queue, woken.iterator())
+					.flatMap(settled -> settled.isDefined() ?
+							Fiber.defer(() -> cascade(state, resident, settled.get(), inferred, runs, queue)) :
+							Fiber.done(Revision.fail()));
 		}
+	}
+
+	/** The parking watchers of one changed term, present and concerned. */
+	private List<ParkingPropagator<S>> wokenParking(Package state, Theory<S> theory, Term<?> changed) {
+		List<ParkingPropagator<S>> parking = parkingProps(theory).collect(Collectors.toList());
+		if (parking.isEmpty()) {
+			return parking;
+		}
+		Package live = resident(state, theory);
+		List<ParkingPropagator<S>> woken = new ArrayList<>();
+		for (ParkingPropagator<S> p : parking) {
+			if (p.watches(live, changed)) {
+				woken.add(p);
+			}
+		}
+		return woken;
+	}
+
+	/** The sync watchers of one changed term, a plain loop; null = the branch died. */
+	private Theory<S> examineWatchersSync(Package state, Theory<S> theory, Term<?> changed,
+			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue,
+			Iterator<Propagator<S>> pending) {
+		Theory<S> current = theory;
+		while (pending.hasNext()) {
+			Propagator<S> p = pending.next();
+			if (!current.atoms().contains(p)) {
+				// discharged by an earlier verdict of this trigger
+				continue;
+			}
+			Package live = resident(state, current);
+			if (!p.watches(live, changed)) {
+				continue;
+			}
+			Theory<S> at = current;
+			current = consume(p.propagate(live).match(
+							Update::fail,
+							Update::unchanged,
+							() -> Update.applied(at.without(p)),
+							f -> f.apply(live, at)),
+					at, inferred, runs, queue);
+			if (current == null) {
+				return null;
+			}
+		}
+		return current;
+	}
+
+	/** The parking watchers of one changed term, each awaited; none = the branch died. */
+	private Fiber<Option<Theory<S>>> examineWatchers(Package state, Theory<S> theory, Term<?> changed,
+			List<Prefix> inferred, List<Goal> runs, ArrayDeque<Term<?>> queue,
+			Iterator<ParkingPropagator<S>> pending) {
+		if (!pending.hasNext()) {
+			return Fiber.done(Option.of(theory));
+		}
+		ParkingPropagator<S> p = pending.next();
+		Package live = resident(state, theory);
+		if (!theory.atoms().contains(p) || !p.watches(live, changed)) {
+			// discharged by an earlier verdict of this trigger, or unconcerned
+			return examineWatchers(state, theory, changed, inferred, runs, queue, pending);
+		}
+		return p.propagate(live)
+				.map(verdict -> verdict.match(
+						Update::fail,
+						Update::unchanged,
+						() -> Update.applied(theory.without(p)),
+						f -> f.apply(live, theory)))
+				.flatMap(step -> {
+					Theory<S> next = consume(step, theory, inferred, runs, queue);
+					return next == null ?
+							Fiber.done(Option.none()) :
+							examineWatchers(state, next, changed, inferred, runs, queue, pending);
+				});
+	}
+
+	/** The cascade's landing: fail, unchanged, or the revision. */
+	private Revision conclude(Theory<S> resident, Theory<S> outcome,
+			List<Prefix> inferred, List<Goal> runs) {
 		if (outcome == resident && inferred.isEmpty() && runs.isEmpty()) {
-			return Fiber.done(Revision.unchanged());
+			return Revision.unchanged();
 		}
 		Revision.Updated result = Revision.updated(Constraint.of(outcome, self()));
 		for (Prefix prefix : inferred) {
@@ -306,16 +407,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 			result = result.withSuspend(Suspension.of(
 					Collections.emptyList(), p -> true, run));
 		}
-		return Fiber.done(result);
-	}
-
-	/** One propagator's verdict as an {@link Update} step against the theory. */
-	private Update examine(Propagator<S> p, Package live, Theory<S> theory) {
-		return p.propagate(live).match(
-				Update::fail,
-				Update::unchanged,
-				() -> Update.applied(theory.without(p)),
-				f -> f.apply(live, theory));
+		return result;
 	}
 
 	/**
@@ -344,8 +436,9 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 				.flatMap(u -> u.asVar().toJavaStream())
 				.collect(Collectors.toSet());
 
-		Set<LVar<?>> constrainedVarsWithoutValues = props(incoming)
-				.map(Propagator::watchedTerms)
+		Set<LVar<?>> constrainedVarsWithoutValues = Stream.concat(
+						props(incoming).map(Propagator::watchedTerms),
+						parkingProps(incoming).map(ParkingPropagator::watchedTerms))
 				.flatMap(ts -> StreamSupport.stream(ts.spliterator(), false))
 				.map(p::walk)
 				.flatMap(u -> u.asVar().toJavaStream())

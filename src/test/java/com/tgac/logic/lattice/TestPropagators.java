@@ -3,6 +3,7 @@ package com.tgac.logic.lattice;
 // ABOUTME: The ad-hoc propagator leaf for tests: a sync schema from its parts,
 // ABOUTME: complete at construction. Production schemas are named classes.
 
+import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
@@ -38,6 +39,55 @@ public final class TestPropagators {
 			BiFunction<Array<? extends Term<?>>, Package, Verdict> body,
 			Predicate<Package> doom) {
 		return new Leaf<>(Array.ofAll(watchedTerms), empty, name, body, doom);
+	}
+
+	/** The {@link ParkingPropagator} leaf — {@link #of}'s fiber-lane twin. */
+	public static <F extends Factor<F>> ParkingPropagator<F> parking(
+			F empty,
+			String name,
+			Iterable<? extends Term<?>> watchedTerms,
+			BiFunction<Array<? extends Term<?>>, Package, Fiber<Verdict>> body) {
+		return new ParkingLeaf<>(Array.ofAll(watchedTerms), empty, name, body);
+	}
+
+	private static final class ParkingLeaf<F extends Factor<F>> extends ParkingPropagator<F> {
+		private final F empty;
+		private final String name;
+		private final BiFunction<Array<? extends Term<?>>, Package, Fiber<Verdict>> body;
+
+		private ParkingLeaf(Array<? extends Term<?>> watchedTerms, F empty, String name,
+				BiFunction<Array<? extends Term<?>>, Package, Fiber<Verdict>> body) {
+			super(watchedTerms);
+			this.empty = empty;
+			this.name = name;
+			this.body = body;
+		}
+
+		@Override
+		public Fiber<Verdict> propagate(Package state) {
+			return body.apply(watchedTerms(), state);
+		}
+
+		@Override
+		public ParkingPropagator<F> watching(Array<? extends Term<?>> terms) {
+			return new ParkingLeaf<>(terms, empty, name, body);
+		}
+
+		@Override
+		public F empty() {
+			return empty;
+		}
+
+		@Override
+		public String name() {
+			return name;
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public Class<? extends F> getFactorClass() {
+			return (Class<? extends F>) empty.getClass();
+		}
 	}
 
 	private static final class Leaf<F extends Factor<F>> extends Propagator<F> {
