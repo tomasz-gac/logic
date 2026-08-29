@@ -34,6 +34,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -390,6 +391,32 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 							Fiber.done(Option.none()) :
 							examineWatchers(state, next, changed, inferred, runs, queue, pending);
 				});
+	}
+
+	/**
+	 * Fail-first grounding, the enforcement discipline shared by every store
+	 * that must branch: each round prices the live survivors, enumerates the
+	 * NARROWEST, and re-selects against the propagated state. A contradiction
+	 * surfaces at the shallowest branch, and every grounding's cascade
+	 * shrinks the rest before they are picked — often to points that never
+	 * branch at all. Pricing is an order, not a gate: survivors priced at
+	 * the barrier still ground when they are all that is left.
+	 */
+	public static Goal groundNarrowestFirst(Function<Package, List<Tuple2<Long, Goal>>> survivors) {
+		return s -> {
+			Tuple2<Long, Goal> narrowest = null;
+			for (Tuple2<Long, Goal> candidate : survivors.apply(s)) {
+				if (narrowest == null || candidate._1 < narrowest._1) {
+					narrowest = candidate;
+				}
+			}
+			if (narrowest == null) {
+				return Cont.just(s);
+			}
+			return narrowest._2
+					.and(Goal.defer(() -> groundNarrowestFirst(survivors)))
+					.apply(s);
+		};
 	}
 
 	/** The cascade's landing: fail, unchanged, or the revision. */
