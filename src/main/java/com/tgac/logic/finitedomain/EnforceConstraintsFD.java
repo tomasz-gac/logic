@@ -6,12 +6,10 @@ import com.tgac.functional.Exceptions;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.monad.Cont;
-import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.lattice.Propagator;
-import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -35,10 +33,20 @@ class EnforceConstraintsFD {
 								.collect(Collectors.toSet()))
 						.apply(xs -> {
 							verifyAllConstrainedHaveDomain(FiniteDomainConstraints.getConstraints(a1), xs);
-							return Goal.condu(Goal.defer(() -> forceAns(lval(xs))));
+							// the sweep forces each domain-carrying var directly:
+							// the vars are the store's, not an answer structure —
+							// no term wrapping, no structural walk
+							return Goal.condu(Goal.defer(() -> forceAnsEach(xs)));
 						})
 						.apply(a1))
 				.apply(a);
+	}
+
+	private static Goal forceAnsEach(Collection<Term<?>> xs) {
+		return xs.stream()
+				.map(u -> Goal.defer(() -> forceAns(u)))
+				.reduce(Goal::and)
+				.orElseGet(Goal::success);
 	}
 
 	public static <T> Goal forceAns(Term<T> x) {
@@ -46,25 +54,23 @@ class EnforceConstraintsFD {
 				.map(v -> v.asVar()
 						.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv))
 						.map(d -> unifyWithAllDomainValues(x, d))
-						.orElse(() -> forceAnsAndRerunConstraintsIterable(v))
-						.orElse(() -> forceAnsAndRerunConstraintsLList(v))
+						.orElse(() -> forceAnsMembers(v))
 						.getOrElse(Goal::success))
 				.map(g -> g.apply(s)));
 	}
 
-	private static <T> Option<Goal> forceAnsAndRerunConstraintsLList(Term<T> v) {
-		return v.asVal()
-				.flatMap(w -> Types.cast(w, LList.class))
-				.map(EnforceConstraintsFD::forceAnsLList)
+	/**
+	 * One structural gate: whatever {@link MiniKanren#members} recognizes —
+	 * collections, tuples, LList, LTree, the unifier's own decomposition —
+	 * enforcement walks, member by member.
+	 */
+	private static <T> Option<Goal> forceAnsMembers(Term<T> v) {
+		return MiniKanren.members(v)
+				.map(members -> StreamSupport.stream(members.spliterator(), false)
+						.map(u -> Goal.defer(() -> forceAns(u)))
+						.reduce(Goal::and)
+						.orElseGet(Goal::success))
 				.map(g -> g.and(rerunConstraints(v)));
-	}
-
-	private static <T> Option<Goal> forceAnsAndRerunConstraintsIterable(Term<T> v) {
-		return v.asVal()
-				.flatMap(w -> MiniKanren.asIterable(w)
-						.orElse(() -> MiniKanren.tupleAsIterable(w)))
-				.map(EnforceConstraintsFD::forceAnsIterable)
-				.map(goal -> goal.and(rerunConstraints(v)));
 	}
 
 	private static Goal rerunConstraints(Term<?> x) {
@@ -85,24 +91,6 @@ class EnforceConstraintsFD {
 		return s -> Cont.defer(() -> MiniKanren.unifyPrefix(s.substitution(), u, v)
 				.map(prefix -> Propagation.resolve(prefix).apply(s))
 				.getOrElse(() -> Cont.complete(Nothing.nothing())));
-	}
-
-	private static Goal forceAnsIterable(Iterable<Object> iterable) {
-		return StreamSupport.stream(iterable.spliterator(), false)
-				.map(MiniKanren::wrapTerm)
-				.map(u -> Goal.defer(() -> forceAns(u)))
-				.reduce(Goal::and)
-				.orElseGet(Goal::success);
-	}
-
-	private static Goal forceAnsLList(LList<?> llist) {
-		if (llist.isEmpty()) {
-			return Goal.success();
-		} else {
-			// since we're building goals - this will not recurse
-			return forceAns(llist.getHead())
-					.and(Goal.defer(() -> forceAns(llist.getTail())));
-		}
 	}
 
 	private static void verifyAllConstrainedHaveDomain(Iterable<? extends Propagator<?>> constraints, Collection<Term<?>> boundVariables) {

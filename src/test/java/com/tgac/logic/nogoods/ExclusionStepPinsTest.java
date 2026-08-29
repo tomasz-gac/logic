@@ -108,7 +108,7 @@ public class ExclusionStepPinsTest {
 
 		// 4 vars over 1..4 all-different: 4! = 24 assignments
 		assertThat(g.solve(vars.get(0), TestSchedulers.factory()).count()).isEqualTo(24L);
-		assertThat(steps(g, vars.get(0))).isEqualTo(1_645L);
+		assertThat(steps(g, vars.get(0))).isEqualTo(1_617L);
 	}
 
 	// ---- shape 2b: all-different at scale (the load regimes) ----
@@ -132,7 +132,7 @@ public class ExclusionStepPinsTest {
 		}
 
 		assertThat(g.solve(vars.get(0), TestSchedulers.factory()).count()).isEqualTo(720L);
-		assertThat(steps(g, vars.get(0))).isEqualTo(63_239L);
+		assertThat(steps(g, vars.get(0))).isEqualTo(62_513L);
 	}
 
 	// ---- shape 2c: subsumption-heavy (the sweep's cost and its benefit) ----
@@ -160,7 +160,7 @@ public class ExclusionStepPinsTest {
 				.and(FiniteDomain.dom(y, dom(1, 2, 3, 4, 5, 6)));
 
 		assertThat(g.solve(x, TestSchedulers.factory()).count()).isEqualTo(18L);
-		assertThat(steps(g, x)).isEqualTo(442L);
+		assertThat(steps(g, x)).isEqualTo(415L);
 	}
 
 	// ---- shape 3: rembero (recursion + nogoods) ----
@@ -187,6 +187,6 @@ public class ExclusionStepPinsTest {
 				.and(exclude(x.unifies(3)));
 
 		assertThat(answers(g, x)).containsExactly(0, 1, 2, 4, 5);
-		assertThat(steps(g, x)).isEqualTo(124L);
+		assertThat(steps(g, x)).isEqualTo(104L);
 	}
 }

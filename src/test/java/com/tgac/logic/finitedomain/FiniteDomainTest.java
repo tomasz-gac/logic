@@ -18,6 +18,7 @@ import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.unification.LList;
+import com.tgac.logic.unification.LTree;
 import com.tgac.logic.unification.Reified;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -49,6 +50,20 @@ public class FiniteDomainTest {
 
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L);
+	}
+
+	@Test
+	public void anLTreeLeafWithADomainEnumeratesAtReify() {
+		// decompose knows trees; enforcement must too — a domain-carrying
+		// leaf inside an LTree grounds at reify like any list member
+		Unifiable<Long> leaf = lvar();
+		Unifiable<LTree<Long>> tree = LTree.of(leaf);
+		List<String> result = solve(tree, dom(leaf, EnumeratedDomain.range(1L, 3L)))
+				.map(Object::toString)
+				.collect(Collectors.toList());
+
+		Assertions.assertThat(result).hasSize(2);
+		Assertions.assertThat(result.toString()).contains("1").contains("2");
 	}
 
 	@Test
