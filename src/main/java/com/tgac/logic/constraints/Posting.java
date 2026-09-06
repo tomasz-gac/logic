@@ -47,7 +47,12 @@ import lombok.Value;
  * with {@link #doomed} as the optional eager 0 under partial knowledge
  * (failure found at pricing is failure forever — monotone).
  */
-public interface Posting extends Goal, Bounded {
+public interface Posting extends Goal, Bounded, Postable {
+
+	@Override
+	default Posting posted() {
+		return this;
+	}
 
 	/** Every term this posting speaks about — the declared surface. */
 	Stream<Term<?>> terms();

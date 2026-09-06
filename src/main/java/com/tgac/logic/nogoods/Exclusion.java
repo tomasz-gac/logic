@@ -3,9 +3,11 @@ package com.tgac.logic.nogoods;
 // ABOUTME: The user front door for negative knowledge: exclude states one nogood —
 // ABOUTME: "NOT all these literals simultaneously" — through the statement entry.
 
+import com.tgac.logic.constraints.Postable;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
+import java.util.Arrays;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -20,8 +22,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class Exclusion {
 
-	public static Posting exclude(Posting... literals) {
-		Posting forbidden = literals.length == 1 ? literals[0] : Posting.all(literals);
+	public static Posting exclude(Postable... literals) {
+		Posting[] postings = Arrays.stream(literals)
+				.map(Postable::posted)
+				.toArray(Posting[]::new);
+		Posting forbidden = postings.length == 1 ? postings[0] : Posting.all(postings);
 		return Propagation.activate(Nogood.of(forbidden));
 	}
 
