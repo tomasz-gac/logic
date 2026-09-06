@@ -194,6 +194,34 @@ move earns a place here after it has fired at least twice.
   (Amends the retired entry "Design churn is a phase error": its own
   evidence — structure, laws, surfaced bugs — was the loop paying,
   mislabeled as cost.)
+- **Prototype against a real-ish application.** When design questions
+  accumulate as "what does the engine need," stop answering in the
+  abstract: build a small, honest domain application against the engine
+  (real rules, real commands, no toys) under a standing directive —
+  every friction, every missing capability, every retired fear gets a
+  ledger entry as it is hit, append-only, corrections as new entries
+  citing the ones they amend. The app is a deflation instrument that
+  runs continuously: "would X help" stops being arguable because there
+  is a call site to price it against, and proposals die or shrink
+  against it faster than against argument (the solve-side source
+  registry: proposed from the ledger, withdrawn by the ledger, both
+  recorded). Findings come out typed, per evidence-has-a-type:
+  app-side patterns worth feeding back (policy as its own complement;
+  deletion impersonating an event), receipts retiring old probes
+  (aggregation over a cold tabled goal), design briefs the engine owes
+  (cache scoping that dissolved a pins program into lifetime
+  discipline; the literal surface; per-door safety), and capability
+  walls no engine test could see — the arity cap sat green under 871
+  engine tests and fell to the first schema with more than eight
+  columns. The ledger, read in order, then IS the next arcs' design
+  brief. Fired: the domain-layer slices driving pldb's phases (the PG
+  proof), and apps/library (nineteen entries in one arc, three arcs'
+  briefs extracted). Two disciplines keep it honest: the app repo owns
+  the ledger (evidence lives where it is generated; it graduates to
+  engine notes only when an arc opens), and the entry criterion is
+  friction actually hit, not friction imagined — an entry written
+  before its call site exists is speculation wearing evidence's
+  clothes.
 - **An invariant is a cost model.** Keeping data eagerly normal so reads
   can trust it moves work from every read to every write; whether that
   trade wins is a property of the workload mix, not of the design's
