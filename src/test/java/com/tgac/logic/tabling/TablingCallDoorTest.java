@@ -4,11 +4,13 @@ package com.tgac.logic.tabling;
 // ABOUTME: table, bodies ride the call, method recursion re-enters and seals.
 
 import static com.tgac.logic.goals.Goal.defer;
+import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import java.util.Arrays;
@@ -41,7 +43,7 @@ public class TablingCallDoorTest {
 				.and(Tabling.call("edges", Tuple.of(x, y), () -> edge(edges, x, y)))
 				.solve(y, TestSchedulers.factory())
 				.map(Object::toString).sorted().collect(Collectors.toList());
-		assertThat(answers).containsExactly("{2}", "{3}");
+		assertThat(answers).containsExactlyInAnyOrder("{2}", "{3}");
 	}
 
 	@Test(timeout = 5000)
@@ -56,7 +58,7 @@ public class TablingCallDoorTest {
 		Unifiable<Integer> one = lvar();
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
-		long count = one.unifies(1)
+		List<String> pairs = one.unifies(1)
 				.and(Tabling.call(token1, Tuple.of(one, a), () -> {
 					productions.incrementAndGet();
 					return edge(edges, one, a);
@@ -65,9 +67,11 @@ public class TablingCallDoorTest {
 					productions.incrementAndGet();
 					return edge(edges, one, b);
 				}))
-				.solve(lvar(), TestSchedulers.factory())
-				.count();
-		assertThat(count).isEqualTo(4);
+				.solve(lval(Tuple.of(a, b)), TestSchedulers.factory())
+				.map(Term::get)
+				.map(t -> t._1.get() + "," + t._2.get())
+				.collect(Collectors.toList());
+		assertThat(pairs).containsExactlyInAnyOrder("2,2", "2,3", "3,2", "3,3");
 		assertThat(productions.get()).isEqualTo(1);
 	}
 
@@ -76,7 +80,7 @@ public class TablingCallDoorTest {
 		AtomicInteger productions = new AtomicInteger();
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
-		long count = Tabling.call("p", Tuple.of(a), () -> {
+		List<String> pairs = Tabling.call("p", Tuple.of(a), () -> {
 					productions.incrementAndGet();
 					return a.unifies(1);
 				})
@@ -84,9 +88,11 @@ public class TablingCallDoorTest {
 					productions.incrementAndGet();
 					return b.unifies(2);
 				}))
-				.solve(lvar(), TestSchedulers.factory())
-				.count();
-		assertThat(count).isEqualTo(1);
+				.solve(lval(Tuple.of(a, b)), TestSchedulers.factory())
+				.map(Term::get)
+				.map(t -> t._1.get() + "," + t._2.get())
+				.collect(Collectors.toList());
+		assertThat(pairs).containsExactly("1,2");
 		assertThat(productions.get()).isEqualTo(2);
 	}
 
@@ -108,6 +114,6 @@ public class TablingCallDoorTest {
 		List<String> answers = x.unifies(1).and(reach(cycle, x, y))
 				.solve(y, TestSchedulers.factory())
 				.map(Object::toString).sorted().collect(Collectors.toList());
-		assertThat(answers).containsExactly("{1}", "{2}", "{3}");
+		assertThat(answers).containsExactlyInAnyOrder("{1}", "{2}", "{3}");
 	}
 }

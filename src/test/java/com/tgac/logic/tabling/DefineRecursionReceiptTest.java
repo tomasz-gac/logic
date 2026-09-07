@@ -79,21 +79,21 @@ public class DefineRecursionReceiptTest {
 	public void aChainReachesThroughPlainDefine() {
 		assertThat(reachableFrom(knotTied(CHAIN), 1))
 				.isEqualTo(reachableFrom(withSelf(CHAIN), 1))
-				.containsExactly("{2}", "{3}", "{4}");
+				.containsExactlyInAnyOrder("{2}", "{3}", "{4}");
 	}
 
 	@Test(timeout = 5000)
 	public void aDiamondFoldsItsDerivations() {
 		assertThat(reachableFrom(knotTied(DIAMOND), 1))
 				.isEqualTo(reachableFrom(withSelf(DIAMOND), 1))
-				.containsExactly("{2}", "{3}", "{4}");
+				.containsExactlyInAnyOrder("{2}", "{3}", "{4}");
 	}
 
 	@Test(timeout = 5000)
 	public void aCycleSealsAsAGroup() {
 		assertThat(reachableFrom(knotTied(CYCLE), 1))
 				.isEqualTo(reachableFrom(withSelf(CYCLE), 1))
-				.containsExactly("{1}", "{2}", "{3}");
+				.containsExactlyInAnyOrder("{1}", "{2}", "{3}");
 	}
 
 	@Test(timeout = 5000)
@@ -109,7 +109,7 @@ public class DefineRecursionReceiptTest {
 						})
 								.or(edge(CHAIN, x, y))));
 		hole.set(reach);
-		assertThat(reachableFrom(reach, 1)).containsExactly("{2}", "{3}", "{4}");
+		assertThat(reachableFrom(reach, 1)).containsExactlyInAnyOrder("{2}", "{3}", "{4}");
 	}
 
 	@Test(timeout = 5000)
