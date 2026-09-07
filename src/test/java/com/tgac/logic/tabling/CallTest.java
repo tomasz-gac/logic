@@ -7,6 +7,7 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Any;
 import com.tgac.logic.unification.Reified;
 import io.vavr.Tuple;
+import java.util.Arrays;
 import org.junit.Test;
 
 public class CallTest {
@@ -55,6 +56,21 @@ public class CallTest {
 		Call call2 = Call.of(rel, (Reified<?>) lval(Tuple.of(lval(1), Any.of(0))));
 
 		assertThat(call1).isEqualTo(call2);
+	}
+
+	@Test
+	public void testValueEqualTokensNameOneRelation() {
+		// tokens key by VALUE: two mints of an equal token are the same
+		// relation, for exact-key lookup and for subsumption alike — a
+		// value-keyed caller (pldb's RelationN) must hit the coverage it
+		// recorded under an earlier mint
+		Call<Object> wide = Call.of(Arrays.asList("person"),
+				(Reified<?>) lval(Tuple.of(lval(1), Any.of(0))));
+		Call<Object> narrow = Call.of(Arrays.asList("person"),
+				(Reified<?>) lval(Tuple.of(lval(1), lval(2))));
+
+		assertThat(wide.getRelation()).isNotSameAs(narrow.getRelation());
+		assertThat(wide.subsumes(narrow)).isTrue();
 	}
 
 	@Test

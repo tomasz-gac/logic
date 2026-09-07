@@ -14,7 +14,7 @@ import lombok.Value;
  * The relation slot is generic: {@code R} is any identity token naming the
  * relation — a goal's {@link Tabled}, or any other canonical identity a
  * caller keys its tables by. Two calls are equal when they apply the same
- * relation (by identity) to alpha-equivalent arguments — reification makes
+ * relation (equal tokens name one relation) to alpha-equivalent arguments — reification makes
  * plain equality decide variance — under EQUAL residues: each projecting
  * store's knowledge about the call's free vars (positional, slot i = the
  * i-th any in first-occurrence order), keyed by store class. A
@@ -36,7 +36,7 @@ public class Call<R> {
 
 	/**
 	 * Region containment: does this call's region cover {@code other}'s?
-	 * Same relation by identity, arguments by {@link Subsumption#subsumes},
+	 * Same relation by equality, arguments by {@link Subsumption#subsumes},
 	 * residues by pointwise entailment — {@code other ⊑ this} per store
 	 * (absent = ⊤; a class this call knows about that other does not is a
 	 * refusal: a narrower entry never serves a wider caller). Carried
@@ -48,7 +48,7 @@ public class Call<R> {
 	 * open or sealed — may serve {@code other} through consume's filter.
 	 */
 	public boolean subsumes(Call<?> other) {
-		return relation == other.relation
+		return relation.equals(other.relation)
 				&& Subsumption.subsumes(arguments, other.arguments)
 				&& other.residues.leq(residues);
 	}
