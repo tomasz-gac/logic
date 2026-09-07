@@ -414,3 +414,76 @@ this design is the right shape.
 - No general assert/retract: tabling (and `constrain`-mode queries, see the
   pldb notes) assumes facts and rules are immutable per solve. Dynamic
   programs break monotonicity and are out of scope everywhere in this engine.
+
+## 9. The conditional posted table — AS BUILT (Sep 2026)
+
+The posted table over the ASYNC kind (`TableParkingPropagator`,
+pldb `constraints/`), read as its algebra: the constraint `t ∈ R` over
+a conditional extension {(rᵢ, Cᵢ)} IS the Condition ⊕ᵢ (t=rᵢ ⊗ Cᵢ),
+and every wake is a monotone simplification of that value. Rows are
+patterns in Term vocabulary (`Answers.positions` — a free cell is an
+Any and admits everything, coupling identity preserved); conditions are
+never tested, only IMPOSED at commit, so a condition cannot be dropped
+because it is not separable from its row.
+
+The shared half of both propagator kinds lives in `Extension`
+(package-private): the probe mint, the per-row ⊕-fold into a `JoinMap`
+(duplicate derivations factor by distributivity), the compatibility
+filter, and the verdict ladder —
+
+- no live rows → fail;
+- some row ENTAILED (condition ONE, binding half imposing nothing —
+  ground cells already matching, couplings already agreed) → subsumed:
+  its disjunct is 1 and 1 ⊕ a = 1, the disjunctive store's
+  discharge-by-absorption doctrine in its new home;
+- all watched terms ground → discharge: the residual ⊕ of the
+  subsuming rows' conditions, one conde branch per (row, conjunct),
+  each branch the same `Residues.restate` delivery uses, spliced
+  through the run lane (`Update.withRun`'s first production caller);
+- one live row → a ground row at ONE collapses to inferred bindings
+  (the sync kind's move); anything else discharges by restate;
+- otherwise → narrow: project the shared free columns, SKIPPING any
+  column a live row leaves free (top is absence in the Support store;
+  monotone because the live set only shrinks). The projection reads
+  conditions as TRUE — sound, because narrow never commits and the
+  conditions act whole at the committing restates.
+
+The kinds differ only in extension acquisition and wake mechanics: the
+sync kind folds `answers()` inline; the parking kind drains produce TO
+THE SEAL under a claimed sub-scope (the seal is the soundness gate —
+the extension grows while filtering shrinks — and the claim catches
+flat-forked deliveries). Three doors mint the postings
+(`TableConstraints.posted` ×2, `postedRule`); the RULE door's producer
+is COMPOSED AT WAKE — `GoalProducer` over the SOLVE's table, extracted
+from whichever package the examination arrives in (outside a solve it
+refuses by name) — so the extension a posted rule reads is the same
+entries every goal-side consumer shares, and an unstratified negation
+becomes a genuine cyclic wait the substrate refuses instead of a
+silent regress through fresh worlds (`UnstratifiedNegationTest`).
+Enforcement enumerates BOTH kinds
+(`liveRecords`); a still-parked record grounds row-wise at reify, each
+branch restating its row whole and RE-WAKING the record
+(`Propagation.activate` on its own atom — an identity meet whose only
+effect is the examination), so the verdict that follows retires it
+through the front door.
+
+Replay vs re-derive, the boundary's semantics: a FRESH ground probe
+runs the body from the key, so guards evaluate at production and DNF
+branches fold to unconditional answers; a probe served from a sealed
+wider entry receives conditions as delivered knowledge and imposes
+them at commit. Both sound; only the replay path exercises the
+discharge conde at ground anchors.
+
+Seat discipline (the price list's newest line): the GENERATOR seat of
+a recursive body must ENUMERATE (the applied literal — choices in the
+search tree); `posted` there defers choices into the condition and the
+fixpoint diverges in an infinite condition antichain (each unfold a
+genuinely new conditional answer; absorption correctly keeps
+incomparable claims). `posted` in the GUARD seat is sound once the
+recursion grounds its inputs, generative only through collapse (the
+locally-deterministic corner). posted ≡ applied holds exactly where
+discharge is reachable.
+
+Sub-1 conditions are no longer refused anywhere on this path; the
+refusal survives only at `CachingAnswerSource`'s ground pool, which is
+its own contract.

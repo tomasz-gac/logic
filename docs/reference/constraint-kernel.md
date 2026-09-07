@@ -262,6 +262,28 @@ resident family crosses, because every atom renames.
 - The cascade: pop a term, run its watchers, `consume` each step (factor into
   a local, payloads accumulated, reexamine onto the queue), until dry or dead.
 
+The toolkit has TWO LANES (Aug 2026): `Propagator` answers `Verdict`≥
+synchronously — the hot default, zero new allocation on the FD path —
+and **`ParkingPropagator`**, its top-level sibling, answers
+`Fiber<Verdict>` for bodies that genuinely park (driving a produce,
+awaiting a seal). Same schema (watched terms, final within-kind
+identity, `watching` re-instantiation), no sync method to misuse —
+the kind split makes "a sync body that parks" unrepresentable, and
+`Trial.now`'s grounded drive refuses the parking kind by type. The
+cascade runs sync watchers inline per round and awaits woken parking
+ones (`wokenParking`), staying one fiber step when nobody parks — the
+step pins held through the split. Pricing (`doomed`, estimates, order
+functions) stays synchronous in both lanes. This is the two-lane
+doctrine's second instance (`Trial.now` beside the fiber trial;
+pldb's `AnswerSource` beside `AnswerProducer` is the third): sync is
+the hot default, the fiber kind exists where something genuinely
+parks, sync wraps in done at the composition point never the reverse.
+
+`Update.withRun` gained its first production caller (Sep 2026): the
+conditional posted table's committing verdicts retire their own atom
+and splice a conde of restates through the run lane — a verdict may
+emit bindings AND runs; it was never theory-swap-only.
+
 Suspension conditions in a store's own language (domain-shaped ripeness —
 adaptive labelling, guarded statement, prune-to-enumerate handovers) are
 propagators whose updates emit suspensions: private trigger, same lane.

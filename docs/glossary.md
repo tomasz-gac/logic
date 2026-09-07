@@ -78,6 +78,8 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **labelling** — enumerate remaining domain values as branches at answer time; deferred materialization's endpoint — the finite door's mechanism. *(finitedomain/)*
 - [x] **enforce** — the FINITE exit: per-answer commit at the end of a branch, where compressed branching expands — FD labels, projections fail if unrun; the branch's own seal. *(ConstraintStore)*
 - [x] **narrowing wake** — constraint bodies wake when domains shrink, not only on bindings. *(CLAUDE.md landmines)*
+- [x] **ParkingPropagator** — the propagator toolkit's second lane: same schema as `Propagator`, answers `Fiber<Verdict>` for bodies that genuinely park; no sync method exists to misuse, and `Trial.now` refuses the kind by type. *(constraint-kernel §4)*
+- [x] **two-lane doctrine** — sync is the hot default, the fiber kind exists where something genuinely parks, sync wraps in done at the composition point never the reverse, pricing stays sync; three instances: Trial.now/fiber trial, Propagator/ParkingPropagator, AnswerSource/AnswerProducer. *(constraint-kernel §4)*
 - [x] **trial unification** — the trial's check, inherited from Neq: try the forbidden unification on the side and observe. *(nogoods/Trial)*
 
 ## 4. Algebra and capabilities
@@ -172,9 +174,20 @@ rating pass can stop at any section boundary and still be useful.
 
 ## 9. Data boundary (domain-layer)
 
-- [x] **FactSource** — the external read seam: pin / enumerate / estimate / supportedModes; multi-relation with a rich bound pattern (Database.get's shape promoted). *(domain-layer §4)*
+- [x] **AnswerSource** — the sync read seam: `answers(Call) → (Reified, Condition)*` inline, plus sync `estimate`/`id`; population: Database, SqlFetch, CachingAnswerSource. Retires *FactSource*. *(table-as-the-source)*
+- [x] **AnswerProducer** — the async kind and the BOUNDARY contract: `produce(Call, Emitter)` — the produce half of a table entry, probe in, (term, Condition) stream out, seal = end-of-stream; local population: GoalProducer, SyncLift. *(table-as-the-source)*
+- [x] **residence** — the solve's ONE table, planted at the solve root (`Goal.solve` seeds `Table.empty()`): everything tabled lands there keyed by (relation value, argument pattern); pldb owns no tables, posted rules extract the residence at wake. *(table-as-the-source)*
+- [x] **Literal** — a relation applied to arguments, the ONE public pldb type: how it answers (source, producer, rule) is a `Reading` chosen by the builder terminal, never visible above it; bare in a conjunction it reads, under `exclude`/`posted()` it imposes. *(pldb relations/)*
+- [x] **GoalProducer** — the one produce bridge: a rule driven into an INJECTED table — probe restated onto captured heads, `Tabling.call` on a clean package, deliveries imaged back; residence is the injector's decision. *(table-as-the-source)*
+- [x] **SyncLift** — a source worn as a producer: enumeration inline inside whoever drives the produce, the cost the sync kind always had. *(pldb)*
+- [x] **Extension (pldb)** — the posted table's shared half: probe mint, per-row ⊕-fold, compatibility filter, and the verdict ladder both propagator kinds read. *(tabled-constraints §9)*
+- [x] **entailment discharge** — the ladder's absorption verdict: a live row at ONE whose binding half imposes nothing makes its disjunct 1, and 1 ⊕ a = 1 dissolves the constraint, alternatives and all. *(tabled-constraints §9)*
+- [x] **generator seat / guard seat** — the posted-vs-applied positional rule: a recursive body's base case must ENUMERATE (choices in the search tree); posted there defers choices into the condition and the fixpoint diverges in an infinite antichain; posted guards soundly once inputs are ground, generative only through collapse. *(tabled-constraints §9)*
+- [x] **the asker is not the question** — the probe rule, both kinds: the call key is minted WITHOUT the asker's own family — self-transcription rings the producer, and per-wake supports fragment the coverage ledger; FD/nogood context stays. *(table-as-the-source)*
+- [x] **self-consumption ring** — a consumer awaiting a seal its own production holds open. Under the one shared residence it is a QUIESCENT cyclic wait the substrate refuses by name (the unstratified-negation receipt); under private tables it was a silent fresh-world livelock with nothing to refuse — the receipt that killed owned tables. The probe rule cuts the transcription route at the mint. *(table-as-the-source)*
+- [x] **CachingAnswerSource** — the SQL sync tier's coverage cache: pool + probes recorded as calls, Call.subsumes proving coverage, exact covered pricing; soundness precondition = §5.1 stability (the isolation() witness). *(sql/)*
 - [x] **landing design** — fetched rows become pldb Facts in the solve-local Database; lookups over them post as table constraints: propagation over external data, GAC-style in-memory joins. *(domain-layer §4.1)*
-- [?] **fetch-coverage ledger** — records which (source, relation, snapshot, pattern) regions were COMPLETELY enumerated; facts answer matches, coverage answers completeness. *(domain-layer §4.1)*
+- [?] **fetch-coverage ledger** — records which probe regions were COMPLETELY enumerated; facts answer matches, coverage answers completeness. SHIPPED as CachingAnswerSource's ledger. *(domain-layer §4.1, sql/)*
 - [x] **pin() / snapshot** — the source-owned token for a consistent solve-scoped view; the freeze half of freeze-and-certify. *(domain-layer §5)*
 - [x] **snapshot vector** — {source → token} attached to results; descriptive; no universal ≥ across token types. *(domain-layer §5.3)*
 - [~] **epoch carrier hypothesis** — EpochRequirement → Footprint → EpochCondition (mirroring factor → Residues → Condition); an EXPERIMENT gated on a receipt; buys per-derivation admissibility, never table completeness. *(domain-layer §5.3)*
