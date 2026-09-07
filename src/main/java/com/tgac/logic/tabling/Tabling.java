@@ -105,7 +105,22 @@ public class Tabling {
 	 * inside the body's frames and inherits it, and its park leaves the
 	 * blocked record completion detection reads.
 	 */
-	static <T> Goal tabled(Tabled<T> relation, T args, Supplier<Goal> body) {
+	/**
+	 * The public tabled-call door, the same entry {@link Tabled#apply} uses:
+	 * {@code relation} is ANY identity token, keyed by value — equal tokens
+	 * name one relation, so a caller-minted value (a relation descriptor, a
+	 * name) shares entries across mints. The body rides the call: production
+	 * runs the CLAIMING call's body from the key; one definition per token
+	 * per solve is the caller's discipline (bodies cannot be compared).
+	 * Recursion needs no handle — a body that re-enters this door with an
+	 * equal token is an ordinary consumer whose park completion detection
+	 * reads, and rings seal as a group.
+	 */
+	public static <T> Goal call(Object relation, T args, Supplier<Goal> body) {
+		return tabled(relation, args, body);
+	}
+
+	static <T> Goal tabled(Object relation, T args, Supplier<Goal> body) {
 		// a bare Unifiable is an equality ATOM to decompose (no wrapped-Term
 		// kind: tuple MEMBERS decompose via wrapTerm, a bare wrapping does
 		// not), which would collapse every answer into one. Wrap it in a
@@ -120,7 +135,7 @@ public class Tabling {
 					// reified with anys) plus each store's slot-named factor
 					Reified<?> reifiedArgs = keyPair._1;
 					Residues keyResidues = keyPair._2;
-					Call<Tabled<T>> key = Call.of(relation, reifiedArgs, keyResidues);
+					Call<Object> key = Call.of(relation, reifiedArgs, keyResidues);
 					Reader reader = Reader.of(k, callerPkg, argsTerm);
 					Table table = reader.getTable();
 					// a weighted solve whose semiring cannot table (non-idempotent,
@@ -181,11 +196,11 @@ public class Tabling {
 	 * execution is always at-or-more-bound than pricing, and a more-bound
 	 * variant emits a subset of the priced variant's answers.
 	 */
-	private static <T> long tabledOrder(Package p, Tabled<T> relation, Unifiable<?> argsTerm) {
+	private static long tabledOrder(Package p, Object relation, Unifiable<?> argsTerm) {
 		return p.getStores().get(Table.class)
 				.map(Table.class::cast)
 				.map(table -> {
-					Call<Tabled<T>> key = Call.of(relation,
+					Call<Object> key = Call.of(relation,
 							MiniKanren.reify(p.substitution(), argsTerm).ground());
 					TableEntry<?> entry = table.getEntry(key);
 					// a sealed subsumer's count bounds the instance's emissions
