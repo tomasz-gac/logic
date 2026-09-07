@@ -48,15 +48,20 @@ public class TablingCallDoorTest {
 	public void valueEqualTokensShareOneProduction() {
 		int[][] edges = {{1, 2}, {1, 3}};
 		AtomicInteger productions = new AtomicInteger();
+		// distinct INSTANCES, equal by value — the sharing must come from
+		// equals, not interning; the pin below keeps the distinction honest
+		Object token1 = Tuple.of("r");
+		Object token2 = Tuple.of("r");
+		assertThat(token1).isNotSameAs(token2).isEqualTo(token2);
 		Unifiable<Integer> one = lvar();
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		long count = one.unifies(1)
-				.and(Tabling.call(new String("r"), Tuple.of(one, a), () -> {
+				.and(Tabling.call(token1, Tuple.of(one, a), () -> {
 					productions.incrementAndGet();
 					return edge(edges, one, a);
 				}))
-				.and(Tabling.call(new String("r"), Tuple.of(one, b), () -> {
+				.and(Tabling.call(token2, Tuple.of(one, b), () -> {
 					productions.incrementAndGet();
 					return edge(edges, one, b);
 				}))

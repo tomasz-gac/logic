@@ -79,7 +79,21 @@ public class Tabling {
 	public static <T> Tabled<T> define(Function<T, Goal> body) {
 		return defineRecursive(self -> body);
 	}
-
+	/**
+	 * The public tabled-call door, the same entry {@link Tabled#apply} uses:
+	 * {@code relation} is ANY identity token, keyed by value — equal tokens
+	 * name one relation, so a caller-minted value (a relation descriptor, a
+	 * name) shares entries across mints. The body rides the call: production
+	 * runs the CLAIMING call's body from the key; one definition per token
+	 * per solve is the caller's discipline (bodies cannot be compared).
+	 * Recursion needs no handle — a body that re-enters this door with an
+	 * equal token is an ordinary consumer whose park completion detection
+	 * reads, and rings seal as a group.
+	 */
+	public static <T> Goal call(Object relation, T args, Supplier<Goal> body) {
+		return tabled(relation, args, body);
+	}
+	
 	/**
 	 * The tabled goal behind {@link Tabled#apply}:
 	 *
@@ -105,21 +119,6 @@ public class Tabling {
 	 * inside the body's frames and inherits it, and its park leaves the
 	 * blocked record completion detection reads.
 	 */
-	/**
-	 * The public tabled-call door, the same entry {@link Tabled#apply} uses:
-	 * {@code relation} is ANY identity token, keyed by value — equal tokens
-	 * name one relation, so a caller-minted value (a relation descriptor, a
-	 * name) shares entries across mints. The body rides the call: production
-	 * runs the CLAIMING call's body from the key; one definition per token
-	 * per solve is the caller's discipline (bodies cannot be compared).
-	 * Recursion needs no handle — a body that re-enters this door with an
-	 * equal token is an ordinary consumer whose park completion detection
-	 * reads, and rings seal as a group.
-	 */
-	public static <T> Goal call(Object relation, T args, Supplier<Goal> body) {
-		return tabled(relation, args, body);
-	}
-
 	static <T> Goal tabled(Object relation, T args, Supplier<Goal> body) {
 		// a bare Unifiable is an equality ATOM to decompose (no wrapped-Term
 		// kind: tuple MEMBERS decompose via wrapTerm, a bare wrapping does
