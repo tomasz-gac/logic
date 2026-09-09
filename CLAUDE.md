@@ -208,13 +208,12 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   verified at labelling); entailment matching with named value-equal
   couplings (cross-lineage entry sharing); replay = rename ∘ absorb.
   Read before touching the tabling guard tests.
-- `docs/design/domain-layer.md` — NORTH STAR (rewritten Aug 2026 by the
-  external review): the engine at the data boundary — cold solves over
-  pinned sources, FactSource (enumerate/estimate/modes/pin), snapshot
-  vectors as per-source epoch factors, conditional answers as the domain
-  result, caveated authorization as the driving slice; §3 and §11 are the
-  claim boundaries (what the algebra buys and does NOT buy); the pldb
-  build phases are its §12 (Phase 0 = Wave R).
+- `../pldb/docs/design/domain-layer.md` — NORTH STAR (rewritten Aug 2026
+  by the external review; MOVED to pldb Sep 2026 — docs live with the
+  code they read): the engine at the data boundary — cold solves over
+  pinned sources, snapshot vectors, conditional answers as the domain
+  result, caveated authorization as the driving slice; §3 and §11 are
+  the claim boundaries; the pldb build phases are its §12.
 - `docs/design/nogood-store.md` — STAGES 1–2 BUILT (Aug 2026; names
   ratified imports from CP-SAT): the nogood store — `Nogood` = "NOT all
   these literals simultaneously" (Neq's record shape, store-wide),
@@ -230,6 +229,15 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
   the instance catalogue, the licensing theorems, GAC vs cascade, the
   speculation tier, and the cross-store doctrine (the probe as the one
   sanctioned bridge; #63's proposed scope).
+- `../pldb/docs/notes/transaction.md` — AS BUILT (Sep 2026): the write
+  face — a Transaction's commit proves its recorded reads unmoved,
+  through the source's declared serialization (native = honest
+  SERIALIZABLE rented; simulated = Pin/Footprint proof above the
+  backend). Read before touching pldb's transaction/ or sql/ write
+  path. `../pldb/docs/notes/table-as-the-source.md` (moved with it) is
+  the read seam's AS BUILT. pldb's own docs/ holds the data-boundary
+  design line; the glossary here remains the ONE vocabulary gate for
+  all three repos.
 - `docs/reference/substitutions-migration.md` — MOSTLY SHIPPED (Steps A–C: the
   unifier typed over Substitutions, the kind-tagged decompose shared by unify
   and members); Step D (representation swaps) remains, benchmark-gated. Read

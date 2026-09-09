@@ -107,9 +107,13 @@ The engine's core claims are algebraic, and the code enforces them mechanically:
 
 ## Building
 
-`logic` depends on its sibling library [`functional`](../functional)
-(continuations, fibers, schedulers, the algebra and its law kits). Both are
-Maven projects, Java 8, currently `-SNAPSHOT`:
+`logic` sits in a small family: [`functional`](../functional) beneath it
+(continuations, fibers, schedulers, the algebra and its law kits),
+[`pldb`](../pldb) beside it — the data boundary: relations as functions
+over real backends (SQL with constraint pushdown, a coverage cache, and a
+transactional write face) — and [`apps/library`](../apps/library) as the
+worked example whose friction ledger drives the design. All are Maven
+projects, Java 8, currently `-SNAPSHOT`:
 
 ```bash
 cd ../functional && mvn install
@@ -146,13 +150,14 @@ A `Goal` is a value; build them with `and`, `or`, `Goal.defer` (for recursion),
 ```java
 Unifiable<Integer> x = lvar();
 Logic.membero(x, lval(LList.ofAll(1, 2, 3)))
-        .and(Disequality.separate(x, lval(2)))
+        .and(FiniteDomain.separate(x, lval(2)))
         .solve(x);                     // 1, 3
 ```
 
-`separate` records exactly the bindings that must never all hold, verifies the
-record on every subsequent unification, and shows surviving records in reified
-answers.
+Disequality is the one-literal case of the NOGOOD store: `exclude(goal)`
+records the bindings the goal would need and forbids them all holding at
+once — so any goal, including a whole relation, can be negated. Surviving
+records show in reified answers.
 
 ### Finite domains
 
@@ -295,13 +300,15 @@ solver (no global constraints yet; the extension point below is where they'd go)
 - **Search** is a set of scheduler drivers over one step interpreter (in
   `functional`); breadth-first is the default, and tracing uses depth-first so
   traces read in Prolog order.
-- **Constraints** follow a capability design: the driver (`constraints/Propagation`)
-  speaks to stores through two triggers (`revise`, `stated`), each answered by a
-  `Fiber<Revision>` — a store can swap only its own factor, and the breaking
-  actions (touching the substitution, another store's state, forgetting to
-  re-park a constraint) are unrepresentable by type. New constraint domains
-  implement one interface; the propagator toolkit is `finitedomain`'s private
-  machinery.
+- **Constraints** follow a capability design: a store is a `Theory` (its
+  knowledge, an atom set in normal form) paired with a `Factor` (its
+  behavior); the driver (`constraints/Propagation`) speaks through two
+  normalize triggers — bindings arrived, or knowledge arrived at a door —
+  each answered by a `Fiber<Revision>`. A store can swap only its own
+  entry, and the breaking actions (touching the substitution, another
+  store's state, forgetting to re-park a constraint) are unrepresentable
+  by type. New constraint domains implement one interface; the propagator
+  toolkit is `finitedomain`'s private machinery.
 - **Tabling** rides the fiber substrate's two primitives (in `functional`):
   a `Scope`, whose monotone counters detect quiescence — the seal — and a
   `Channel`, a monotone value that grows and wakes parked consumers. The
@@ -341,7 +348,7 @@ A research/learning project, built with viability as a constraint rather than a
 goal: the designs are the kind that could be real (honest concurrency, measured
 claims, no toy shortcuts), but there is no release, no client base, and APIs
 move freely. Java 8, no runtime dependencies beyond vavr and the sibling
-`functional` library. ~540 tests, including law suites for every declared
+`functional` library. ~750 tests, including law suites for every declared
 algebraic instance and a parallel stress test on tabling's completion
 machinery. If you're reading this as a source of ideas rather than a
 dependency, `docs/` is the interesting part.

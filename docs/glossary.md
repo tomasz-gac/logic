@@ -188,7 +188,7 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **CachingAnswerSource** — the SQL sync tier's coverage cache: pool + probes recorded as calls, Call.subsumes proving coverage, exact covered pricing; soundness precondition = §5.1 stability (the isolation() witness). *(sql/)*
 - [x] **landing design** — fetched rows become pldb Facts in the solve-local Database; lookups over them post as table constraints: propagation over external data, GAC-style in-memory joins. *(domain-layer §4.1)*
 - [?] **fetch-coverage ledger** — records which probe regions were COMPLETELY enumerated; facts answer matches, coverage answers completeness. SHIPPED as CachingAnswerSource's ledger. *(domain-layer §4.1, sql/)*
-- [x] **pin() / snapshot** — the source-owned token for a consistent solve-scoped view; the freeze half of freeze-and-certify. *(domain-layer §5)*
+- [x] **pin() / snapshot** — the source-owned token for a consistent solve-scoped view; the freeze half of freeze-and-certify. SHIPPED as `Pin` (§11); the certify half shipped as the serialization kinds. *(domain-layer §5, transaction)*
 - [x] **snapshot vector** — {source → token} attached to results; descriptive; no universal ≥ across token types. *(domain-layer §5.3)*
 - [~] **epoch carrier hypothesis** — EpochRequirement → Footprint → EpochCondition (mirroring factor → Residues → Condition); an EXPERIMENT gated on a receipt; buys per-derivation admissibility, never table completeness. *(domain-layer §5.3)*
 - [x] **table constraint / row-set store** — returned rows as a narrowing domain (Support lattice, GAC propagator, labelo); shipped in pldb. *(pldb table-constraints)*
@@ -205,7 +205,20 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **fold schedule** — WHEN the fold may run and which carrier admits it: the two oracles, streaming (bounded rail, folds compressed), sealed (acyclic, new structural mode), closed (cyclic, StarSolve after uncompression); one semantic pipeline under all of them. *(weighted-tclp §4)*
 - [?] **level set** — the coarsest partition of solved cells on which "one region, one weight" is truthful; delivery's grouping unit, born extensional. *(weighted-tclp §5)*
 
-## 11. Method
+## 11. The write face (transaction)
+
+- [x] **Transaction** — one transaction over one serialized source: an AnswerSource read face, a write face staging facts, commit() proven through the source's own serialization door; a source with neither kind has no `over` to call — refusal by javac. *(transaction)*
+- [x] **native serialization** — the backend validates read sets itself (honest SERIALIZABLE: PG's SSI, 2PL); the source's one commit door lands the flush and recognizes its refusal dialect; the honesty is semantic — no predicate rescues a snapshot-isolation-in-costume backend. *(transaction)*
+- [x] **simulated serialization** — serialization reproduced above the backend: pin() names the snapshot, commit(pin, footprint, flush) proves the footprint unmoved under the commit lock and lands the flush in one short transaction of the source's own — which cannot be the snapshot's, since proving "unmoved" reads the CURRENT world. *(transaction)*
+- [x] **Pin** — an opaque snapshot token: minted by a source, meaningful only handed back to it; nothing else interprets one. *(transaction)*
+- [x] **Footprint** — the regions a transaction read, collected at the one seam every read path crosses; EVERYTHING when unrecorded; one shared monotone log per transaction — over-approximation costs retries, never soundness. *(transaction)*
+- [x] **WriteBuffer** — a frozen base plus a private staged delta, read as one source: appends mint values, ancestors and siblings stay true, same-key answers ⊕-fold; staged() is the flush list. Renames *Overlay*. *(transaction)*
+- [x] **Watermark** — simulated serialization over standard SQL: per-relation marks in one private table whose lock row is both the commit lock and the global mark; certify compares only the footprint's relations, on a fresh connection. *(sql/)*
+- [x] **SharedDatabase** — the in-memory one history: a cell of persistent Database values plus per-relation generations; the value IS the snapshot, the monitor is the commit lock, absence is exact knowledge. *(inmemory/)*
+- [x] **Conflict** — the commit's refusal: the world moved past this snapshot; the caller re-solves against a fresh transaction, where the anomaly reappears as a named denial. *(transaction)*
+- [x] **write skew** ⋯import — the snapshot-isolation anomaly: two transactions each write what the other READ, no row collides, the combined state violates a guard both checked; demonstrated by the deterministic double-checkout receipts, refused by both serialization kinds. *(transaction; Berenson et al.)*
+
+## 12. Method
 
 - [x] **comprehension veto** — "if I don't get it, it's not designed properly"; explanation is a proof obligation and the code changes until it can be given. *(method.md)*
 - [x] **adversarial deflation** — every proposal attacked before it ships; downgrades are wins. *(method.md)*
