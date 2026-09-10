@@ -302,6 +302,10 @@ public class MiniKanren {
 			return Option.none();
 		}
 		Object w = v.get();
+		if (w == null) {
+			// a null payload is an equality atom, never structure
+			return Option.none();
+		}
 		return MiniKanren.<Object> asIterable(w)
 				// ONE GATE: a value is structural iff its class can also be
 				// REBUILT — decompose and rebuild read the same table, so

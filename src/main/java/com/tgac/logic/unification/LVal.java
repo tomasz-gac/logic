@@ -15,7 +15,8 @@ import lombok.Value;
 public class LVal<T> implements Unifiable<T>, Reified<T> {
 	T value;
 
-	public static <T> Unifiable<T> lval(@NonNull T v) {
+	/** A null payload is a VALUE — it equals itself and nothing else. */
+	public static <T> Unifiable<T> lval(T v) {
 		return new LVal<>(v);
 	}
 
@@ -26,7 +27,8 @@ public class LVal<T> implements Unifiable<T>, Reified<T> {
 
 	@Override
 	public Option<T> asVal() {
-		return Option.of(value);
+		// some, not of: a null payload is a bound value, never an absence
+		return Option.some(value);
 	}
 
 	@Override
