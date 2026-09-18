@@ -149,15 +149,35 @@ public class SummationTest {
 				.orElse(0);
 	}
 
-	@Test(expected = RuntimeException.class)
-	public void shouldNotSumWhenMissingDomain() {
+	@Test
+	public void sumComputesTheUndomainedAddend() {
+		// b needs no domain: labelling grounds a and c, and each pair
+		// computes b = c − a, negatives included
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();
-		// b has no domain, so addo cannot enumerate a solution
+		List<Tuple3<Integer, Integer, Integer>> results =
+				Utils.collect(Ints.addo(a, b, c)
+						.and(dom(a, Ints.interval(0, 10)))
+						.and(dom(c, Ints.interval(0, 10)))
+						.solve(lval(Tuple.of(a, b, c)), TestSchedulers.factory())
+						.map(Term::get)
+						.map(t -> t.map1(Term::get).map2(Term::get).map3(Term::get)));
+
+		Assertions.assertThat(results)
+				.hasSize(121)
+				.allMatch(t -> t._1 + t._2 == t._3);
+	}
+
+	@Test(expected = RuntimeException.class)
+	public void twoFreePositionsStillRefuseLoudly() {
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		Unifiable<Integer> c = lvar();
+		// two positions without domains: nothing determines them, and the
+		// parked constraint refuses at reify instead of losing answers
 		Assertions.assertThat(Utils.collect(Ints.addo(a, b, c)
-						.and(dom(a, Ints.interval(0, 100)))
-						.and(dom(c, Ints.interval(0, 100)))
+						.and(dom(a, Ints.interval(0, 10)))
 						.solve(lval(Tuple.of(a, b, c)), TestSchedulers.factory())
 						.map(Term::get)))
 				.isEmpty();

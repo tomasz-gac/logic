@@ -47,11 +47,23 @@ public final class Add extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Verdict propagate(Package state) {
-		return Operators.gated(order, (Array<VarWithDomain<Object>> vds) ->
-						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
-								.apply((u, v, w) -> addVerdict(u, v, w,
-										arithmetic, order, step)))
+		return Operators.gated(order,
+						(Array<VarWithDomain<Object>> vds) ->
+								Tuple.of(vds.get(0), vds.get(1), vds.get(2))
+										.apply((u, v, w) -> addVerdict(u, v, w,
+												arithmetic, order, step)),
+						this::computedThird)
 				.apply(watchedTerms(), state);
+	}
+
+	/** The functional dependency read at the free position: a + b = rhs. */
+	private Verdict computedThird(Operators.SoleFree<Object> free) {
+		Object value = free.getPosition() == 2 ?
+				arithmetic.plus(free.pointAt(0), free.pointAt(1)) :
+				free.getPosition() == 1 ?
+						arithmetic.minus(free.pointAt(2), free.pointAt(0)) :
+						arithmetic.minus(free.pointAt(2), free.pointAt(1));
+		return Operators.narrowToPoint(free.getVariable(), value, order, step);
 	}
 
 	@Override

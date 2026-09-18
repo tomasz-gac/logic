@@ -11,13 +11,17 @@ import com.tgac.logic.finitedomain.capabilities.Arithmetic;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.capabilities.Multiplicative;
 import com.tgac.logic.finitedomain.domains.Singleton;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
@@ -54,11 +58,85 @@ public class Operators {
 	static <T> BiFunction<Array<? extends Term<?>>, Package, Verdict> gated(
 			Comparator<T> order,
 			Function<Array<VarWithDomain<T>>, Verdict> verdict) {
+		return gated(order, verdict, soleFree -> Verdict.keep());
+	}
+
+	/**
+	 * The gate with the computed-third door: when the strict gate refuses
+	 * because exactly one position is an unbound, domainless variable while
+	 * every other is a point, {@code computed} gets to determine it — the
+	 * is/2 tier. Any other refusal (a wide-domained position alongside the
+	 * free one, two free positions) still keeps.
+	 */
+	static <T> BiFunction<Array<? extends Term<?>>, Package, Verdict> gated(
+			Comparator<T> order,
+			Function<Array<VarWithDomain<T>>, Verdict> verdict,
+			Function<SoleFree<T>, Verdict> computed) {
 		return (watched, s) -> letDomain(s, Operators.<T> typed(watched), order)
 				.filter(uds -> uds.toJavaStream()
 						.noneMatch(ud -> ud.getDomain().isEmpty()))
 				.map(verdict)
-				.getOrElse(Verdict::keep);
+				.getOrElse(() -> soleFree(s, Operators.<T> typed(watched))
+						.map(computed)
+						.getOrElse(Verdict::keep));
+	}
+
+	/** One free position among points: where it stands, and the known values. */
+	@Value
+	@RequiredArgsConstructor(staticName = "of")
+	static class SoleFree<T> {
+		int position;
+		Term<T> variable;
+		Array<Option<T>> points;
+
+		public T pointAt(int i) {
+			return points.get(i).get();
+		}
+	}
+
+	static <T> Option<SoleFree<T>> soleFree(Package p, Array<? extends Term<T>> us) {
+		List<Option<T>> points = new ArrayList<>(us.size());
+		int freeAt = -1;
+		Term<T> freeVar = null;
+		for (int i = 0; i < us.size(); i++) {
+			Term<T> walked = p.walk(us.get(i));
+			Option<T> point = pointOf(p, walked);
+			if (point.isDefined()) {
+				points.add(point);
+			} else if (walked.asVar().isDefined()
+					&& !FiniteDomainConstraints.getDom(p, walked.getVar()).isDefined()) {
+				if (freeAt >= 0) {
+					return Option.none();
+				}
+				freeAt = i;
+				freeVar = walked;
+				points.add(Option.none());
+			} else {
+				// wide-domained: the strict gate's business, not a computation
+				return Option.none();
+			}
+		}
+		return freeAt < 0 ? Option.none() :
+				Option.of(SoleFree.of(freeAt, freeVar, Array.ofAll(points)));
+	}
+
+	/** A position's known value: ground, or a singleton domain's point. */
+	static <T> Option<T> pointOf(Package p, Term<T> walked) {
+		if (walked.asVal().isDefined()) {
+			return Option.of(walked.get());
+		}
+		return FiniteDomainConstraints.getDom(p, walked.getVar())
+				.flatMap(Operators::getSingleElement);
+	}
+
+	/** The one narrowing that binds: a point value through the store's collapse. */
+	@SuppressWarnings("unchecked")
+	static <T> Verdict narrowToPoint(Term<T> variable, T value,
+			Comparator<T> order, Option<Discrete<T>> step) {
+		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+				(Theory<FiniteDomainConstraints>) theory,
+				Collections.singletonList(
+						VarWithDomain.of(variable, Singleton.of(value, order, step)))));
 	}
 
 	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us,

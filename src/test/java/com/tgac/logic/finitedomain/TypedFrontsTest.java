@@ -219,6 +219,56 @@ public class TypedFrontsTest {
 	}
 
 	@Test
+	public void addoBindsABareThird() {
+		// the is/2 tier: no domain anywhere — two points mint the third's
+		// binding through the ordinary chokepoint
+		Unifiable<Integer> c = lvar();
+
+		Package summed = imposed(Ints.addo(lval(2), lval(3), c), Package.empty());
+
+		Assertions.assertThat(summed.walk(c).get()).isEqualTo(5);
+		Assertions.assertThat(FiniteDomainConstraints.getConstraints(summed)).isEmpty();
+	}
+
+	@Test
+	public void subtractoComputesTheBareSubtrahend() {
+		// 5 − b = 3 read backwards through the same functional dependency
+		Unifiable<Integer> b = lvar();
+
+		Package solved = imposed(Ints.subtracto(lval(5), b, lval(3)), Package.empty());
+
+		Assertions.assertThat(solved.walk(b).get()).isEqualTo(2);
+	}
+
+	@Test
+	public void divoBindsABareResult() {
+		Unifiable<Integer> x = lvar();
+
+		Package solved = imposed(Ints.divo(lval(6), lval(3), x), Package.empty());
+
+		Assertions.assertThat(solved.walk(x).get()).isEqualTo(2);
+	}
+
+	@Test
+	public void divoRefusesABareInexactResult() {
+		Unifiable<Integer> x = lvar();
+
+		Assertions.assertThat(worlds(Ints.divo(lval(7), lval(2), x), Package.empty())).isEmpty();
+	}
+
+	@Test
+	public void zeroTimesABareVariableSubsumes() {
+		// 0·v = 0 for every v: discharged with v still FREE — no domain, no
+		// binding, no surviving constraint
+		Unifiable<Integer> v = lvar();
+
+		Package discharged = imposed(Ints.multo(lval(0), v, lval(0)), Package.empty());
+
+		Assertions.assertThat(discharged.walk(v).asVar().isDefined()).isTrue();
+		Assertions.assertThat(FiniteDomainConstraints.getConstraints(discharged)).isEmpty();
+	}
+
+	@Test
 	public void denseSeparateCutsTheDomainAndDischarges() {
 		// [0,1] − {1} = [0,1): the disequality becomes domain knowledge and
 		// the constraint leaves the store instead of watching forever

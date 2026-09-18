@@ -243,8 +243,10 @@ public class MultiplicationTest {
 				);
 	}
 
-	@Test(expected = IllegalStateException.class)
-	public void shouldNotMultiplyWithoutDomain() {
+	@Test
+	public void multiplicationComputesTheUndomainedResult() {
+		// c needs no domain: labelling grounds a and b, and each pair
+		// computes its product into c
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();
@@ -256,6 +258,7 @@ public class MultiplicationTest {
 				.map(t -> t.map(Term::get, Term::get, Term::get)));
 
 		Assertions.assertThat(results)
+				.hasSize(121)
 				.allMatch(t -> t._1 * t._2 == t._3);
 	}
 }
