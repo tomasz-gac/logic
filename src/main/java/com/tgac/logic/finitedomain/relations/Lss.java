@@ -33,9 +33,7 @@ public final class Lss extends Propagator<FiniteDomainConstraints> {
 	@Override
 	public Verdict propagate(Package state) {
 		return Operators.gated(order,
-						(Array<VarWithDomain<Object>> vds) ->
-								Tuple.of(vds.get(0), vds.get(1))
-										.apply((l, m) -> lssVerdict(l, m, order)))
+						vds -> lssVerdict(vds.get(0), vds.get(1), order))
 				.apply(watchedTerms(), state);
 	}
 

@@ -16,7 +16,6 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.Term;
-import io.vavr.Tuple;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import java.util.Arrays;
@@ -48,10 +47,7 @@ public final class Add extends Propagator<FiniteDomainConstraints> {
 	@Override
 	public Verdict propagate(Package state) {
 		return Operators.gated(order,
-						(Array<VarWithDomain<Object>> vds) ->
-								Tuple.of(vds.get(0), vds.get(1), vds.get(2))
-										.apply((u, v, w) -> addVerdict(u, v, w,
-												arithmetic, order, step)),
+						vds -> addVerdict(vds.get(0), vds.get(1), vds.get(2), arithmetic, order, step),
 						this::computedThird)
 				.apply(watchedTerms(), state);
 	}

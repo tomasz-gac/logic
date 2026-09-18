@@ -32,10 +32,7 @@ public final class Leq extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Verdict propagate(Package state) {
-		return Operators.gated(order,
-						(Array<VarWithDomain<Object>> vds) ->
-								Tuple.of(vds.get(0), vds.get(1))
-										.apply((l, m) -> leqVerdict(l, m, order)))
+		return Operators.gated(order, vds -> leqVerdict(vds.get(0), vds.get(1), order))
 				.apply(watchedTerms(), state);
 	}
 

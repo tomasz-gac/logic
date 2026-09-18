@@ -12,7 +12,6 @@ import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Term;
-import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
@@ -37,8 +36,7 @@ public final class Separate extends Propagator<FiniteDomainConstraints> {
 	@Override
 	public Verdict propagate(Package state) {
 		return Operators.letDomain(state, Operators.typed(watchedTerms()), order)
-				.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
-				.map(ds -> ds.apply(Separate::verdict))
+				.map(ds -> verdict(ds.get(0), ds.get(1)))
 				.getOrElse(Verdict::keep);
 	}
 

@@ -4,6 +4,7 @@ package com.tgac.logic.finitedomain.relations;
 // ABOUTME: arithmetic and hull selection every relation's verdict reads through.
 
 import com.tgac.functional.reflection.Types;
+import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.Bound;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.FiniteDomainConstraints;
@@ -12,7 +13,6 @@ import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.capabilities.Multiplicative;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
-import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.Substitutions;
@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
-import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
@@ -163,19 +162,23 @@ public class Operators {
 				Collections.singletonList(VarWithDomain.of(variable, domain))));
 	}
 
-	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us,
-			Comparator<T> order) {
-		return Option.of(us.toJavaStream()
-						.map(p::walk)
-						.flatMap(v -> v.asVal()
-								.map(val -> VarWithDomain.of(v,
-										Singleton.of(v.get(), order, Option.none())))
-								.map(Stream::of)
-								.getOrElse(() -> FiniteDomainConstraints.getDom(p, v.getVar())
-										.map(d -> VarWithDomain.of(v, d))
-										.toJavaStream()))
-						.collect(Array.collector()))
-				.filter(uds -> uds.size() == us.size());
+	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us, Comparator<T> order) {
+		// the first domainless position refuses — no walking the rest
+		List<VarWithDomain<T>> resolved = new ArrayList<>(us.size());
+		for (Term<T> u : us) {
+			Term<T> walked = p.walk(u);
+			if (walked.asVal().isDefined()) {
+				resolved.add(VarWithDomain.of(walked,
+						Singleton.of(walked.get(), order, Option.<Discrete<T>> none())));
+				continue;
+			}
+			Option<Domain<T>> domain = FiniteDomainConstraints.<T> getDom(p, walked.getVar());
+			if (!domain.isDefined()) {
+				return Option.none();
+			}
+			resolved.add(VarWithDomain.of(walked, domain.get()));
+		}
+		return Option.of(Array.ofAll(resolved));
 	}
 
 	static <T> Option<T> getSingleElement(Domain<T> dom) {

@@ -14,7 +14,6 @@ import com.tgac.logic.finitedomain.FiniteDomainConstraints;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.capabilities.Multiplicative;
 import com.tgac.logic.finitedomain.domains.Interval;
-import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.finitedomain.relations.Operators.VarWithDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
@@ -54,10 +53,7 @@ public final class Mul extends Propagator<FiniteDomainConstraints> {
 	@Override
 	public Verdict propagate(Package state) {
 		return Operators.gated(order,
-						(Array<VarWithDomain<Object>> vds) ->
-								Tuple.of(vds.get(0), vds.get(1), vds.get(2))
-										.apply((u, v, w) -> mulVerdict(u, v, w,
-												multiplicative, order, step)),
+						vds -> mulVerdict(vds.get(0), vds.get(1), vds.get(2), multiplicative, order, step),
 						this::computedThird)
 				.apply(watchedTerms(), state);
 	}
@@ -94,7 +90,7 @@ public final class Mul extends Propagator<FiniteDomainConstraints> {
 		Domain<Object> product = free.domainAt(2);
 		Domain<Object> cofactor = free.domainAt(free.getPosition() == 1 ? 0 : 1);
 		return quotientBounds(product.lower(), product.upper(),
-						cofactor.lower(), cofactor.upper(), multiplicative, order, step)
+				cofactor.lower(), cofactor.upper(), multiplicative, order, step)
 				.map(hull -> Operators.mintHull(free.getVariable(),
 						hull.lower(), hull.upper(), order, step))
 				.getOrElse(Verdict::keep);
