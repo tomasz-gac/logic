@@ -8,7 +8,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
@@ -52,7 +52,7 @@ public class PostingVisitorTest {
 		Posting unification = x.unifies(3);
 		Posting resolution = Propagation.resolve(Prefix.binding(
 				Package.empty().substitution(), (LVar<?>) x.asVar().get(), lval(3)).get());
-		Posting activation = FiniteDomain.dom(y, EnumeratedDomain.range(0L, 5L));
+		Posting activation = FiniteDomain.dom(y, Longs.range(0, 5));
 		Posting all = Posting.all(x.unifies(3), x.unifies(4));
 
 		RowName visitor = new RowName();

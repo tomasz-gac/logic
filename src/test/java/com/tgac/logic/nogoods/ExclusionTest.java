@@ -11,8 +11,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -63,8 +62,8 @@ public class ExclusionTest {
 	public void excludingADomCarvesTheBoxOutOfALabelledDomain() {
 		Unifiable<Long> x = lvar();
 
-		Goal g = dom(x, EnumeratedDomain.range(0L, 10L))
-				.and(exclude(dom(x, EnumeratedDomain.range(3L, 6L))));
+		Goal g = dom(x, Longs.range(0, 10))
+				.and(exclude(dom(x, Longs.range(3, 6))));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());

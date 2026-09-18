@@ -3,9 +3,7 @@ package com.tgac.logic.finitedomain;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.Utils.collect;
-import static com.tgac.logic.finitedomain.FiniteDomain.addo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.separate;
 import static com.tgac.logic.goals.Goal.defer;
 import static com.tgac.logic.goals.Matche.llist;
 import static com.tgac.logic.goals.Matche.matche;
@@ -13,8 +11,6 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.logic.constraints.Constraints;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
-import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.unification.LList;
@@ -44,7 +40,7 @@ public class FiniteDomainTest {
 	public void shouldAssignDomain() {
 		Unifiable<Long> i = lvar();
 		List<Long> result =
-				solve(i, dom(i, EnumeratedDomain.range(0L, 10L)))
+				solve(i, dom(i, Longs.range(0, 10)))
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -58,7 +54,7 @@ public class FiniteDomainTest {
 		// leaf inside an LTree grounds at reify like any list member
 		Unifiable<Long> leaf = lvar();
 		Unifiable<LTree<Long>> tree = LTree.of(leaf);
-		List<String> result = solve(tree, dom(leaf, EnumeratedDomain.range(1L, 3L)))
+		List<String> result = solve(tree, dom(leaf, Longs.range(1, 3)))
 				.map(Object::toString)
 				.collect(Collectors.toList());
 
@@ -71,8 +67,8 @@ public class FiniteDomainTest {
 		Unifiable<Long> i = lvar();
 
 		List<Long> result =
-				solve(i, dom(i, EnumeratedDomain.range(0L, 10L))
-						.and(dom(i, EnumeratedDomain.range(5L, 15L))))
+				solve(i, dom(i, Longs.range(0, 10))
+						.and(dom(i, Longs.range(5, 15))))
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -86,7 +82,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> j = lvar();
 
 		List<Long> result =
-				solve(j, dom(i, EnumeratedDomain.range(0L, 10L))
+				solve(j, dom(i, Longs.range(0, 10))
 						.and(Constraints.unify(i, j)))
 						.map(Term::get)
 						.collect(Collectors.toList());
@@ -101,7 +97,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> j = lvar();
 
 		List<Long> result =
-				solve(j, dom(i, EnumeratedDomain.range(0L, 10L))
+				solve(j, dom(i, Longs.range(0, 10))
 						.and(Constraints.unify(j, i)))
 						.map(Term::get)
 						.collect(Collectors.toList());
@@ -117,7 +113,7 @@ public class FiniteDomainTest {
 		Unifiable<Long> k = lvar();
 
 		List<Long> result =
-				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
+				solve(k, dom(i, Longs.range(0, 10))
 						.and(k.unifies(j))
 						.and(Constraints.unify(k, i)))
 						.map(Term::get)
@@ -134,10 +130,10 @@ public class FiniteDomainTest {
 		Unifiable<Long> k = lvar();
 
 		List<Long> result =
-				solve(k, dom(i, EnumeratedDomain.range(0L, 10L))
+				solve(k, dom(i, Longs.range(0, 10))
 						.and(k.unifies(j))
 						.and(Constraints.unify(k, i))
-						.and(dom(k, EnumeratedDomain.range(5L, 20L))))
+						.and(dom(k, Longs.range(5, 20))))
 						.map(Term::get)
 						.collect(Collectors.toList());
 
@@ -152,8 +148,8 @@ public class FiniteDomainTest {
 
 		List<Tuple2<Long, Long>> results =
 				solve(lval(Tuple.of(i, j)),
-						dom(i, EnumeratedDomain.range(0L, 3L))
-								.and(dom(j, EnumeratedDomain.range(0L, 3L))))
+						dom(i, Longs.range(0, 3))
+								.and(dom(j, Longs.range(0, 3))))
 						.map(Term::get)
 						.map(t -> t.map1(Term::get).map2(Term::get))
 						.collect(Collectors.toList());
@@ -177,7 +173,7 @@ public class FiniteDomainTest {
 				llist(() -> size.unifies(i)),
 				llist((a, d) ->
 						Logic.<Long> exist(i1 ->
-								FiniteDomain.addo(i, lval(1L), i1)
+								Longs.addo(i, lval(1L), i1)
 										.and(defer(() -> sizo(size, i1, d))))));
 	}
 
@@ -188,8 +184,8 @@ public class FiniteDomainTest {
 	@Test
 	public void shouldDiffIntervalWithNumber() {
 		Unifiable<Long> i = lvar();
-		Goal goal = dom(i, Interval.of(0L, 10L))
-				.and(FiniteDomain.separate(i, lval(5L)));
+		Goal goal = dom(i, Longs.interval(0, 10))
+				.and(Longs.separate(i, lval(5L)));
 
 		var result = collect(goal.solve(i, TestSchedulers.factory())
 				.map(Term::get));
@@ -198,24 +194,24 @@ public class FiniteDomainTest {
 				.allMatch(t -> t != 5L);
 	}
 
-	public static <A> Goal distinctoFd(Unifiable<LList<A>> distinct) {
+	public static Goal distinctoFd(Unifiable<LList<Integer>> distinct) {
 		return matche(distinct,
 				llist(() -> Goal.success()),
 				llist(a -> Goal.success()),
 				llist((a, b, d) ->
-						FiniteDomain.separate(a, b)
+						Ints.separate(a, b)
 								.and(defer(() -> distinctoFd(LList.of(a, d))))
 								.and(defer(() -> distinctoFd(LList.of(b, d))))));
 	}
 
-	public static <A> Goal distinctoFd(List<Unifiable<A>> distinct) {
+	public static Goal distinctoFd(List<Unifiable<Integer>> distinct) {
 		return IntStream.range(0, distinct.size() - 1)
 				.mapToObj(i ->
 						IntStream.range(i + 1, distinct.size())
 								.boxed()
 								.collect(Collectors.toList()))
 				.map(indices -> indices.stream()
-						.map(j -> (Goal) separate(distinct.get(indices.get(0) - 1), distinct.get(j)))
+						.map(j -> (Goal) Ints.separate(distinct.get(indices.get(0) - 1), distinct.get(j)))
 						.reduce(Goal::and)
 						.orElseGet(Goal::success))
 				.reduce(Goal::and)
@@ -234,11 +230,11 @@ public class FiniteDomainTest {
 
 		Unifiable<LList<Integer>> lst = LList.ofAll(v0, v1, v2, v3, v4);
 		var result = collect(distinctoFd(lst)
-				.and(dom(v0, Interval.of(0, n)))
-				.and(dom(v1, Interval.of(0, n)))
-				.and(dom(v2, Interval.of(0, n)))
-				.and(dom(v3, Interval.of(0, n)))
-				.and(dom(v4, Interval.of(0, n)))
+				.and(dom(v0, Ints.interval(0, n)))
+				.and(dom(v1, Ints.interval(0, n)))
+				.and(dom(v2, Ints.interval(0, n)))
+				.and(dom(v3, Ints.interval(0, n)))
+				.and(dom(v4, Ints.interval(0, n)))
 				.solve(lst, TestSchedulers.factory())
 				.map(Term::get)
 				.map(LList::toValueStream)
@@ -273,10 +269,10 @@ public class FiniteDomainTest {
 		Unifiable<Integer> c = lvar();
 
 		lombok.val result = collect(
-				addo(a, b, c)
-						.and(dom(a, Interval.of(0, 5)))
-						.and(dom(b, Interval.of(0, 5)))
-						.and(dom(c, Interval.of(-5, 10)))
+				Ints.addo(a, b, c)
+						.and(dom(a, Ints.interval(0, 5)))
+						.and(dom(b, Ints.interval(0, 5)))
+						.and(dom(c, Ints.interval(-5, 10)))
 						.and(exclude(str.unifies(lval("123"))))
 						.solve(lval(Tuple.of(a, b, c, str)), TestSchedulers.factory())
 						.map(Term::get)

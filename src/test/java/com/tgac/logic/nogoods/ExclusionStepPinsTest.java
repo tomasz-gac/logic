@@ -16,8 +16,7 @@ import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Ints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.unification.LList;
@@ -68,8 +67,7 @@ public class ExclusionStepPinsTest {
 	}
 
 	private static Domain<Integer> dom(int... values) {
-		return EnumeratedDomain.of(Array.ofAll(Arrays.stream(values).boxed())
-				.map(Arithmetic::ofCasted));
+		return Ints.enumerated(Arrays.stream(values).boxed().toArray(Integer[]::new));
 	}
 
 	// ---- shape 1: ordered distinct pairs from a menu (membero generation) ----

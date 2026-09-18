@@ -11,7 +11,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
@@ -26,7 +26,7 @@ import org.junit.Test;
 public class NogoodConstraintsUnderTablingTest {
 
 	private static Tabled<Unifiable<Long>> zeroToFour() {
-		return Tabling.define(x -> dom(x, EnumeratedDomain.range(0L, 5L)));
+		return Tabling.define(x -> dom(x, Longs.range(0, 5)));
 	}
 
 	@Test
@@ -73,8 +73,8 @@ public class NogoodConstraintsUnderTablingTest {
 		// duplicates (distinct answer deltas differing only in the witness)
 		Tabled<Unifiable<Long>> notTheLocal = Tabling.define(x -> {
 			Unifiable<Long> w = lvar();
-			return dom(x, EnumeratedDomain.range(1L, 5L))
-					.and(dom(w, EnumeratedDomain.range(2L, 4L)))
+			return dom(x, Longs.range(1, 5))
+					.and(dom(w, Longs.range(2, 4)))
 					.and(exclude(x.unifies(w)));
 		});
 		Unifiable<Long> x = lvar();
@@ -93,8 +93,8 @@ public class NogoodConstraintsUnderTablingTest {
 		// the UNIVERSAL reading — x differs from ALL of {2,3} — is not a
 		// witnessed nogood but ¬(x ∈ 2..3): the negated box, spelled directly
 		Tabled<Unifiable<Long>> outsideTheBox = Tabling.define(x ->
-				dom(x, EnumeratedDomain.range(1L, 5L))
-						.and(exclude(dom(x, EnumeratedDomain.range(2L, 4L)))));
+				dom(x, Longs.range(1, 5))
+						.and(exclude(dom(x, Longs.range(2, 4)))));
 		Unifiable<Long> x = lvar();
 
 		List<Long> values = outsideTheBox.apply(x)

@@ -4,21 +4,12 @@ package com.tgac.logic.nogoods;
 // ABOUTME: ground refutation discharges, open anchors filter at labelling.
 
 import com.tgac.logic.TestSchedulers;
-import static com.tgac.logic.finitedomain.FiniteDomain.addo;
-import static com.tgac.logic.finitedomain.FiniteDomain.divo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.geq;
-import static com.tgac.logic.finitedomain.FiniteDomain.gtr;
-import static com.tgac.logic.finitedomain.FiniteDomain.leq;
-import static com.tgac.logic.finitedomain.FiniteDomain.lss;
-import static com.tgac.logic.finitedomain.FiniteDomain.multo;
-import static com.tgac.logic.finitedomain.FiniteDomain.separate;
-import static com.tgac.logic.finitedomain.FiniteDomain.subtracto;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -46,13 +37,13 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> a = lvar();
 		Unifiable<Long> b = lvar();
 		Unifiable<Long> c = lvar();
-		assertThat(count(ground(a, 2, b, 3, c, 5).and(exclude(addo(a, b, c))), a))
+		assertThat(count(ground(a, 2, b, 3, c, 5).and(exclude(Longs.addo(a, b, c))), a))
 				.isZero();
 
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
 		Unifiable<Long> z = lvar();
-		assertThat(count(ground(x, 2, y, 3, z, 9).and(exclude(addo(x, y, z))), x))
+		assertThat(count(ground(x, 2, y, 3, z, 9).and(exclude(Longs.addo(x, y, z))), x))
 				.isEqualTo(1);
 	}
 
@@ -62,9 +53,9 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> b = lvar();
 		Unifiable<Long> c = lvar();
 
-		Goal g = dom(a, EnumeratedDomain.range(0L, 5L))
+		Goal g = dom(a, Longs.range(0, 5))
 				.and(b.unifies(2L)).and(c.unifies(4L))
-				.and(exclude(addo(a, b, c)));
+				.and(exclude(Longs.addo(a, b, c)));
 
 		assertThat(answers(g, a)).containsExactlyInAnyOrder(0L, 1L, 3L, 4L);
 	}
@@ -74,13 +65,13 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> a = lvar();
 		Unifiable<Long> b = lvar();
 		Unifiable<Long> c = lvar();
-		assertThat(count(ground(a, 5, b, 3, c, 2).and(exclude(subtracto(a, b, c))), a))
+		assertThat(count(ground(a, 5, b, 3, c, 2).and(exclude(Longs.subtracto(a, b, c))), a))
 				.isZero();
 
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
 		Unifiable<Long> z = lvar();
-		assertThat(count(ground(x, 5, y, 3, z, 7).and(exclude(subtracto(x, y, z))), x))
+		assertThat(count(ground(x, 5, y, 3, z, 7).and(exclude(Longs.subtracto(x, y, z))), x))
 				.isEqualTo(1);
 	}
 
@@ -89,13 +80,13 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> a = lvar();
 		Unifiable<Long> b = lvar();
 		Unifiable<Long> c = lvar();
-		assertThat(count(ground(a, 2, b, 3, c, 6).and(exclude(multo(a, b, c))), a))
+		assertThat(count(ground(a, 2, b, 3, c, 6).and(exclude(Longs.multo(a, b, c))), a))
 				.isZero();
 
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
 		Unifiable<Long> z = lvar();
-		assertThat(count(ground(x, 2, y, 3, z, 7).and(exclude(multo(x, y, z))), x))
+		assertThat(count(ground(x, 2, y, 3, z, 7).and(exclude(Longs.multo(x, y, z))), x))
 				.isEqualTo(1);
 	}
 
@@ -105,9 +96,9 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> b = lvar();
 		Unifiable<Long> c = lvar();
 
-		Goal g = dom(a, EnumeratedDomain.range(1L, 5L))
+		Goal g = dom(a, Longs.range(1, 5))
 				.and(b.unifies(2L)).and(c.unifies(6L))
-				.and(exclude(multo(a, b, c)));
+				.and(exclude(Longs.multo(a, b, c)));
 
 		assertThat(answers(g, a)).containsExactlyInAnyOrder(1L, 2L, 4L);
 	}
@@ -117,13 +108,13 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> a = lvar();
 		Unifiable<Long> b = lvar();
 		Unifiable<Long> c = lvar();
-		assertThat(count(ground(a, 6, b, 3, c, 2).and(exclude(divo(a, b, c))), a))
+		assertThat(count(ground(a, 6, b, 3, c, 2).and(exclude(Longs.divo(a, b, c))), a))
 				.isZero();
 
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
 		Unifiable<Long> z = lvar();
-		assertThat(count(ground(x, 6, y, 3, z, 5).and(exclude(divo(x, y, z))), x))
+		assertThat(count(ground(x, 6, y, 3, z, 5).and(exclude(Longs.divo(x, y, z))), x))
 				.isEqualTo(1);
 	}
 
@@ -131,12 +122,12 @@ public class ExcludedFdRelationsTest {
 	public void excludedLeqDecidesAtGround() {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
-		assertThat(count(x.unifies(1L).and(y.unifies(5L)).and(exclude(leq(x, y))), x))
+		assertThat(count(x.unifies(1L).and(y.unifies(5L)).and(exclude(Longs.leq(x, y))), x))
 				.isZero();
 
 		Unifiable<Long> p = lvar();
 		Unifiable<Long> q = lvar();
-		assertThat(count(p.unifies(5L).and(q.unifies(1L)).and(exclude(leq(p, q))), p))
+		assertThat(count(p.unifies(5L).and(q.unifies(1L)).and(exclude(Longs.leq(p, q))), p))
 				.isEqualTo(1);
 	}
 
@@ -146,9 +137,9 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
 
-		Goal g = dom(x, EnumeratedDomain.range(0L, 5L))
+		Goal g = dom(x, Longs.range(0, 5))
 				.and(y.unifies(2L))
-				.and(exclude(leq(x, y)));
+				.and(exclude(Longs.leq(x, y)));
 
 		assertThat(answers(g, x)).containsExactlyInAnyOrder(3L, 4L);
 	}
@@ -158,12 +149,12 @@ public class ExcludedFdRelationsTest {
 		// the composite literal: lss = leq ∧ separate under one exclusion
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
-		assertThat(count(x.unifies(1L).and(y.unifies(5L)).and(exclude(lss(x, y))), x))
+		assertThat(count(x.unifies(1L).and(y.unifies(5L)).and(exclude(Longs.lss(x, y))), x))
 				.isZero();
 
 		Unifiable<Long> p = lvar();
 		Unifiable<Long> q = lvar();
-		assertThat(count(p.unifies(5L).and(q.unifies(1L)).and(exclude(lss(p, q))), p))
+		assertThat(count(p.unifies(5L).and(q.unifies(1L)).and(exclude(Longs.lss(p, q))), p))
 				.isEqualTo(1);
 	}
 
@@ -171,12 +162,12 @@ public class ExcludedFdRelationsTest {
 	public void excludedGtrDecidesAtGround() {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
-		assertThat(count(x.unifies(5L).and(y.unifies(1L)).and(exclude(gtr(x, y))), x))
+		assertThat(count(x.unifies(5L).and(y.unifies(1L)).and(exclude(Longs.gtr(x, y))), x))
 				.isZero();
 
 		Unifiable<Long> p = lvar();
 		Unifiable<Long> q = lvar();
-		assertThat(count(p.unifies(1L).and(q.unifies(5L)).and(exclude(gtr(p, q))), p))
+		assertThat(count(p.unifies(1L).and(q.unifies(5L)).and(exclude(Longs.gtr(p, q))), p))
 				.isEqualTo(1);
 	}
 
@@ -184,12 +175,12 @@ public class ExcludedFdRelationsTest {
 	public void excludedGeqDecidesAtGround() {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
-		assertThat(count(x.unifies(5L).and(y.unifies(5L)).and(exclude(geq(x, y))), x))
+		assertThat(count(x.unifies(5L).and(y.unifies(5L)).and(exclude(Longs.geq(x, y))), x))
 				.isZero();
 
 		Unifiable<Long> p = lvar();
 		Unifiable<Long> q = lvar();
-		assertThat(count(p.unifies(1L).and(q.unifies(5L)).and(exclude(geq(p, q))), p))
+		assertThat(count(p.unifies(1L).and(q.unifies(5L)).and(exclude(Longs.geq(p, q))), p))
 				.isEqualTo(1);
 	}
 
@@ -198,12 +189,12 @@ public class ExcludedFdRelationsTest {
 		// ¬(x ≠ y) admits only x = y
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
-		assertThat(count(x.unifies(1L).and(y.unifies(2L)).and(exclude(separate(x, y))), x))
+		assertThat(count(x.unifies(1L).and(y.unifies(2L)).and(exclude(Longs.separate(x, y))), x))
 				.isZero();
 
 		Unifiable<Long> p = lvar();
 		Unifiable<Long> q = lvar();
-		assertThat(count(p.unifies(1L).and(q.unifies(1L)).and(exclude(separate(p, q))), p))
+		assertThat(count(p.unifies(1L).and(q.unifies(1L)).and(exclude(Longs.separate(p, q))), p))
 				.isEqualTo(1);
 	}
 
@@ -212,9 +203,9 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> y = lvar();
 
-		Goal g = dom(x, EnumeratedDomain.range(0L, 5L))
+		Goal g = dom(x, Longs.range(0, 5))
 				.and(y.unifies(2L))
-				.and(exclude(separate(x, y)));
+				.and(exclude(Longs.separate(x, y)));
 
 		assertThat(answers(g, x)).containsExactly(2L);
 	}
@@ -227,7 +218,7 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> c = lvar();
 		Unifiable<Long> cap = lvar();
 		assertThat(count(ground(a, 1, b, 2, c, 3).and(cap.unifies(4L))
-				.and(exclude(addo(a, b, c), leq(c, cap))), a))
+				.and(exclude(Longs.addo(a, b, c), Longs.leq(c, cap))), a))
 				.isZero();
 
 		Unifiable<Long> x = lvar();
@@ -235,7 +226,7 @@ public class ExcludedFdRelationsTest {
 		Unifiable<Long> z = lvar();
 		Unifiable<Long> tight = lvar();
 		assertThat(count(ground(x, 1, y, 2, z, 3).and(tight.unifies(2L))
-				.and(exclude(addo(x, y, z), leq(z, tight))), x))
+				.and(exclude(Longs.addo(x, y, z), Longs.leq(z, tight))), x))
 				.isEqualTo(1);
 	}
 }

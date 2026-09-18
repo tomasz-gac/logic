@@ -1,16 +1,19 @@
 package com.tgac.logic.finitedomain;
 
+// ABOUTME: The instance-explicit FD core: domain membership, order and arithmetic
+// ABOUTME: schemas over any type that brings its capability seats.
+
 import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.Posting;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Theory;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
+import com.tgac.logic.finitedomain.capabilities.Arithmetic;
+import com.tgac.logic.finitedomain.capabilities.Discrete;
+import com.tgac.logic.finitedomain.capabilities.Multiplicative;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
-import com.tgac.logic.unification.MiniKanren;
 import com.tgac.logic.unification.Substitutions;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -20,18 +23,23 @@ import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Objects;
+import java.util.Comparator;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
+/**
+ * The generic front door: every operation takes the capability seats it
+ * needs as plain arguments — the typed fronts ({@link Ints}, {@link Longs},
+ * {@link BigIntegers}, {@link BigDecimals}, {@link Dates}, {@link Instants})
+ * pre-specify them so no ordinary caller ever states an instance.
+ */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class FiniteDomain {
 
@@ -41,21 +49,21 @@ public class FiniteDomain {
 		return FiniteDomainConstraints.empty().impose(u, (Domain<Object>) d);
 	}
 
-	@SuppressWarnings({"unchecked", "rawtypes"})
-	static long cmpOrder(Substitutions s, Term<?> l, Term<?> r, IntPredicate satisfied) {
+	static long cmpOrder(Substitutions s, Term<?> l, Term<?> r, IntPredicate satisfied, Comparator<Object> order) {
 		Term<?> lw = s.walk(l);
 		Term<?> rw = s.walk(r);
-		if (lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get() instanceof Comparable) {
-			return satisfied.test(((Comparable) lw.get()).compareTo(rw.get())) ? 1 : 0;
+		if (lw.asVal().isDefined() && rw.asVal().isDefined()) {
+			return satisfied.test(order.compare(lw.get(), rw.get())) ? 1 : 0;
 		}
 		return 1;
 	}
 
-	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us) {
+	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us,
+			Comparator<T> order, Option<Discrete<T>> step) {
 		return Option.of(us.toJavaStream()
 						.map(p::walk)
 						.flatMap(v -> v.asVal()
-								.map(val -> VarWithDomain.of(v, Singleton.of(Arithmetic.ofCasted(v.get()))))
+								.map(val -> VarWithDomain.of(v, Singleton.of(v.get(), order, step)))
 								.map(Stream::of)
 								.getOrElse(() -> FiniteDomainConstraints.getDom(p, v.getVar())
 										.map(d -> VarWithDomain.of(v, d))
@@ -70,8 +78,9 @@ public class FiniteDomain {
 	}
 
 	static <T> BiFunction<Array<? extends Term<?>>, Package, Verdict> gated(
+			Comparator<T> order, Option<Discrete<T>> step,
 			Function<Array<VarWithDomain<T>>, Verdict> verdict) {
-		return (watched, s) -> letDomain(s, FiniteDomain.<T> typed(watched))
+		return (watched, s) -> letDomain(s, FiniteDomain.<T> typed(watched), order, step)
 				.filter(uds -> uds.toJavaStream()
 						.noneMatch(ud -> ud.getDomain().isEmpty()))
 				.map(verdict)
@@ -90,34 +99,43 @@ public class FiniteDomain {
 		}
 	}
 
-	public static <T> Posting leq(Unifiable<T> less, Unifiable<T> more) {
-		return Propagation.activate(new Leq(less, more));
+	public static <T> Posting leq(Unifiable<T> less, Unifiable<T> more, Comparator<T> order) {
+		return Propagation.activate(new Leq(less, more, order));
 	}
 
-	public static <T> Posting lss(Unifiable<T> less, Unifiable<T> more) {
-		return Propagation.activate(new Lss(less, more));
+	public static <T> Posting lss(Unifiable<T> less, Unifiable<T> more,
+			Comparator<T> order, Option<Discrete<T>> step) {
+		return Propagation.activate(new Lss(less, more, order, step));
 	}
 
-	public static <T> Posting gtr(Unifiable<T> more, Unifiable<T> less) {
+	public static <T> Posting gtr(Unifiable<T> more, Unifiable<T> less,
+			Comparator<T> order, Option<Discrete<T>> step) {
 		// more > less IS less < more: one sharp atom, the schema's own doom
-		return Propagation.activate(new Lss(less, more));
+		return Propagation.activate(new Lss(less, more, order, step));
 	}
 
-	public static <T> Posting geq(Unifiable<T> more, Unifiable<T> less) {
+	public static <T> Posting geq(Unifiable<T> more, Unifiable<T> less, Comparator<T> order) {
 		// more >= less violated ⟺ less <= more violated: the schema's own doom
-		return Propagation.activate(new Leq(less, more));
+		return Propagation.activate(new Leq(less, more, order));
 	}
 
 	@SuppressWarnings("unchecked")
-	static <T> Verdict lssVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
-		Domain<T> lessDom = lss.<T> getDomain().atMost(mor.<T> getDomain().max().prev());
-		Domain<T> moreDom = mor.<T> getDomain().atLeast(lss.<T> getDomain().min().next());
+	static <T> Verdict lssVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor,
+			Comparator<T> order, Option<Discrete<T>> step) {
+		if (lss.getUnifiable().isVal() && mor.getUnifiable().isVal()) {
+			// ground: the strict order decides exactly, dense or not
+			return order.compare(lss.getUnifiable().get(), mor.getUnifiable().get()) < 0 ?
+					Verdict.subsumed() : Verdict.fail();
+		}
+		// stepping sharpens the strict bounds; a dense type narrows non-strictly
+		Domain<T> lessDom = step
+				.map(d -> lss.<T> getDomain().atMost(d.prev(mor.<T> getDomain().max())))
+				.getOrElse(() -> lss.<T> getDomain().atMost(mor.<T> getDomain().max()));
+		Domain<T> moreDom = step
+				.map(d -> mor.<T> getDomain().atLeast(d.next(lss.<T> getDomain().min())))
+				.getOrElse(() -> mor.<T> getDomain().atLeast(lss.<T> getDomain().min()));
 		if (lessDom.isEmpty() || moreDom.isEmpty()) {
 			return Verdict.fail();
-		}
-		if (lss.getUnifiable().isVal() && mor.getUnifiable().isVal()) {
-			// ground and strictly ordered (nonempty above): nothing left to watch
-			return Verdict.subsumed();
 		}
 		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
 				(Theory<FiniteDomainConstraints>) theory,
@@ -127,16 +145,17 @@ public class FiniteDomain {
 	}
 
 	@SuppressWarnings("unchecked")
-	static <T> Verdict leqVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor) {
+	static <T> Verdict leqVerdict(VarWithDomain<T> lss, VarWithDomain<T> mor, Comparator<T> order) {
+		if (lss.getUnifiable().isVal() && mor.getUnifiable().isVal()) {
+			// ground: the order decides exactly, nothing left to watch
+			return order.compare(lss.getUnifiable().get(), mor.getUnifiable().get()) <= 0 ?
+					Verdict.subsumed() : Verdict.fail();
+		}
 		Domain<T> lessDom = lss.<T> getDomain().atMost(mor.<T> getDomain().max());
 		Domain<T> moreDom = mor.<T> getDomain().atLeast(lss.<T> getDomain().min());
 		if (lessDom.isEmpty() || moreDom.isEmpty()) {
 			return Verdict.fail();
 		}
-		if (lss.getUnifiable().isVal() && mor.getUnifiable().isVal()) {
-			// ground and consistent: nothing left to watch
-			return Verdict.subsumed();
-		}
 		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
 				(Theory<FiniteDomainConstraints>) theory,
 				Arrays.<VarWithDomain<?>> asList(
@@ -144,40 +163,42 @@ public class FiniteDomain {
 						VarWithDomain.of(mor.getUnifiable(), moreDom))));
 	}
 
-	public static <T> Posting addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return addoFD(a, b, c);
+	public static <T> Posting addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c,
+			Arithmetic<T, T> arithmetic, Comparator<T> order, Option<Discrete<T>> step) {
+		return Propagation.activate(new Add(a, b, c, arithmetic, order, step));
 	}
 
-	public static <T> Posting subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return addoFD(c, b, a);
-	}
-
-	static <T> Posting addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return Propagation.activate(new Add(a, b, rhs));
+	public static <T> Posting subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c,
+			Arithmetic<T, T> arithmetic, Comparator<T> order, Option<Discrete<T>> step) {
+		return addo(c, b, a, arithmetic, order, step);
 	}
 
 	@SuppressWarnings("unchecked")
 	static <T> Verdict addVerdict(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
-			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
-			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
+			Arithmetic<T, T> arithmetic, Comparator<T> order, Option<Discrete<T>> step,
+			T uMin, T vMin, T wMin,
+			T uMax, T vMax, T wMax) {
 
 		if (u.getUnifiable().isVal() && v.getUnifiable().isVal() && w.getUnifiable().isVal()) {
 			// ground: check the sum exactly, nothing left to watch
-			return uMin.add(vMin).compareTo(wMin) == 0 ? Verdict.subsumed() : Verdict.fail();
+			return order.compare(arithmetic.plus(uMin, vMin), wMin) == 0 ? Verdict.subsumed() : Verdict.fail();
 		}
 
 		Interval<T> wi = Interval.of(
-				uMin.add(vMin),
-				uMax.add(vMax.next()));
+				arithmetic.plus(uMin, vMin),
+				widened(arithmetic.plus(uMax, vMax), step),
+				order, step);
 
 		Interval<T> vi = Interval.of(
-				wMin.subtract(uMax),
-				wMax.subtract(uMin).next());
+				arithmetic.minus(wMin, uMax),
+				widened(arithmetic.minus(wMax, uMin), step),
+				order, step);
 
 		Interval<T> ui = Interval.of(
-				wMin.subtract(vMax),
-				wMax.subtract(vMin).next());
+				arithmetic.minus(wMin, vMax),
+				widened(arithmetic.minus(wMax, vMin), step),
+				order, step);
 
 		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
 				(Theory<FiniteDomainConstraints>) theory,
@@ -187,49 +208,58 @@ public class FiniteDomain {
 						VarWithDomain.of(u.getUnifiable(), ui))));
 	}
 
-	public static <T> Posting multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c) {
-		return mulFD(a, b, c);
+	/** The discrete upper bound rides one step wide; a dense bound is already exact. */
+	private static <T> T widened(T bound, Option<Discrete<T>> step) {
+		return step.map(d -> d.next(bound)).getOrElse(bound);
 	}
 
-	public static <T> Posting divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result) {
-		return multo(result, divisor, divided);
+	public static <T> Posting multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c,
+			Multiplicative<T> multiplicative, Comparator<T> order, Option<Discrete<T>> step) {
+		return Propagation.activate(new Mul(a, b, c, multiplicative, order, step));
 	}
 
-	static <T> Posting mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return Propagation.activate(new Mul(a, b, rhs));
+	public static <T> Posting divo(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> result,
+			Multiplicative<T> multiplicative, Comparator<T> order, Option<Discrete<T>> step) {
+		return multo(result, divisor, divided, multiplicative, order, step);
 	}
 
 	@SuppressWarnings("unchecked")
 	static <T> Verdict mulVerdict(
 			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
-			Arithmetic<T> uMin, Arithmetic<T> vMin, Arithmetic<T> wMin,
-			Arithmetic<T> uMax, Arithmetic<T> vMax, Arithmetic<T> wMax) {
+			Multiplicative<T> multiplicative, Comparator<T> order, Option<Discrete<T>> step,
+			T uMin, T vMin, T wMin,
+			T uMax, T vMax, T wMax) {
 		// all are numbers -> check multiplication
-		if (uMin.equals(uMax) && vMin.equals(vMax) && wMin.equals(wMax)) {
-			return uMin.mul(vMin).compareTo(wMin) == 0 ? Verdict.subsumed() : Verdict.fail();
+		if (order.compare(uMin, uMax) == 0 && order.compare(vMin, vMax) == 0 && order.compare(wMin, wMax) == 0) {
+			return order.compare(multiplicative.times(uMin, vMin), wMin) == 0 ? Verdict.subsumed() : Verdict.fail();
 		}
 
 		// some are numbers -> do nothing until all generated
-		if (uMin.equals(uMax) || vMin.equals(vMax) || wMin.equals(wMax)) {
+		if (order.compare(uMin, uMax) == 0 || order.compare(vMin, vMax) == 0 || order.compare(wMin, wMax) == 0) {
 			return Verdict.keep();
 		}
 
 		// Trim domains
 		Domain<T> wi, ui, vi;
 
-		Array<Tuple2<Arithmetic<T>, Arithmetic<T>>> uvPerm = Array.of(
+		Array<Tuple2<T, T>> uvPerm = Array.of(
 				Tuple.of(uMin, vMin),
 				Tuple.of(uMax, vMin),
 				Tuple.of(uMin, vMax),
 				Tuple.of(uMax, vMax));
 
 		wi = Interval.normalized(
-						minResult(Arithmetic::mul, uvPerm),
-						maxResult(Arithmetic::mul, uvPerm))
+						minResult(multiplicative::times, uvPerm, order),
+						maxResult(multiplicative::times, uvPerm, order),
+						order, step)
 				.intersect(w.getDomain());
 
+		if (wi.isEmpty()) {
+			return Verdict.fail();
+		}
+
 		// result is zero, so we cannot infer any u or v bounds information
-		if (wi.min().equals(wi.max()) && wi.min().isZero()) {
+		if (order.compare(wi.min(), wi.max()) == 0 && order.compare(wi.min(), multiplicative.zero()) == 0) {
 			Domain<T> wiZero = wi;
 			return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
 					(Theory<FiniteDomainConstraints>) theory,
@@ -239,8 +269,8 @@ public class FiniteDomain {
 
 		// quotient bounds are meaningless when the divisor interval spans zero
 		// (w/v is unbounded around v = 0) — trim only sign-constant divisors
-		ui = quotientBounds(wMin, wMax, vMin, vMax).getOrElse(() -> u.<T> getDomain());
-		vi = quotientBounds(wMin, wMax, uMin, uMax).getOrElse(() -> v.<T> getDomain());
+		ui = quotientBounds(wMin, wMax, vMin, vMax, multiplicative, order, step).getOrElse(() -> u.<T> getDomain());
+		vi = quotientBounds(wMin, wMax, uMin, uMax, multiplicative, order, step).getOrElse(() -> v.<T> getDomain());
 
 		Domain<T> wiF = wi, uiF = ui, viF = vi;
 		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
@@ -252,49 +282,55 @@ public class FiniteDomain {
 	}
 
 	/**
-	 * Bounds of {@code w / d} over the endpoint box, defined only when the divisor
-	 * interval is sign-constant (no zero inside). Exact integer quotients attain
-	 * their extremes at the endpoints, so the endpoint min/max never excludes a
-	 * valid factor.
+	 * Bounds of {@code w / d} over the endpoint box, defined only when the
+	 * divisor interval is sign-constant (no zero inside) AND every endpoint
+	 * quotient divides exactly — an inexact endpoint would need directed
+	 * rounding, which no seat provides, so the trim is skipped: sound, wider.
 	 */
 	private static <T> Option<Domain<T>> quotientBounds(
-			Arithmetic<T> wMin, Arithmetic<T> wMax,
-			Arithmetic<T> dMin, Arithmetic<T> dMax) {
-		Arithmetic<T> zero = dMin.subtract(dMin);
-		if (dMin.compareTo(zero) <= 0 && dMax.compareTo(zero) >= 0) {
+			T wMin, T wMax, T dMin, T dMax,
+			Multiplicative<T> multiplicative, Comparator<T> order, Option<Discrete<T>> step) {
+		T zero = multiplicative.zero();
+		if (order.compare(dMin, zero) <= 0 && order.compare(dMax, zero) >= 0) {
 			return Option.none();
 		}
-		Array<Tuple2<Arithmetic<T>, Arithmetic<T>>> wdPerm = Array.of(
+		Array<Tuple2<T, T>> wdPerm = Array.of(
 				Tuple.of(wMin, dMin),
 				Tuple.of(wMin, dMax),
 				Tuple.of(wMax, dMin),
 				Tuple.of(wMax, dMax));
-		return Option.of(Interval.normalized(
-				minResult(Arithmetic::div, wdPerm),
-				maxResult(Arithmetic::div, wdPerm)));
+		return wdPerm.toJavaStream()
+				.map(t -> t.apply(multiplicative::dividedExactly))
+				.reduce(Option.of(Array.<T> empty()),
+						(acc, q) -> acc.flatMap(qs -> q.map(qs::append)),
+						(l, r) -> l.flatMap(ls -> r.map(ls::appendAll)))
+				.map(quotients -> Interval.normalized(
+						quotients.toJavaStream().min(order).get(),
+						quotients.toJavaStream().max(order).get(),
+						order, step));
 	}
 
-	public static <T> Posting separate(Unifiable<T> l, Unifiable<T> r) {
-		return Propagation.activate(new Separate(l, r));
+	public static <T> Posting separate(Unifiable<T> l, Unifiable<T> r, Comparator<T> order) {
+		return Propagation.activate(new Separate(l, r, order));
 	}
 
-	static <T> Option<Arithmetic<T>> getSingleElement(Domain<T> dom) {
+	static <T> Option<T> getSingleElement(Domain<T> dom) {
 		return Option.of(dom)
 				.flatMap(Types.<Singleton<T>> castAs(Singleton.class))
 				.map(Singleton::getValue);
 	}
 
-	private static <T extends Comparable<T>> T minResult(BinaryOperator<T> f, Array<Tuple2<T, T>> args) {
+	private static <T> T minResult(BinaryOperator<T> f, Array<Tuple2<T, T>> args, Comparator<T> order) {
 		return args.toJavaStream()
 				.map(t -> t.apply(f))
-				.min(T::compareTo)
+				.min(order)
 				.orElseThrow(IllegalStateException::new);
 	}
 
-	private static <T extends Comparable<T>> T maxResult(BinaryOperator<T> f, Array<Tuple2<T, T>> args) {
+	private static <T> T maxResult(BinaryOperator<T> f, Array<Tuple2<T, T>> args, Comparator<T> order) {
 		return args.toJavaStream()
 				.map(t -> t.apply(f))
-				.max(T::compareTo)
+				.max(order)
 				.orElseThrow(IllegalStateException::new);
 	}
 

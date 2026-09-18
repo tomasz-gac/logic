@@ -10,7 +10,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
@@ -76,7 +76,7 @@ public class NogoodRenderingTest {
 		// delegation, no store-specific display code
 		Unifiable<Long> x = lvar();
 
-		List<String> answers = rendered(exclude(dom(x, EnumeratedDomain.range(2L, 5L))), x);
+		List<String> answers = rendered(exclude(dom(x, Longs.range(2, 5))), x);
 
 		assertThat(answers).hasSize(1);
 		assertThat(answers.get(0)).startsWith("_.0 : ¬(");

@@ -10,9 +10,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
-import io.vavr.collection.Array;
+import com.tgac.logic.finitedomain.Ints;
 import java.util.stream.IntStream;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Unifiable;
@@ -59,9 +57,8 @@ public class DoomLawsTest {
 					return exclude(var().unifies(lval(r.nextInt(3))));
 				default:
 					int lo = r.nextInt(2);
-					return FiniteDomain.dom(var(), EnumeratedDomain.of(
-							Array.ofAll(IntStream.rangeClosed(lo, lo + 2).boxed())
-									.map(Arithmetic::ofCasted)));
+					return FiniteDomain.dom(var(), Ints.enumerated(
+							IntStream.rangeClosed(lo, lo + 2).boxed().toArray(Integer[]::new)));
 			}
 		}
 

@@ -14,9 +14,8 @@ import com.tgac.functional.fibers.interpreter.Scope;
 import com.tgac.functional.fibers.interpreter.StepListener;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
 import com.tgac.logic.finitedomain.Domain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Ints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.tabling.Tabled;
@@ -25,7 +24,6 @@ import com.tgac.logic.unification.LList;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
-import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -55,8 +53,7 @@ public class StepCountPinsTest {
 	}
 
 	private static Domain<Integer> dom(int... values) {
-		return EnumeratedDomain.of(Array.ofAll(Arrays.stream(values).boxed())
-				.map(Arithmetic::ofCasted));
+		return Ints.enumerated(Arrays.stream(values).boxed().toArray(Integer[]::new));
 	}
 
 	/** Pure relational lane: every split of a six-element list. */
@@ -93,7 +90,7 @@ public class StepCountPinsTest {
 		Unifiable<Integer> to = lvar();
 		Goal doors = FiniteDomain.dom(from, rooms)
 				.and(FiniteDomain.dom(to, rooms))
-				.and(FiniteDomain.addo(from, lval(1), to)
+				.and(Ints.addo(from, lval(1), to)
 						.or(unify(from, lval(5)).and(unify(to, lval(1)))));
 
 		assertThat(steps(doors, from)).isEqualTo(193);
@@ -110,7 +107,7 @@ public class StepCountPinsTest {
 										FiniteDomain.dom(prev, rooms)
 												.and(FiniteDomain.dom(room, rooms))
 												.and(Goal.defer(() -> self.apply(Tuple.of(prev))))
-												.and(FiniteDomain.addo(prev, lval(1), room)
+												.and(Ints.addo(prev, lval(1), room)
 														.or(unify(prev, lval(5)).and(unify(room, lval(1)))))))));
 		Unifiable<Integer> room = lvar();
 

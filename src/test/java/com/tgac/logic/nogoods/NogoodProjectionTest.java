@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.constraints.store.Theory;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
@@ -74,9 +74,9 @@ public class NogoodProjectionTest {
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> z = lvar();
 
-		Theory<NogoodConstraints> a = store(over(dom(x, EnumeratedDomain.range(0L, 5L))))
+		Theory<NogoodConstraints> a = store(over(dom(x, Longs.range(0, 5))))
 				.rename(toHole(x, 0)).ground();
-		Theory<NogoodConstraints> b = store(over(dom(z, EnumeratedDomain.range(0L, 5L))))
+		Theory<NogoodConstraints> b = store(over(dom(z, Longs.range(0, 5))))
 				.rename(toHole(z, 0)).ground();
 
 		assertThat(a).isEqualTo(b);
@@ -119,7 +119,7 @@ public class NogoodProjectionTest {
 	@Test
 	public void aCrossedNogoodFiltersAtTheCallersLabelling() {
 		Tabled<Unifiable<Long>> constrained = Tabling.define(x ->
-				dom(x, EnumeratedDomain.range(0L, 5L))
+				dom(x, Longs.range(0, 5))
 						.and(exclude(x.unifies(3L))));
 
 		Unifiable<Long> y = lvar();

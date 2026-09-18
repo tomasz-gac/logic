@@ -16,7 +16,7 @@ import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Prefix;
@@ -54,11 +54,11 @@ public class NormalizeAgreementLawsTest {
 			Unifiable<Long> x = lvar();
 			Unifiable<Long> y = lvar();
 			Package p = Package.empty();
-			p = impose(p, FiniteDomain.dom(x, EnumeratedDomain.range(0L, 5L)));
-			p = impose(p, FiniteDomain.dom(y, EnumeratedDomain.range(0L, 5L)));
+			p = impose(p, FiniteDomain.dom(x, Longs.range(0, 5)));
+			p = impose(p, FiniteDomain.dom(y, Longs.range(0, 5)));
 			p = impose(p, exclude(x.unifies(lval((long) r.nextInt(5)))));
 			if (r.nextBoolean()) {
-				p = impose(p, FiniteDomain.leq(x, y));
+				p = impose(p, Longs.leq(x, y));
 			}
 
 			// the binding under examination: sometimes consistent, sometimes
@@ -124,16 +124,16 @@ public class NormalizeAgreementLawsTest {
 			Package p = Package.empty();
 			boolean conflicting = r.nextBoolean();
 			p = impose(p, FiniteDomain.dom(x, conflicting
-					? EnumeratedDomain.range(3L, 5L)
-					: EnumeratedDomain.range(0L, 5L)));
+					? Longs.range(3, 5)
+					: Longs.range(0, 5)));
 			p = impose(p, FiniteDomain.dom(y, conflicting
-					? EnumeratedDomain.range(0L, 2L)
-					: EnumeratedDomain.range(0L, 5L)));
+					? Longs.range(0, 2)
+					: Longs.range(0, 5)));
 			p = impose(p, exclude(x.unifies(lval(7L))));
 
 			// a freshly PARKED atom, un-examined: only it is new in the package
 			Posting posting = r.nextBoolean()
-					? FiniteDomain.leq(x, y)
+					? Longs.leq(x, y)
 					: exclude(conflicting ? x.unifies(x) : x.unifies(lval((long) r.nextInt(5))));
 			Atom atom = ((Posting.Activation) posting).getItem();
 			Constraint<?> resident = (Constraint<?>) p.getStores()

@@ -15,12 +15,10 @@ import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.constraints.store.Revision;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.collection.Array;
 import io.vavr.collection.List;
 import java.util.ArrayList;
 import java.util.Random;
@@ -55,9 +53,9 @@ public class ImpositionLawsTest {
 
 		Domain<Long> dom() {
 			int lo = r.nextInt(3);
-			return EnumeratedDomain.of(Array.ofAll(
-					IntStream.rangeClosed(lo, lo + 1 + r.nextInt(3)).boxed())
-					.map(i -> Arithmetic.ofCasted((long) i)));
+			return Longs.enumerated(IntStream.rangeClosed(lo, lo + 1 + r.nextInt(3))
+					.mapToObj(i -> (long) i)
+					.toArray(Long[]::new));
 		}
 
 		/** A random store-shaped posting over the world's variables. */
@@ -66,9 +64,9 @@ public class ImpositionLawsTest {
 				case 0:
 					return FiniteDomain.dom(var(), dom());
 				case 1:
-					return FiniteDomain.leq(var(), var());
+					return Longs.leq(var(), var());
 				case 2:
-					return FiniteDomain.addo(var(), lval(1L), var());
+					return Longs.addo(var(), lval(1L), var());
 				default:
 					return exclude(var().unifies(lval((long) r.nextInt(4))));
 			}
@@ -155,11 +153,11 @@ public class ImpositionLawsTest {
 			World w = new World(seed);
 			Unifiable<Long> x = lvar();
 			Package p = new BreadthFirstScheduler<>(Trial.imposed(
-					FiniteDomain.dom(x, EnumeratedDomain.range(0L, 2L)), Package.empty())
+					FiniteDomain.dom(x, Longs.range(0, 2)), Package.empty())
 					).get().head();
 
 			List<Package> clash = new BreadthFirstScheduler<>(Trial.imposed(
-					FiniteDomain.dom(x, EnumeratedDomain.range(5L, 7L)), p)).get();
+					FiniteDomain.dom(x, Longs.range(5, 7)), p)).get();
 			assertThat(clash).describedAs("seed %d: disjoint dom swallowed", seed).isEmpty();
 
 			List<Package> bound = new BreadthFirstScheduler<>(Trial.imposed(Posting.bind(x, lval(9L)), p)).get();
@@ -178,8 +176,8 @@ public class ImpositionLawsTest {
 			long a = w.r.nextInt(4);
 			long b = w.r.nextInt(4);
 			Posting ground = w.r.nextBoolean() ?
-					FiniteDomain.leq(lval(a), lval(b)) :
-					FiniteDomain.addo(lval(a), lval(1L), lval(a + (w.r.nextBoolean() ? 1 : 2)));
+					Longs.leq(lval(a), lval(b)) :
+					Longs.addo(lval(a), lval(1L), lval(a + (w.r.nextBoolean() ? 1 : 2)));
 			exercised++;
 			List<Package> worlds = new BreadthFirstScheduler<>(Trial.imposed(ground, Package.empty())).get();
 			if (worlds.isEmpty()) {

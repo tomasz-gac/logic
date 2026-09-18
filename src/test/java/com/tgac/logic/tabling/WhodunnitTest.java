@@ -12,8 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Ints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Logic;
 import com.tgac.logic.goals.Package;
@@ -21,7 +20,6 @@ import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
-import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -57,15 +55,14 @@ import org.junit.Test;
 public class WhodunnitTest {
 
 	private static Domain<Integer> dom(int... values) {
-		return EnumeratedDomain.of(Array.ofAll(Arrays.stream(values).boxed())
-				.map(Arithmetic::ofCasted));
+		return Ints.enumerated(Arrays.stream(values).boxed().toArray(Integer[]::new));
 	}
 
 	private static final Domain<Integer> ROOMS = dom(1, 2, 3, 4, 5);
 
 	/** One step along the ring: the corridor, or the servants' stair 5→1. */
 	private static Goal doorBetween(Unifiable<Integer> from, Unifiable<Integer> to) {
-		return FiniteDomain.addo(from, lval(1), to)
+		return Ints.addo(from, lval(1), to)
 				.or(unify(from, lval(5)).and(unify(to, lval(1))));
 	}
 
@@ -93,8 +90,8 @@ public class WhodunnitTest {
 	/** Suspect {@code s} is in room {@code r} at hour {@code t} — by habit. */
 	private static Goal at(Unifiable<Integer> s, Unifiable<Integer> t, Unifiable<Integer> r) {
 		return unify(s, lval(1)).and(unify(r, t))                          // butler: rounds, room = hour
-				.or(unify(s, lval(2)).and(FiniteDomain.multo(t, lval(2), r)))   // cook: room = 2·hour
-				.or(unify(s, lval(3)).and(FiniteDomain.addo(t, lval(2), r)));   // gardener: room = hour + 2
+				.or(unify(s, lval(2)).and(Ints.multo(t, lval(2), r)))   // cook: room = 2·hour
+				.or(unify(s, lval(3)).and(Ints.addo(t, lval(2), r)));   // gardener: room = hour + 2
 	}
 
 	/** Opportunity, escape, and the return route — all through the unknown hour. */
@@ -104,7 +101,7 @@ public class WhodunnitTest {
 				Logic.<Integer, Integer> exist((t, after) ->
 						FiniteDomain.dom(t, dom(1, 2, 3))                // the coroner's window
 								.and(FiniteDomain.dom(after, dom(2, 3, 4)))
-								.and(FiniteDomain.addo(t, lval(1), after))
+								.and(Ints.addo(t, lval(1), after))
 								.and(at(who, t, lval(4)))                // at the scene…
 								.and(at(who, after, lval(5)))            // …out the garden door…
 								.and(reachable.apply(Tuple.of(lval(4)))))));  // …and back, to "discover" the body

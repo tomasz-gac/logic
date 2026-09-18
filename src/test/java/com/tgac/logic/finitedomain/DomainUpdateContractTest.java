@@ -7,7 +7,6 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.store.Theory;
-import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Update;
 import com.tgac.logic.unification.LVar;
@@ -34,14 +33,14 @@ public class DomainUpdateContractTest {
 	@Test
 	public void equalDomainDoesNotReexamine() {
 		Update step = DomainUpdate.apply(Package.empty(),
-				store(Interval.of(0L, 10L)), X, Interval.of(0L, 10L));
+				store(Longs.interval(0, 10)), X, Longs.interval(0, 10));
 		assertThat(kind(step)).isEqualTo("unchanged");
 	}
 
 	@Test
 	public void narrowingReexaminesTheNarrowedVariable() {
 		Update step = DomainUpdate.apply(Package.empty(),
-				store(Interval.of(0L, 10L)), X, Interval.of(3L, 6L));
+				store(Longs.interval(0, 10)), X, Longs.interval(3, 6));
 		assertThat(applied(step).reexamine()).containsExactly(X);
 		assertThat(applied(step).inferred()).isEmpty();
 	}
@@ -49,7 +48,7 @@ public class DomainUpdateContractTest {
 	@Test
 	public void collapseInfersABindingWithoutReexamination() {
 		Update step = DomainUpdate.apply(Package.empty(),
-				store(Interval.of(0L, 10L)), X, Interval.of(5L, 5L));
+				store(Longs.interval(0, 10)), X, Longs.interval(5, 5));
 		assertThat(applied(step).reexamine()).isEmpty();
 		assertThat(applied(step).inferred()).hasSize(1);
 	}
@@ -57,7 +56,7 @@ public class DomainUpdateContractTest {
 	@Test
 	public void emptyIntersectionFails() {
 		Update step = DomainUpdate.apply(Package.empty(),
-				store(Interval.of(0L, 4L)), X, Interval.of(8L, 12L));
+				store(Longs.interval(0, 4)), X, Longs.interval(8, 12));
 		assertThat(kind(step)).isEqualTo("fail");
 	}
 }

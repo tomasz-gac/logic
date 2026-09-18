@@ -1,11 +1,17 @@
 package com.tgac.logic.finitedomain.domains;
 
+// ABOUTME: The gapped domain: disjoint members kept sorted and merged where they
+// ABOUTME: touch — adjacency needs the members' step seat, overlap only their order.
+
 import static com.tgac.logic.finitedomain.domains.Interval.maxValue;
 import static io.vavr.Predicates.not;
 
 import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.collection.Array;
+import io.vavr.control.Option;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.UnaryOperator;
@@ -37,22 +43,30 @@ public class Union<T> extends Domain<T> {
 				.filter(not(Empty.class::isInstance))
 				.flatMap(fd -> (fd instanceof Union) ?
 						((Union<T>) fd).intervals :
-						Array.of(fd))
-				.sortBy(Arithmetic::compareTo, Domain::min);
+						Array.of(fd));
 
 		if (intervals.isEmpty()) {
 			return intervals;
 		}
+		Comparator<T> order = intervals.get(0).order();
+		intervals = intervals.sortBy(order, Domain::min);
 
 		List<Domain<T>> mergedIntervals = new ArrayList<>();
 		Domain<T> currentInterval = intervals.get(0);
 
 		for (int i = 1; i < intervals.size(); i++) {
 			Domain<T> processedInterval = intervals.get(i);
-			if (currentInterval.max().next().compareTo(processedInterval.min()) >= 0) {
+			// without stepping, only genuine overlap merges — adjacency is invisible
+			Domain<T> current = currentInterval;
+			T reach = current.step()
+					.map(d -> d.next(current.max()))
+					.getOrElse(current::max);
+			if (order.compare(reach, processedInterval.min()) >= 0) {
 				currentInterval = Interval.of(
-						currentInterval.min(),
-						maxValue(currentInterval.max(), processedInterval.max()));
+						current.min(),
+						maxValue(current.max(), processedInterval.max(), order),
+						order,
+						current.step().isDefined() ? current.step() : processedInterval.step());
 
 			} else {
 				mergedIntervals.add(currentInterval);
@@ -62,8 +76,8 @@ public class Union<T> extends Domain<T> {
 		mergedIntervals.add(currentInterval);
 		mergedIntervals = mergedIntervals.stream()
 				.map(d -> d instanceof Interval ?
-						d.max().equals(d.min()) ?
-								Singleton.of(d.min()) :
+						order.compare(d.max(), d.min()) == 0 ?
+								Singleton.of(d.min(), d.order(), d.step()) :
 								d :
 						d)
 				.collect(Collectors.toList());
@@ -89,22 +103,32 @@ public class Union<T> extends Domain<T> {
 	}
 
 	@Override
-	public Arithmetic<T> min() {
+	public Comparator<T> order() {
+		return intervals.head().order();
+	}
+
+	@Override
+	public Option<Discrete<T>> step() {
+		return intervals.head().step();
+	}
+
+	@Override
+	public T min() {
 		return intervals.head().min();
 	}
 
 	@Override
-	public Arithmetic<T> max() {
+	public T max() {
 		return intervals.last().max();
 	}
 
 	@Override
-	public Domain<T> atLeast(Arithmetic<T> value) {
+	public Domain<T> atLeast(T value) {
 		return onEachInterval(i -> i.atLeast(value));
 	}
 
 	@Override
-	public Domain<T> atMost(Arithmetic<T> value) {
+	public Domain<T> atMost(T value) {
 		return onEachInterval(i -> i.atMost(value));
 	}
 

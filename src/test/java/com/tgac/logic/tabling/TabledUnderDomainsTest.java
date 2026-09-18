@@ -11,8 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Ints;
 import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
@@ -21,7 +20,6 @@ import io.vavr.Tuple;
 import io.vavr.Tuple1;
 import io.vavr.Tuple2;
 import io.vavr.Tuple4;
-import io.vavr.collection.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -31,8 +29,7 @@ import org.junit.Test;
 public class TabledUnderDomainsTest {
 
 	private static Domain<Integer> dom(int... values) {
-		return EnumeratedDomain.of(Array.ofAll(Arrays.stream(values).boxed())
-				.map(Arithmetic::ofCasted));
+		return Ints.enumerated(Arrays.stream(values).boxed().toArray(Integer[]::new));
 	}
 
 	/** The one-to-five generator: five ground disjuncts. */
@@ -86,7 +83,7 @@ public class TabledUnderDomainsTest {
 
 		Goal caller1 = FiniteDomain.dom(x, dom(1, 2, 3))
 				.and(FiniteDomain.dom(y, dom(1, 2, 3)))
-				.and(FiniteDomain.addo(x, y, lval(4)))
+				.and(Ints.addo(x, y, lval(4)))
 				.and(p.apply(Tuple.of(x, y)));
 		Goal caller2 = FiniteDomain.dom(u, dom(1, 2, 3))
 				.and(FiniteDomain.dom(v, dom(1, 2, 3)))
@@ -163,7 +160,7 @@ public class TabledUnderDomainsTest {
 				Tabling.define(args -> args.apply((a, b) ->
 						FiniteDomain.dom(a, dom(1, 2, 3))
 								.and(FiniteDomain.dom(b, dom(1, 2, 3)))
-								.and(FiniteDomain.addo(a, b, lval(4)))));
+								.and(Ints.addo(a, b, lval(4)))));
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
@@ -285,7 +282,7 @@ public class TabledUnderDomainsTest {
 					Unifiable<Integer> w = lvar();
 					return FiniteDomain.dom(x, dom(1, 2, 3))
 							.and(FiniteDomain.dom(w, dom(1, 2, 3)))
-							.and(FiniteDomain.addo(x, w, lval(4)));
+							.and(Ints.addo(x, w, lval(4)));
 				}));
 		Unifiable<Integer> x = lvar();
 
@@ -307,7 +304,7 @@ public class TabledUnderDomainsTest {
 					return FiniteDomain.dom(x, dom(1, 2))
 							.and(FiniteDomain.dom(y, dom(1, 2)))
 							.and(FiniteDomain.dom(w, dom(2, 3)))
-							.and(FiniteDomain.addo(x, y, w));
+							.and(Ints.addo(x, y, w));
 				}));
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
@@ -335,9 +332,9 @@ public class TabledUnderDomainsTest {
 							.and(FiniteDomain.dom(z1, dom(1, 2)))
 							.and(FiniteDomain.dom(z2, dom(1, 2)))
 							.and(FiniteDomain.dom(z3, dom(1, 2)))
-							.and(FiniteDomain.separate(z1, z2))
-							.and(FiniteDomain.separate(z2, z3))
-							.and(FiniteDomain.separate(z1, z3));
+							.and(Ints.separate(z1, z2))
+							.and(Ints.separate(z2, z3))
+							.and(Ints.separate(z1, z3));
 				}));
 		Unifiable<Integer> x = lvar();
 
@@ -353,7 +350,7 @@ public class TabledUnderDomainsTest {
 				Tabling.define(args -> args.apply((a, b) ->
 						FiniteDomain.dom(a, dom(1, 2, 3))
 								.and(FiniteDomain.dom(b, dom(1, 2, 3)))
-								.and(FiniteDomain.addo(a, b, lval(4)))));
+								.and(Ints.addo(a, b, lval(4)))));
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> u = lvar();
@@ -392,7 +389,7 @@ public class TabledUnderDomainsTest {
 					Unifiable<Integer> w = lvar();
 					return FiniteDomain.dom(x, dom(0, 1, 2))
 							.and(FiniteDomain.dom(z, dom(0, 1, 2)))
-							.and(FiniteDomain.multo(x, w, z))
+							.and(Ints.multo(x, w, z))
 							.and(unify(w, lval(0)));
 				}));
 		Unifiable<Integer> x = lvar();
@@ -417,7 +414,7 @@ public class TabledUnderDomainsTest {
 				Tabling.define(args -> args.apply((x, y) ->
 						FiniteDomain.dom(x, dom(1, 2))
 								.and(FiniteDomain.dom(y, dom(1, 2)))
-								.and(FiniteDomain.leq(x, y))
+								.and(Ints.leq(x, y))
 								.or(FiniteDomain.dom(x, dom(1, 2))
 										.and(FiniteDomain.dom(y, dom(1, 2))))));
 		Unifiable<Integer> x = lvar();
@@ -450,7 +447,7 @@ public class TabledUnderDomainsTest {
 
 		long answers = FiniteDomain.dom(x, dom(1, 2, 3))
 				.and(FiniteDomain.dom(y, dom(1, 2, 3)))
-				.and(FiniteDomain.addo(x, y, lval(4)))
+				.and(Ints.addo(x, y, lval(4)))
 				.and(rel.apply(Tuple.of(x, y)))
 				.solve(lval(Tuple.of(x, y)), TestSchedulers.factory())
 				.count();

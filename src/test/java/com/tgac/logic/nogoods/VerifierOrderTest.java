@@ -9,7 +9,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.TestSchedulers;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.unification.Unifiable;
 import org.junit.Test;
 
@@ -27,15 +27,15 @@ public class VerifierOrderTest {
 	@Test
 	public void theVetoFiresWhenTheValueFamilyRegistersFirst() {
 		Unifiable<Long> x = lvar();
-		assertThat(dom(x, EnumeratedDomain.range(1L, 5L))
-				.and(exclude(dom(x, EnumeratedDomain.range(2L, 4L))))
+		assertThat(dom(x, Longs.range(1, 5))
+				.and(exclude(dom(x, Longs.range(2, 4))))
 				.and(x.unifies(2L))
 				.solve(x, TestSchedulers.factory())
 				.count()).isZero();
 
 		Unifiable<Long> y = lvar();
-		assertThat(dom(y, EnumeratedDomain.range(1L, 5L))
-				.and(exclude(dom(y, EnumeratedDomain.range(2L, 4L))))
+		assertThat(dom(y, Longs.range(1, 5))
+				.and(exclude(dom(y, Longs.range(2, 4))))
 				.and(y.unifies(1L))
 				.solve(y, TestSchedulers.factory())
 				.count()).isEqualTo(1);
@@ -46,15 +46,15 @@ public class VerifierOrderTest {
 		// the exclusion registers the nogood family before dom registers FD:
 		// the fold visits the verifier first unless the driver defers it
 		Unifiable<Long> x = lvar();
-		assertThat(exclude(dom(x, EnumeratedDomain.range(2L, 4L)))
-				.and(dom(x, EnumeratedDomain.range(1L, 5L)))
+		assertThat(exclude(dom(x, Longs.range(2, 4)))
+				.and(dom(x, Longs.range(1, 5)))
 				.and(x.unifies(2L))
 				.solve(x, TestSchedulers.factory())
 				.count()).isZero();
 
 		Unifiable<Long> y = lvar();
-		assertThat(exclude(dom(y, EnumeratedDomain.range(2L, 4L)))
-				.and(dom(y, EnumeratedDomain.range(1L, 5L)))
+		assertThat(exclude(dom(y, Longs.range(2, 4)))
+				.and(dom(y, Longs.range(1, 5)))
 				.and(y.unifies(1L))
 				.solve(y, TestSchedulers.factory())
 				.count()).isEqualTo(1);

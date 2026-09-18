@@ -1,8 +1,12 @@
 package com.tgac.logic.finitedomain.domains;
 
+// ABOUTME: The one-value domain: the collapse point every narrowing aims at —
+// ABOUTME: membership is equality, bounds are the value itself.
+
 import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.control.Option;
-import java.math.BigInteger;
+import java.util.Comparator;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
@@ -13,37 +17,29 @@ import lombok.Value;
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class Singleton<T> extends Domain<T> {
-	Arithmetic<T> value;
+	T value;
+	@EqualsAndHashCode.Exclude
+	Comparator<T> order;
+	@EqualsAndHashCode.Exclude
+	Option<Discrete<T>> step;
 
-	public static <T> Singleton<T> of(Arithmetic<T> value) {
-		return new Singleton<>(value);
-	}
-
-	public static Singleton<Integer> of(int value) {
-		return of(Arithmetic.of(value));
-	}
-
-	public static Singleton<Long> of(long value) {
-		return of(Arithmetic.of(value));
-	}
-
-	public static Singleton<BigInteger> of(BigInteger value) {
-		return of(Arithmetic.of(value));
+	public static <T> Singleton<T> of(T value, Comparator<T> order, Option<Discrete<T>> step) {
+		return new Singleton<>(value, order, step);
 	}
 
 	@Override
-	public Domain<T> atLeast(Arithmetic<T> e) {
-		return e.compareTo(value) > 0 ? Empty.instance() : this;
+	public Domain<T> atLeast(T e) {
+		return order.compare(e, value) > 0 ? Empty.instance() : this;
 	}
 
 	@Override
-	public Domain<T> atMost(Arithmetic<T> e) {
-		return e.compareTo(value) >= 0 ? this : Empty.instance();
+	public Domain<T> atMost(T e) {
+		return order.compare(e, value) >= 0 ? this : Empty.instance();
 	}
 
 	@Override
 	public Stream<T> stream() {
-		return Stream.of(value).map(Arithmetic::getValue);
+		return Stream.of(value);
 	}
 
 	@Override
@@ -52,23 +48,33 @@ public class Singleton<T> extends Domain<T> {
 	}
 
 	@Override
-	public Arithmetic<T> min() {
+	public Comparator<T> order() {
+		return order;
+	}
+
+	@Override
+	public Option<Discrete<T>> step() {
+		return step;
+	}
+
+	@Override
+	public T min() {
 		return value;
 	}
 
 	@Override
-	public Arithmetic<T> max() {
+	public T max() {
 		return value;
 	}
 
 	@Override
 	public boolean contains(T v) {
-		return value.getValue().equals(v);
+		return value.equals(v);
 	}
 
 	@Override
 	public Domain<T> intersect(Domain<T> other) {
-		return Option.of(value.getValue())
+		return Option.of(value)
 				.filter(other::contains)
 				.<Domain<T>> map(v -> this)
 				.getOrElse(Empty::instance);
@@ -90,13 +96,13 @@ public class Singleton<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> difference(Domain<T> other) {
-		return other.contains(getValue().getValue()) ?
+		return other.contains(value) ?
 				Empty.instance() : this;
 	}
 
 	@Override
 	public String toString() {
-		return "[" + value.getValue() + "]";
+		return "[" + value + "]";
 	}
 
 }

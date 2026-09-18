@@ -6,7 +6,6 @@ package com.tgac.logic.finitedomain;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.goals.optimizer.Bounded;
@@ -18,23 +17,23 @@ public class StoreSightedPricingTest {
 	@Test
 	public void disjointPostPricesZero() {
 		Unifiable<Long> x = lvar();
-		Goal post = FiniteDomain.dom(x, Interval.of(8L, 12L));
-		assertThat(((Bounded) post).answers(FiniteDomainTestSupport.withDomain(x, Interval.of(0L, 4L))))
+		Goal post = FiniteDomain.dom(x, Longs.interval(8, 12));
+		assertThat(((Bounded) post).answers(FiniteDomainTestSupport.withDomain(x, Longs.interval(0, 4))))
 				.isEqualTo(0);
 	}
 
 	@Test
 	public void overlappingPostPricesOne() {
 		Unifiable<Long> x = lvar();
-		Goal post = FiniteDomain.dom(x, Interval.of(3L, 12L));
-		assertThat(((Bounded) post).answers(FiniteDomainTestSupport.withDomain(x, Interval.of(0L, 4L))))
+		Goal post = FiniteDomain.dom(x, Longs.interval(3, 12));
+		assertThat(((Bounded) post).answers(FiniteDomainTestSupport.withDomain(x, Longs.interval(0, 4))))
 				.isEqualTo(1);
 	}
 
 	@Test
 	public void withoutAStoreThePostStaysBlind() {
 		Unifiable<Long> x = lvar();
-		Goal post = FiniteDomain.dom(x, Interval.of(8L, 12L));
+		Goal post = FiniteDomain.dom(x, Longs.interval(8, 12));
 		assertThat(((Bounded) post).answers(Package.empty())).isEqualTo(1);
 	}
 }

@@ -9,7 +9,7 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -26,7 +26,7 @@ public class PostingTest {
 		// the lift: the same value FD hands to exclusion is a conjunct
 		Unifiable<Long> x = lvar();
 
-		Goal g = FiniteDomain.dom(x, EnumeratedDomain.range(0L, 5L))
+		Goal g = FiniteDomain.dom(x, Longs.range(0, 5))
 				.and(x.unifies(3L));
 
 		List<Long> answers = g.solve(x, TestSchedulers.factory())
@@ -34,7 +34,7 @@ public class PostingTest {
 		assertThat(answers).containsExactly(3L);
 
 		Unifiable<Long> y = lvar();
-		Goal outside = FiniteDomain.dom(y, EnumeratedDomain.range(0L, 5L))
+		Goal outside = FiniteDomain.dom(y, Longs.range(0, 5))
 				.and(y.unifies(7L));
 		assertThat(outside.solve(y, TestSchedulers.factory()).count()).isZero();
 	}
@@ -43,7 +43,7 @@ public class PostingTest {
 	public void aPostingPricesAtOne() {
 		// blind or sighted with nothing against it: one success, ever
 		Unifiable<Long> x = lvar();
-		Posting in = FiniteDomain.dom(x, EnumeratedDomain.range(0L, 5L));
+		Posting in = FiniteDomain.dom(x, Longs.range(0, 5));
 
 		assertThat(in.answers(Package.empty().substitution())).isEqualTo(1L);
 		assertThat(in.answers(Package.empty())).isEqualTo(1L);
@@ -55,11 +55,11 @@ public class PostingTest {
 		// with the post — failure found at pricing is failure forever
 		Unifiable<Long> x = lvar();
 		Package live = Exhaustion.collected(
-						dom(x, EnumeratedDomain.range(0L, 5L)).apply(Package.empty()))
+						dom(x, Longs.range(0, 5)).apply(Package.empty()))
 				.ground().get(0);
 
-		Posting doomed = FiniteDomain.dom(x, EnumeratedDomain.range(6L, 9L));
-		Posting alive = FiniteDomain.dom(x, EnumeratedDomain.range(3L, 9L));
+		Posting doomed = FiniteDomain.dom(x, Longs.range(6, 9));
+		Posting alive = FiniteDomain.dom(x, Longs.range(3, 9));
 
 		assertThat(doomed.answers(live)).isZero();
 		assertThat(alive.answers(live)).isEqualTo(1L);

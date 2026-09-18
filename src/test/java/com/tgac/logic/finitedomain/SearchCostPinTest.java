@@ -4,7 +4,6 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: driver ordering changes that explode exploration fail here, wall-free.
 
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.multo;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,7 +12,6 @@ import com.tgac.functional.fibers.Fiber;
 import com.tgac.functional.fibers.interpreter.Scope;
 import com.tgac.functional.fibers.interpreter.StepListener;
 import com.tgac.functional.fibers.schedulers.UnfairBreadthFirstScheduler;
-import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,10 +41,10 @@ public class SearchCostPinTest {
 			}
 		};
 
-		long solutions = multo(a, b, c)
-				.and(dom(a, Interval.of(0, 12)))
-				.and(dom(b, Interval.of(0, 12)))
-				.and(dom(c, Interval.of(0, 144)))
+		long solutions = Ints.multo(a, b, c)
+				.and(dom(a, Ints.interval(0, 12)))
+				.and(dom(b, Ints.interval(0, 12)))
+				.and(dom(c, Ints.interval(0, 144)))
 				.solve(lval(Tuple.of(a, b, c)),
 						fiber -> new UnfairBreadthFirstScheduler<>(fiber).withListener(counting))
 				.count();

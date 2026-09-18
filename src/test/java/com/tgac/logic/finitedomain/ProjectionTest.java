@@ -16,8 +16,6 @@ import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.lattice.Imposition;
 import io.vavr.collection.HashSet;
 import io.vavr.control.Option;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
@@ -39,8 +37,7 @@ import org.junit.Test;
 public class ProjectionTest {
 
 	private static Domain<Integer> dom(int... values) {
-		return EnumeratedDomain.of(Array.ofAll(Arrays.stream(values).boxed())
-				.map(Arithmetic::ofCasted));
+		return Ints.enumerated(Arrays.stream(values).boxed().toArray(Integer[]::new));
 	}
 
 	private static LVar<?> varOf(Unifiable<?> u) {

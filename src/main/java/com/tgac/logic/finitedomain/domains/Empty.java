@@ -1,6 +1,12 @@
 package com.tgac.logic.finitedomain.domains;
 
+// ABOUTME: The empty domain — the lattice bottom: absorbing, memberless,
+// ABOUTME: seatless; every query on its bounds refuses.
+
 import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.capabilities.Discrete;
+import io.vavr.control.Option;
+import java.util.Comparator;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -16,12 +22,12 @@ public class Empty<T> extends Domain<T> {
 	}
 
 	@Override
-	public Domain<T> atLeast(Arithmetic<T> p) {
+	public Domain<T> atLeast(T p) {
 		return this;
 	}
 
 	@Override
-	public Domain<T> atMost(Arithmetic<T> p) {
+	public Domain<T> atMost(T p) {
 		return this;
 	}
 
@@ -36,12 +42,22 @@ public class Empty<T> extends Domain<T> {
 	}
 
 	@Override
-	public Arithmetic<T> min() {
+	public Comparator<T> order() {
+		throw new UnsupportedOperationException("Cannot call order on empty domain");
+	}
+
+	@Override
+	public Option<Discrete<T>> step() {
+		return Option.none();
+	}
+
+	@Override
+	public T min() {
 		throw new UnsupportedOperationException("Cannot call min on empty domain");
 	}
 
 	@Override
-	public Arithmetic<T> max() {
+	public T max() {
 		throw new UnsupportedOperationException("Cannot call max on empty domain");
 	}
 

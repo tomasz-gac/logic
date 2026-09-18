@@ -10,12 +10,16 @@ import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.PartialOrderLaws;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.constraints.store.Theory;
-import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.finitedomain.capabilities.Arithmetic;
+import com.tgac.logic.finitedomain.capabilities.Discrete;
+import com.tgac.logic.finitedomain.capabilities.Multiplicative;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.lattice.TestPropagators;
 import com.tgac.logic.unification.LVar;
+import io.vavr.control.Option;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import org.junit.AfterClass;
@@ -39,13 +43,13 @@ public class FiniteDomainConstraintsLawsTest {
 		// the FD schemas ride the structural default: a schema atom entails
 		// exactly itself; distinct schemas and distinct terms are incomparable
 		PartialOrderLaws.check(Arrays.asList(
-				new Leq(X, Y),
-				new Leq(Y, X),
-				new Lss(X, Y),
-				new Lss(Y, X),
-				new Add(X, Y, X),
-				new Mul(X, Y, X),
-				new Separate(X, Y)));
+				new Leq(X, Y, Comparator.naturalOrder()),
+				new Leq(Y, X, Comparator.naturalOrder()),
+				new Lss(X, Y, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
+				new Lss(Y, X, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
+				new Add(X, Y, X, Arithmetic.LONGS, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
+				new Mul(X, Y, X, Multiplicative.LONGS, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
+				new Separate(X, Y, Comparator.naturalOrder())));
 	}
 
 	@Test
@@ -54,13 +58,13 @@ public class FiniteDomainConstraintsLawsTest {
 		// the lattice lives on the THEORY; the factor is its execution carrier
 		List<Theory<FiniteDomainConstraints>> samples = Arrays.asList(
 				Theory.<FiniteDomainConstraints> empty(),
-				FiniteDomainConstraints.withDomain(Theory.empty(), X, Interval.of(0L, 10L)),
+				FiniteDomainConstraints.withDomain(Theory.empty(), X, Longs.interval(0, 10)),
 				FiniteDomainConstraints.withDomain(
-						FiniteDomainConstraints.withDomain(Theory.empty(), X, Interval.of(3L, 6L)),
-						Y, Interval.of(2L, 7L)),
+						FiniteDomainConstraints.withDomain(Theory.empty(), X, Longs.interval(3, 6)),
+						Y, Longs.interval(2, 7)),
 				FiniteDomainConstraints.withDomain(
 						Theory.<FiniteDomainConstraints> empty().with(KEEP),
-						Y, Interval.of(5L, 15L)));
+						Y, Longs.interval(5, 15)));
 		SemilatticeLaws.checkLeqReversesAccumulation(samples);
 	}
 }

@@ -5,7 +5,6 @@ package com.tgac.logic.nogoods;
 
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.store.Atom;
-import com.tgac.logic.constraints.store.Factor;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
@@ -19,11 +18,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tgac.logic.constraints.store.Renaming;
 import com.tgac.logic.finitedomain.FiniteDomain;
+import com.tgac.logic.finitedomain.Longs;
 import java.util.stream.Stream;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
-import com.tgac.logic.goals.Packaged;
-import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.TestPropagators;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -53,8 +50,8 @@ public class VerificationTest {
 		// Fiber.done — pruning must claim nothing rather than ground the
 		// trial on a side engine: the duplicate survives, wider never wrong
 		Unifiable<Long> x = lvar();
-		Nogood first = Nogood.of(FiniteDomain.dom(x, EnumeratedDomain.range(0L, 6L)));
-		Nogood second = Nogood.of(FiniteDomain.dom(x, EnumeratedDomain.range(0L, 6L)));
+		Nogood first = Nogood.of(FiniteDomain.dom(x, Longs.range(0, 6)));
+		Nogood second = Nogood.of(FiniteDomain.dom(x, Longs.range(0, 6)));
 
 		List<Nogood> kept = Verification.pruneSubsumed(List.of(first, second), Package.empty());
 		assertThat(kept).containsExactly(first, second);
@@ -178,8 +175,8 @@ public class VerificationTest {
 
 		Option<List<Nogood>> verdict = verified(state,
 				Posting.bind(x, lval(3)),
-				com.tgac.logic.finitedomain.FiniteDomain.dom(y,
-						com.tgac.logic.finitedomain.domains.EnumeratedDomain.range(2L, 5L)));
+				FiniteDomain.dom(y,
+						Longs.range(2, 5)));
 
 		Posting survivor = verdict.get().head().conjunct();
 		assertThat(survivor).isNotInstanceOf(Posting.AllOf.class);

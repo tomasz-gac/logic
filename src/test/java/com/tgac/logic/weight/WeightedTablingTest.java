@@ -13,11 +13,9 @@ import com.tgac.functional.algebra.BoundedSemiring;
 import com.tgac.functional.algebra.Semiring;
 import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
+import com.tgac.logic.finitedomain.Ints;
 import com.tgac.logic.goals.Goal;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import io.vavr.collection.Array;
 import com.tgac.logic.tabling.Tabled;
 import com.tgac.logic.tabling.Tabling;
 import com.tgac.logic.unification.Reified;
@@ -46,7 +44,7 @@ public class WeightedTablingTest {
 		// value on the overlap) - the combination refuses loudly
 		Tabled<Tuple1<Unifiable<Integer>>> constrained =
 				Tabling.define(args -> args.apply(x ->
-						FiniteDomain.dom(x, EnumeratedDomain.of(Array.ofAll(java.util.stream.IntStream.of(1, 2, 3).boxed()).map(Arithmetic::ofCasted)))
+						FiniteDomain.dom(x, Ints.enumerated(1, 2, 3))
 								.and(Weights.factor(Semirings.MIN_PLUS, 1L))));
 		Unifiable<Integer> out = lvar();
 		BoundedSemiring<SemiringStore> product = SemiringStore.boundedProduct(Semirings.MIN_PLUS);

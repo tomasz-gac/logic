@@ -15,7 +15,7 @@ import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.functional.fibers.schedulers.DepthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Conde;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LList;
@@ -52,9 +52,9 @@ public class SchedulingBenchmarkTest {
 	static Goal strips(List<Strip> strips, long horizon) {
 		Goal g = Goal.success();
 		for (Strip s : strips) {
-			g = g.and(FiniteDomain.dom(s.start, EnumeratedDomain.range(0L, horizon)))
-					.and(FiniteDomain.dom(s.end, EnumeratedDomain.range(1L, horizon + 1)))
-					.and(FiniteDomain.addo(s.start, lval(1L), s.end));
+			g = g.and(FiniteDomain.dom(s.start, Longs.range(0, horizon)))
+					.and(FiniteDomain.dom(s.end, Longs.range(1, horizon + 1)))
+					.and(Longs.addo(s.start, lval(1L), s.end));
 		}
 		return g;
 	}
@@ -62,8 +62,8 @@ public class SchedulingBenchmarkTest {
 	static Goal nonOverlapConde(Strip a, Strip b) {
 		return Conde.of(java.util.Arrays.asList(
 				exclude(lval(a.space).unifies(lval(b.space))),
-				FiniteDomain.leq(a.end, b.start),
-				FiniteDomain.leq(b.end, a.start)));
+				Longs.leq(a.end, b.start),
+				Longs.leq(b.end, a.start)));
 	}
 
 	interface Lane {
@@ -105,7 +105,7 @@ public class SchedulingBenchmarkTest {
 				Strip op = new Strip(j);
 				ops.add(op);
 				if (prev != null) {
-					chains.add(FiniteDomain.leq(prev.end, op.start));
+					chains.add(Longs.leq(prev.end, op.start));
 				}
 				prev = op;
 			}
@@ -148,7 +148,7 @@ public class SchedulingBenchmarkTest {
 			List<Strip> rest = new ArrayList<>(remaining);
 			rest.remove(s);
 			Goal link = prev == null ? Goal.success()
-					: FiniteDomain.leq(prev.end, s.start);
+					: Longs.leq(prev.end, s.start);
 			branches.add(link.and(Goal.defer(() -> ordered(rest, s))));
 		}
 		return Conde.of(branches);

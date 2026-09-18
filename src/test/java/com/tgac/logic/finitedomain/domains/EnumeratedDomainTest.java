@@ -1,13 +1,13 @@
 package com.tgac.logic.finitedomain.domains;
 
 import com.tgac.logic.finitedomain.Domain;
-import io.vavr.collection.Array;
+import com.tgac.logic.finitedomain.Ints;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 public class EnumeratedDomainTest {
 	private static final Domain<Integer> INTERVAL =
-			EnumeratedDomain.of(Array.of(2, 3, 5).map(Arithmetic::of));
+			Ints.enumerated(2, 3, 5);
 
 	@Test
 	public void shouldNotContain() {
@@ -21,89 +21,86 @@ public class EnumeratedDomainTest {
 
 	@Test
 	public void shouldDiff() {
-		Assertions.assertThat(INTERVAL.difference(Interval.of(4, 10)))
-				.isEqualTo(EnumeratedDomain.of(Array.of(2, 3)
-						.map(Arithmetic::of)));
+		Assertions.assertThat(INTERVAL.difference(Ints.interval(4, 10)))
+				.isEqualTo(Ints.enumerated(2, 3));
 	}
 
 	@Test
 	public void shouldDiff2() {
-		Assertions.assertThat(INTERVAL.difference(Interval.of(3, 10)))
-				.isEqualTo(Singleton.of(2));
+		Assertions.assertThat(INTERVAL.difference(Ints.interval(3, 10)))
+				.isEqualTo(Ints.singleton(2));
 	}
 
 	@Test
 	public void shouldIntersect() {
-		Assertions.assertThat(INTERVAL.intersect(Interval.of(3, 10)))
-				.isEqualTo(EnumeratedDomain.of(Array.of(3, 5).map(Arithmetic::of)));
+		Assertions.assertThat(INTERVAL.intersect(Ints.interval(3, 10)))
+				.isEqualTo(Ints.enumerated(3, 5));
 	}
 
 	@Test
 	public void shouldIntersect2() {
-		Assertions.assertThat(INTERVAL.intersect(Interval.of(4, 10)))
-				.isEqualTo(Singleton.of(5));
+		Assertions.assertThat(INTERVAL.intersect(Ints.interval(4, 10)))
+				.isEqualTo(Ints.singleton(5));
 	}
 
 	@Test
 	public void shouldNotBeDisjoint() {
-		Assertions.assertThat(INTERVAL.isDisjoint(Interval.of(4, 10)))
+		Assertions.assertThat(INTERVAL.isDisjoint(Ints.interval(4, 10)))
 				.isFalse();
 	}
 
 	@Test
 	public void shouldBeDisjoint() {
 		Assertions.assertThat(INTERVAL.isDisjoint(
-						EnumeratedDomain.of(Array.of(4, 6).map(Arithmetic::of))))
+						Ints.enumerated(4, 6)))
 				.isTrue();
 	}
 
 	@Test
 	public void shouldAtLeast() {
-		Assertions.assertThat(INTERVAL.atLeast(Arithmetic.of(3)))
-				.isEqualTo(EnumeratedDomain.of(
-						Array.of(3, 5).map(Arithmetic::of)));
+		Assertions.assertThat(INTERVAL.atLeast(3))
+				.isEqualTo(Ints.enumerated(3, 5));
 	}
 
 	@Test
 	public void shouldAtLeast2() {
-		Assertions.assertThat(INTERVAL.atLeast(Arithmetic.of(5)))
-				.isEqualTo(Singleton.of(5));
+		Assertions.assertThat(INTERVAL.atLeast(5))
+				.isEqualTo(Ints.singleton(5));
 	}
 
 	@Test
 	public void shouldAtLeast3() {
-		Assertions.assertThat(INTERVAL.atLeast(Arithmetic.of(15)))
+		Assertions.assertThat(INTERVAL.atLeast(15))
 				.isEqualTo(Empty.instance());
 	}
 
 	@Test
 	public void shouldAtLeast4() {
-		Assertions.assertThat(INTERVAL.atLeast(Arithmetic.of(1)))
+		Assertions.assertThat(INTERVAL.atLeast(1))
 				.isEqualTo(INTERVAL);
 	}
 
 	@Test
 	public void shouldAtMost() {
-		Assertions.assertThat(INTERVAL.atMost(Arithmetic.of(5)))
+		Assertions.assertThat(INTERVAL.atMost(5))
 				.isEqualTo(INTERVAL);
 	}
 
 	@Test
 	public void shouldAtMost2() {
-		Assertions.assertThat(INTERVAL.atMost(Arithmetic.of(3)))
-				.isEqualTo(EnumeratedDomain.of(
-						Array.of(2, 3).map(Arithmetic::of)));
+		Assertions.assertThat(INTERVAL.atMost(3))
+				.isEqualTo(Ints.enumerated(2, 3));
 	}
 
 	@Test
 	public void shouldAtMost3() {
-		Assertions.assertThat(INTERVAL.atMost(Arithmetic.of(6)))
+		Assertions.assertThat(INTERVAL.atMost(6))
 				.isEqualTo(INTERVAL);
 	}
 
 	@Test
 	public void shouldAtMost4() {
-		Assertions.assertThat(INTERVAL.atMost(Arithmetic.of(1)))
+		Assertions.assertThat(INTERVAL.atMost(1))
 				.isEqualTo(Empty.instance());
 	}
 }

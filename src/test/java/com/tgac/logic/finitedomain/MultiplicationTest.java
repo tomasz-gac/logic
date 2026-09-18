@@ -1,17 +1,12 @@
 package com.tgac.logic.finitedomain;
 
-import static com.tgac.logic.finitedomain.FiniteDomain.addo;
-import static com.tgac.logic.finitedomain.FiniteDomain.divo;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.multo;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
 import com.tgac.functional.fibers.schedulers.UnfairBreadthFirstScheduler;
 import com.tgac.logic.Utils;
 import com.tgac.logic.finitedomain.Domain;
-import com.tgac.logic.finitedomain.domains.Interval;
-import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -32,9 +27,9 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				Utils.collect(FiniteDomain.multo(a, b, c)
-						.and(dom(a, Interval.of(-2, 2)))
-						.and(dom(b, Interval.of(-2, 2)))
+				Utils.collect(Ints.multo(a, b, c)
+						.and(dom(a, Ints.interval(-2, 2)))
+						.and(dom(b, Ints.interval(-2, 2)))
 						.and(c.unifies(-4))
 						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
@@ -52,10 +47,10 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				Utils.collect(FiniteDomain.multo(a, b, c)
+				Utils.collect(Ints.multo(a, b, c)
 						.and(a.unifies(-2))
-						.and(dom(b, Interval.of(-2, 2)))
-						.and(dom(c, Interval.of(-4, 4)))
+						.and(dom(b, Ints.interval(-2, 2)))
+						.and(dom(c, Ints.interval(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
@@ -76,10 +71,10 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				Utils.collect(FiniteDomain.multo(a, b, c)
-						.and(dom(a, Interval.of(-2, 2)))
+				Utils.collect(Ints.multo(a, b, c)
+						.and(dom(a, Ints.interval(-2, 2)))
 						.and(b.unifies(-2))
-						.and(dom(c, Interval.of(-4, 4)))
+						.and(dom(c, Ints.interval(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
@@ -100,10 +95,10 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				Utils.collect(FiniteDomain.multo(a, b, c)
+				Utils.collect(Ints.multo(a, b, c)
 						.and(a.unifies(0))
-						.and(dom(b, Interval.of(-2, 2)))
-						.and(dom(c, Interval.of(-4, 4)))
+						.and(dom(b, Ints.interval(-2, 2)))
+						.and(dom(c, Ints.interval(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
@@ -124,10 +119,10 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				Utils.collect(FiniteDomain.multo(a, b, c)
-						.and(dom(a, Interval.of(-2, 2)))
+				Utils.collect(Ints.multo(a, b, c)
+						.and(dom(a, Ints.interval(-2, 2)))
 						.and(b.unifies(0))
-						.and(dom(c, Interval.of(-4, 4)))
+						.and(dom(c, Ints.interval(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
@@ -148,9 +143,9 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				Utils.collect(FiniteDomain.multo(a, b, c)
-						.and(dom(a, Interval.of(-2, 2)))
-						.and(dom(b, Interval.of(-2, 2)))
+				Utils.collect(Ints.multo(a, b, c)
+						.and(dom(a, Ints.interval(-2, 2)))
+						.and(dom(b, Ints.interval(-2, 2)))
 						.and(c.unifies(0))
 						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
@@ -176,10 +171,10 @@ public class MultiplicationTest {
 		Unifiable<Integer> c = lvar();
 
 		List<Tuple3<Integer, Integer, Integer>> collect =
-				Utils.collect(FiniteDomain.multo(a, b, c)
-						.and(dom(a, Interval.of(-2, 2)))
-						.and(dom(b, Interval.of(-2, 2)))
-						.and(dom(c, Interval.of(-4, 4)))
+				Utils.collect(Ints.multo(a, b, c)
+						.and(dom(a, Ints.interval(-2, 2)))
+						.and(dom(b, Ints.interval(-2, 2)))
+						.and(dom(c, Ints.interval(-4, 4)))
 						.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 						.map(Term::get)
 						.map(t -> t.map(Term::get, Term::get, Term::get)));
@@ -213,12 +208,12 @@ public class MultiplicationTest {
 						Tuple.of(2, 2, 4));
 	}
 
-	public static <T> Goal divoWithRest(Unifiable<T> divided, Unifiable<T> divisor, Unifiable<T> rest, Unifiable<T> result,
-			Domain<T> width) {
-		Unifiable<T> tmp = lvar();
+	public static Goal divoWithRest(Unifiable<Integer> divided, Unifiable<Integer> divisor, Unifiable<Integer> rest, Unifiable<Integer> result,
+			Domain<Integer> width) {
+		Unifiable<Integer> tmp = lvar();
 		return dom(tmp, width)
-				.and(divo(divided, divisor, tmp))
-				.and(addo(tmp, rest, result))
+				.and(Ints.divo(divided, divisor, tmp))
+				.and(Ints.addo(tmp, rest, result))
 				.named(divided + " / " + divisor + " = " + result + ", % " + rest);
 	}
 
@@ -229,11 +224,11 @@ public class MultiplicationTest {
 		Unifiable<Integer> rest = lvar();
 		Unifiable<Integer> result = lvar();
 		var results = Utils.collect(Goal.success()
-				.and(dom(divided, Interval.of(-15, 15)))
-				.and(dom(divisor, Singleton.of(3)))
-				.and(dom(result, Singleton.of(-3)))
-				.and(dom(rest, Interval.of(-2, 2)))
-				.and(divoWithRest(divided, divisor, rest, result, Interval.of(-15, 15)))
+				.and(dom(divided, Ints.interval(-15, 15)))
+				.and(dom(divisor, Ints.singleton(3)))
+				.and(dom(result, Ints.singleton(-3)))
+				.and(dom(rest, Ints.interval(-2, 2)))
+				.and(divoWithRest(divided, divisor, rest, result, Ints.interval(-15, 15)))
 				.solve(lval(Tuple.of(divided, divisor, rest, result)), UnfairBreadthFirstScheduler::of)
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get, Term::get)));
@@ -253,9 +248,9 @@ public class MultiplicationTest {
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();
-		var results = Utils.collect(multo(a, b, c)
-				.and(dom(a, Interval.of(0, 10)))
-				.and(dom(b, Interval.of(0, 10)))
+		var results = Utils.collect(Ints.multo(a, b, c)
+				.and(dom(a, Ints.interval(0, 10)))
+				.and(dom(b, Ints.interval(0, 10)))
 				.solve(lval(Tuple.of(a, b, c)), UnfairBreadthFirstScheduler::of)
 				.map(Term::get)
 				.map(t -> t.map(Term::get, Term::get, Term::get)));

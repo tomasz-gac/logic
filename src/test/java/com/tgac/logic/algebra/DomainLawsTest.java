@@ -8,13 +8,12 @@ import com.tgac.functional.algebra.laws.LawCoverage;
 import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.finitedomain.Domain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.finitedomain.domains.Empty;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.finitedomain.domains.Union;
-import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.AfterClass;
@@ -36,36 +35,36 @@ public class DomainLawsTest {
 	@Test
 	public void enumerated() {
 		laws(Arrays.asList(
-				EnumeratedDomain.of(Array.of(2L, 3L, 5L, 8L).map(Arithmetic::ofCasted)),
-				EnumeratedDomain.of(Array.of(3L, 5L, 9L).map(Arithmetic::ofCasted)),
-				EnumeratedDomain.of(Array.of(1L, 7L).map(Arithmetic::ofCasted)),
+				Longs.enumerated(2L, 3L, 5L, 8L),
+				Longs.enumerated(3L, 5L, 9L),
+				Longs.enumerated(1L, 7L),
 				Empty.instance()));
 	}
 
 	@Test
 	public void intervals() {
 		laws(Arrays.asList(
-				Interval.of(0L, 10L),
-				Interval.of(3L, 6L),
-				Interval.of(8L, 15L),
+				Longs.interval(0, 10),
+				Longs.interval(3, 6),
+				Longs.interval(8, 15),
 				Empty.instance()));
 	}
 
 	@Test
 	public void singletons() {
 		laws(Arrays.asList(
-				Singleton.of(Arithmetic.ofCasted(5L)),
-				Singleton.of(Arithmetic.ofCasted(9L)),
-				Interval.of(3L, 6L),
+				Longs.singleton(5),
+				Longs.singleton(9),
+				Longs.interval(3, 6),
 				Empty.instance()));
 	}
 
 	@Test
 	public void unions() {
 		laws(Arrays.asList(
-				Interval.of(0L, 15L).difference(Interval.of(5L, 9L)),
-				Interval.of(2L, 12L).difference(Interval.of(6L, 7L)),
-				Interval.of(4L, 11L),
+				Longs.interval(0, 15).difference(Longs.interval(5, 9)),
+				Longs.interval(2, 12).difference(Longs.interval(6, 7)),
+				Longs.interval(4, 11),
 				Empty.instance()));
 	}
 
@@ -73,7 +72,7 @@ public class DomainLawsTest {
 	public void empty() {
 		laws(Arrays.asList(
 				Empty.instance(),
-				Interval.of(0L, 4L),
-				EnumeratedDomain.of(Array.of(2L, 3L).map(Arithmetic::ofCasted))));
+				Longs.interval(0, 4),
+				Longs.enumerated(2L, 3L)));
 	}
 }

@@ -8,7 +8,6 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.Constraints;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.util.stream.Collectors;
@@ -28,7 +27,7 @@ public class NeqFdTest {
 	public void groundDisequalityExcludesTheValueFromAnswers() {
 		Unifiable<Long> x = lvar();
 
-		assertThat(dom(x, EnumeratedDomain.range(1L, 11L))        // {1..10}
+		assertThat(dom(x, Longs.range(1, 11))        // {1..10}
 				.and(exclude(x.unifies(lval(5L))))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
@@ -41,7 +40,7 @@ public class NeqFdTest {
 	public void disequalityLeavingOneCandidateYieldsExactlyIt() {
 		Unifiable<Long> x = lvar();
 
-		assertThat(dom(x, EnumeratedDomain.range(4L, 6L))         // {4,5}
+		assertThat(dom(x, Longs.range(4, 6))         // {4,5}
 				.and(exclude(x.unifies(lval(5L))))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
@@ -53,7 +52,7 @@ public class NeqFdTest {
 	public void disequalityAgainstTheOnlyCandidateFails() {
 		Unifiable<Long> x = lvar();
 
-		long count = dom(x, EnumeratedDomain.range(5L, 6L))       // {5} exactly
+		long count = dom(x, Longs.range(5, 6))       // {5} exactly
 				.and(exclude(x.unifies(lval(5L))))
 				.solve(x, TestSchedulers.factory())
 				.count();
@@ -66,7 +65,7 @@ public class NeqFdTest {
 		Unifiable<Long> x = lvar();
 
 		assertThat(exclude(x.unifies(lval(5L)))
-				.and(dom(x, EnumeratedDomain.range(1L, 11L)))
+				.and(dom(x, Longs.range(1, 11)))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
 				.collect(Collectors.toList()))

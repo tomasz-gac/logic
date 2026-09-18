@@ -12,7 +12,7 @@ import com.tgac.functional.algebra.laws.MonotoneLaws;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.finitedomain.FiniteDomain;
 import com.tgac.logic.finitedomain.FiniteDomainTestSupport;
-import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.tabling.Table;
@@ -33,10 +33,10 @@ public class PricerMonotonicityTest {
 	@Test
 	public void domPostPriceNeverRises() {
 		Unifiable<Long> x = lvar();
-		Goal post = FiniteDomain.dom(x, Interval.of(8L, 12L));
+		Goal post = FiniteDomain.dom(x, Longs.interval(8, 12));
 		Package blind = Package.empty();
-		Package overlapping = FiniteDomainTestSupport.withDomain(x, Interval.of(0L, 10L));
-		Package disjoint = FiniteDomainTestSupport.withDomain(x, Interval.of(0L, 4L));
+		Package overlapping = FiniteDomainTestSupport.withDomain(x, Longs.interval(0, 10));
+		Package disjoint = FiniteDomainTestSupport.withDomain(x, Longs.interval(0, 4));
 		MonotoneLaws.check(
 				Arrays.asList(blind, overlapping, disjoint),
 				p -> ((Bounded) post).answers(p),

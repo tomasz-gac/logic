@@ -8,8 +8,8 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.constraints.Propagation;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.projection.Projection;
 import com.tgac.logic.unification.LList;
@@ -253,7 +253,7 @@ public class AggregateTest {
 	public void findallEnumeratesAFiniteDomain() {
 		Unifiable<LList<Long>> result = lvar();
 
-		Goal g = Aggregate.findall((Unifiable<Long> i) -> dom(i, EnumeratedDomain.range(0L, 6L)), result);
+		Goal g = Aggregate.findall((Unifiable<Long> i) -> dom(i, Longs.range(0, 6)), result);
 
 		List<Long> list = g.solve(result, TestSchedulers.factory()).findFirst().get().get()
 				.toValueStream().collect(Collectors.toList());
@@ -264,7 +264,7 @@ public class AggregateTest {
 	public void countCountsFiniteDomainSolutions() {
 		Unifiable<Integer> n = lvar();
 
-		int result = Aggregate.count((Unifiable<Long> i) -> dom(i, EnumeratedDomain.range(0L, 6L)), n)
+		int result = Aggregate.count((Unifiable<Long> i) -> dom(i, Longs.range(0, 6)), n)
 				.solve(n, TestSchedulers.factory()).findFirst().get().get();
 
 		assertThat(result).isEqualTo(6);

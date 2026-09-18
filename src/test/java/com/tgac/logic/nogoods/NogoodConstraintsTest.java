@@ -7,18 +7,14 @@ import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 
-import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Unifiable;
-import io.vavr.collection.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
 
@@ -138,7 +134,7 @@ public class NogoodConstraintsTest {
 		// seam, per labelled point
 		Unifiable<Long> x = lvar();
 
-		Goal g = dom(x, EnumeratedDomain.range(0L, 5L))
+		Goal g = dom(x, Longs.range(0, 5))
 				.and(held(Posting.bind(x, lval(3L))));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
@@ -152,8 +148,8 @@ public class NogoodConstraintsTest {
 		// emptying in the scratch, not via unification — refuted, discarded
 		Unifiable<Long> x = lvar();
 
-		Goal g = dom(x, EnumeratedDomain.range(0L, 4L))
-				.and(held(dom(x, EnumeratedDomain.range(5L, 8L))));
+		Goal g = dom(x, Longs.range(0, 4))
+				.and(held(dom(x, Longs.range(5, 8))));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());
@@ -167,8 +163,8 @@ public class NogoodConstraintsTest {
 		// the box reads entailed at the ground floor and dies
 		Unifiable<Long> x = lvar();
 
-		Goal g = dom(x, EnumeratedDomain.range(0L, 10L))
-				.and(held(dom(x, EnumeratedDomain.range(3L, 6L))));
+		Goal g = dom(x, Longs.range(0, 10))
+				.and(held(dom(x, Longs.range(3, 6))));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());
@@ -182,8 +178,8 @@ public class NogoodConstraintsTest {
 		// through the store's own factor rather than a binding
 		Unifiable<Long> x = lvar();
 
-		Goal g = dom(x, EnumeratedDomain.range(3L, 6L))
-				.and(held(dom(x, EnumeratedDomain.range(0L, 10L))));
+		Goal g = dom(x, Longs.range(3, 6))
+				.and(held(dom(x, Longs.range(0, 10))));
 
 		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
 	}

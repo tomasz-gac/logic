@@ -8,7 +8,6 @@ import com.tgac.logic.constraints.store.Constraint;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.Utils;
 import com.tgac.logic.constraints.Propagation;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
@@ -20,7 +19,6 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
 import io.vavr.collection.Stream;
 import java.util.Arrays;
@@ -70,7 +68,7 @@ public class ParametersTest {
 		List<Package> collect = Utils.collect(EnforceConstraintsFD.forceAns(i)
 				.apply(Package.empty().putStore(FiniteDomainConstraints.class,
 						Constraint.of(FiniteDomainConstraints.withDomain(Theory.empty(),
-										i.asVar().get(), EnumeratedDomain.range(0L, 10L)),
+										i.asVar().get(), Longs.range(0, 10)),
 								FiniteDomainConstraints.empty()))));
 
 		Assertions.assertThat(collect.stream()
@@ -90,8 +88,8 @@ public class ParametersTest {
 						.apply(Package.empty().putStore(FiniteDomainConstraints.class,
 								Constraint.of(FiniteDomainConstraints.withDomain(
 												FiniteDomainConstraints.withDomain(Theory.empty(),
-														i.asVar().get(), EnumeratedDomain.range(0L, 3L)),
-												j.asVar().get(), EnumeratedDomain.range(0L, 3L)),
+														i.asVar().get(), Longs.range(0, 3)),
+												j.asVar().get(), Longs.range(0, 3)),
 										FiniteDomainConstraints.empty()))));
 
 		List<Tuple2<Long, Long>> results = collect.stream()

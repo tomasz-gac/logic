@@ -1,10 +1,14 @@
 package com.tgac.logic.finitedomain;
 
-import com.tgac.logic.finitedomain.domains.Arithmetic;
+// ABOUTME: The abstract domain over raw values: bounds, narrowing, set algebra —
+// ABOUTME: each instance carries its order seat and, where the type has one, stepping.
+
+import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.domains.DomainVisitor;
 import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import io.vavr.control.Option;
+import java.util.Comparator;
 import java.util.stream.Stream;
 import lombok.EqualsAndHashCode;
 
@@ -16,6 +20,10 @@ import lombok.EqualsAndHashCode;
  * The capability record ({@code lattice.Domain}) answers membership by
  * {@link #contains} and collapse by the {@link Singleton} case; stabilization
  * keeps the default exact equality — finite descent.
+ *
+ * <p>Values are raw {@code T}: a domain carries its {@link #order} seat (and
+ * {@link #step} where the type is discrete) instead of wrapping every element.
+ * The seats are excluded from equality — identity is the value set alone.
  */
 @EqualsAndHashCode
 public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<T>> {
@@ -34,7 +42,7 @@ public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<
 	@Override
 	public Option<Object> asPoint() {
 		return this instanceof Singleton ?
-				Option.of(((Singleton<T>) this).getValue().getValue()) :
+				Option.of(((Singleton<T>) this).getValue()) :
 				Option.none();
 	}
 
@@ -52,8 +60,8 @@ public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<
 			return true;
 		}
 		if (other.isEmpty()
-				|| other.min().compareTo(min()) > 0
-				|| other.max().compareTo(max()) < 0) {
+				|| order().compare(other.min(), min()) > 0
+				|| order().compare(other.max(), max()) < 0) {
 			return false;
 		}
 		if (other instanceof Interval) {
@@ -75,19 +83,25 @@ public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<
 
 	public abstract boolean isEmpty();
 
-	public abstract Arithmetic<T> min();
+	/** The order seat this domain's bounds and screens read through. */
+	public abstract Comparator<T> order();
 
-	public abstract Arithmetic<T> max();
+	/** The discreteness seat where the type has one — stepping, streaming, labelling. */
+	public abstract Option<Discrete<T>> step();
+
+	public abstract T min();
+
+	public abstract T max();
 
 	/**
 	 * The values of this domain that are ≥ {@code value} (inclusive lower bound).
 	 */
-	public abstract Domain<T> atLeast(Arithmetic<T> value);
+	public abstract Domain<T> atLeast(T value);
 
 	/**
 	 * The values of this domain that are ≤ {@code value} (inclusive upper bound).
 	 */
-	public abstract Domain<T> atMost(Arithmetic<T> value);
+	public abstract Domain<T> atMost(T value);
 
 	public abstract Domain<T> intersect(Domain<T> other);
 

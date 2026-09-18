@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.fibers.interpreter.EngineGuard;
 import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Unifiable;
 import io.vavr.collection.List;
@@ -38,7 +38,7 @@ public class TrialNowTest {
 	@Test
 	public void aStoreShapedPostingClaimsNothing() {
 		Unifiable<Long> x = lvar();
-		assertThat(Trial.now(FiniteDomain.dom(x, EnumeratedDomain.range(1L, 3L)), Package.empty())
+		assertThat(Trial.now(FiniteDomain.dom(x, Longs.range(1, 3)), Package.empty())
 				.isDefined())
 				.isFalse();
 	}
@@ -48,7 +48,7 @@ public class TrialNowTest {
 		Unifiable<Long> x = lvar();
 		Posting mixed = Posting.all(
 				Posting.bind(x, lval(1L)),
-				FiniteDomain.dom(x, EnumeratedDomain.range(1L, 3L)));
+				FiniteDomain.dom(x, Longs.range(1, 3)));
 		assertThat(Trial.now(mixed, Package.empty()).isDefined()).isFalse();
 	}
 

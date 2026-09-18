@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.constraints.Posting;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Exhaustion;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -53,7 +53,7 @@ public class TrialEdgeTest {
 		// future earliness, not a soundness need
 		Unifiable<Long> x = lvar();
 
-		java.util.List<Long> answers = dom(x, EnumeratedDomain.range(5L, 9L))
+		java.util.List<Long> answers = dom(x, Longs.range(5, 9))
 				.and(exclude(x.unifies(3L)))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)
@@ -67,9 +67,9 @@ public class TrialEdgeTest {
 	public void doubleNegationDoesNotNarrowEagerly() {
 		// ¬¬(x ∈ 0..4) must not become x ∈ 0..4 in the FD store
 		Unifiable<Long> x = lvar();
-		Posting inner = exclude(dom(x, EnumeratedDomain.range(0L, 5L)));
+		Posting inner = exclude(dom(x, Longs.range(0, 5)));
 
-		Goal g = dom(x, EnumeratedDomain.range(0L, 10L))
+		Goal g = dom(x, Longs.range(0, 10))
 				.and(exclude(inner));
 
 		java.util.List<Long> answers = g.solve(x, TestSchedulers.factory())
@@ -82,12 +82,12 @@ public class TrialEdgeTest {
 		// ¬¬(x ∈ 0..5) with x = 7: the ground floor must fail the branch
 		Unifiable<Long> x = lvar();
 		Goal violated = x.unifies(7L)
-				.and(exclude(exclude(dom(x, EnumeratedDomain.range(0L, 5L)))));
+				.and(exclude(exclude(dom(x, Longs.range(0, 5)))));
 		assertThat(violated.solve(x, TestSchedulers.factory()).count()).isZero();
 
 		Unifiable<Long> y = lvar();
 		Goal satisfied = y.unifies(3L)
-				.and(exclude(exclude(dom(y, EnumeratedDomain.range(0L, 5L)))));
+				.and(exclude(exclude(dom(y, Longs.range(0, 5)))));
 		assertThat(satisfied.solve(y, TestSchedulers.factory()).findFirst().get().get())
 				.isEqualTo(3L);
 	}

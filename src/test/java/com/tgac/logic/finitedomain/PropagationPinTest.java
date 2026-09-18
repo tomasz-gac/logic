@@ -3,13 +3,11 @@ package com.tgac.logic.finitedomain;
 import com.tgac.logic.TestSchedulers;
 import static com.tgac.logic.nogoods.Exclusion.exclude;
 import static com.tgac.logic.finitedomain.FiniteDomain.dom;
-import static com.tgac.logic.finitedomain.FiniteDomain.leq;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.functional.monad.Cont;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
@@ -37,10 +35,10 @@ public class PropagationPinTest {
 
 		// the intersection {1,2} ∩ {1} collapses to a Singleton, which binds x mid-search
 		Goal g = exclude(x.unifies(lval(1L)))
-				.and(dom(x, EnumeratedDomain.range(1L, 3L)))       // x ∈ {1,2}
+				.and(dom(x, Longs.range(1, 3)))       // x ∈ {1,2}
 				.and(Goal.condu(
-						dom(x, EnumeratedDomain.range(1L, 2L)),    // ∩ → {1}: collapse-binds, violates x ≠ 1
-						dom(x, EnumeratedDomain.range(2L, 3L))));  // ∩ → {2}: the valid branch
+						dom(x, Longs.range(1, 2)),    // ∩ → {1}: collapse-binds, violates x ≠ 1
+						dom(x, Longs.range(2, 3))));  // ∩ → {2}: the valid branch
 
 		List<Long> result = g.solve(x, TestSchedulers.factory()).map(Term::get).collect(Collectors.toList());
 
@@ -64,11 +62,11 @@ public class PropagationPinTest {
 			return Cont.just(s);
 		};
 
-		long count = dom(x, EnumeratedDomain.range(1L, 11L))        // {1..10}
-				.and(dom(y, EnumeratedDomain.range(1L, 11L)))       // {1..10}
-				.and(dom(z, EnumeratedDomain.range(1L, 4L)))        // {1..3}
-				.and(leq(x, y))                                     // runs while y is wide
-				.and(leq(y, z))                                     // narrows y to {1..3}
+		long count = dom(x, Longs.range(1, 11))        // {1..10}
+				.and(dom(y, Longs.range(1, 11)))       // {1..10}
+				.and(dom(z, Longs.range(1, 4)))        // {1..3}
+				.and(Longs.leq(x, y))                                     // runs while y is wide
+				.and(Longs.leq(y, z))                                     // narrows y to {1..3}
 				.and(probe)
 				.solve(x, TestSchedulers.factory())
 				.count();
@@ -94,11 +92,11 @@ public class PropagationPinTest {
 			return Cont.just(s);
 		};
 
-		long count = dom(x, EnumeratedDomain.range(1L, 11L))
-				.and(dom(y, EnumeratedDomain.range(1L, 11L)))
-				.and(dom(z, EnumeratedDomain.range(1L, 4L)))
-				.and(leq(y, z))                                     // y → {1..3} first
-				.and(leq(x, y))                                     // then x ≤ max(y) = 3
+		long count = dom(x, Longs.range(1, 11))
+				.and(dom(y, Longs.range(1, 11)))
+				.and(dom(z, Longs.range(1, 4)))
+				.and(Longs.leq(y, z))                                     // y → {1..3} first
+				.and(Longs.leq(x, y))                                     // then x ≤ max(y) = 3
 				.and(probe)
 				.solve(x, TestSchedulers.factory())
 				.count();

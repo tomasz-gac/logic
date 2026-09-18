@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.functional.category.Nothing;
 import com.tgac.functional.monad.Cont;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Substitutions;
@@ -47,8 +47,8 @@ public class BoundedSweepTest {
 	@Test
 	public void constraintPostsPriceAtOne() {
 		Unifiable<Long> x = lvar(), y = lvar();
-		assertThat(order(FiniteDomain.dom(x, EnumeratedDomain.range(0L, 9L)))).isEqualTo(1);
-		assertThat(order(FiniteDomain.leq(x, y))).isEqualTo(1);
+		assertThat(order(FiniteDomain.dom(x, Longs.range(0, 9)))).isEqualTo(1);
+		assertThat(order(Longs.leq(x, y))).isEqualTo(1);
 		assertThat(order(exclude(x.unifies(y)))).isEqualTo(1);
 		assertThat(order(Goal.success())).isEqualTo(1);
 		assertThat(order(Goal.failure())).isEqualTo(0);
@@ -117,9 +117,9 @@ public class BoundedSweepTest {
 	@Test
 	public void deadPostsPriceZeroAndKillTheirSegments() {
 		Goal[] dead = {
-				FiniteDomain.dom(lval(5L), EnumeratedDomain.range(0L, 3L)),
-				FiniteDomain.leq(lval(5L), lval(2L)),
-				FiniteDomain.<Long> separate(lval(1L), lval(1L)),
+				FiniteDomain.dom(lval(5L), Longs.range(0, 3)),
+				Longs.leq(lval(5L), lval(2L)),
+				Longs.separate(lval(1L), lval(1L)),
 				exclude(lval(1L).unifies(lval(1L)))};
 		for (Goal deadPost : dead) {
 			Unifiable<Long> x = lvar();
@@ -132,8 +132,8 @@ public class BoundedSweepTest {
 
 	private static Goal misOrdered(Unifiable<Long> x, Unifiable<Long> y, AtomicLong spawns) {
 		return oneOf(x, spawns).and(oneOf(y, spawns))
-				.and(FiniteDomain.dom(x, EnumeratedDomain.range(7L, 8L)))
-				.and(FiniteDomain.dom(y, EnumeratedDomain.range(3L, 4L)));
+				.and(FiniteDomain.dom(x, Longs.range(7, 8)))
+				.and(FiniteDomain.dom(y, Longs.range(3, 4)));
 	}
 
 	@Test

@@ -1,12 +1,15 @@
 package com.tgac.logic.finitedomain.domains;
 
+// ABOUTME: The explicit-element domain: an ordered array of raw values —
+// ABOUTME: gapped by construction, enumerable without any step seat.
+
 import com.tgac.functional.Exceptions;
 import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.collection.Array;
-import io.vavr.collection.Iterator;
 import io.vavr.control.Option;
-import java.math.BigInteger;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
@@ -17,32 +20,20 @@ import lombok.Value;
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class EnumeratedDomain<T> extends Domain<T> {
-	Array<Arithmetic<T>> elements;
+	Array<T> elements;
+	@EqualsAndHashCode.Exclude
+	Comparator<T> order;
+	@EqualsAndHashCode.Exclude
+	Option<Discrete<T>> step;
 
-	/** Canonical: an empty argument is the Empty domain, one element a Singleton. */
-	public static <T> Domain<T> of(Iterable<Arithmetic<T>> e) {
-		return normalized(Array.ofAll(e));
-	}
-
-	public static Domain<Long> range(Long start, Long endExclusive) {
-		return normalized(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
-	}
-
-	public static Domain<Integer> range(int start, int endExclusive) {
-		return normalized(Array.range(start, endExclusive).map(Arithmetic::ofCasted));
-	}
-
-	public static Domain<BigInteger> range(BigInteger start, BigInteger endExclusive) {
-		return normalized(
-				Iterator.iterate(start, i -> i.add(BigInteger.ONE))
-						.takeWhile(v -> v.compareTo(endExclusive) < 0)
-						.map(Arithmetic::of)
-						.collect(Array.collector()));
+	/** Canonical: an empty argument is the Empty domain, one element a Singleton. Elements must arrive in order. */
+	public static <T> Domain<T> of(Iterable<T> e, Comparator<T> order, Option<Discrete<T>> step) {
+		return normalized(Array.ofAll(e), order, step);
 	}
 
 	@Override
 	public Stream<T> stream() {
-		return elements.map(Arithmetic::getValue).toJavaStream();
+		return elements.toJavaStream();
 	}
 
 	@Override
@@ -51,34 +42,44 @@ public class EnumeratedDomain<T> extends Domain<T> {
 	}
 
 	@Override
-	public Domain<T> atLeast(Arithmetic<T> e) {
-		if (e.compareTo(max()) > 0) {
-			return Empty.instance();
-		}
-		int index = Collections.binarySearch(elements.toJavaList(), e, Arithmetic::compareTo);
-		int from = index >= 0 ? index : -(index + 1);
-		return normalized(elements.subSequence(from, elements.size()));
+	public Comparator<T> order() {
+		return order;
 	}
 
 	@Override
-	public Domain<T> atMost(Arithmetic<T> e) {
-		if (e.compareTo(min()) < 0) {
-			return Empty.instance();
-		}
-		int index = Collections.binarySearch(elements.toJavaList(), e, Arithmetic::compareTo);
-		int to = index >= 0 ? index + 1 : -(index + 1);
-		return normalized(elements.subSequence(0, to));
+	public Option<Discrete<T>> step() {
+		return step;
 	}
 
-	private static <T> Domain<T> normalized(Array<Arithmetic<T>> result) {
+	@Override
+	public Domain<T> atLeast(T e) {
+		if (order.compare(e, max()) > 0) {
+			return Empty.instance();
+		}
+		int index = Collections.binarySearch(elements.toJavaList(), e, order);
+		int from = index >= 0 ? index : -(index + 1);
+		return normalized(elements.subSequence(from, elements.size()), order, step);
+	}
+
+	@Override
+	public Domain<T> atMost(T e) {
+		if (order.compare(e, min()) < 0) {
+			return Empty.instance();
+		}
+		int index = Collections.binarySearch(elements.toJavaList(), e, order);
+		int to = index >= 0 ? index + 1 : -(index + 1);
+		return normalized(elements.subSequence(0, to), order, step);
+	}
+
+	private static <T> Domain<T> normalized(Array<T> result, Comparator<T> order, Option<Discrete<T>> step) {
 		return result.isEmpty() ? Empty.instance() :
 				result.size() == 1 ?
-						Singleton.of(result.get(0)) :
-						new EnumeratedDomain<>(result);
+						Singleton.of(result.get(0), order, step) :
+						new EnumeratedDomain<>(result, order, step);
 	}
 
 	@Override
-	public Arithmetic<T> min() {
+	public T min() {
 		return Option.of(elements)
 				.filter(e -> !e.isEmpty())
 				.map(e -> e.get(0))
@@ -86,7 +87,7 @@ public class EnumeratedDomain<T> extends Domain<T> {
 	}
 
 	@Override
-	public Arithmetic<T> max() {
+	public T max() {
 		return Option.of(elements)
 				.filter(e -> !e.isEmpty())
 				.map(e -> e.get(e.size() - 1))
@@ -96,36 +97,29 @@ public class EnumeratedDomain<T> extends Domain<T> {
 	@Override
 	public boolean contains(T v) {
 		return elements.toJavaStream()
-				.map(Arithmetic::getValue)
 				.anyMatch(v::equals);
 	}
 
 	@Override
 	public boolean isDisjoint(Domain<T> other) {
 		return elements.toJavaStream()
-				.map(Arithmetic::getValue)
 				.noneMatch(other::contains);
 	}
 
 	@Override
 	public Domain<T> difference(Domain<T> other) {
-		Array<Arithmetic<T>> result = elements.toJavaStream()
-				.filter(v -> !other.contains(v.getValue()))
-				.collect(Array.collector());
-		return result.isEmpty() ? Empty.instance() :
-				result.size() == 1 ? Singleton.of(result.get(0)) :
-						EnumeratedDomain.of(result);
+		return normalized(elements.toJavaStream()
+						.filter(v -> !other.contains(v))
+						.collect(Array.collector()),
+				order, step);
 	}
 
 	@Override
 	public Domain<T> intersect(Domain<T> other) {
-		Array<Arithmetic<T>> result = elements.toJavaStream()
-				.filter(v -> other.contains(v.getValue()))
-				.collect(Array.collector());
-
-		return result.isEmpty() ? Empty.instance() :
-				result.size() == 1 ? Singleton.of(result.get(0)) :
-						EnumeratedDomain.of(result);
+		return normalized(elements.toJavaStream()
+						.filter(other::contains)
+						.collect(Array.collector()),
+				order, step);
 	}
 
 	@Override
@@ -135,6 +129,6 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public String toString() {
-		return elements.isEmpty() ? "[]" : "[" + min().getValue() + " … " + max().getValue() + "]";
+		return elements.isEmpty() ? "[]" : "[" + min() + " … " + max() + "]";
 	}
 }

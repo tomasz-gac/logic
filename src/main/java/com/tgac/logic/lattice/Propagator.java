@@ -28,12 +28,14 @@ import java.util.Objects;
  * {@link #empty}), its {@link #name} and, where the author knows better than
  * never, its {@link #doomed} check.
  *
- * <p>THE CLASS CONTRACT that licenses the identity: a schema carries NO
- * instance state beyond the terms it watches — the name must uniquely
- * determine the verdict semantics within its family, so two posts of one
- * relation on the same terms are the same knowledge stated twice (the store
- * dedups them), and renamed instances compare equal wherever the renaming
- * agrees. Equality is (family, name, watched terms), final.
+ * <p>THE CLASS CONTRACT that licenses the identity: a schema carries no
+ * instance STATE beyond the terms it watches — stateless, operation-only
+ * capability instances (order, arithmetic, stepping) may ride along, but
+ * they are determined by the watched terms' value type, so the name still
+ * uniquely determines the verdict semantics within its family: two posts of
+ * one relation on the same terms are the same knowledge stated twice (the
+ * store dedups them), and renamed instances compare equal wherever the
+ * renaming agrees. Equality is (family, name, watched terms), final.
  *
  * <p>Postable by construction: every propagator carries its complete
  * statement context — there is no unconfigured state to construct.

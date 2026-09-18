@@ -5,7 +5,7 @@ package com.tgac.logic.finitedomain;
 
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.FiniteDomain.VarWithDomain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
+import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
@@ -17,21 +17,27 @@ import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Objects;
 
 final class Separate extends Propagator<FiniteDomainConstraints> {
 
-	Separate(Term<?> l, Term<?> r) {
-		this(Array.of(l, r));
+	private final Comparator<Object> order;
+
+	@SuppressWarnings("unchecked")
+	Separate(Term<?> l, Term<?> r, Comparator<?> order) {
+		this(Array.of(l, r), (Comparator<Object>) order);
 	}
 
-	private Separate(Array<? extends Term<?>> terms) {
+	private Separate(Array<? extends Term<?>> terms, Comparator<Object> order) {
 		super(terms);
+		this.order = order;
 	}
 
 	@Override
 	public Verdict propagate(Package state) {
-		return FiniteDomain.letDomain(state, FiniteDomain.<Object> typed(watchedTerms()))
+		return FiniteDomain.letDomain(state, FiniteDomain.<Object> typed(watchedTerms()),
+						order, Option.<Discrete<Object>> none())
 				.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
 				.map(ds -> ds.apply(Separate::verdict))
 				.getOrElse(Verdict::keep);
@@ -39,7 +45,7 @@ final class Separate extends Propagator<FiniteDomainConstraints> {
 
 	@SuppressWarnings("unchecked")
 	private static <T> Verdict verdict(VarWithDomain<T> ld, VarWithDomain<T> rd) {
-		Option<Tuple2<Arithmetic<T>, Arithmetic<T>>> zip = MiniKanren.zip(
+		Option<Tuple2<T, T>> zip = MiniKanren.zip(
 				FiniteDomain.getSingleElement(ld.getDomain()),
 				FiniteDomain.getSingleElement(rd.getDomain()));
 		if (zip.isDefined() && zip.get().apply(Objects::equals)) {
@@ -67,7 +73,7 @@ final class Separate extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Propagator<FiniteDomainConstraints> watching(Array<? extends Term<?>> terms) {
-		return new Separate(terms);
+		return new Separate(terms, order);
 	}
 
 	@Override

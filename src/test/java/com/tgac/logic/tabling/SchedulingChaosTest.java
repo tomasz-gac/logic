@@ -14,8 +14,7 @@ import com.tgac.functional.algebra.Semirings;
 import com.tgac.functional.fibers.schedulers.RandomizedScheduler;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.FiniteDomain;
-import com.tgac.logic.finitedomain.domains.Arithmetic;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Ints;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.weight.SemiringStore;
@@ -24,7 +23,6 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple1;
 import io.vavr.Tuple2;
-import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
@@ -36,8 +34,7 @@ public class SchedulingChaosTest {
 	private static final int SEEDS = 24;
 
 	private static Domain<Integer> dom(int... values) {
-		return EnumeratedDomain.of(Array.ofAll(Arrays.stream(values).boxed())
-				.map(Arithmetic::ofCasted));
+		return Ints.enumerated(Arrays.stream(values).boxed().toArray(Integer[]::new));
 	}
 
 	/**

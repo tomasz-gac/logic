@@ -11,7 +11,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Theory;
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.LVar;
 import com.tgac.logic.unification.Term;
@@ -39,7 +38,7 @@ public class ExcludedFactorTest {
 		// the base — ¬(x ∈ 1..2) with x = 7 discharges, the answer flows
 		Unifiable<Long> x = lvar();
 		Theory<FiniteDomainConstraints> factor = FiniteDomainConstraints.withDomain(
-				Theory.empty(), varOf(x), EnumeratedDomain.range(1L, 3L));
+				Theory.empty(), varOf(x), Longs.range(1, 3));
 
 		List<Long> answers = x.unifies(7L)
 				.and(exclude(Propagation.absorb(factor)))
@@ -56,9 +55,9 @@ public class ExcludedFactorTest {
 		// every branch fails
 		Unifiable<Long> x = lvar();
 		Theory<FiniteDomainConstraints> factor = FiniteDomainConstraints.withDomain(
-				Theory.empty(), varOf(x), EnumeratedDomain.range(1L, 11L));
+				Theory.empty(), varOf(x), Longs.range(1, 11));
 
-		Goal g = dom(x, EnumeratedDomain.range(2L, 5L))
+		Goal g = dom(x, Longs.range(2, 5))
 				.and(exclude(Propagation.absorb(factor)));
 		assertThat(g.solve(x, TestSchedulers.factory()).count()).isZero();
 	}
@@ -70,9 +69,9 @@ public class ExcludedFactorTest {
 		// ground floor excludes exactly the factor's region
 		Unifiable<Long> x = lvar();
 		Theory<FiniteDomainConstraints> factor = FiniteDomainConstraints.withDomain(
-				Theory.empty(), varOf(x), EnumeratedDomain.range(2L, 5L));
+				Theory.empty(), varOf(x), Longs.range(2, 5));
 
-		List<Long> answers = dom(x, EnumeratedDomain.range(0L, 7L))
+		List<Long> answers = dom(x, Longs.range(0, 7))
 				.and(exclude(Propagation.absorb(factor)))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get)

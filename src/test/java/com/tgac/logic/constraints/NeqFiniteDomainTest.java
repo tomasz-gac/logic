@@ -7,7 +7,7 @@ import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
@@ -27,7 +27,7 @@ public class NeqFiniteDomainTest {
 		Unifiable<Long> x = lvar();
 
 		// x in {0, 1, 2} and x != 1  ->  {0, 2}
-		Goal g = dom(x, EnumeratedDomain.range(0L, 3L))
+		Goal g = dom(x, Longs.range(0, 3))
 				.and(exclude(x.unifies(lval(1L))));
 
 		List<Long> result = g.solve(x, TestSchedulers.factory())
@@ -43,7 +43,7 @@ public class NeqFiniteDomainTest {
 
 		// same query, stores added in the other order
 		Goal g = exclude(x.unifies(lval(1L)))
-				.and(dom(x, EnumeratedDomain.range(0L, 3L)));
+				.and(dom(x, Longs.range(0, 3)));
 
 		List<Long> result = g.solve(x, TestSchedulers.factory())
 				.map(Term::get)

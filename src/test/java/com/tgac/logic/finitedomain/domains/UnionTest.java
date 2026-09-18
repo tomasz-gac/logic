@@ -6,6 +6,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.Ints;
 import io.vavr.collection.Array;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
@@ -15,8 +16,8 @@ public class UnionTest {
 	@Test
 	public void shouldMergeNonOverlappingDomains() {
 		// Create two non-overlapping domains
-		Interval<Integer> domain1 = Interval.of(1, 3);
-		Interval<Integer> domain2 = Interval.of(4, 6);
+		Domain<Integer> domain1 = Ints.interval(1, 3);
+		Domain<Integer> domain2 = Ints.interval(4, 6);
 
 		// Create an array of the two domains
 		Array<Domain<Integer>> intervals = Array.of(domain1, domain2);
@@ -27,15 +28,15 @@ public class UnionTest {
 		// Assert that the mergedDomains array contains a single domain with the expected values
 		assertEquals(1, mergedDomains.size());
 		assertEquals(
-				Interval.of(1, 6),
+				Ints.interval(1, 6),
 				mergedDomains.get(0));
 	}
 
 	@Test
 	public void test_mergeOverlappingDomains() {
 		// Create two overlapping domains
-		Interval<Integer> domain1 = Interval.of(1, 3);
-		Interval<Integer> domain2 = Interval.of(3, 5);
+		Domain<Integer> domain1 = Ints.interval(1, 3);
+		Domain<Integer> domain2 = Ints.interval(3, 5);
 
 		// Create an array of the two domains
 		Array<Domain<Integer>> intervals = Array.of(domain1, domain2);
@@ -45,15 +46,15 @@ public class UnionTest {
 
 		// Assert that the mergedDomains array contains a single domain with the expected values
 		assertEquals(1, mergedDomains.size());
-		assertEquals(Interval.of(1, 5), mergedDomains.get(0));
+		assertEquals(Ints.interval(1, 5), mergedDomains.get(0));
 	}
 
 	@Test
 	public void shouldMergeMultipleOverlappingDomains() {
 		// Create three overlapping domains
-		Interval<Integer> domain1 = Interval.of(1, 3);
-		Interval<Integer> domain2 = Interval.of(3, 5);
-		Interval<Integer> domain3 = Interval.of(5, 7);
+		Domain<Integer> domain1 = Ints.interval(1, 3);
+		Domain<Integer> domain2 = Ints.interval(3, 5);
+		Domain<Integer> domain3 = Ints.interval(5, 7);
 
 		// Create an array of the three domains
 		Array<Domain<Integer>> intervals = Array.of(domain1, domain2, domain3);
@@ -63,14 +64,14 @@ public class UnionTest {
 
 		// Assert that the mergedDomains array contains a single domain with the expected values
 		assertEquals(1, mergedDomains.size());
-		assertEquals(Interval.of(1, 7), mergedDomains.get(0));
+		assertEquals(Ints.interval(1, 7), mergedDomains.get(0));
 	}
 
 	@Test
 	public void shouldMergeSingletons() {
 		// Create two overlapping domains
-		Singleton<Integer> domain1 = Singleton.of(1);
-		Singleton<Integer> domain2 = Singleton.of(1);
+		Domain<Integer> domain1 = Ints.singleton(1);
+		Domain<Integer> domain2 = Ints.singleton(1);
 
 		// Create an array of the two domains
 		Array<Domain<Integer>> intervals = Array.of(domain1, domain2);
@@ -80,14 +81,14 @@ public class UnionTest {
 
 		// Assert that the mergedDomains array contains a single domain with the expected values
 		assertEquals(1, mergedDomains.size());
-		assertEquals(Singleton.of(1), mergedDomains.get(0));
+		assertEquals(Ints.singleton(1), mergedDomains.get(0));
 	}
 
 	@Test
 	public void shouldMergeConsecutiveSingletons() {
 		// Create two overlapping domains
-		Singleton<Integer> domain1 = Singleton.of(1);
-		Singleton<Integer> domain2 = Singleton.of(2);
+		Domain<Integer> domain1 = Ints.singleton(1);
+		Domain<Integer> domain2 = Ints.singleton(2);
 
 		// Create an array of the two domains
 		Array<Domain<Integer>> intervals = Array.of(domain1, domain2);
@@ -97,7 +98,7 @@ public class UnionTest {
 
 		// Assert that the mergedDomains array contains a single domain with the expected values
 		assertEquals(1, mergedDomains.size());
-		assertEquals(Interval.of(1, 2), mergedDomains.get(0));
+		assertEquals(Ints.interval(1, 2), mergedDomains.get(0));
 	}
 
 	@Test
@@ -130,7 +131,7 @@ public class UnionTest {
 	@Test
 	public void shouldMergeSingleDomain() {
 		// Create a single domain
-		Interval<Integer> domain = Interval.of(1, 3);
+		Domain<Integer> domain = Ints.interval(1, 3);
 
 		// Create an array with the domain
 		Array<Domain<Integer>> intervals = Array.of(domain);
@@ -145,8 +146,8 @@ public class UnionTest {
 
 	@Test
 	public void shouldContainValue() {
-		Domain<Integer> domain1 = Interval.of(1, 5);
-		Domain<Integer> domain2 = Interval.of(10, 15);
+		Domain<Integer> domain1 = Ints.interval(1, 5);
+		Domain<Integer> domain2 = Ints.interval(10, 15);
 
 		Union<Integer> union = Union.of(domain1, domain2);
 
@@ -156,8 +157,8 @@ public class UnionTest {
 
 	@Test
 	public void shouldStreamValues() {
-		Domain<Integer> domain1 = Interval.of(1, 5);
-		Domain<Integer> domain2 = Interval.of(10, 15);
+		Domain<Integer> domain1 = Ints.interval(1, 5);
+		Domain<Integer> domain2 = Ints.interval(10, 15);
 
 		Union<Integer> union = Union.of(domain1, domain2);
 
@@ -186,28 +187,28 @@ public class UnionTest {
 	public void shouldDiffSimple() {
 		Assertions.assertThat(
 						Union.of(
-										Interval.of(0, 10),
-										Interval.of(20, 30))
-								.difference(Interval.of(5, 25)))
+										Ints.interval(0, 10),
+										Ints.interval(20, 30))
+								.difference(Ints.interval(5, 25)))
 				.isEqualTo(
 						Union.of(
-								Interval.of(0, 4),
-								Interval.of(26, 30)));
+								Ints.interval(0, 4),
+								Ints.interval(26, 30)));
 	}
 
 	@Test
 	public void shouldDiffEnumerated() {
 		Assertions.assertThat(
 						Union.of(
-										Interval.of(0, 10),
-										Interval.of(20, 30))
-								.difference(EnumeratedDomain.of(Array.of(5, 15, 25).map(Arithmetic::of))))
+										Ints.interval(0, 10),
+										Ints.interval(20, 30))
+								.difference(Ints.enumerated(5, 15, 25)))
 				.isEqualTo(
 						Union.of(
-								Interval.of(0, 4),
-								Interval.of(6, 10),
-								Interval.of(20, 24),
-								Interval.of(26, 30)));
+								Ints.interval(0, 4),
+								Ints.interval(6, 10),
+								Ints.interval(20, 24),
+								Ints.interval(26, 30)));
 	}
 
 }

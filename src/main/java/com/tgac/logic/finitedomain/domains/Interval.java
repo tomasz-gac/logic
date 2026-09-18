@@ -1,9 +1,14 @@
 package com.tgac.logic.finitedomain.domains;
 
+// ABOUTME: The contiguous domain [min, max] over raw values: bounds narrowing
+// ABOUTME: through the order seat; enumeration and splitting need the step seat.
+
 import com.tgac.functional.Exceptions;
 import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.collection.Iterator;
-import java.math.BigInteger;
+import io.vavr.control.Option;
+import java.util.Comparator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
@@ -11,48 +16,48 @@ import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
+/**
+ * A dense type (no {@link Discrete} seat) keeps every bounds operation and
+ * loses the ones that need stepping: {@link #stream} refuses loudly, and
+ * {@link #difference} keeps values it cannot split away — sound, wider.
+ */
 @Value
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class Interval<T> extends Domain<T> {
-	Arithmetic<T> min;
-	Arithmetic<T> max;
+	T min;
+	T max;
+	@EqualsAndHashCode.Exclude
+	Comparator<T> order;
+	@EqualsAndHashCode.Exclude
+	Option<Discrete<T>> step;
 
 	public static <T> Interval<T> of(
-			Arithmetic<T> min,
-			Arithmetic<T> max) {
-		assert min.compareTo(max) <= 0;
-		return new Interval<>(min, max);
+			T min,
+			T max,
+			Comparator<T> order,
+			Option<Discrete<T>> step) {
+		assert order.compare(min, max) <= 0;
+		return new Interval<>(min, max, order, step);
 	}
 
-	public static <T> Interval<T> normalized(Arithmetic<T> a, Arithmetic<T> b) {
-		return new Interval<>(minValue(a, b), maxValue(a, b));
-	}
-
-	public static Interval<Integer> of(int min, int max) {
-		return of(Arithmetic.of(min), Arithmetic.of(max));
-	}
-
-	public static Interval<Long> of(long min, long max) {
-		return of(Arithmetic.of(min), Arithmetic.of(max));
-	}
-
-	public static Interval<BigInteger> of(BigInteger min, BigInteger max) {
-		return of(Arithmetic.of(min), Arithmetic.of(max));
+	public static <T> Interval<T> normalized(T a, T b, Comparator<T> order, Option<Discrete<T>> step) {
+		return new Interval<>(minValue(a, b, order), maxValue(a, b, order), order, step);
 	}
 
 	@Override
 	public boolean contains(T value) {
-		return min.compareToValue(value) <= 0 &&
-				max.compareToValue(value) >= 0;
+		return order.compare(min, value) <= 0 &&
+				order.compare(max, value) >= 0;
 	}
 
 	@Override
 	public Stream<T> stream() {
-		return StreamSupport.stream(Iterator.iterate(min, Arithmetic::next)
-						.takeWhile(v -> v.compareTo(max) <= 0)
-						.spliterator(), false)
-				.map(Arithmetic::getValue);
+		Discrete<T> discrete = step.getOrElseThrow(() -> new IllegalStateException(
+				"Cannot enumerate " + this + ": no Discrete instance — a dense interval propagates but does not label"));
+		return StreamSupport.stream(Iterator.iterate(min, discrete::next)
+						.takeWhile(v -> order.compare(v, max) <= 0)
+						.spliterator(), false);
 	}
 
 	@Override
@@ -61,31 +66,41 @@ public class Interval<T> extends Domain<T> {
 	}
 
 	@Override
-	public Arithmetic<T> min() {
+	public Comparator<T> order() {
+		return order;
+	}
+
+	@Override
+	public Option<Discrete<T>> step() {
+		return step;
+	}
+
+	@Override
+	public T min() {
 		return min;
 	}
 
 	@Override
-	public Arithmetic<T> max() {
+	public T max() {
 		return max;
 	}
 
 	@Override
-	public Domain<T> atLeast(Arithmetic<T> e) {
-		if (e.compareTo(max) > 0) {
+	public Domain<T> atLeast(T e) {
+		if (order.compare(e, max) > 0) {
 			return Empty.instance();
 		}
-		Arithmetic<T> newMin = maxValue(e, min);
-		return newMin.compareTo(max) == 0 ? Singleton.of(max) : Interval.of(newMin, max);
+		T newMin = maxValue(e, min, order);
+		return order.compare(newMin, max) == 0 ? Singleton.of(max, order, step) : Interval.of(newMin, max, order, step);
 	}
 
 	@Override
-	public Domain<T> atMost(Arithmetic<T> e) {
-		if (e.compareTo(min) < 0) {
+	public Domain<T> atMost(T e) {
+		if (order.compare(e, min) < 0) {
 			return Empty.instance();
 		}
-		Arithmetic<T> newMax = minValue(e, max);
-		return newMax.compareTo(min) == 0 ? Singleton.of(min) : Interval.of(min, newMax);
+		T newMax = minValue(e, max, order);
+		return order.compare(newMax, min) == 0 ? Singleton.of(min, order, step) : Interval.of(min, newMax, order, step);
 	}
 
 	@Override
@@ -99,19 +114,19 @@ public class Interval<T> extends Domain<T> {
 
 			@Override
 			public Domain<T> visit(Singleton<T> domain) {
-				return contains(domain.getValue().getValue()) ?
+				return contains(domain.getValue()) ?
 						domain :
 						Empty.instance();
 			}
 
 			@Override
 			public Domain<T> visit(Interval<T> domain) {
-				Arithmetic<T> min = maxValue(min(), other.min());
-				Arithmetic<T> max = minValue(max(), other.max());
-				if (min.compareTo(max) == 0) {
-					return Singleton.of(min);
-				} else if (min.compareTo(max) <= 0) {
-					return new Interval<>(min, max);
+				T lo = maxValue(min(), other.min(), order);
+				T hi = minValue(max(), other.max(), order);
+				if (order.compare(lo, hi) == 0) {
+					return Singleton.of(lo, order, step);
+				} else if (order.compare(lo, hi) <= 0) {
+					return new Interval<>(lo, hi, order, step);
 				} else {
 					return Empty.instance();
 				}
@@ -139,12 +154,12 @@ public class Interval<T> extends Domain<T> {
 
 			@Override
 			public Boolean visit(Singleton<T> domain) {
-				return !contains(domain.getValue().getValue());
+				return !contains(domain.getValue());
 			}
 
 			@Override
 			public Boolean visit(Interval<T> domain) {
-				return max.compareTo(other.min()) < 0 || min.compareTo(other.max()) > 0;
+				return order.compare(max, other.min()) < 0 || order.compare(min, other.max()) > 0;
 			}
 
 			@Override
@@ -156,7 +171,6 @@ public class Interval<T> extends Domain<T> {
 			@Override
 			public Boolean visit(EnumeratedDomain<T> domain) {
 				return domain.getElements().toJavaStream()
-						.map(Arithmetic::getValue)
 						.noneMatch(v -> contains(v));
 			}
 		});
@@ -173,42 +187,49 @@ public class Interval<T> extends Domain<T> {
 
 			@Override
 			public Domain<T> visit(Singleton<T> domain) {
-				Arithmetic<T> value = domain.getValue();
-				if (that.contains(value.getValue())) {
-					if (value.compareTo(min) == 0) {
-						return Interval.of(value.next(), max);
-					} else if (value.compareTo(max) == 0) {
-						return Interval.of(min, value.prev());
-					} else {
-						return Union.of(
-								Interval.of(min, value.prev()),
-								Interval.of(value.next(), max));
-					}
-				} else {
+				T value = domain.getValue();
+				if (!that.contains(value)) {
 					return that;
 				}
+				// splitting a point out needs stepping; a dense interval keeps it
+				return step.<Domain<T>> map(d -> {
+					if (order.compare(value, min) == 0) {
+						return Interval.of(d.next(value), max, order, step);
+					} else if (order.compare(value, max) == 0) {
+						return Interval.of(min, d.prev(value), order, step);
+					} else {
+						return Union.of(
+								Interval.of(min, d.prev(value), order, step),
+								Interval.of(d.next(value), max, order, step));
+					}
+				}).getOrElse(that);
 			}
 
 			@Override
 			public Domain<T> visit(Interval<T> domain) {
-				if (other.max().compareTo(that.min()) < 0 || other.min().compareTo(max()) > 0) {
+				if (order.compare(other.max(), that.min()) < 0 || order.compare(other.min(), max()) > 0) {
 					// No overlap, so the whole current interval is the difference
 					return that;
-				} else if (other.min().compareTo(min) > 0 && other.max().compareTo(max) < 0) {
-					// Other interval is inside the current interval
-					return Union.of(
-							Interval.of(that.min(), other.min().prev()),
-							Interval.of(other.max().next(), that.max()));
-				} else if (other.min().compareTo(min) <= 0 && other.max().compareTo(max) >= 0) {
+				} else if (order.compare(other.min(), min) <= 0 && order.compare(other.max(), max) >= 0) {
 					// Other interval contains the current interval, so the difference is empty
 					return Empty.instance();
-				} else if (other.min().compareTo(min) <= 0) {
-					// Other interval starts before the current interval and ends somewhere in the middle
-					return Interval.of(other.max().next(), that.max());
-				} else {
-					// Other interval starts somewhere in the middle of the current interval and ends after it
-					return Interval.of(that.min(), other.min().prev());
 				}
+				// every remaining case trims at other's edge — stepping required;
+				// a dense interval keeps what it cannot trim
+				return step.<Domain<T>> map(d -> {
+					if (order.compare(other.min(), min) > 0 && order.compare(other.max(), max) < 0) {
+						// Other interval is inside the current interval
+						return Union.of(
+								Interval.of(that.min(), d.prev(other.min()), order, step),
+								Interval.of(d.next(other.max()), that.max(), order, step));
+					} else if (order.compare(other.min(), min) <= 0) {
+						// Other interval starts before the current interval and ends somewhere in the middle
+						return Interval.of(d.next(other.max()), that.max(), order, step);
+					} else {
+						// Other interval starts somewhere in the middle of the current interval and ends after it
+						return Interval.of(that.min(), d.prev(other.min()), order, step);
+					}
+				}).getOrElse(that);
 			}
 
 			@Override
@@ -222,7 +243,7 @@ public class Interval<T> extends Domain<T> {
 			@Override
 			public Domain<T> visit(EnumeratedDomain<T> domain) {
 				return domain.stream()
-						.map(v -> Singleton.of(Arithmetic.ofCasted(v)))
+						.map(v -> Singleton.of(v, order, step))
 						.<Domain<T>> reduce(that,
 								Domain::difference,
 								Exceptions.throwingBiOp(UnsupportedClassVersionError::new));
@@ -237,14 +258,14 @@ public class Interval<T> extends Domain<T> {
 
 	@Override
 	public String toString() {
-		return "[" + min().getValue() + " → " + max().getValue() + "]";
+		return "[" + min + " → " + max + "]";
 	}
 
-	static <T extends Comparable<T>> T minValue(T l, T r) {
-		return l.compareTo(r) < 0 ? l : r;
+	static <T> T minValue(T l, T r, Comparator<T> order) {
+		return order.compare(l, r) < 0 ? l : r;
 	}
 
-	static <T extends Comparable<T>> T maxValue(T l, T r) {
-		return l.compareTo(r) > 0 ? l : r;
+	static <T> T maxValue(T l, T r, Comparator<T> order) {
+		return order.compare(l, r) > 0 ? l : r;
 	}
 }
