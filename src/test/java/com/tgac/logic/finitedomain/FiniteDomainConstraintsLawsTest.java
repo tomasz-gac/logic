@@ -21,7 +21,7 @@ import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Test;
 
-@LawsFor({LeqO.class, LssO.class, AddO.class, MulO.class, SeparateO.class})
+@LawsFor({Leq.class, Lss.class, Add.class, Mul.class, Separate.class})
 public class FiniteDomainConstraintsLawsTest {
 
 	@AfterClass
@@ -39,13 +39,13 @@ public class FiniteDomainConstraintsLawsTest {
 		// the FD schemas ride the structural default: a schema atom entails
 		// exactly itself; distinct schemas and distinct terms are incomparable
 		PartialOrderLaws.check(Arrays.asList(
-				new LeqO(X, Y),
-				new LeqO(Y, X),
-				new LssO(X, Y),
-				new LssO(Y, X),
-				new AddO(X, Y, X),
-				new MulO(X, Y, X),
-				new SeparateO(X, Y)));
+				new Leq(X, Y),
+				new Leq(Y, X),
+				new Lss(X, Y),
+				new Lss(Y, X),
+				new Add(X, Y, X),
+				new Mul(X, Y, X),
+				new Separate(X, Y)));
 	}
 
 	@Test

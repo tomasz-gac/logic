@@ -19,13 +19,13 @@ import io.vavr.control.Option;
 import java.util.Collections;
 import java.util.Objects;
 
-final class SeparateO extends Propagator<FiniteDomainConstraints> {
+final class Separate extends Propagator<FiniteDomainConstraints> {
 
-	SeparateO(Term<?> l, Term<?> r) {
+	Separate(Term<?> l, Term<?> r) {
 		this(Array.of(l, r));
 	}
 
-	private SeparateO(Array<? extends Term<?>> terms) {
+	private Separate(Array<? extends Term<?>> terms) {
 		super(terms);
 	}
 
@@ -33,7 +33,7 @@ final class SeparateO extends Propagator<FiniteDomainConstraints> {
 	public Verdict propagate(Package state) {
 		return FiniteDomain.letDomain(state, FiniteDomain.<Object> typed(watchedTerms()))
 				.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
-				.map(ds -> ds.apply(SeparateO::verdict))
+				.map(ds -> ds.apply(Separate::verdict))
 				.getOrElse(Verdict::keep);
 	}
 
@@ -67,7 +67,7 @@ final class SeparateO extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Propagator<FiniteDomainConstraints> watching(Array<? extends Term<?>> terms) {
-		return new SeparateO(terms);
+		return new Separate(terms);
 	}
 
 	@Override

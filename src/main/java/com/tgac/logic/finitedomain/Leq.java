@@ -10,13 +10,13 @@ import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.collection.Array;
 
-final class LeqO extends Propagator<FiniteDomainConstraints> {
+final class Leq extends Propagator<FiniteDomainConstraints> {
 
-	LeqO(Term<?> less, Term<?> more) {
+	Leq(Term<?> less, Term<?> more) {
 		this(Array.of(less, more));
 	}
 
-	private LeqO(Array<? extends Term<?>> terms) {
+	private Leq(Array<? extends Term<?>> terms) {
 		super(terms);
 	}
 
@@ -29,7 +29,7 @@ final class LeqO extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Propagator<FiniteDomainConstraints> watching(Array<? extends Term<?>> terms) {
-		return new LeqO(terms);
+		return new Leq(terms);
 	}
 
 	@Override

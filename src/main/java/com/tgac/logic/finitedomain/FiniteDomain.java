@@ -91,21 +91,21 @@ public class FiniteDomain {
 	}
 
 	public static <T> Posting leq(Unifiable<T> less, Unifiable<T> more) {
-		return Propagation.activate(new LeqO(less, more));
+		return Propagation.activate(new Leq(less, more));
 	}
 
 	public static <T> Posting lss(Unifiable<T> less, Unifiable<T> more) {
-		return Propagation.activate(new LssO(less, more));
+		return Propagation.activate(new Lss(less, more));
 	}
 
 	public static <T> Posting gtr(Unifiable<T> more, Unifiable<T> less) {
 		// more > less IS less < more: one sharp atom, the schema's own doom
-		return Propagation.activate(new LssO(less, more));
+		return Propagation.activate(new Lss(less, more));
 	}
 
 	public static <T> Posting geq(Unifiable<T> more, Unifiable<T> less) {
 		// more >= less violated ⟺ less <= more violated: the schema's own doom
-		return Propagation.activate(new LeqO(less, more));
+		return Propagation.activate(new Leq(less, more));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -153,7 +153,7 @@ public class FiniteDomain {
 	}
 
 	static <T> Posting addoFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return Propagation.activate(new AddO(a, b, rhs));
+		return Propagation.activate(new Add(a, b, rhs));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -196,7 +196,7 @@ public class FiniteDomain {
 	}
 
 	static <T> Posting mulFD(Unifiable<T> a, Unifiable<T> b, Unifiable<T> rhs) {
-		return Propagation.activate(new MulO(a, b, rhs));
+		return Propagation.activate(new Mul(a, b, rhs));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -275,7 +275,7 @@ public class FiniteDomain {
 	}
 
 	public static <T> Posting separate(Unifiable<T> l, Unifiable<T> r) {
-		return Propagation.activate(new SeparateO(l, r));
+		return Propagation.activate(new Separate(l, r));
 	}
 
 	static <T> Option<Arithmetic<T>> getSingleElement(Domain<T> dom) {

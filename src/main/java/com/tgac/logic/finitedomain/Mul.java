@@ -1,6 +1,6 @@
 package com.tgac.logic.finitedomain;
 
-// ABOUTME: The add schema: a + b = rhs — interval bounds narrow all three
+// ABOUTME: The mul schema: a * b = rhs — interval bounds narrow all three
 // ABOUTME: positions; ground triples verify exactly.
 
 import com.tgac.logic.goals.Package;
@@ -10,13 +10,13 @@ import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.collection.Array;
 
-final class AddO extends Propagator<FiniteDomainConstraints> {
+final class Mul extends Propagator<FiniteDomainConstraints> {
 
-	AddO(Term<?> a, Term<?> b, Term<?> rhs) {
+	Mul(Term<?> a, Term<?> b, Term<?> rhs) {
 		this(Array.of(a, b, rhs));
 	}
 
-	private AddO(Array<? extends Term<?>> terms) {
+	private Mul(Array<? extends Term<?>> terms) {
 		super(terms);
 	}
 
@@ -24,7 +24,7 @@ final class AddO extends Propagator<FiniteDomainConstraints> {
 	public Verdict propagate(Package state) {
 		return FiniteDomain.<Object> gated(vds ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
-								.apply((u, v, w) -> FiniteDomain.addVerdict(u, v, w,
+								.apply((u, v, w) -> FiniteDomain.mulVerdict(u, v, w,
 										u.getDomain().min(), v.getDomain().min(), w.getDomain().min(),
 										u.getDomain().max(), v.getDomain().max(), w.getDomain().max())))
 				.apply(watchedTerms(), state);
@@ -32,7 +32,7 @@ final class AddO extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Propagator<FiniteDomainConstraints> watching(Array<? extends Term<?>> terms) {
-		return new AddO(terms);
+		return new Mul(terms);
 	}
 
 	@Override
@@ -42,7 +42,7 @@ final class AddO extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public String name() {
-		return "add";
+		return "mul";
 	}
 
 	@Override

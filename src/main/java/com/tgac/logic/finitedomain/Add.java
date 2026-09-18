@@ -1,7 +1,7 @@
 package com.tgac.logic.finitedomain;
 
-// ABOUTME: The strict-order schema: less < more as ONE atom — sharp bounds narrow
-// ABOUTME: both ways immediately; doomed the moment a ground comparison violates.
+// ABOUTME: The add schema: a + b = rhs — interval bounds narrow all three
+// ABOUTME: positions; ground triples verify exactly.
 
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
@@ -10,26 +10,29 @@ import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.collection.Array;
 
-final class LssO extends Propagator<FiniteDomainConstraints> {
+final class Add extends Propagator<FiniteDomainConstraints> {
 
-	LssO(Term<?> less, Term<?> more) {
-		this(Array.of(less, more));
+	Add(Term<?> a, Term<?> b, Term<?> rhs) {
+		this(Array.of(a, b, rhs));
 	}
 
-	private LssO(Array<? extends Term<?>> terms) {
+	private Add(Array<? extends Term<?>> terms) {
 		super(terms);
 	}
 
 	@Override
 	public Verdict propagate(Package state) {
-		return FiniteDomain.<Object> gated(vds ->
-						Tuple.of(vds.get(0), vds.get(1)).apply(FiniteDomain::lssVerdict))
+		return FiniteDomain.gated(vds ->
+						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
+								.apply((u, v, w) -> FiniteDomain.addVerdict(u, v, w,
+										u.getDomain().min(), v.getDomain().min(), w.getDomain().min(),
+										u.getDomain().max(), v.getDomain().max(), w.getDomain().max())))
 				.apply(watchedTerms(), state);
 	}
 
 	@Override
 	public Propagator<FiniteDomainConstraints> watching(Array<? extends Term<?>> terms) {
-		return new LssO(terms);
+		return new Add(terms);
 	}
 
 	@Override
@@ -38,14 +41,8 @@ final class LssO extends Propagator<FiniteDomainConstraints> {
 	}
 
 	@Override
-	public boolean doomed(Package state) {
-		return FiniteDomain.cmpOrder(state.substitution(),
-				watchedTerms().get(0), watchedTerms().get(1), c -> c < 0) == 0;
-	}
-
-	@Override
 	public String name() {
-		return "lss";
+		return "add";
 	}
 
 	@Override
