@@ -1,7 +1,7 @@
 package com.tgac.logic.finitedomain.domains;
 
-// ABOUTME: The explicit-element domain: an ordered array of raw values —
-// ABOUTME: gapped by construction, enumerable without any step seat.
+// ABOUTME: The explicit-element domain: a sorted, deduplicated array of raw
+// ABOUTME: values — gapped by construction, enumerable without any step seat.
 
 import com.tgac.functional.Exceptions;
 import com.tgac.logic.finitedomain.Bound;
@@ -9,14 +9,23 @@ import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 
+/**
+ * CANONICAL FORM: the construction door sorts by the order seat and drops
+ * comparison-equal duplicates, so one value set has one spelling —
+ * {@code {3, 1, 2}} IS {@code {1, 2, 3}} — the identity the equal-domain
+ * guard and answer keys rely on, and the invariant every binary search
+ * here stands on. Narrowings and set operations only ever shrink a
+ * canonical array, so they stay canonical without re-sorting.
+ */
 @Value
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
@@ -27,9 +36,20 @@ public class EnumeratedDomain<T> extends Domain<T> {
 	@EqualsAndHashCode.Exclude
 	Option<Discrete<T>> step;
 
-	/** Canonical: an empty argument is the Empty domain, one element a Singleton. Elements must arrive in order. */
+	/** Canonical: an empty argument is the Empty domain, one element a Singleton. */
 	public static <T> Domain<T> of(Iterable<T> e, Comparator<T> order, Option<Discrete<T>> step) {
-		return normalized(Array.ofAll(e), order, step);
+		return normalized(canonical(Array.ofAll(e), order), order, step);
+	}
+
+	private static <T> Array<T> canonical(Array<T> raw, Comparator<T> order) {
+		Array<T> sorted = raw.sorted(order);
+		List<T> distinct = new ArrayList<>(sorted.size());
+		for (T value : sorted) {
+			if (distinct.isEmpty() || order.compare(distinct.get(distinct.size() - 1), value) != 0) {
+				distinct.add(value);
+			}
+		}
+		return distinct.size() == sorted.size() ? sorted : Array.ofAll(distinct);
 	}
 
 	@Override
@@ -54,10 +74,7 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> atLeast(Bound<T> bound) {
-		// TODO : .toJavaList() is doing allocation. Also, where is the sorting that's assumed in binary search?
-		// TODO : we should probably hold an elements as java array, or maybe use binary search over vavr's type?
-		// TODO : Or maybe we should hold some sort of sorted set here?
-		int index = Collections.binarySearch(elements.toJavaList(), bound.getValue(), order);
+		int index = search(bound.getValue());
 		int from = index >= 0 ?
 				(bound.isIncluded() ? index : index + 1) :
 				-(index + 1);
@@ -66,14 +83,33 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> atMost(Bound<T> bound) {
-		// TODO : .toJavaList() is doing allocation. Also, where is the sorting that's assumed in binary search?
-		// TODO : we should probably hold an elements as java array, or maybe use binary search over vavr's type?
-		// TODO : Or maybe we should hold some sort of sorted set here?
-		int index = Collections.binarySearch(elements.toJavaList(), bound.getValue(), order);
+		int index = search(bound.getValue());
 		int to = index >= 0 ?
 				(bound.isIncluded() ? index + 1 : index) :
 				-(index + 1);
 		return normalized(elements.subSequence(0, to), order, step);
+	}
+
+	/**
+	 * Binary search over the canonical array, no copy: the found index, or
+	 * {@code -(insertionPoint) - 1} — {@link java.util.Collections#binarySearch}'s
+	 * contract.
+	 */
+	private int search(T value) {
+		int lo = 0;
+		int hi = elements.size() - 1;
+		while (lo <= hi) {
+			int mid = (lo + hi) >>> 1;
+			int c = order.compare(elements.get(mid), value);
+			if (c < 0) {
+				lo = mid + 1;
+			} else if (c > 0) {
+				hi = mid - 1;
+			} else {
+				return mid;
+			}
+		}
+		return -(lo + 1);
 	}
 
 	private static <T> Domain<T> normalized(Array<T> result, Comparator<T> order, Option<Discrete<T>> step) {
@@ -101,20 +137,17 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public boolean contains(T v) {
-		return elements.toJavaStream()
-				.anyMatch(v::equals);
+		return search(v) >= 0;
 	}
 
 	@Override
 	public boolean isDisjoint(Domain<T> other) {
-		// TODO : this assumes the contains in other is cheap, which is not if it's an EnumeratedDomain
 		return elements.toJavaStream()
 				.noneMatch(other::contains);
 	}
 
 	@Override
 	public Domain<T> difference(Domain<T> other) {
-		// TODO : this assumes the contains in other is cheap, which is not if it's an EnumeratedDomain
 		return normalized(elements.toJavaStream()
 						.filter(v -> !other.contains(v))
 						.collect(Array.collector()),
@@ -123,7 +156,6 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> intersect(Domain<T> other) {
-		// TODO : this assumes the contains in other is cheap, which is not if it's an EnumeratedDomain
 		return normalized(elements.toJavaStream()
 						.filter(other::contains)
 						.collect(Array.collector()),

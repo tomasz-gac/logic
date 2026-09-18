@@ -10,6 +10,28 @@ public class EnumeratedDomainTest {
 			Ints.enumerated(2, 3, 5);
 
 	@Test
+	public void unsortedInputCanonicalizes() {
+		// one value set, one spelling: the construction door sorts, so the
+		// binary-searched narrowings and the bounds are right regardless of
+		// the order the caller stated
+		Assertions.assertThat(Ints.enumerated(3, 1, 2))
+				.isEqualTo(Ints.enumerated(1, 2, 3));
+		Assertions.assertThat(Ints.enumerated(5, 2, 9).atMost(5))
+				.isEqualTo(Ints.enumerated(2, 5));
+		Assertions.assertThat(Ints.enumerated(5, 2, 9).min()).isEqualTo(2);
+		Assertions.assertThat(Ints.enumerated(5, 2, 9).max()).isEqualTo(9);
+	}
+
+	@Test
+	public void duplicatesCollapse() {
+		Assertions.assertThat(Ints.enumerated(2, 1, 2, 1))
+				.isEqualTo(Ints.enumerated(1, 2));
+		Assertions.assertThat(Ints.enumerated(4, 4, 4))
+				.isEqualTo(Ints.singleton(4));
+		Assertions.assertThat(Ints.enumerated(2, 1, 2).stream()).hasSize(2);
+	}
+
+	@Test
 	public void shouldNotContain() {
 		Assertions.assertThat(INTERVAL.contains(1)).isFalse();
 	}
