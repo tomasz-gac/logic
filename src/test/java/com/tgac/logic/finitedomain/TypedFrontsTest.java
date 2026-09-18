@@ -267,6 +267,52 @@ public class TypedFrontsTest {
 	}
 
 	@Test
+	public void multoMintsTheProductHull() {
+		Unifiable<Integer> u = lvar();
+		Unifiable<Integer> v = lvar();
+		Unifiable<Integer> w = lvar();
+		Package p = imposed(dom(u, Ints.interval(2, 3)), Package.empty());
+		p = imposed(dom(v, Ints.interval(2, 3)), p);
+
+		Package minted = imposed(Ints.multo(u, v, w), p);
+
+		Assertions.assertThat(FiniteDomainConstraints.getDom(minted, w.getVar()).get())
+				.isEqualTo(Ints.interval(4, 9));
+	}
+
+	@Test
+	public void multoMintsAnExactQuotientHull() {
+		// every endpoint of [4,8] / [2,4] divides exactly: the factor's hull
+		// is mintable without any rounding seat
+		Unifiable<Integer> u = lvar();
+		Unifiable<Integer> v = lvar();
+		Unifiable<Integer> w = lvar();
+		Package p = imposed(dom(v, Ints.interval(2, 4)), Package.empty());
+		p = imposed(dom(w, Ints.interval(4, 8)), p);
+
+		Package minted = imposed(Ints.multo(u, v, w), p);
+
+		Assertions.assertThat(FiniteDomainConstraints.getDom(minted, u.getVar()).get())
+				.isEqualTo(Ints.interval(1, 4));
+	}
+
+	@Test
+	public void multoKeepsTheFactorWhenTheDivisorSpansZero() {
+		// w/v is unbounded around v = 0: no hull exists, the constraint
+		// parks and waits — no mint, no lie
+		Unifiable<Integer> u = lvar();
+		Unifiable<Integer> v = lvar();
+		Unifiable<Integer> w = lvar();
+		Package p = imposed(dom(v, Ints.interval(-1, 1)), Package.empty());
+		p = imposed(dom(w, Ints.interval(4, 8)), p);
+
+		Package kept = imposed(Ints.multo(u, v, w), p);
+
+		Assertions.assertThat(FiniteDomainConstraints.getDom(kept, u.getVar())).isEmpty();
+		Assertions.assertThat(FiniteDomainConstraints.getConstraints(kept)).hasSize(1);
+	}
+
+	@Test
 	public void multoComputesTheProduct() {
 		Unifiable<Integer> w = lvar();
 		Package p = imposed(dom(w, Ints.interval(0, 100)), Package.empty());

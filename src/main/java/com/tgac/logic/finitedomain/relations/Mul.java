@@ -62,20 +62,42 @@ public final class Mul extends Propagator<FiniteDomainConstraints> {
 				.apply(watchedTerms(), state);
 	}
 
-	/** The functional dependency read at the free position: a · b = rhs. */
+	/**
+	 * The functional dependency read at the free position: a · b = rhs.
+	 * Points compute sharply (the exact inverse REFUTES what it cannot
+	 * divide); wide operands mint hulls — the product's always, a factor's
+	 * only when the quotient box is sign-constant and exact.
+	 */
 	private Verdict computedThird(Operators.SoleFree<Object> free) {
 		int first = free.getPosition() == 0 ? 1 : 0;
 		int second = free.getPosition() == 2 ? 1 : 2;
-		if (!(free.pointAt(first, order) && free.pointAt(second, order))) {
-			return Verdict.keep();
+		if (free.pointAt(first, order) && free.pointAt(second, order)) {
+			if (free.getPosition() == 2) {
+				return Operators.narrowToPoint(free.getVariable(),
+						multiplicative.times(free.valueAt(0), free.valueAt(1)), order, step);
+			}
+			return free.getPosition() == 1 ?
+					solveFactor(free.getVariable(), free.valueAt(0), free.valueAt(2), multiplicative, order, step) :
+					solveFactor(free.getVariable(), free.valueAt(1), free.valueAt(2), multiplicative, order, step);
 		}
 		if (free.getPosition() == 2) {
-			return Operators.narrowToPoint(free.getVariable(),
-					multiplicative.times(free.valueAt(0), free.valueAt(1)), order, step);
+			Domain<Object> u = free.domainAt(0);
+			Domain<Object> v = free.domainAt(1);
+			Array<Bound<Object>> products = Array.of(
+					times(u.lower(), v.lower(), multiplicative),
+					times(u.upper(), v.lower(), multiplicative),
+					times(u.lower(), v.upper(), multiplicative),
+					times(u.upper(), v.upper(), multiplicative));
+			return Operators.mintHull(free.getVariable(),
+					lowest(products, order), highest(products, order), order, step);
 		}
-		return free.getPosition() == 1 ?
-				solveFactor(free.getVariable(), free.valueAt(0), free.valueAt(2), multiplicative, order, step) :
-				solveFactor(free.getVariable(), free.valueAt(1), free.valueAt(2), multiplicative, order, step);
+		Domain<Object> product = free.domainAt(2);
+		Domain<Object> cofactor = free.domainAt(free.getPosition() == 1 ? 0 : 1);
+		return quotientBounds(product.lower(), product.upper(),
+						cofactor.lower(), cofactor.upper(), multiplicative, order, step)
+				.map(hull -> Operators.mintHull(free.getVariable(),
+						hull.lower(), hull.upper(), order, step))
+				.getOrElse(Verdict::keep);
 	}
 
 	@Override
