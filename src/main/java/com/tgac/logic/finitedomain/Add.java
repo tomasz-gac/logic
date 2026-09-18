@@ -39,12 +39,10 @@ final class Add extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Verdict propagate(Package state) {
-		return FiniteDomain.gated(order, step, (Array<FiniteDomain.VarWithDomain<Object>> vds) ->
+		return FiniteDomain.gated(order, (Array<FiniteDomain.VarWithDomain<Object>> vds) ->
 						Tuple.of(vds.get(0), vds.get(1), vds.get(2))
 								.apply((u, v, w) -> FiniteDomain.addVerdict(u, v, w,
-										arithmetic, order, step,
-										u.getDomain().min(), v.getDomain().min(), w.getDomain().min(),
-										u.getDomain().max(), v.getDomain().max(), w.getDomain().max())))
+										arithmetic, order, step)))
 				.apply(watchedTerms(), state);
 	}
 

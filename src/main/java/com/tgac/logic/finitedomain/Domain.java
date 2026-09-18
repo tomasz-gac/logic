@@ -60,8 +60,8 @@ public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<
 			return true;
 		}
 		if (other.isEmpty()
-				|| order().compare(other.min(), min()) > 0
-				|| order().compare(other.max(), max()) < 0) {
+				|| !Bound.coversLower(other.lower(), lower(), order())
+				|| !Bound.coversUpper(other.upper(), upper(), order())) {
 			return false;
 		}
 		if (other instanceof Interval) {
@@ -89,19 +89,36 @@ public abstract class Domain<T> implements com.tgac.logic.lattice.Domain<Domain<
 	/** The discreteness seat where the type has one — stepping, streaming, labelling. */
 	public abstract Option<Discrete<T>> step();
 
-	public abstract T min();
+	public abstract Bound<T> lower();
 
-	public abstract T max();
+	public abstract Bound<T> upper();
+
+	/** The bound values without their inclusivity — the arithmetic reading. */
+	public final T min() {
+		return lower().getValue();
+	}
+
+	public final T max() {
+		return upper().getValue();
+	}
 
 	/**
-	 * The values of this domain that are ≥ {@code value} (inclusive lower bound).
+	 * The values of this domain the bound admits from below. A type with a
+	 * step seat normalizes an open bound to its closed form first — one
+	 * spelling per value set, the identity the equal-domain guard relies on.
 	 */
-	public abstract Domain<T> atLeast(T value);
+	public abstract Domain<T> atLeast(Bound<T> bound);
 
-	/**
-	 * The values of this domain that are ≤ {@code value} (inclusive upper bound).
-	 */
-	public abstract Domain<T> atMost(T value);
+	/** The values of this domain the bound admits from above. */
+	public abstract Domain<T> atMost(Bound<T> bound);
+
+	public final Domain<T> atLeast(T value) {
+		return atLeast(Bound.closed(value));
+	}
+
+	public final Domain<T> atMost(T value) {
+		return atMost(Bound.closed(value));
+	}
 
 	public abstract Domain<T> intersect(Domain<T> other);
 

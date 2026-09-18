@@ -45,8 +45,8 @@ public class FiniteDomainConstraintsLawsTest {
 		PartialOrderLaws.check(Arrays.asList(
 				new Leq(X, Y, Comparator.naturalOrder()),
 				new Leq(Y, X, Comparator.naturalOrder()),
-				new Lss(X, Y, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
-				new Lss(Y, X, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
+				new Lss(X, Y, Comparator.naturalOrder()),
+				new Lss(Y, X, Comparator.naturalOrder()),
 				new Add(X, Y, X, Arithmetic.LONGS, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
 				new Mul(X, Y, X, Multiplicative.LONGS, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
 				new Separate(X, Y, Comparator.naturalOrder())));

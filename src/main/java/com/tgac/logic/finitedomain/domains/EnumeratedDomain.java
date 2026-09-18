@@ -4,6 +4,7 @@ package com.tgac.logic.finitedomain.domains;
 // ABOUTME: gapped by construction, enumerable without any step seat.
 
 import com.tgac.functional.Exceptions;
+import com.tgac.logic.finitedomain.Bound;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.collection.Array;
@@ -52,22 +53,20 @@ public class EnumeratedDomain<T> extends Domain<T> {
 	}
 
 	@Override
-	public Domain<T> atLeast(T e) {
-		if (order.compare(e, max()) > 0) {
-			return Empty.instance();
-		}
-		int index = Collections.binarySearch(elements.toJavaList(), e, order);
-		int from = index >= 0 ? index : -(index + 1);
+	public Domain<T> atLeast(Bound<T> bound) {
+		int index = Collections.binarySearch(elements.toJavaList(), bound.getValue(), order);
+		int from = index >= 0 ?
+				(bound.isIncluded() ? index : index + 1) :
+				-(index + 1);
 		return normalized(elements.subSequence(from, elements.size()), order, step);
 	}
 
 	@Override
-	public Domain<T> atMost(T e) {
-		if (order.compare(e, min()) < 0) {
-			return Empty.instance();
-		}
-		int index = Collections.binarySearch(elements.toJavaList(), e, order);
-		int to = index >= 0 ? index + 1 : -(index + 1);
+	public Domain<T> atMost(Bound<T> bound) {
+		int index = Collections.binarySearch(elements.toJavaList(), bound.getValue(), order);
+		int to = index >= 0 ?
+				(bound.isIncluded() ? index + 1 : index) :
+				-(index + 1);
 		return normalized(elements.subSequence(0, to), order, step);
 	}
 
@@ -79,19 +78,19 @@ public class EnumeratedDomain<T> extends Domain<T> {
 	}
 
 	@Override
-	public T min() {
+	public Bound<T> lower() {
 		return Option.of(elements)
 				.filter(e -> !e.isEmpty())
-				.map(e -> e.get(0))
-				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call min on empty domain"));
+				.map(e -> Bound.closed(e.get(0)))
+				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call lower on empty domain"));
 	}
 
 	@Override
-	public T max() {
+	public Bound<T> upper() {
 		return Option.of(elements)
 				.filter(e -> !e.isEmpty())
-				.map(e -> e.get(e.size() - 1))
-				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call min on empty domain"));
+				.map(e -> Bound.closed(e.get(e.size() - 1)))
+				.getOrElseThrow(Exceptions.format(IllegalStateException::new, "Cannot call upper on empty domain"));
 	}
 
 	@Override

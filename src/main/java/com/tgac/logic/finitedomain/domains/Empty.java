@@ -3,6 +3,7 @@ package com.tgac.logic.finitedomain.domains;
 // ABOUTME: The empty domain — the lattice bottom: absorbing, memberless,
 // ABOUTME: seatless; every query on its bounds refuses.
 
+import com.tgac.logic.finitedomain.Bound;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.control.Option;
@@ -22,12 +23,12 @@ public class Empty<T> extends Domain<T> {
 	}
 
 	@Override
-	public Domain<T> atLeast(T p) {
+	public Domain<T> atLeast(Bound<T> bound) {
 		return this;
 	}
 
 	@Override
-	public Domain<T> atMost(T p) {
+	public Domain<T> atMost(Bound<T> bound) {
 		return this;
 	}
 
@@ -52,13 +53,13 @@ public class Empty<T> extends Domain<T> {
 	}
 
 	@Override
-	public T min() {
-		throw new UnsupportedOperationException("Cannot call min on empty domain");
+	public Bound<T> lower() {
+		throw new UnsupportedOperationException("Cannot call lower on empty domain");
 	}
 
 	@Override
-	public T max() {
-		throw new UnsupportedOperationException("Cannot call max on empty domain");
+	public Bound<T> upper() {
+		throw new UnsupportedOperationException("Cannot call upper on empty domain");
 	}
 
 	@Override

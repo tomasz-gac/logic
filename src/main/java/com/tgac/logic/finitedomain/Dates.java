@@ -39,11 +39,11 @@ public final class Dates {
 	}
 
 	public static Posting lss(Unifiable<LocalDate> less, Unifiable<LocalDate> more) {
-		return FiniteDomain.lss(less, more, ORDER, STEP);
+		return FiniteDomain.lss(less, more, ORDER);
 	}
 
 	public static Posting gtr(Unifiable<LocalDate> more, Unifiable<LocalDate> less) {
-		return FiniteDomain.gtr(more, less, ORDER, STEP);
+		return FiniteDomain.gtr(more, less, ORDER);
 	}
 
 	public static Posting geq(Unifiable<LocalDate> more, Unifiable<LocalDate> less) {

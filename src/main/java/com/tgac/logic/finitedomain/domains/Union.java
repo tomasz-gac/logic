@@ -3,9 +3,9 @@ package com.tgac.logic.finitedomain.domains;
 // ABOUTME: The gapped domain: disjoint members kept sorted and merged where they
 // ABOUTME: touch — adjacency needs the members' step seat, overlap only their order.
 
-import static com.tgac.logic.finitedomain.domains.Interval.maxValue;
 import static io.vavr.Predicates.not;
 
+import com.tgac.logic.finitedomain.Bound;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.collection.Array;
@@ -56,15 +56,16 @@ public class Union<T> extends Domain<T> {
 
 		for (int i = 1; i < intervals.size(); i++) {
 			Domain<T> processedInterval = intervals.get(i);
-			// without stepping, only genuine overlap merges — adjacency is invisible
+			// a step seat extends the reach by one unit — discrete adjacency;
+			// otherwise the bounds themselves decide whether the members touch
 			Domain<T> current = currentInterval;
-			T reach = current.step()
-					.map(d -> d.next(current.max()))
-					.getOrElse(current::max);
-			if (order.compare(reach, processedInterval.min()) >= 0) {
+			Bound<T> reach = current.step()
+					.map(d -> Bound.closed(d.next(current.max())))
+					.getOrElse(current::upper);
+			if (Bound.meets(reach, processedInterval.lower(), order)) {
 				currentInterval = Interval.of(
-						current.min(),
-						maxValue(current.max(), processedInterval.max(), order),
+						current.lower(),
+						Bound.looserUpper(current.upper(), processedInterval.upper(), order),
 						order,
 						current.step().isDefined() ? current.step() : processedInterval.step());
 
@@ -75,10 +76,8 @@ public class Union<T> extends Domain<T> {
 		}
 		mergedIntervals.add(currentInterval);
 		mergedIntervals = mergedIntervals.stream()
-				.map(d -> d instanceof Interval ?
-						order.compare(d.max(), d.min()) == 0 ?
-								Singleton.of(d.min(), d.order(), d.step()) :
-								d :
+				.map(d -> d instanceof Interval && Bound.point(d.lower(), d.upper(), order) ?
+						Singleton.of(d.min(), d.order(), d.step()) :
 						d)
 				.collect(Collectors.toList());
 
@@ -113,23 +112,23 @@ public class Union<T> extends Domain<T> {
 	}
 
 	@Override
-	public T min() {
-		return intervals.head().min();
+	public Bound<T> lower() {
+		return intervals.head().lower();
 	}
 
 	@Override
-	public T max() {
-		return intervals.last().max();
+	public Bound<T> upper() {
+		return intervals.last().upper();
 	}
 
 	@Override
-	public Domain<T> atLeast(T value) {
-		return onEachInterval(i -> i.atLeast(value));
+	public Domain<T> atLeast(Bound<T> bound) {
+		return onEachInterval(i -> i.atLeast(bound));
 	}
 
 	@Override
-	public Domain<T> atMost(T value) {
-		return onEachInterval(i -> i.atMost(value));
+	public Domain<T> atMost(Bound<T> bound) {
+		return onEachInterval(i -> i.atMost(bound));
 	}
 
 	@Override

@@ -44,11 +44,11 @@ public final class Ints {
 	}
 
 	public static Posting lss(Unifiable<Integer> less, Unifiable<Integer> more) {
-		return FiniteDomain.lss(less, more, ORDER, STEP);
+		return FiniteDomain.lss(less, more, ORDER);
 	}
 
 	public static Posting gtr(Unifiable<Integer> more, Unifiable<Integer> less) {
-		return FiniteDomain.gtr(more, less, ORDER, STEP);
+		return FiniteDomain.gtr(more, less, ORDER);
 	}
 
 	public static Posting geq(Unifiable<Integer> more, Unifiable<Integer> less) {

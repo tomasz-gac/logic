@@ -48,11 +48,11 @@ public final class BigDecimals {
 	}
 
 	public static Posting lss(Unifiable<BigDecimal> less, Unifiable<BigDecimal> more) {
-		return FiniteDomain.lss(less, more, ORDER, STEP);
+		return FiniteDomain.lss(less, more, ORDER);
 	}
 
 	public static Posting gtr(Unifiable<BigDecimal> more, Unifiable<BigDecimal> less) {
-		return FiniteDomain.gtr(more, less, ORDER, STEP);
+		return FiniteDomain.gtr(more, less, ORDER);
 	}
 
 	public static Posting geq(Unifiable<BigDecimal> more, Unifiable<BigDecimal> less) {

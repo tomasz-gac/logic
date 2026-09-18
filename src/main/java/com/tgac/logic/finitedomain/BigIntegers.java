@@ -50,11 +50,11 @@ public final class BigIntegers {
 	}
 
 	public static Posting lss(Unifiable<BigInteger> less, Unifiable<BigInteger> more) {
-		return FiniteDomain.lss(less, more, ORDER, STEP);
+		return FiniteDomain.lss(less, more, ORDER);
 	}
 
 	public static Posting gtr(Unifiable<BigInteger> more, Unifiable<BigInteger> less) {
-		return FiniteDomain.gtr(more, less, ORDER, STEP);
+		return FiniteDomain.gtr(more, less, ORDER);
 	}
 
 	public static Posting geq(Unifiable<BigInteger> more, Unifiable<BigInteger> less) {

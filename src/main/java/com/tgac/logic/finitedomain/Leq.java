@@ -3,14 +3,12 @@ package com.tgac.logic.finitedomain;
 // ABOUTME: The leq schema: less ≤ more — bounds narrow both ways; doomed the
 // ABOUTME: moment a ground comparison already violates the order.
 
-import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.Term;
 import io.vavr.Tuple;
 import io.vavr.collection.Array;
-import io.vavr.control.Option;
 import java.util.Comparator;
 
 final class Leq extends Propagator<FiniteDomainConstraints> {
@@ -29,7 +27,7 @@ final class Leq extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Verdict propagate(Package state) {
-		return FiniteDomain.gated(order, Option.<Discrete<Object>> none(),
+		return FiniteDomain.gated(order,
 						(Array<FiniteDomain.VarWithDomain<Object>> vds) ->
 								Tuple.of(vds.get(0), vds.get(1))
 										.apply((l, m) -> FiniteDomain.leqVerdict(l, m, order)))

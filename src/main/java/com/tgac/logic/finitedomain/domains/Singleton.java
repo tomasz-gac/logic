@@ -3,6 +3,7 @@ package com.tgac.logic.finitedomain.domains;
 // ABOUTME: The one-value domain: the collapse point every narrowing aims at —
 // ABOUTME: membership is equality, bounds are the value itself.
 
+import com.tgac.logic.finitedomain.Bound;
 import com.tgac.logic.finitedomain.Domain;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import io.vavr.control.Option;
@@ -28,13 +29,13 @@ public class Singleton<T> extends Domain<T> {
 	}
 
 	@Override
-	public Domain<T> atLeast(T e) {
-		return order.compare(e, value) > 0 ? Empty.instance() : this;
+	public Domain<T> atLeast(Bound<T> bound) {
+		return bound.asLowerAdmits(value, order) ? this : Empty.instance();
 	}
 
 	@Override
-	public Domain<T> atMost(T e) {
-		return order.compare(e, value) >= 0 ? this : Empty.instance();
+	public Domain<T> atMost(Bound<T> bound) {
+		return bound.asUpperAdmits(value, order) ? this : Empty.instance();
 	}
 
 	@Override
@@ -58,13 +59,13 @@ public class Singleton<T> extends Domain<T> {
 	}
 
 	@Override
-	public T min() {
-		return value;
+	public Bound<T> lower() {
+		return Bound.closed(value);
 	}
 
 	@Override
-	public T max() {
-		return value;
+	public Bound<T> upper() {
+		return Bound.closed(value);
 	}
 
 	@Override

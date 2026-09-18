@@ -7,9 +7,13 @@ import static com.tgac.logic.finitedomain.FiniteDomain.dom;
 import static com.tgac.logic.unification.LVal.lval;
 import static com.tgac.logic.unification.LVar.lvar;
 
+import com.tgac.functional.fibers.schedulers.BreadthFirstScheduler;
 import com.tgac.logic.TestSchedulers;
 import com.tgac.logic.Utils;
+import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.constraints.Trial;
 import com.tgac.logic.goals.Goal;
+import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
 import java.math.BigDecimal;
@@ -142,6 +146,46 @@ public class TypedFrontsTest {
 		Assertions.assertThat(Utils.collect(Goal.success()
 				.and(Instants.lss(lval(later), lval(earlier)))
 				.solve(lval(0L), TestSchedulers.factory()))).isEmpty();
+	}
+
+	@Test
+	public void denseSeparateCutsTheDomainAndDischarges() {
+		// [0,1] − {1} = [0,1): the disequality becomes domain knowledge and
+		// the constraint leaves the store instead of watching forever
+		Unifiable<BigDecimal> x = lvar();
+		Package p = imposed(dom(x, BigDecimals.interval(BigDecimal.ZERO, BigDecimal.ONE)),
+				Package.empty());
+
+		Package cut = imposed(BigDecimals.separate(x, lval(BigDecimal.ONE)), p);
+
+		Domain<BigDecimal> domain = FiniteDomainConstraints.getDom(cut, x.getVar()).get();
+		Assertions.assertThat(domain.contains(BigDecimal.ONE)).isFalse();
+		Assertions.assertThat(domain.contains(new BigDecimal("0.5"))).isTrue();
+		Assertions.assertThat(FiniteDomainConstraints.getConstraints(cut)).isEmpty();
+	}
+
+	@Test
+	public void denseStrictOrderSharpensTheBound() {
+		// x < 2.5 narrows x's domain to [0, 2.5) — the excluded endpoint
+		// leaves the domain while x is still wide, not only at ground
+		Unifiable<BigDecimal> x = lvar();
+		BigDecimal cut = new BigDecimal("2.5");
+		Package p = imposed(dom(x, BigDecimals.interval(BigDecimal.ZERO, cut)),
+				Package.empty());
+
+		Package narrowed = imposed(BigDecimals.lss(x, lval(cut)), p);
+
+		Domain<BigDecimal> domain = FiniteDomainConstraints.getDom(narrowed, x.getVar()).get();
+		Assertions.assertThat(domain.contains(cut)).isFalse();
+		Assertions.assertThat(domain.contains(new BigDecimal("2.4"))).isTrue();
+	}
+
+	private static Package imposed(Posting posting, Package p) {
+		// io.vavr.collection.List: genuine simple-name clash with java.util.List
+		io.vavr.collection.List<Package> worlds =
+				new BreadthFirstScheduler<>(Trial.imposed(posting, p)).get();
+		Assertions.assertThat(worlds).hasSize(1);
+		return worlds.head();
 	}
 
 	@Test

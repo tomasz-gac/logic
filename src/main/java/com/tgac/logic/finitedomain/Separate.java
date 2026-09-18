@@ -5,7 +5,6 @@ package com.tgac.logic.finitedomain;
 
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.FiniteDomain.VarWithDomain;
-import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
@@ -36,8 +35,7 @@ final class Separate extends Propagator<FiniteDomainConstraints> {
 
 	@Override
 	public Verdict propagate(Package state) {
-		return FiniteDomain.letDomain(state, FiniteDomain.<Object> typed(watchedTerms()),
-						order, Option.<Discrete<Object>> none())
+		return FiniteDomain.letDomain(state, FiniteDomain.<Object> typed(watchedTerms()), order)
 				.map(ds -> Tuple.of(ds.get(0), ds.get(1)))
 				.map(ds -> ds.apply(Separate::verdict))
 				.getOrElse(Verdict::keep);

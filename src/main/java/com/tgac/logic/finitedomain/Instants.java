@@ -39,11 +39,11 @@ public final class Instants {
 	}
 
 	public static Posting lss(Unifiable<Instant> less, Unifiable<Instant> more) {
-		return FiniteDomain.lss(less, more, ORDER, STEP);
+		return FiniteDomain.lss(less, more, ORDER);
 	}
 
 	public static Posting gtr(Unifiable<Instant> more, Unifiable<Instant> less) {
-		return FiniteDomain.gtr(more, less, ORDER, STEP);
+		return FiniteDomain.gtr(more, less, ORDER);
 	}
 
 	public static Posting geq(Unifiable<Instant> more, Unifiable<Instant> less) {

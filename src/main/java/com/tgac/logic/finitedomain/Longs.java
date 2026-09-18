@@ -44,11 +44,11 @@ public final class Longs {
 	}
 
 	public static Posting lss(Unifiable<Long> less, Unifiable<Long> more) {
-		return FiniteDomain.lss(less, more, ORDER, STEP);
+		return FiniteDomain.lss(less, more, ORDER);
 	}
 
 	public static Posting gtr(Unifiable<Long> more, Unifiable<Long> less) {
-		return FiniteDomain.gtr(more, less, ORDER, STEP);
+		return FiniteDomain.gtr(more, less, ORDER);
 	}
 
 	public static Posting geq(Unifiable<Long> more, Unifiable<Long> less) {
