@@ -40,7 +40,7 @@ public class Union<T> extends Domain<T> {
 
 	public static <T> Array<Domain<T>> mergeOverlappingIntervals(Array<Domain<T>> intervals) {
 		intervals = intervals
-				.filter(not(Empty.class::isInstance))
+				.filter(not(Domain::isEmpty))
 				.flatMap(fd -> (fd instanceof Union) ?
 						((Union<T>) fd).intervals :
 						Array.of(fd));
@@ -51,7 +51,7 @@ public class Union<T> extends Domain<T> {
 		Comparator<T> order = intervals.get(0).order();
 		intervals = intervals.sortBy(order, Domain::min);
 
-		List<Domain<T>> mergedIntervals = new ArrayList<>();
+		List<Domain<T>> mergedIntervals = new ArrayList<>(intervals.size());
 		Domain<T> currentInterval = intervals.get(0);
 
 		for (int i = 1; i < intervals.size(); i++) {

@@ -54,6 +54,9 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> atLeast(Bound<T> bound) {
+		// TODO : .toJavaList() is doing allocation. Also, where is the sorting that's assumed in binary search?
+		// TODO : we should probably hold an elements as java array, or maybe use binary search over vavr's type?
+		// TODO : Or maybe we should hold some sort of sorted set here?
 		int index = Collections.binarySearch(elements.toJavaList(), bound.getValue(), order);
 		int from = index >= 0 ?
 				(bound.isIncluded() ? index : index + 1) :
@@ -63,6 +66,9 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> atMost(Bound<T> bound) {
+		// TODO : .toJavaList() is doing allocation. Also, where is the sorting that's assumed in binary search?
+		// TODO : we should probably hold an elements as java array, or maybe use binary search over vavr's type?
+		// TODO : Or maybe we should hold some sort of sorted set here?
 		int index = Collections.binarySearch(elements.toJavaList(), bound.getValue(), order);
 		int to = index >= 0 ?
 				(bound.isIncluded() ? index + 1 : index) :
@@ -101,12 +107,14 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public boolean isDisjoint(Domain<T> other) {
+		// TODO : this assumes the contains in other is cheap, which is not if it's an EnumeratedDomain
 		return elements.toJavaStream()
 				.noneMatch(other::contains);
 	}
 
 	@Override
 	public Domain<T> difference(Domain<T> other) {
+		// TODO : this assumes the contains in other is cheap, which is not if it's an EnumeratedDomain
 		return normalized(elements.toJavaStream()
 						.filter(v -> !other.contains(v))
 						.collect(Array.collector()),
@@ -115,6 +123,7 @@ public class EnumeratedDomain<T> extends Domain<T> {
 
 	@Override
 	public Domain<T> intersect(Domain<T> other) {
+		// TODO : this assumes the contains in other is cheap, which is not if it's an EnumeratedDomain
 		return normalized(elements.toJavaStream()
 						.filter(other::contains)
 						.collect(Array.collector()),

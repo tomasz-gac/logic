@@ -233,7 +233,7 @@ public class Interval<T> extends Domain<T> {
 
 			/** The parts of this interval below {@code hi} and above {@code lo}. */
 			private Domain<T> remainder(Bound<T> hi, Bound<T> lo) {
-				List<Domain<T>> parts = new ArrayList<>();
+				List<Domain<T>> parts = new ArrayList<>(2);
 				Domain<T> below = piece(lower, Bound.tighterUpper(hi, upper, order));
 				Domain<T> above = piece(Bound.tighterLower(lo, lower, order), upper);
 				if (!below.isEmpty()) {

@@ -1,9 +1,12 @@
-package com.tgac.logic.finitedomain;
+package com.tgac.logic.finitedomain.relations;
 
 // ABOUTME: FD's domain-update entry: "target ⊂ dom" against a state and theory, and
 // ABOUTME: the batch fold verdicts use; the process-δ primitive is LatticeStore.update.
 
 import com.tgac.logic.constraints.store.Theory;
+import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.FiniteDomainConstraints;
+import com.tgac.logic.finitedomain.relations.Operators.VarWithDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Update;
 import com.tgac.logic.unification.Prefix;
@@ -39,11 +42,11 @@ final class DomainUpdate {
 	 */
 	@SuppressWarnings("unchecked")
 	static Update narrowAll(Package state, Theory<FiniteDomainConstraints> theory,
-			List<FiniteDomain.VarWithDomain<?>> updates) {
+			List<VarWithDomain<?>> updates) {
 		Theory<FiniteDomainConstraints> current = theory;
 		List<Prefix> inferred = new ArrayList<>();
 		List<Term<?>> reexamine = new ArrayList<>();
-		for (FiniteDomain.VarWithDomain<?> update : updates) {
+		for (VarWithDomain<?> update : updates) {
 			Update step = apply(state, current, update.getUnifiable(), update.getDomain());
 			Theory<FiniteDomainConstraints> before = current;
 			current = step.match(

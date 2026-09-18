@@ -1,4 +1,4 @@
-package com.tgac.logic.finitedomain;
+package com.tgac.logic.finitedomain.relations;
 
 // ABOUTME: Pins the toolkit coupling that terminates the unchecked cascade:
 // ABOUTME: re-examination only with strict narrowing, collapse infers only.
@@ -7,6 +7,9 @@ import static com.tgac.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tgac.logic.constraints.store.Theory;
+import com.tgac.logic.finitedomain.Domain;
+import com.tgac.logic.finitedomain.FiniteDomainConstraints;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Update;
 import com.tgac.logic.unification.LVar;

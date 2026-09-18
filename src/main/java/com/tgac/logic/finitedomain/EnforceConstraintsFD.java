@@ -77,6 +77,7 @@ class EnforceConstraintsFD {
 		return FiniteDomainConstraints.reexamine(x);
 	}
 
+	@SuppressWarnings("unchecked")
 	private static <T> Goal unifyWithAllDomainValues(Term<T> x, Domain<T> d) {
 		List<Goal> alternatives = d.stream()
 				.map(domainValue -> unifyTerms((Term<Object>) x, lval(domainValue)))

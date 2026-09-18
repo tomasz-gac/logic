@@ -1,4 +1,4 @@
-package com.tgac.logic.finitedomain;
+package com.tgac.logic.finitedomain.relations;
 
 // ABOUTME: Lattice laws for the FD store: pointwise domain meet × propagator-set
 // ABOUTME: intersection with a canonical bottom — claimed for the coverage gate.
@@ -10,6 +10,8 @@ import com.tgac.functional.algebra.laws.LawsFor;
 import com.tgac.functional.algebra.laws.PartialOrderLaws;
 import com.tgac.functional.algebra.laws.SemilatticeLaws;
 import com.tgac.logic.constraints.store.Theory;
+import com.tgac.logic.finitedomain.FiniteDomainConstraints;
+import com.tgac.logic.finitedomain.Longs;
 import com.tgac.logic.finitedomain.capabilities.Arithmetic;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.capabilities.Multiplicative;
