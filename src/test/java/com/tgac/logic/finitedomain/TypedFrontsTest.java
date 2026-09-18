@@ -19,6 +19,7 @@ import com.tgac.logic.unification.Unifiable;
 import io.vavr.Tuple;
 import io.vavr.Tuple4;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -134,6 +135,76 @@ public class TypedFrontsTest {
 				LocalDate.of(2026, 1, 1),
 				LocalDate.of(2026, 1, 2),
 				LocalDate.of(2026, 1, 3));
+	}
+
+	@Test
+	public void dateAddoShiftsByDays() {
+		// the first genuinely affine triple: point + delta = point, the
+		// positions typed differently — a date, a day count, a date
+		Unifiable<LocalDate> due = lvar();
+
+		Package solved = imposed(Dates.addo(
+				lval(LocalDate.of(2026, 1, 1)), lval(14L), due), Package.empty());
+
+		Assertions.assertThat(solved.walk(due).get()).isEqualTo(LocalDate.of(2026, 1, 15));
+	}
+
+	@Test
+	public void dateAddoComputesTheLength() {
+		// the between reading: two dates determine the day count
+		Unifiable<Long> days = lvar();
+
+		Package solved = imposed(Dates.addo(
+				lval(LocalDate.of(2026, 1, 1)), days, lval(LocalDate.of(2026, 1, 15))), Package.empty());
+
+		Assertions.assertThat(solved.walk(days).get()).isEqualTo(14L);
+	}
+
+	@Test
+	public void dateAddoComputesTheStart() {
+		Unifiable<LocalDate> day = lvar();
+
+		Package solved = imposed(Dates.addo(
+				day, lval(14L), lval(LocalDate.of(2026, 1, 15))), Package.empty());
+
+		Assertions.assertThat(solved.walk(day).get()).isEqualTo(LocalDate.of(2026, 1, 1));
+	}
+
+	@Test
+	public void dateAddoMintsTheDueWindow() {
+		// wide date × wide day count: the due window's hull, minted
+		Unifiable<LocalDate> day = lvar();
+		Unifiable<Long> len = lvar();
+		Unifiable<LocalDate> due = lvar();
+		Package p = imposed(dom(day, Dates.interval(
+				LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 5))), Package.empty());
+		p = imposed(dom(len, Longs.interval(10, 14)), p);
+
+		Package minted = imposed(Dates.addo(day, len, due), p);
+
+		Assertions.assertThat(FiniteDomainConstraints.getDom(minted, due.getVar()).get())
+				.isEqualTo(Dates.interval(LocalDate.of(2026, 1, 11), LocalDate.of(2026, 1, 19)));
+	}
+
+	@Test
+	public void dateAddoVerifiesAGroundTriple() {
+		Assertions.assertThat(worlds(Dates.addo(
+				lval(LocalDate.of(2026, 1, 1)), lval(14L), lval(LocalDate.of(2026, 1, 15))),
+				Package.empty())).hasSize(1);
+		Assertions.assertThat(worlds(Dates.addo(
+				lval(LocalDate.of(2026, 1, 1)), lval(14L), lval(LocalDate.of(2026, 1, 16))),
+				Package.empty())).isEmpty();
+	}
+
+	@Test
+	public void instantAddoShiftsByDuration() {
+		Unifiable<Instant> later = lvar();
+
+		Package solved = imposed(Instants.addo(
+				lval(Instant.EPOCH), lval(Duration.ofHours(2)), later), Package.empty());
+
+		Assertions.assertThat(solved.walk(later).get())
+				.isEqualTo(Instant.parse("1970-01-01T02:00:00Z"));
 	}
 
 	@Test

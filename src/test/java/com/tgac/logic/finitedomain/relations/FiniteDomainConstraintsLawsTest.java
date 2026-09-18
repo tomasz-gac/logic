@@ -49,7 +49,7 @@ public class FiniteDomainConstraintsLawsTest {
 				new Leq(Y, X, Comparator.naturalOrder()),
 				new Lss(X, Y, Comparator.naturalOrder()),
 				new Lss(Y, X, Comparator.naturalOrder()),
-				new Add(X, Y, X, Arithmetic.LONGS, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
+				new Add(X, Y, X, Arithmetic.LONGS, Comparator.naturalOrder(), Option.of(Discrete.LONGS), Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
 				new Mul(X, Y, X, Multiplicative.LONGS, Comparator.naturalOrder(), Option.of(Discrete.LONGS)),
 				new Separate(X, Y, Comparator.naturalOrder())));
 	}

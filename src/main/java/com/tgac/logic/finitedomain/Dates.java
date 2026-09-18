@@ -1,9 +1,10 @@
 package com.tgac.logic.finitedomain;
 
-// ABOUTME: The LocalDate front: domains, comparisons and labelling by days —
-// ABOUTME: date arithmetic is affine (date + day count) and waits for that slice.
+// ABOUTME: The LocalDate front: domains, comparisons, labelling by days, and the
+// ABOUTME: affine arithmetic — a date shifted by a day count.
 
 import com.tgac.logic.constraints.Posting;
+import com.tgac.logic.finitedomain.capabilities.Arithmetic;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.domains.EnumeratedDomain;
 import com.tgac.logic.finitedomain.domains.Interval;
@@ -21,6 +22,8 @@ public final class Dates {
 
 	private static final Comparator<LocalDate> ORDER = Comparator.naturalOrder();
 	private static final Option<Discrete<LocalDate>> STEP = Option.of(Discrete.DATES);
+	private static final Comparator<Long> DAY_COUNT_ORDER = Comparator.naturalOrder();
+	private static final Option<Discrete<Long>> DAY_COUNT_STEP = Option.of(Discrete.LONGS);
 
 	public static Domain<LocalDate> interval(LocalDate min, LocalDate max) {
 		return Interval.of(min, max, ORDER, STEP);
@@ -48,6 +51,16 @@ public final class Dates {
 
 	public static Posting geq(Unifiable<LocalDate> more, Unifiable<LocalDate> less) {
 		return FiniteDomain.geq(more, less, ORDER);
+	}
+
+	public static Posting addo(Unifiable<LocalDate> day, Unifiable<Long> days, Unifiable<LocalDate> shifted) {
+		return FiniteDomain.addo(day, days, shifted, Arithmetic.DATES,
+				ORDER, STEP, DAY_COUNT_ORDER, DAY_COUNT_STEP);
+	}
+
+	public static Posting subtracto(Unifiable<LocalDate> day, Unifiable<Long> days, Unifiable<LocalDate> result) {
+		return FiniteDomain.subtracto(day, days, result, Arithmetic.DATES,
+				ORDER, STEP, DAY_COUNT_ORDER, DAY_COUNT_STEP);
 	}
 
 	public static Posting separate(Unifiable<LocalDate> l, Unifiable<LocalDate> r) {

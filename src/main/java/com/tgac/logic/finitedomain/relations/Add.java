@@ -1,9 +1,11 @@
 package com.tgac.logic.finitedomain.relations;
 
-// ABOUTME: The add schema: a + b = rhs — interval bounds narrow all three
-// ABOUTME: positions; ground triples verify exactly.
+// ABOUTME: The affine add schema: point + delta = point, the positions typed by
+// ABOUTME: their seats — bounds narrow all three; ground triples verify exactly.
 
+import static com.tgac.logic.finitedomain.relations.Operators.between;
 import static com.tgac.logic.finitedomain.relations.Operators.minus;
+import static com.tgac.logic.finitedomain.relations.Operators.plus;
 
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.Bound;
@@ -21,60 +23,87 @@ import io.vavr.control.Option;
 import java.util.Arrays;
 import java.util.Comparator;
 
+/**
+ * The one functional dependency read three ways over the whole triple
+ * {@code point + delta = shifted}: the homogeneous numbers are the
+ * degenerate case where both seat pairs coincide; dates plus day counts
+ * are the honestly affine one, each position wearing its own order and
+ * step.
+ */
 public final class Add extends Propagator<FiniteDomainConstraints> {
 
 	private final Arithmetic<Object, Object> arithmetic;
-	private final Comparator<Object> order;
-	private final Option<Discrete<Object>> step;
+	private final Comparator<Object> pointOrder;
+	private final Option<Discrete<Object>> pointStep;
+	private final Comparator<Object> deltaOrder;
+	private final Option<Discrete<Object>> deltaStep;
 
 	@SuppressWarnings("unchecked")
-	public Add(Term<?> a, Term<?> b, Term<?> rhs,
-			Arithmetic<?, ?> arithmetic, Comparator<?> order, Option<? extends Discrete<?>> step) {
-		this(Array.of(a, b, rhs),
+	public Add(Term<?> point, Term<?> delta, Term<?> shifted,
+			Arithmetic<?, ?> arithmetic,
+			Comparator<?> pointOrder, Option<? extends Discrete<?>> pointStep,
+			Comparator<?> deltaOrder, Option<? extends Discrete<?>> deltaStep) {
+		this(Array.of(point, delta, shifted),
 				(Arithmetic<Object, Object>) arithmetic,
-				(Comparator<Object>) order,
-				(Option<Discrete<Object>>) (Option<?>) step);
+				(Comparator<Object>) pointOrder,
+				(Option<Discrete<Object>>) (Option<?>) pointStep,
+				(Comparator<Object>) deltaOrder,
+				(Option<Discrete<Object>>) (Option<?>) deltaStep);
 	}
 
 	private Add(Array<? extends Term<?>> terms,
-			Arithmetic<Object, Object> arithmetic, Comparator<Object> order, Option<Discrete<Object>> step) {
+			Arithmetic<Object, Object> arithmetic,
+			Comparator<Object> pointOrder, Option<Discrete<Object>> pointStep,
+			Comparator<Object> deltaOrder, Option<Discrete<Object>> deltaStep) {
 		super(terms);
 		this.arithmetic = arithmetic;
-		this.order = order;
-		this.step = step;
+		this.pointOrder = pointOrder;
+		this.pointStep = pointStep;
+		this.deltaOrder = deltaOrder;
+		this.deltaStep = deltaStep;
 	}
 
 	@Override
 	public Verdict propagate(Package state) {
-		return Operators.gated(order,
-						vds -> addVerdict(vds.get(0), vds.get(1), vds.get(2), arithmetic, order, step),
+		return Operators.gated(this::orderAt,
+						(Array<VarWithDomain<Object>> vds) ->
+								addVerdict(vds.get(0), vds.get(1), vds.get(2)),
 						this::computedThird)
 				.apply(watchedTerms(), state);
 	}
 
+	/** The delta sits in the middle; the points flank it. */
+	private Comparator<Object> orderAt(int position) {
+		return position == 1 ? deltaOrder : pointOrder;
+	}
+
 	/**
 	 * The functional dependency read at the free position, over the others'
-	 * whole domains: the hull of {@code a + b = rhs}. Point operands make a
-	 * point hull — the binding; wide ones mint the domain.
+	 * whole domains: the hull of {@code point + delta = shifted}. Point
+	 * operands make a point hull — the binding; wide ones mint the domain.
 	 */
 	private Verdict computedThird(Operators.SoleFree<Object> free) {
-		Bound<Object> lo, hi;
 		if (free.getPosition() == 2) {
-			lo = Operators.plus(free.domainAt(0).lower(), free.domainAt(1).lower(), arithmetic);
-			hi = Operators.plus(free.domainAt(0).upper(), free.domainAt(1).upper(), arithmetic);
-		} else if (free.getPosition() == 1) {
-			lo = minus(free.domainAt(2).lower(), free.domainAt(0).upper(), arithmetic);
-			hi = minus(free.domainAt(2).upper(), free.domainAt(0).lower(), arithmetic);
-		} else {
-			lo = minus(free.domainAt(2).lower(), free.domainAt(1).upper(), arithmetic);
-			hi = minus(free.domainAt(2).upper(), free.domainAt(1).lower(), arithmetic);
+			return Operators.mintHull(free.getVariable(),
+					plus(free.domainAt(0).lower(), free.domainAt(1).lower(), arithmetic),
+					plus(free.domainAt(0).upper(), free.domainAt(1).upper(), arithmetic),
+					pointOrder, pointStep);
 		}
-		return Operators.mintHull(free.getVariable(), lo, hi, order, step);
+		if (free.getPosition() == 1) {
+			return Operators.mintHull(free.getVariable(),
+					between(free.domainAt(0).upper(), free.domainAt(2).lower(), arithmetic),
+					between(free.domainAt(0).lower(), free.domainAt(2).upper(), arithmetic),
+					deltaOrder, deltaStep);
+		}
+		return Operators.mintHull(free.getVariable(),
+				minus(free.domainAt(2).lower(), free.domainAt(1).upper(), arithmetic),
+				minus(free.domainAt(2).upper(), free.domainAt(1).lower(), arithmetic),
+				pointOrder, pointStep);
 	}
 
 	@Override
 	public Propagator<FiniteDomainConstraints> watching(Array<? extends Term<?>> terms) {
-		return new Add(terms, arithmetic, order, step);
+		return new Add(terms, arithmetic, pointOrder, pointStep, deltaOrder, deltaStep);
 	}
 
 	@Override
@@ -92,41 +121,50 @@ public final class Add extends Propagator<FiniteDomainConstraints> {
 		return FiniteDomainConstraints.class;
 	}
 
+	private Verdict addVerdict(VarWithDomain<Object> point, VarWithDomain<Object> delta,
+			VarWithDomain<Object> shifted) {
+		return addVerdict(point, delta, shifted, arithmetic,
+				pointOrder, pointStep, deltaOrder, deltaStep);
+	}
+
 	@SuppressWarnings("unchecked")
-	static <T> Verdict addVerdict(
-			VarWithDomain<T> u, VarWithDomain<T> v, VarWithDomain<T> w,
-			Arithmetic<T, T> arithmetic, Comparator<T> order, Option<Discrete<T>> step) {
+	static <P, V> Verdict addVerdict(
+			VarWithDomain<P> point, VarWithDomain<V> delta, VarWithDomain<P> shifted,
+			Arithmetic<P, V> arithmetic,
+			Comparator<P> pointOrder, Option<Discrete<P>> pointStep,
+			Comparator<V> deltaOrder, Option<Discrete<V>> deltaStep) {
 
-		Bound<T> uLo = u.<T> getDomain().lower(), uUp = u.<T> getDomain().upper();
-		Bound<T> vLo = v.<T> getDomain().lower(), vUp = v.<T> getDomain().upper();
-		Bound<T> wLo = w.<T> getDomain().lower(), wUp = w.<T> getDomain().upper();
+		Bound<P> pLo = point.<P> getDomain().lower(), pUp = point.<P> getDomain().upper();
+		Bound<V> dLo = delta.<V> getDomain().lower(), dUp = delta.<V> getDomain().upper();
+		Bound<P> sLo = shifted.<P> getDomain().lower(), sUp = shifted.<P> getDomain().upper();
 
-		if (u.getUnifiable().isVal() && v.getUnifiable().isVal() && w.getUnifiable().isVal()) {
+		if (point.getUnifiable().isVal() && delta.getUnifiable().isVal() && shifted.getUnifiable().isVal()) {
 			// ground: check the sum exactly, nothing left to watch
-			return order.compare(arithmetic.plus(uLo.getValue(), vLo.getValue()), wLo.getValue()) == 0 ?
+			return pointOrder.compare(arithmetic.plus(pLo.getValue(), dLo.getValue()), sLo.getValue()) == 0 ?
 					Verdict.subsumed() : Verdict.fail();
 		}
 
-		Interval<T> wi = Interval.of(
-				Operators.plus(uLo, vLo, arithmetic),
-				Operators.plus(uUp, vUp, arithmetic),
-				order, step);
+		Interval<P> si = Interval.of(
+				plus(pLo, dLo, arithmetic),
+				plus(pUp, dUp, arithmetic),
+				pointOrder, pointStep);
 
-		Interval<T> vi = Interval.of(
-				minus(wLo, uUp, arithmetic),
-				minus(wUp, uLo, arithmetic),
-				order, step);
+		// the delta between two points is the seat's own third reading
+		Interval<V> di = Interval.of(
+				between(pUp, sLo, arithmetic),
+				between(pLo, sUp, arithmetic),
+				deltaOrder, deltaStep);
 
-		Interval<T> ui = Interval.of(
-				minus(wLo, vUp, arithmetic),
-				minus(wUp, vLo, arithmetic),
-				order, step);
+		Interval<P> pi = Interval.of(
+				minus(sLo, dUp, arithmetic),
+				minus(sUp, dLo, arithmetic),
+				pointOrder, pointStep);
 
 		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
 				(Theory<FiniteDomainConstraints>) theory,
 				Arrays.<VarWithDomain<?>> asList(
-						VarWithDomain.of(w.getUnifiable(), wi),
-						VarWithDomain.of(v.getUnifiable(), vi),
-						VarWithDomain.of(u.getUnifiable(), ui))));
+						VarWithDomain.of(shifted.getUnifiable(), si),
+						VarWithDomain.of(delta.getUnifiable(), di),
+						VarWithDomain.of(point.getUnifiable(), pi))));
 	}
 }

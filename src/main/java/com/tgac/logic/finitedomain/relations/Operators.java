@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -72,11 +73,19 @@ public class Operators {
 			Comparator<T> order,
 			Function<Array<VarWithDomain<T>>, Verdict> verdict,
 			Function<SoleFree<T>, Verdict> computed) {
-		return (watched, s) -> letDomain(s, Operators.<T> typed(watched), order)
+		return gated(i -> order, verdict, computed);
+	}
+
+	/** The gate over per-position orders — an affine schema's positions type differently. */
+	static <T> BiFunction<Array<? extends Term<?>>, Package, Verdict> gated(
+			IntFunction<Comparator<T>> orderAt,
+			Function<Array<VarWithDomain<T>>, Verdict> verdict,
+			Function<SoleFree<T>, Verdict> computed) {
+		return (watched, s) -> letDomain(s, Operators.<T> typed(watched), orderAt)
 				.filter(uds -> uds.toJavaStream()
 						.noneMatch(ud -> ud.getDomain().isEmpty()))
 				.map(verdict)
-				.getOrElse(() -> soleFree(s, Operators.<T> typed(watched), order)
+				.getOrElse(() -> soleFree(s, Operators.<T> typed(watched), orderAt)
 						.map(computed)
 						.getOrElse(Verdict::keep));
 	}
@@ -104,7 +113,7 @@ public class Operators {
 	}
 
 	static <T> Option<SoleFree<T>> soleFree(Package p, Array<? extends Term<T>> us,
-			Comparator<T> order) {
+			IntFunction<Comparator<T>> orderAt) {
 		List<Option<VarWithDomain<T>>> resolved = new ArrayList<>(us.size());
 		int freeAt = -1;
 		Term<T> freeVar = null;
@@ -112,7 +121,7 @@ public class Operators {
 			Term<T> walked = p.walk(us.get(i));
 			if (walked.asVal().isDefined()) {
 				resolved.add(Option.of(VarWithDomain.of(walked,
-						Singleton.of(walked.get(), order, Option.<Discrete<T>> none()))));
+						Singleton.of(walked.get(), orderAt.apply(i), Option.<Discrete<T>> none()))));
 				continue;
 			}
 			Option<Domain<T>> domain = FiniteDomainConstraints.<T> getDom(p, walked.getVar());
@@ -162,13 +171,18 @@ public class Operators {
 	}
 
 	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us, Comparator<T> order) {
+		return letDomain(p, us, i -> order);
+	}
+
+	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us,
+			IntFunction<Comparator<T>> orderAt) {
 		// the first domainless position refuses — no walking the rest
 		List<VarWithDomain<T>> resolved = new ArrayList<>(us.size());
-		for (Term<T> u : us) {
-			Term<T> walked = p.walk(u);
+		for (int i = 0; i < us.size(); i++) {
+			Term<T> walked = p.walk(us.get(i));
 			if (walked.asVal().isDefined()) {
 				resolved.add(VarWithDomain.of(walked,
-						Singleton.of(walked.get(), order, Option.<Discrete<T>> none())));
+						Singleton.of(walked.get(), orderAt.apply(i), Option.<Discrete<T>> none())));
 				continue;
 			}
 			Option<Domain<T>> domain = FiniteDomainConstraints.<T> getDom(p, walked.getVar());
@@ -190,14 +204,19 @@ public class Operators {
 		return (Array<? extends Term<T>>) watched;
 	}
 
-	static <T> Bound<T> plus(Bound<T> a, Bound<T> b, Arithmetic<T, T> arithmetic) {
-		return new Bound<>(arithmetic.plus(a.getValue(), b.getValue()),
-				a.isIncluded() && b.isIncluded());
+	static <P, V> Bound<P> plus(Bound<P> point, Bound<V> delta, Arithmetic<P, V> arithmetic) {
+		return new Bound<>(arithmetic.plus(point.getValue(), delta.getValue()),
+				point.isIncluded() && delta.isIncluded());
 	}
 
-	static <T> Bound<T> minus(Bound<T> a, Bound<T> b, Arithmetic<T, T> arithmetic) {
-		return new Bound<>(arithmetic.minus(a.getValue(), b.getValue()),
-				a.isIncluded() && b.isIncluded());
+	static <P, V> Bound<P> minus(Bound<P> point, Bound<V> delta, Arithmetic<P, V> arithmetic) {
+		return new Bound<>(arithmetic.minus(point.getValue(), delta.getValue()),
+				point.isIncluded() && delta.isIncluded());
+	}
+
+	static <P, V> Bound<V> between(Bound<P> from, Bound<P> to, Arithmetic<P, V> arithmetic) {
+		return new Bound<>(arithmetic.between(from.getValue(), to.getValue()),
+				from.isIncluded() && to.isIncluded());
 	}
 
 	static <T> Bound<T> times(Bound<T> a, Bound<T> b, Multiplicative<T> multiplicative) {

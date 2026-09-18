@@ -57,12 +57,29 @@ public class FiniteDomain {
 
 	public static <T> Posting addo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c,
 			Arithmetic<T, T> arithmetic, Comparator<T> order, Option<Discrete<T>> step) {
-		return Propagation.activate(new Add(a, b, c, arithmetic, order, step));
+		return addo(a, b, c, arithmetic, order, step, order, step);
+	}
+
+	/** The honestly affine triple: {@code point + delta = shifted}, each side its own seats. */
+	public static <P, V> Posting addo(Unifiable<P> point, Unifiable<V> delta, Unifiable<P> shifted,
+			Arithmetic<P, V> arithmetic,
+			Comparator<P> pointOrder, Option<Discrete<P>> pointStep,
+			Comparator<V> deltaOrder, Option<Discrete<V>> deltaStep) {
+		return Propagation.activate(new Add(point, delta, shifted,
+				arithmetic, pointOrder, pointStep, deltaOrder, deltaStep));
 	}
 
 	public static <T> Posting subtracto(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c,
 			Arithmetic<T, T> arithmetic, Comparator<T> order, Option<Discrete<T>> step) {
 		return addo(c, b, a, arithmetic, order, step);
+	}
+
+	/** {@code point − delta = result} IS {@code result + delta = point}. */
+	public static <P, V> Posting subtracto(Unifiable<P> point, Unifiable<V> delta, Unifiable<P> result,
+			Arithmetic<P, V> arithmetic,
+			Comparator<P> pointOrder, Option<Discrete<P>> pointStep,
+			Comparator<V> deltaOrder, Option<Discrete<V>> deltaStep) {
+		return addo(result, delta, point, arithmetic, pointOrder, pointStep, deltaOrder, deltaStep);
 	}
 
 	public static <T> Posting multo(Unifiable<T> a, Unifiable<T> b, Unifiable<T> c,
