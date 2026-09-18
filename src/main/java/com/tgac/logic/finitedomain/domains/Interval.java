@@ -80,8 +80,8 @@ public class Interval<T> extends Domain<T> {
 		Discrete<T> discrete = step.getOrElseThrow(() -> new IllegalStateException(
 				"Cannot enumerate " + this + ": no Discrete instance — a dense interval propagates but does not label"));
 		return StreamSupport.stream(Iterator.iterate(lower.getValue(), discrete::next)
-						.takeWhile(v -> order.compare(v, upper.getValue()) <= 0)
-						.spliterator(), false);
+				.takeWhile(v -> order.compare(v, upper.getValue()) <= 0)
+				.spliterator(), false);
 	}
 
 	@Override

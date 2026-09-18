@@ -3,7 +3,6 @@ package com.tgac.logic.finitedomain.relations;
 // ABOUTME: The schemas' shared toolkit: the domain gate, ground minting, bound
 // ABOUTME: arithmetic and hull selection every relation's verdict reads through.
 
-import com.tgac.functional.reflection.Types;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.Bound;
 import com.tgac.logic.finitedomain.Domain;
@@ -181,10 +180,9 @@ public class Operators {
 		return Option.of(Array.ofAll(resolved));
 	}
 
+	@SuppressWarnings("unchecked")
 	static <T> Option<T> getSingleElement(Domain<T> dom) {
-		return Option.of(dom)
-				.flatMap(Types.<Singleton<T>> castAs(Singleton.class))
-				.map(Singleton::getValue);
+		return dom.asPoint().map(v -> (T) v);
 	}
 
 	@SuppressWarnings("unchecked")

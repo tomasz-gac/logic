@@ -83,8 +83,8 @@ public class Singleton<T> extends Domain<T> {
 
 	@Override
 	public boolean isDisjoint(Domain<T> other) {
-		if (other instanceof Singleton) {
-			return !((Singleton<T>) other).value.equals(value);
+		if (other.asPoint().isDefined()) {
+			return !(other.asPoint().get().equals(value));
 		} else {
 			return other.isDisjoint(this);
 		}

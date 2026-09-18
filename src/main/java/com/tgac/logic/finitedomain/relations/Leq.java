@@ -11,7 +11,6 @@ import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
 import com.tgac.logic.lattice.Verdict;
 import com.tgac.logic.unification.Term;
-import io.vavr.Tuple;
 import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.Comparator;

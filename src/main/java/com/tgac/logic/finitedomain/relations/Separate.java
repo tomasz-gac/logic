@@ -5,7 +5,6 @@ package com.tgac.logic.finitedomain.relations;
 
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.FiniteDomainConstraints;
-import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.finitedomain.relations.Operators.VarWithDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
@@ -51,14 +50,14 @@ public final class Separate extends Propagator<FiniteDomainConstraints> {
 		if (ld.getDomain().isDisjoint(rd.getDomain())) {
 			return Verdict.subsumed();
 		}
-		if (ld.getDomain() instanceof Singleton) {
+		if (ld.getDomain().asPoint().isDefined()) {
 			return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
 					(Theory<FiniteDomainConstraints>) theory,
 					Collections.<VarWithDomain<?>> singletonList(VarWithDomain.of(
 							rd.getUnifiable(),
 							rd.<T> getDomain().difference(ld.getDomain())))));
 		}
-		if (rd.getDomain() instanceof Singleton) {
+		if (rd.getDomain().asPoint().isDefined()) {
 			return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
 					(Theory<FiniteDomainConstraints>) theory,
 					Collections.<VarWithDomain<?>> singletonList(VarWithDomain.of(

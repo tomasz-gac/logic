@@ -11,7 +11,6 @@ import com.tgac.functional.fibers.Emitter;
 import com.tgac.functional.fibers.Fiber;
 import com.tgac.logic.constraints.Propagation;
 import com.tgac.logic.constraints.store.Constraint;
-import com.tgac.logic.constraints.store.Factor;
 import com.tgac.logic.goals.Conjunction;
 import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
@@ -79,6 +78,7 @@ public class Tabling {
 	public static <T> Tabled<T> define(Function<T, Goal> body) {
 		return defineRecursive(self -> body);
 	}
+
 	/**
 	 * The public tabled-call door, the same entry {@link Tabled#apply} uses:
 	 * {@code relation} is ANY identity token, keyed by value — equal tokens
@@ -93,7 +93,7 @@ public class Tabling {
 	public static <T> Goal call(Object relation, T args, Supplier<Goal> body) {
 		return tabled(relation, args, body);
 	}
-	
+
 	/**
 	 * The tabled goal behind {@link Tabled#apply}:
 	 *
@@ -178,8 +178,8 @@ public class Tabling {
 								Goal seeded = keyResidues.isTrue()
 										? body.get()
 										: Conjunction.of(
-												Residues.restate(reifiedArgs, keyResidues, argsTerm),
-												body.get());
+										Residues.restate(reifiedArgs, keyResidues, argsTerm),
+										body.get());
 								return produce(entry, seeded, bodyPkg, argsTerm, table, emit);
 							})
 							// a lost claim is a silent no-op: winner or loser, every
