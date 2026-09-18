@@ -4,7 +4,6 @@ package com.tgac.logic.finitedomain.relations;
 // ABOUTME: positions; ground triples verify exactly.
 
 import static com.tgac.logic.finitedomain.relations.Operators.minus;
-import static com.tgac.logic.finitedomain.relations.Operators.widened;
 
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.finitedomain.Bound;
@@ -92,17 +91,17 @@ public final class Add extends Propagator<FiniteDomainConstraints> {
 
 		Interval<T> wi = Interval.of(
 				Operators.plus(uLo, vLo, arithmetic),
-				widened(Operators.plus(uUp, vUp, arithmetic), step),
+				Operators.plus(uUp, vUp, arithmetic),
 				order, step);
 
 		Interval<T> vi = Interval.of(
 				minus(wLo, uUp, arithmetic),
-				widened(minus(wUp, uLo, arithmetic), step),
+				minus(wUp, uLo, arithmetic),
 				order, step);
 
 		Interval<T> ui = Interval.of(
 				minus(wLo, vUp, arithmetic),
-				widened(minus(wUp, vLo, arithmetic), step),
+				minus(wUp, vLo, arithmetic),
 				order, step);
 
 		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,

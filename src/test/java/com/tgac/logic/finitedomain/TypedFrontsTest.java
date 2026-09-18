@@ -149,6 +149,30 @@ public class TypedFrontsTest {
 	}
 
 	@Test
+	public void addoComputesTheThirdFromTwoGround() {
+		// tight bounds make [2+3, 2+3] a point, and the store's collapse
+		// infers the binding — no labelling, no surviving constraint
+		Unifiable<Integer> c = lvar();
+		Package p = imposed(dom(c, Ints.interval(0, 100)), Package.empty());
+
+		Package summed = imposed(Ints.addo(lval(2), lval(3), c), p);
+
+		Assertions.assertThat(summed.walk(c).get()).isEqualTo(5);
+		Assertions.assertThat(FiniteDomainConstraints.getConstraints(summed)).isEmpty();
+	}
+
+	@Test
+	public void addoComputesBackwardsFromSumAndAddend() {
+		// the same functional dependency read backwards: 2 + b = 7
+		Unifiable<Integer> b = lvar();
+		Package p = imposed(dom(b, Ints.interval(0, 100)), Package.empty());
+
+		Package solved = imposed(Ints.addo(lval(2), b, lval(7)), p);
+
+		Assertions.assertThat(solved.walk(b).get()).isEqualTo(5);
+	}
+
+	@Test
 	public void denseSeparateCutsTheDomainAndDischarges() {
 		// [0,1] − {1} = [0,1): the disequality becomes domain knowledge and
 		// the constraint leaves the store instead of watching forever

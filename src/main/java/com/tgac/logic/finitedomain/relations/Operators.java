@@ -61,11 +61,6 @@ public class Operators {
 				.getOrElse(Verdict::keep);
 	}
 
-	/** The discrete upper bound rides one step wide; a dense bound is already exact. */
-	static <T> Bound<T> widened(Bound<T> bound, Option<Discrete<T>> step) {
-		return step.map(d -> Bound.closed(d.next(bound.getValue()))).getOrElse(bound);
-	}
-
 	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us,
 			Comparator<T> order) {
 		return Option.of(us.toJavaStream()

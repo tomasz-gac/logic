@@ -182,7 +182,7 @@ public class SchedulingBenchmarkTest {
 
 		// the residue of the dead interior: real, shallow, ~10% at this size
 		assertThat(orderSteps).isLessThan(condeSteps);
-		assertThat(orderSteps).isBetween(44_800L, 45_400L);
+		assertThat(orderSteps).isBetween(32_900L, 33_500L);
 	}
 
 	private static <T> long depthFirstStepsToFirst(Goal goal, Unifiable<T> out) {
@@ -227,7 +227,7 @@ public class SchedulingBenchmarkTest {
 
 		// conde varies a few steps across JVMs (the identity-hash iteration
 		// class, substitutions-migration §5 candidate 0); range-pinned
-		assertThat(conde).isBetween(50_400L, 50_700L);
+		assertThat(conde).isBetween(36_900L, 37_200L);
 	}
 
 }
