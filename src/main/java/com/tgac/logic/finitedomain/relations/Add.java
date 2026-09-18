@@ -56,14 +56,24 @@ public final class Add extends Propagator<FiniteDomainConstraints> {
 				.apply(watchedTerms(), state);
 	}
 
-	/** The functional dependency read at the free position: a + b = rhs. */
+	/**
+	 * The functional dependency read at the free position, over the others'
+	 * whole domains: the hull of {@code a + b = rhs}. Point operands make a
+	 * point hull — the binding; wide ones mint the domain.
+	 */
 	private Verdict computedThird(Operators.SoleFree<Object> free) {
-		Object value = free.getPosition() == 2 ?
-				arithmetic.plus(free.pointAt(0), free.pointAt(1)) :
-				free.getPosition() == 1 ?
-						arithmetic.minus(free.pointAt(2), free.pointAt(0)) :
-						arithmetic.minus(free.pointAt(2), free.pointAt(1));
-		return Operators.narrowToPoint(free.getVariable(), value, order, step);
+		Bound<Object> lo, hi;
+		if (free.getPosition() == 2) {
+			lo = Operators.plus(free.domainAt(0).lower(), free.domainAt(1).lower(), arithmetic);
+			hi = Operators.plus(free.domainAt(0).upper(), free.domainAt(1).upper(), arithmetic);
+		} else if (free.getPosition() == 1) {
+			lo = minus(free.domainAt(2).lower(), free.domainAt(0).upper(), arithmetic);
+			hi = minus(free.domainAt(2).upper(), free.domainAt(0).lower(), arithmetic);
+		} else {
+			lo = minus(free.domainAt(2).lower(), free.domainAt(1).upper(), arithmetic);
+			hi = minus(free.domainAt(2).upper(), free.domainAt(1).lower(), arithmetic);
+		}
+		return Operators.mintHull(free.getVariable(), lo, hi, order, step);
 	}
 
 	@Override

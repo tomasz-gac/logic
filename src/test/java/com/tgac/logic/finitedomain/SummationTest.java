@@ -60,9 +60,9 @@ public class SummationTest {
 			Unifiable<Integer> digit) {
 		Unifiable<Integer> partialSum = lvar();
 		Unifiable<Integer> sum = lvar();
-		return dom(partialSum, Ints.interval(0, 18))
-				.and(dom(sum, Ints.interval(0, 19)))
-				.and(Ints.addo(augend, addend, partialSum))
+		// the intermediates' domains are MINTED: each addo hulls its free
+		// position from the operands it can see
+		return Ints.addo(augend, addend, partialSum)
 				.and(Ints.addo(partialSum, carryIn, sum))
 				.and(Goal.failure()
 						.or(Ints.lss(lval(9), sum)
@@ -151,8 +151,8 @@ public class SummationTest {
 
 	@Test
 	public void sumComputesTheUndomainedAddend() {
-		// b needs no domain: labelling grounds a and c, and each pair
-		// computes b = c − a, negatives included
+		// b needs no domain: its hull is minted from a and c, and each
+		// labelled pair collapses b = c − a, negatives included
 		Unifiable<Integer> a = lvar();
 		Unifiable<Integer> b = lvar();
 		Unifiable<Integer> c = lvar();

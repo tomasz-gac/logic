@@ -64,13 +64,18 @@ public final class Mul extends Propagator<FiniteDomainConstraints> {
 
 	/** The functional dependency read at the free position: a · b = rhs. */
 	private Verdict computedThird(Operators.SoleFree<Object> free) {
+		int first = free.getPosition() == 0 ? 1 : 0;
+		int second = free.getPosition() == 2 ? 1 : 2;
+		if (!(free.pointAt(first, order) && free.pointAt(second, order))) {
+			return Verdict.keep();
+		}
 		if (free.getPosition() == 2) {
 			return Operators.narrowToPoint(free.getVariable(),
-					multiplicative.times(free.pointAt(0), free.pointAt(1)), order, step);
+					multiplicative.times(free.valueAt(0), free.valueAt(1)), order, step);
 		}
 		return free.getPosition() == 1 ?
-				solveFactor(free.getVariable(), free.pointAt(0), free.pointAt(2), multiplicative, order, step) :
-				solveFactor(free.getVariable(), free.pointAt(1), free.pointAt(2), multiplicative, order, step);
+				solveFactor(free.getVariable(), free.valueAt(0), free.valueAt(2), multiplicative, order, step) :
+				solveFactor(free.getVariable(), free.valueAt(1), free.valueAt(2), multiplicative, order, step);
 	}
 
 	@Override

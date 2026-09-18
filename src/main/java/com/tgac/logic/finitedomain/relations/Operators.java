@@ -10,6 +10,7 @@ import com.tgac.logic.finitedomain.FiniteDomainConstraints;
 import com.tgac.logic.finitedomain.capabilities.Arithmetic;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.capabilities.Multiplicative;
+import com.tgac.logic.finitedomain.domains.Interval;
 import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.constraints.store.Theory;
 import com.tgac.logic.goals.Package;
@@ -64,9 +65,10 @@ public class Operators {
 	/**
 	 * The gate with the computed-third door: when the strict gate refuses
 	 * because exactly one position is an unbound, domainless variable while
-	 * every other is a point, {@code computed} gets to determine it — the
-	 * is/2 tier. Any other refusal (a wide-domained position alongside the
-	 * free one, two free positions) still keeps.
+	 * every other is known (ground or domained), {@code computed} gets to
+	 * determine it — a binding from points, a minted hull from wide
+	 * operands. Any other refusal (two free positions, a dying branch)
+	 * still keeps.
 	 */
 	static <T> BiFunction<Array<? extends Term<?>>, Package, Verdict> gated(
 			Comparator<T> order,
@@ -76,67 +78,89 @@ public class Operators {
 				.filter(uds -> uds.toJavaStream()
 						.noneMatch(ud -> ud.getDomain().isEmpty()))
 				.map(verdict)
-				.getOrElse(() -> soleFree(s, Operators.<T> typed(watched))
+				.getOrElse(() -> soleFree(s, Operators.<T> typed(watched), order)
 						.map(computed)
 						.getOrElse(Verdict::keep));
 	}
 
-	/** One free position among points: where it stands, and the known values. */
+	/** One free position among known ones: where it stands, and their domains. */
 	@Value
 	@RequiredArgsConstructor(staticName = "of")
 	static class SoleFree<T> {
 		int position;
 		Term<T> variable;
-		Array<Option<T>> points;
+		Array<Option<VarWithDomain<T>>> resolved;
 
-		public T pointAt(int i) {
-			return points.get(i).get();
+		public Domain<T> domainAt(int i) {
+			return resolved.get(i).get().getDomain();
+		}
+
+		public boolean pointAt(int i, Comparator<T> order) {
+			Domain<T> d = domainAt(i);
+			return order.compare(d.lower().getValue(), d.upper().getValue()) == 0;
+		}
+
+		public T valueAt(int i) {
+			return domainAt(i).lower().getValue();
 		}
 	}
 
-	static <T> Option<SoleFree<T>> soleFree(Package p, Array<? extends Term<T>> us) {
-		List<Option<T>> points = new ArrayList<>(us.size());
+	static <T> Option<SoleFree<T>> soleFree(Package p, Array<? extends Term<T>> us,
+			Comparator<T> order) {
+		List<Option<VarWithDomain<T>>> resolved = new ArrayList<>(us.size());
 		int freeAt = -1;
 		Term<T> freeVar = null;
 		for (int i = 0; i < us.size(); i++) {
 			Term<T> walked = p.walk(us.get(i));
-			Option<T> point = pointOf(p, walked);
-			if (point.isDefined()) {
-				points.add(point);
-			} else if (walked.asVar().isDefined()
-					&& !FiniteDomainConstraints.getDom(p, walked.getVar()).isDefined()) {
+			if (walked.asVal().isDefined()) {
+				resolved.add(Option.of(VarWithDomain.of(walked,
+						Singleton.of(walked.get(), order, Option.<Discrete<T>> none()))));
+				continue;
+			}
+			Option<Domain<T>> domain = FiniteDomainConstraints.<T> getDom(p, walked.getVar());
+			if (domain.isDefined()) {
+				if (domain.get().isEmpty()) {
+					// a dying branch: the strict gate's business, not a computation
+					return Option.none();
+				}
+				resolved.add(Option.of(VarWithDomain.of(walked, domain.get())));
+			} else {
 				if (freeAt >= 0) {
 					return Option.none();
 				}
 				freeAt = i;
 				freeVar = walked;
-				points.add(Option.none());
-			} else {
-				// wide-domained: the strict gate's business, not a computation
-				return Option.none();
+				resolved.add(Option.none());
 			}
 		}
 		return freeAt < 0 ? Option.none() :
-				Option.of(SoleFree.of(freeAt, freeVar, Array.ofAll(points)));
-	}
-
-	/** A position's known value: ground, or a singleton domain's point. */
-	static <T> Option<T> pointOf(Package p, Term<T> walked) {
-		if (walked.asVal().isDefined()) {
-			return Option.of(walked.get());
-		}
-		return FiniteDomainConstraints.getDom(p, walked.getVar())
-				.flatMap(Operators::getSingleElement);
+				Option.of(SoleFree.of(freeAt, freeVar, Array.ofAll(resolved)));
 	}
 
 	/** The one narrowing that binds: a point value through the store's collapse. */
-	@SuppressWarnings("unchecked")
 	static <T> Verdict narrowToPoint(Term<T> variable, T value,
 			Comparator<T> order, Option<Discrete<T>> step) {
+		return narrow(variable, Singleton.of(value, order, step));
+	}
+
+	/**
+	 * Mints the free position's hull: a point hull is a fresh singleton and
+	 * collapses to a binding; a wide one becomes the variable's domain, and
+	 * its re-examination note wakes whatever else watches the variable —
+	 * minting rides the cascade, not the statement order.
+	 */
+	static <T> Verdict mintHull(Term<T> variable, Bound<T> lo, Bound<T> hi,
+			Comparator<T> order, Option<Discrete<T>> step) {
+		return narrow(variable, Bound.point(lo, hi, order) ?
+				Singleton.of(lo.getValue(), order, step) :
+				Interval.of(lo, hi, order, step));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T> Verdict narrow(Term<T> variable, Domain<T> domain) {
 		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
 				(Theory<FiniteDomainConstraints>) theory,
-				Collections.singletonList(
-						VarWithDomain.of(variable, Singleton.of(value, order, step)))));
+				Collections.singletonList(VarWithDomain.of(variable, domain))));
 	}
 
 	static <T> Option<Array<VarWithDomain<T>>> letDomain(Package p, Array<? extends Term<T>> us,

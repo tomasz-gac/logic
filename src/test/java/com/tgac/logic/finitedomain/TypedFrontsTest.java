@@ -16,6 +16,8 @@ import com.tgac.logic.goals.Goal;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.unification.Term;
 import com.tgac.logic.unification.Unifiable;
+import io.vavr.Tuple;
+import io.vavr.Tuple4;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -170,6 +172,98 @@ public class TypedFrontsTest {
 		Package solved = imposed(Ints.addo(lval(2), b, lval(7)), p);
 
 		Assertions.assertThat(solved.walk(b).get()).isEqualTo(5);
+	}
+
+	@Test
+	public void addoMintsTheHullOfAFreeThird() {
+		// mode (b): wide operands mint the free position's domain — the
+		// constraint contributes knowledge before anything labels
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		Unifiable<Integer> c = lvar();
+		Package p = imposed(dom(a, Ints.interval(0, 5)), Package.empty());
+		p = imposed(dom(b, Ints.interval(0, 5)), p);
+
+		Package minted = imposed(Ints.addo(a, b, c), p);
+
+		Assertions.assertThat(FiniteDomainConstraints.getDom(minted, c.getVar()).get())
+				.isEqualTo(Ints.interval(0, 10));
+	}
+
+	@Test
+	public void addoChainMintsThroughIntermediates() {
+		// a+b=t1, t1+c=t2, t2+d=e: every intermediate and the result get
+		// their hulls minted, none was ever declared
+		Unifiable<Integer> a = lvar(), b = lvar(), c = lvar(), d = lvar();
+		Unifiable<Integer> t1 = lvar(), t2 = lvar(), e = lvar();
+		Package p = domained(Package.empty(), a, b, c, d);
+
+		p = imposed(Ints.addo(a, b, t1), p);
+		p = imposed(Ints.addo(t1, c, t2), p);
+		p = imposed(Ints.addo(t2, d, e), p);
+
+		Assertions.assertThat(FiniteDomainConstraints.getDom(p, t1.getVar()).get())
+				.isEqualTo(Ints.interval(0, 10));
+		Assertions.assertThat(FiniteDomainConstraints.getDom(p, t2.getVar()).get())
+				.isEqualTo(Ints.interval(0, 15));
+		Assertions.assertThat(FiniteDomainConstraints.getDom(p, e.getVar()).get())
+				.isEqualTo(Ints.interval(0, 20));
+	}
+
+	@Test
+	public void addoChainMintsAgainstStatementOrder() {
+		// the chain stated back to front: the later links park with two free
+		// positions, and each mint's re-examination note wakes them awake —
+		// minting rides the cascade, not the statement order
+		Unifiable<Integer> a = lvar(), b = lvar(), c = lvar(), d = lvar();
+		Unifiable<Integer> t1 = lvar(), t2 = lvar(), e = lvar();
+		Package p = domained(Package.empty(), a, b, c, d);
+
+		p = imposed(Ints.addo(t2, d, e), p);
+		p = imposed(Ints.addo(t1, c, t2), p);
+		p = imposed(Ints.addo(a, b, t1), p);
+
+		Assertions.assertThat(FiniteDomainConstraints.getDom(p, t1.getVar()).get())
+				.isEqualTo(Ints.interval(0, 10));
+		Assertions.assertThat(FiniteDomainConstraints.getDom(p, t2.getVar()).get())
+				.isEqualTo(Ints.interval(0, 15));
+		Assertions.assertThat(FiniteDomainConstraints.getDom(p, e.getVar()).get())
+				.isEqualTo(Ints.interval(0, 20));
+	}
+
+	@Test
+	public void addoChainPrunesThroughMintedDomains() {
+		// the minted intermediates carry constraint knowledge backwards:
+		// e < 2 prunes a, b, c, d through the chain, and the answers are
+		// exactly the tuples summing below 2
+		Unifiable<Integer> a = lvar(), b = lvar(), c = lvar(), d = lvar();
+		Unifiable<Integer> t1 = lvar(), t2 = lvar(), e = lvar();
+
+		List<Tuple4<Integer, Integer, Integer, Integer>> result =
+				Utils.collect(Goal.success()
+						.and(dom(a, Ints.interval(0, 5)))
+						.and(dom(b, Ints.interval(0, 5)))
+						.and(dom(c, Ints.interval(0, 5)))
+						.and(dom(d, Ints.interval(0, 5)))
+						.and(Ints.addo(a, b, t1))
+						.and(Ints.addo(t1, c, t2))
+						.and(Ints.addo(t2, d, e))
+						.and(Ints.lss(e, lval(2)))
+						.solve(lval(Tuple.of(a, b, c, d)), TestSchedulers.factory())
+						.map(Term::get)
+						.map(t -> t.map(Term::get, Term::get, Term::get, Term::get)));
+
+		Assertions.assertThat(result)
+				.hasSize(5)
+				.allMatch(t -> t._1 + t._2 + t._3 + t._4 < 2);
+	}
+
+	@SafeVarargs
+	private static Package domained(Package p, Unifiable<Integer>... vars) {
+		for (Unifiable<Integer> v : vars) {
+			p = imposed(dom(v, Ints.interval(0, 5)), p);
+		}
+		return p;
 	}
 
 	@Test
