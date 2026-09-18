@@ -90,7 +90,7 @@ public class WhodunnitTest {
 	/** Suspect {@code s} is in room {@code r} at hour {@code t} — by habit. */
 	private static Goal at(Unifiable<Integer> s, Unifiable<Integer> t, Unifiable<Integer> r) {
 		return unify(s, lval(1)).and(unify(r, t))                          // butler: rounds, room = hour
-				.or(unify(s, lval(2)).and(Ints.multo(t, lval(2), r)))   // cook: room = 2·hour
+				.or(unify(s, lval(2)).and(Ints.multo(t, t, r)))         // cook: room = hour² — not invertible
 				.or(unify(s, lval(3)).and(Ints.addo(t, lval(2), r)));   // gardener: room = hour + 2
 	}
 

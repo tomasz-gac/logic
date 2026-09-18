@@ -14,6 +14,7 @@ import com.tgac.logic.finitedomain.FiniteDomainConstraints;
 import com.tgac.logic.finitedomain.capabilities.Discrete;
 import com.tgac.logic.finitedomain.capabilities.Multiplicative;
 import com.tgac.logic.finitedomain.domains.Interval;
+import com.tgac.logic.finitedomain.domains.Singleton;
 import com.tgac.logic.finitedomain.relations.Operators.VarWithDomain;
 import com.tgac.logic.goals.Package;
 import com.tgac.logic.lattice.Propagator;
@@ -88,18 +89,30 @@ public final class Mul extends Propagator<FiniteDomainConstraints> {
 		Bound<T> vLo = v.<T> getDomain().lower(), vUp = v.<T> getDomain().upper();
 		Bound<T> wLo = w.<T> getDomain().lower(), wUp = w.<T> getDomain().upper();
 
-		// all are numbers -> check multiplication
-		if (order.compare(uLo.getValue(), uUp.getValue()) == 0
-				&& order.compare(vLo.getValue(), vUp.getValue()) == 0
-				&& order.compare(wLo.getValue(), wUp.getValue()) == 0) {
+		boolean uPoint = order.compare(uLo.getValue(), uUp.getValue()) == 0;
+		boolean vPoint = order.compare(vLo.getValue(), vUp.getValue()) == 0;
+		boolean wPoint = order.compare(wLo.getValue(), wUp.getValue()) == 0;
+
+		// all are points -> check multiplication
+		if (uPoint && vPoint && wPoint) {
 			return order.compare(multiplicative.times(uLo.getValue(), vLo.getValue()), wLo.getValue()) == 0 ?
 					Verdict.subsumed() : Verdict.fail();
 		}
 
-		// some are numbers -> do nothing until all generated
-		if (order.compare(uLo.getValue(), uUp.getValue()) == 0
-				|| order.compare(vLo.getValue(), vUp.getValue()) == 0
-				|| order.compare(wLo.getValue(), wUp.getValue()) == 0) {
+		// two points determine the third: the product directly, a factor
+		// through the exact-or-refuse inverse
+		if (uPoint && vPoint) {
+			return narrowToPoint(w, multiplicative.times(uLo.getValue(), vLo.getValue()), order, step);
+		}
+		if (uPoint && wPoint) {
+			return solveFactor(v, uLo.getValue(), wLo.getValue(), multiplicative, order, step);
+		}
+		if (vPoint && wPoint) {
+			return solveFactor(u, vLo.getValue(), wLo.getValue(), multiplicative, order, step);
+		}
+
+		// one point -> no bounds trim until the others narrow
+		if (uPoint || vPoint || wPoint) {
 			return Verdict.keep();
 		}
 
@@ -142,6 +155,32 @@ public final class Mul extends Propagator<FiniteDomainConstraints> {
 						VarWithDomain.of(w.getUnifiable(), wiF),
 						VarWithDomain.of(u.getUnifiable(), uiF),
 						VarWithDomain.of(v.getUnifiable(), viF))));
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T> Verdict narrowToPoint(VarWithDomain<T> side, T value,
+			Comparator<T> order, Option<Discrete<T>> step) {
+		return Verdict.update((state, theory) -> DomainUpdate.narrowAll(state,
+				(Theory<FiniteDomainConstraints>) theory,
+				Collections.singletonList(
+						VarWithDomain.of(side.getUnifiable(), Singleton.of(value, order, step)))));
+	}
+
+	/**
+	 * The factor {@code x} with {@code x · factor = product}: the zero cases
+	 * split first — {@code 0 · x = 0} holds for every x (subsumed) and
+	 * {@code 0 · x ≠ 0} for none — then {@code dividedExactly} answers the
+	 * unique factor or REFUTES the triple.
+	 */
+	private static <T> Verdict solveFactor(VarWithDomain<T> side, T factor, T product,
+			Multiplicative<T> multiplicative, Comparator<T> order, Option<Discrete<T>> step) {
+		if (order.compare(factor, multiplicative.zero()) == 0) {
+			return order.compare(product, multiplicative.zero()) == 0 ?
+					Verdict.subsumed() : Verdict.fail();
+		}
+		return multiplicative.dividedExactly(product, factor)
+				.map(quotient -> narrowToPoint(side, quotient, order, step))
+				.getOrElse(Verdict::fail);
 	}
 
 	/**

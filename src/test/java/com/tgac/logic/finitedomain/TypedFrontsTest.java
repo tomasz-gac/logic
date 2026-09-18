@@ -173,6 +173,52 @@ public class TypedFrontsTest {
 	}
 
 	@Test
+	public void multoComputesTheProduct() {
+		Unifiable<Integer> w = lvar();
+		Package p = imposed(dom(w, Ints.interval(0, 100)), Package.empty());
+
+		Package solved = imposed(Ints.multo(lval(6), lval(7), w), p);
+
+		Assertions.assertThat(solved.walk(w).get()).isEqualTo(42);
+		Assertions.assertThat(FiniteDomainConstraints.getConstraints(solved)).isEmpty();
+	}
+
+	@Test
+	public void divoBindsTheExactQuotient() {
+		Unifiable<Integer> x = lvar();
+		Package p = imposed(dom(x, Ints.interval(0, 100)), Package.empty());
+
+		Package solved = imposed(Ints.divo(lval(6), lval(3), x), p);
+
+		Assertions.assertThat(solved.walk(x).get()).isEqualTo(2);
+	}
+
+	@Test
+	public void divoRefusesAnInexactQuotient() {
+		// no integer x has 2x = 7: dividedExactly's none is a refutation,
+		// discovered at propagation — not after enumerating the domain
+		Unifiable<Integer> x = lvar();
+		Package p = imposed(dom(x, Ints.interval(0, 100)), Package.empty());
+
+		Assertions.assertThat(worlds(Ints.divo(lval(7), lval(2), x), p)).isEmpty();
+	}
+
+	@Test
+	public void zeroTimesAnythingIsZero() {
+		// 0·v = 0 holds for every v: subsumed, the domain untouched;
+		// 0·v = 5 holds for none: refuted
+		Unifiable<Integer> v = lvar();
+		Package p = imposed(dom(v, Ints.interval(0, 100)), Package.empty());
+
+		Package discharged = imposed(Ints.multo(lval(0), v, lval(0)), p);
+		Assertions.assertThat(FiniteDomainConstraints.getConstraints(discharged)).isEmpty();
+		Assertions.assertThat(FiniteDomainConstraints.getDom(discharged, v.getVar()).get())
+				.isEqualTo(Ints.interval(0, 100));
+
+		Assertions.assertThat(worlds(Ints.multo(lval(0), v, lval(5)), p)).isEmpty();
+	}
+
+	@Test
 	public void denseSeparateCutsTheDomainAndDischarges() {
 		// [0,1] − {1} = [0,1): the disequality becomes domain knowledge and
 		// the constraint leaves the store instead of watching forever
@@ -205,11 +251,14 @@ public class TypedFrontsTest {
 	}
 
 	private static Package imposed(Posting posting, Package p) {
-		// io.vavr.collection.List: genuine simple-name clash with java.util.List
-		io.vavr.collection.List<Package> worlds =
-				new BreadthFirstScheduler<>(Trial.imposed(posting, p)).get();
+		io.vavr.collection.List<Package> worlds = worlds(posting, p);
 		Assertions.assertThat(worlds).hasSize(1);
 		return worlds.head();
+	}
+
+	// io.vavr.collection.List: genuine simple-name clash with java.util.List
+	private static io.vavr.collection.List<Package> worlds(Posting posting, Package p) {
+		return new BreadthFirstScheduler<>(Trial.imposed(posting, p)).get();
 	}
 
 	@Test
