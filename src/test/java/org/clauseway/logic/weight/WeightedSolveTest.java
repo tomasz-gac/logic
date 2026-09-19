@@ -1,0 +1,172 @@
+package org.clauseway.logic.weight;
+
+// ABOUTME: Weighted inference end to end: factor injects per-choice weights,
+// ABOUTME: solve ⊕-folds them, and one pass computes count and probability together.
+
+import static org.clauseway.logic.constraints.Constraints.unify;
+import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+
+import org.clauseway.functional.algebra.Semiring;
+import org.clauseway.functional.algebra.Semirings;
+import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
+import org.clauseway.logic.goals.Goal;
+import org.clauseway.logic.goals.Logic;
+import org.clauseway.logic.projection.Projection;
+import org.clauseway.logic.unification.LList;
+import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.unification.Unifiable;
+import io.vavr.Tuple2;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.junit.Test;
+
+public class WeightedSolveTest {
+
+	@Test
+	public void solveEachDeliversEveryAnswerThroughIterator() {
+		// the iterator adapter calls tryAdvance one element at a time; answers
+		// buffered at engine completion must survive that path, not only forEach
+		Unifiable<Integer> x = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, Semirings.MIN_PLUS);
+		Goal query = unify(x, lval(1)).or(unify(x, lval(2))).or(unify(x, lval(3)))
+				.or(unify(x, lval(4))).or(unify(x, lval(5)));
+		Iterator<Tuple2<Reified<Integer>, SemiringStore>> it =
+				Weights.solveEach(query, x, product, BreadthFirstScheduler::new).iterator();
+		List<Integer> seen = new ArrayList<>();
+		while (it.hasNext()) {
+			seen.add(it.next()._1.get());
+		}
+		assertThat(seen).containsExactlyInAnyOrder(1, 2, 3, 4, 5);
+	}
+
+	/**
+	 * Probability (+, ×) over [0,1]; kept test-local — main must not invite
+	 * correlated-proof misuse (see semiring-inference.md §6).
+	 */
+	private static final Semiring<Double> PROB = new Semiring<Double>() {
+		@Override
+		public Double zero() {
+			return 0.0;
+		}
+
+		@Override
+		public Double one() {
+			return 1.0;
+		}
+
+		@Override
+		public Double plus(Double a, Double b) {
+			return a + b;
+		}
+
+		@Override
+		public Double times(Double a, Double b) {
+			return a * b;
+		}
+	};
+
+	private static Goal die(Unifiable<Integer> x) {
+		return Logic.membero(x, LList.ofAll(1, 2, 3, 4, 5, 6))
+				.and(Weights.factor(PROB, 1.0 / 6));
+	}
+
+	@Test
+	public void twoDiceSumSevenCountsAndWeighsInOnePass() {
+		Unifiable<Integer> a = lvar();
+		Unifiable<Integer> b = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, PROB);
+
+		Goal query = die(a).and(die(b))
+				.and(Projection.project(a, b, (av, bv) -> Goal.successIf(av + bv == 7)));
+
+		SemiringStore total = Weights.solve(query, product, BreadthFirstScheduler::new);
+
+		// six mutually exclusive rolls sum to 7
+		assertThat(total.get(Semirings.COUNTING)).isEqualTo(6L);
+		// each roll has probability (1/6)(1/6); disjoint, so they sum exactly
+		assertThat(total.get(PROB)).isCloseTo(6.0 / 36, within(1e-9));
+	}
+
+	@Test
+	public void shortestRouteAndRouteCountInOnePass() {
+		// two routes A→D: via B (1+5=6) and via C (2+2=4); min-plus is idempotent,
+		// so this exercises an idempotent semiring alongside a non-idempotent one
+		Unifiable<String> mid = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, Semirings.MIN_PLUS);
+
+		Goal viaB = unify(mid, lval("B"))
+				.and(Weights.factor(Semirings.MIN_PLUS, 1L)).and(Weights.factor(Semirings.MIN_PLUS, 5L));
+		Goal viaC = unify(mid, lval("C"))
+				.and(Weights.factor(Semirings.MIN_PLUS, 2L)).and(Weights.factor(Semirings.MIN_PLUS, 2L));
+
+		SemiringStore total = Weights.solve(viaB.or(viaC), product, BreadthFirstScheduler::new);
+
+		assertThat(total.get(Semirings.COUNTING)).isEqualTo(2L);   // two routes
+		assertThat(total.get(Semirings.MIN_PLUS)).isEqualTo(4L);   // the cheaper one
+	}
+
+	@Test
+	public void perAnswerWeightsRevealWhichBranchIsCheapest() {
+		Unifiable<String> mid = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.MIN_PLUS);
+
+		Goal viaB = unify(mid, lval("B"))
+				.and(Weights.factor(Semirings.MIN_PLUS, 1L)).and(Weights.factor(Semirings.MIN_PLUS, 5L));
+		Goal viaC = unify(mid, lval("C"))
+				.and(Weights.factor(Semirings.MIN_PLUS, 2L)).and(Weights.factor(Semirings.MIN_PLUS, 2L));
+
+		List<Tuple2<Reified<String>, SemiringStore>> answers =
+				Weights.solveEach(viaB.or(viaC), mid, product, BreadthFirstScheduler::new)
+						.collect(Collectors.toList());
+
+		assertThat(answers).hasSize(2);
+		assertThat(answers).extracting(p -> p._2.get(Semirings.MIN_PLUS))
+				.containsExactlyInAnyOrder(6L, 4L);
+
+		Tuple2<Reified<String>, SemiringStore> cheapest = answers.stream()
+				.min(Comparator.comparingLong(p -> p._2.get(Semirings.MIN_PLUS)))
+				.get();
+		assertThat(cheapest._2.get(Semirings.MIN_PLUS)).isEqualTo(4L);
+		assertThat(cheapest._1.toString()).contains("C");
+	}
+
+	@Test
+	public void weightedSolveIsLazyOverAnInfiniteGenerator() {
+		// appendo with all-fresh args generates infinitely many answers; limit must
+		// drive the engine only far enough, not hang draining the whole search (the
+		// eager fold would never return). Proves solveEach streams like a plain solve.
+		Unifiable<LList<Integer>> lst = lvar();
+		Unifiable<LList<Integer>> x = lvar();
+		Unifiable<LList<Integer>> res = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING);
+
+		List<Tuple2<Reified<LList<Integer>>, SemiringStore>> first =
+				Weights.solveEach(
+								Logic.appendo(lst, x, res).and(Weights.factor(Semirings.COUNTING, 1L)),
+								res, product, BreadthFirstScheduler::new)
+						.limit(5)
+						.collect(Collectors.toList());
+
+		assertThat(first).hasSize(5);
+		assertThat(first).allMatch(p -> p._2.get(Semirings.COUNTING) == 1L);
+	}
+
+	@Test
+	public void noSolutionsFoldsToZero() {
+		Unifiable<Integer> a = lvar();
+		Semiring<SemiringStore> product = SemiringStore.product(Semirings.COUNTING, PROB);
+
+		Goal query = die(a).and(Projection.project(a, av -> Goal.successIf(av > 100)));
+
+		SemiringStore total = Weights.solve(query, product, BreadthFirstScheduler::new);
+
+		assertThat(total.get(Semirings.COUNTING)).isEqualTo(0L);
+		assertThat(total.get(PROB)).isCloseTo(0.0, within(1e-9));
+	}
+}

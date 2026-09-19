@@ -1,0 +1,190 @@
+package org.clauseway.logic.lattice;
+
+// ABOUTME: The capability meet: slot-mate atoms (same name, same watched
+// ABOUTME: surface) that declare Semilattice combine; everything else unions.
+
+import static org.clauseway.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.clauseway.functional.algebra.laws.AbsorbingLaws;
+import org.clauseway.functional.algebra.laws.LawCoverage;
+import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.algebra.laws.PartialOrderLaws;
+import org.clauseway.functional.algebra.laws.SemilatticeLaws;
+import org.clauseway.logic.constraints.store.Atom;
+import org.clauseway.logic.constraints.store.Theory;
+import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
+import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
+import org.clauseway.logic.unification.Unifiable;
+import io.vavr.collection.HashSet;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+import java.util.Collections;
+import org.junit.Test;
+
+@LawsFor(Theory.class)
+public class TheoryMeetTest {
+
+	@org.junit.AfterClass
+	public static void lawClaimsExercised() {
+		LawCoverage.verifyClaimsExercised(TheoryMeetTest.class);
+	}
+
+	private static final Unifiable<Integer> X = lvar();
+	private static final Unifiable<Integer> Y = lvar();
+	private static final Unifiable<Integer> Z = lvar();
+
+	private static Imposition<FlatSet, FlatConstraints> on(Unifiable<Integer> target, Object... values) {
+		return new Imposition<>(FlatConstraints.class, target, FlatSet.of(values), FlatConstraints.empty());
+	}
+
+	@Test
+	public void sameTargetImpositionsFuseToTheirDomainMeet() {
+		Theory<FlatConstraints> met = Theory
+				.of(Collections.singletonList(on(X, 1, 2)))
+				.meet(Theory.of(Collections.singletonList(on(X, 2, 3))));
+		assertThat(met.atoms()).containsExactly(on(X, 2));
+	}
+
+	@Test
+	public void constructionDigestsCollidingAtomsTheSameWay() {
+		// normal form is construction-invariant: of() digests like meet()
+		Theory<FlatConstraints> built = Theory.of(Arrays.asList(on(X, 1, 2), on(X, 2, 3)));
+		assertThat(built.atoms()).containsExactly(on(X, 2));
+	}
+
+	@Test
+	public void differentTargetsUnion() {
+		Theory<FlatConstraints> met = Theory
+				.of(Collections.singletonList(on(X, 1, 2)))
+				.meet(Theory.of(Collections.singletonList(on(Y, 2, 3))));
+		assertThat(met.atoms()).containsExactlyInAnyOrder(on(X, 1, 2), on(Y, 2, 3));
+	}
+
+	@Test
+	public void disjointDomainsFuseToBottomWhichIsALegalPlanValue() {
+		// ⊥ is knowledge (this branch's knowledge is refutational); only
+		// execution reads it as failure
+		Theory<FlatConstraints> met = Theory
+				.of(Collections.singletonList(on(X, 1)))
+				.meet(Theory.of(Collections.singletonList(on(X, 2))));
+		assertThat(met.atoms()).hasSize(1);
+		assertThat((((Imposition) met.atoms().head()).getValue()).isAbsorbing()).isTrue();
+	}
+
+	@Test
+	public void theTheoryReadsItsOwnBottomAtDigestion() {
+		// the ⊥ scan is digestion's business, read through the declared
+		// Absorbing capability: a theory carrying an absorbing atom IS
+		// absorbing; live knowledge and the unit are not
+		Theory<FlatConstraints> bottom = Theory
+				.of(Collections.singletonList(on(X, 1)))
+				.meet(Theory.of(Collections.singletonList(on(X, 2))));
+		assertThat(bottom.isAbsorbing()).isTrue();
+		assertThat(Theory.of(Collections.singletonList(on(X, 1, 2))).isAbsorbing()).isFalse();
+		assertThat(Theory.<FlatConstraints> empty().isAbsorbing()).isFalse();
+		// the incremental door agrees with digestion
+		assertThat(Theory.of(Collections.singletonList(on(X, 1)))
+				.with(on(X, 2)).isAbsorbing()).isTrue();
+	}
+
+	@Test
+	public void atomsWithoutTheCapabilityUnionEvenOnACollidingSurface() {
+		// same watched surface, different names: a propagator never fuses —
+		// only family code (the atom kind) declares combinability
+		Propagator<FlatConstraints> even = TestPropagators.of(FlatConstraints.empty(), "even",
+				Collections.singletonList(X), (watched, state) -> Verdict.keep());
+		Propagator<FlatConstraints> odd = TestPropagators.of(FlatConstraints.empty(), "odd",
+				Collections.singletonList(X), (watched, state) -> Verdict.keep());
+		Theory<FlatConstraints> met = Theory
+				.of(Collections.singletonList((Atom<FlatConstraints>) even))
+				.meet(Theory.of(Collections.singletonList((Atom<FlatConstraints>) odd)));
+		assertThat(met.atoms()).containsExactlyInAnyOrder(even, odd);
+	}
+
+	@Test
+	public void atomFindsTheSlotOccupant() {
+		Theory<FlatConstraints> theory = Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 3)));
+		assertThat(theory.atom(FlatConstraints.class, "imposition", HashSet.of(X)))
+				.contains(on(X, 1, 2));
+		assertThat(theory.atom(FlatConstraints.class, "imposition", HashSet.of(Z)))
+				.isEmpty();
+	}
+
+	@Test
+	public void withIsTheSingleAtomMeet() {
+		// the incremental door agrees with the algebra where the kind's leq
+		// is slot-local — the lattice family's case
+		Theory<FlatConstraints> base = Theory.of(Collections.singletonList(on(X, 1, 2)));
+		assertThat(base.with(on(X, 2, 3)))
+				.isEqualTo(base.meet(Theory.of(Collections.singletonList(on(X, 2, 3)))));
+		assertThat(Theory.<FlatConstraints> empty().with(on(X, 1)).atoms())
+				.containsExactly(on(X, 1));
+	}
+
+	@Test
+	public void aCoveredMeetReturnsTheReceiverItself() {
+		// identity-preserving meet: nothing moved — every incoming atom equal
+		// to or fused-equal with its occupant — so the receiver rides through
+		// BY REFERENCE; a door's no-op guard is ==
+		Theory<FlatConstraints> resident = Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 3)));
+		assertThat(resident.meet(Theory.of(Collections.singletonList(on(X, 1, 2)))))
+				.isSameAs(resident);
+		// a wider incoming fuses to the occupant's own value: still identity
+		assertThat(resident.meet(Theory.of(Collections.singletonList(on(X, 1, 2, 3)))))
+				.isSameAs(resident);
+	}
+
+	@Test
+	public void anEqualFuseKeepsTheOccupantThroughWith() {
+		Theory<FlatConstraints> resident = Theory.of(Collections.singletonList(on(X, 1, 2)));
+		assertThat(resident.with(on(X, 1, 2, 3))).isSameAs(resident);
+	}
+
+	@Test
+	public void withoutRemovesExactlyTheOccupant() {
+		Theory<FlatConstraints> theory = Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 3)));
+		assertThat(theory.without(on(X, 1, 2)).atoms()).containsExactly(on(Y, 3));
+		// a non-occupant leaves the theory untouched
+		assertThat(theory.without(on(X, 9)).atoms())
+				.containsExactlyInAnyOrder(on(X, 1, 2), on(Y, 3));
+	}
+
+	@Test
+	public void kindStreamsExactlyThatKindsAtoms() {
+		Propagator<FlatConstraints> even = TestPropagators.of(FlatConstraints.empty(), "even",
+				Collections.singletonList(X), (watched, state) -> Verdict.keep());
+		Theory<FlatConstraints> theory = Theory.of(
+				Arrays.<Atom<FlatConstraints>> asList(on(X, 1, 2), even));
+		assertThat(theory.kind(Imposition.class).collect(Collectors.toList()))
+				.containsExactly(on(X, 1, 2));
+		assertThat(theory.kind(Propagator.class).collect(Collectors.toList()))
+				.containsExactly(even);
+		assertThat(theory.without(on(X, 1, 2)).kind(Imposition.class).count())
+				.isZero();
+	}
+
+	@Test
+	public void impositionTheoriesStayLawfulUnderFusion() {
+		java.util.List<Theory<FlatConstraints>> samples = Arrays.asList(
+				Theory.empty(),
+				Theory.of(Collections.singletonList(on(X, 1, 2))),
+				Theory.of(Collections.singletonList(on(X, 2))),
+				Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 5))));
+		SemilatticeLaws.checkLeqReversesAccumulation(samples);
+		PartialOrderLaws.check(samples);
+	}
+
+	@Test
+	public void theBottomTheoryIsTheAbsorber() {
+		// ⊥ (an absorbing atom in residence) absorbs every meet and is
+		// terminal in accumulation — the drain's short-circuit, lawful
+		java.util.List<Theory<FlatConstraints>> samples = Arrays.asList(
+				Theory.empty(),
+				Theory.of(Collections.singletonList(on(X, 1, 2))),
+				Theory.of(Arrays.asList(on(X, 1, 2), on(Y, 5))),
+				Theory.of(Collections.singletonList(on(X, 1)))
+						.meet(Theory.of(Collections.singletonList(on(X, 2)))));
+		AbsorbingLaws.check(samples);
+	}
+}

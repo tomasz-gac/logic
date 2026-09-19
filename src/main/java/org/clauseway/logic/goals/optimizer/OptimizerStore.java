@@ -1,0 +1,32 @@
+package org.clauseway.logic.goals.optimizer;
+
+// ABOUTME: The ambient optimizer riding the Package (DebugStore pattern): state
+// ABOUTME: flows through defer walls, so the pass is waiting when bodies unfold.
+
+import org.clauseway.functional.fibers.Fiber;
+import org.clauseway.logic.goals.Goal;
+import org.clauseway.logic.goals.Package;
+import org.clauseway.logic.goals.Packaged;
+import io.vavr.control.Option;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
+
+/**
+ * Carries the optimizer pipeline with the solver state
+ * (docs/design/ambient-optimizer.md). Seeded by {@link Goal#solve(org.clauseway.logic.unification.Unifiable, Optimizer)};
+ * consulted at exactly one hook — {@link Goal#defer} forcing — so freshly
+ * materialized recursion layers are rewritten against live bindings.
+ */
+@Value
+@RequiredArgsConstructor(staticName = "of")
+public class OptimizerStore implements Packaged {
+	Optimizer pipeline;
+
+	public static Option<OptimizerStore> from(Package pkg) {
+		return pkg.getStores().get(OptimizerStore.class).map(OptimizerStore.class::cast);
+	}
+
+	public Fiber<Goal> rewrite(Goal body, Package p) {
+		return body.accept(pipeline.with(p));
+	}
+}

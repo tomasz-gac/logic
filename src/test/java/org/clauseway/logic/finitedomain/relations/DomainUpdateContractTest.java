@@ -1,0 +1,65 @@
+package org.clauseway.logic.finitedomain.relations;
+
+// ABOUTME: Pins the toolkit coupling that terminates the unchecked cascade:
+// ABOUTME: re-examination only with strict narrowing, collapse infers only.
+
+import static org.clauseway.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.clauseway.logic.constraints.store.Theory;
+import org.clauseway.logic.finitedomain.Domain;
+import org.clauseway.logic.finitedomain.FiniteDomainConstraints;
+import org.clauseway.logic.finitedomain.Longs;
+import org.clauseway.logic.goals.Package;
+import org.clauseway.logic.lattice.Update;
+import org.clauseway.logic.unification.LVar;
+import org.junit.Test;
+
+public class DomainUpdateContractTest {
+
+	private static final LVar<?> X = (LVar<?>) lvar().asVar().get();
+
+	private static Theory<FiniteDomainConstraints> store(Domain<Long> dom) {
+		return FiniteDomainConstraints.withDomain(Theory.empty(), X, dom);
+	}
+
+	private static String kind(Update step) {
+		return step.match(() -> "fail", () -> "unchanged", applied -> "applied");
+	}
+
+	private static Update.Applied applied(Update step) {
+		Update.Applied result = step.match(() -> null, () -> null, a -> a);
+		assertThat(result).isNotNull();
+		return result;
+	}
+
+	@Test
+	public void equalDomainDoesNotReexamine() {
+		Update step = DomainUpdate.apply(Package.empty(),
+				store(Longs.interval(0, 10)), X, Longs.interval(0, 10));
+		assertThat(kind(step)).isEqualTo("unchanged");
+	}
+
+	@Test
+	public void narrowingReexaminesTheNarrowedVariable() {
+		Update step = DomainUpdate.apply(Package.empty(),
+				store(Longs.interval(0, 10)), X, Longs.interval(3, 6));
+		assertThat(applied(step).reexamine()).containsExactly(X);
+		assertThat(applied(step).inferred()).isEmpty();
+	}
+
+	@Test
+	public void collapseInfersABindingWithoutReexamination() {
+		Update step = DomainUpdate.apply(Package.empty(),
+				store(Longs.interval(0, 10)), X, Longs.interval(5, 5));
+		assertThat(applied(step).reexamine()).isEmpty();
+		assertThat(applied(step).inferred()).hasSize(1);
+	}
+
+	@Test
+	public void emptyIntersectionFails() {
+		Update step = DomainUpdate.apply(Package.empty(),
+				store(Longs.interval(0, 4)), X, Longs.interval(8, 12));
+		assertThat(kind(step)).isEqualTo("fail");
+	}
+}

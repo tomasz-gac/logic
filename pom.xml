@@ -4,7 +4,7 @@
 		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.tgac</groupId>
+	<groupId>org.clauseway</groupId>
 	<artifactId>logic</artifactId>
 	<version>2.0.0-SNAPSHOT</version>
 
@@ -16,12 +16,12 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.tgac</groupId>
+			<groupId>org.clauseway</groupId>
 			<artifactId>functional</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>com.tgac</groupId>
+			<groupId>org.clauseway</groupId>
 			<artifactId>functional-laws</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
 			<scope>test</scope>

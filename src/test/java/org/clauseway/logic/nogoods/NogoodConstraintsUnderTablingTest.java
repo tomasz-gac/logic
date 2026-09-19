@@ -1,0 +1,173 @@
+package org.clauseway.logic.nogoods;
+
+// ABOUTME: NogoodConstraints through the tabling machinery: caller nogoods key the call,
+// ABOUTME: equal keys share, body locals ride as witnesses, recursion carries them.
+
+import org.clauseway.logic.TestSchedulers;
+import static org.clauseway.logic.finitedomain.FiniteDomain.dom;
+import static org.clauseway.logic.goals.Goal.defer;
+import static org.clauseway.logic.nogoods.Exclusion.exclude;
+import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.clauseway.logic.finitedomain.Longs;
+import org.clauseway.logic.goals.Goal;
+import org.clauseway.logic.tabling.Tabled;
+import org.clauseway.logic.tabling.Tabling;
+import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.Unifiable;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.junit.Test;
+
+public class NogoodConstraintsUnderTablingTest {
+
+	private static Tabled<Unifiable<Long>> zeroToFour() {
+		return Tabling.define(x -> dom(x, Longs.range(0, 5)));
+	}
+
+	@Test
+	public void aCallerNogoodEntersTheKey() {
+		// caller 1's ¬(x=3) is caller-private knowledge: if it failed to key,
+		// one caller would consume the other's cache — filtered answers
+		// leaking to caller 2, or the full set to caller 1
+		Tabled<Unifiable<Long>> gen = zeroToFour();
+		Unifiable<Long> x = lvar();
+		Unifiable<Long> u = lvar();
+
+		Goal caller1 = exclude(x.unifies(3L)).and(gen.apply(x));
+		Goal caller2 = gen.apply(u);
+
+		Unifiable<Tuple2<Unifiable<Long>, Unifiable<Long>>> out = lval(Tuple.of(x, u));
+		long combos = caller1.and(caller2).solve(out, TestSchedulers.factory()).count();
+
+		// caller 1 labels to {0,1,2,4}; caller 2 to all five
+		assertThat(combos).isEqualTo(4L * 5L);
+	}
+
+	@Test
+	public void equalNogoodsAcrossLineagesStayCorrect() {
+		// two callers with structurally equal nogoods on their own vars: keys
+		// match cross-lineage and both consume the same filtered region
+		Tabled<Unifiable<Long>> gen = zeroToFour();
+		Unifiable<Long> x = lvar();
+		Unifiable<Long> u = lvar();
+
+		Goal caller1 = exclude(x.unifies(3L)).and(gen.apply(x));
+		Goal caller2 = exclude(u.unifies(3L)).and(gen.apply(u));
+
+		Unifiable<Tuple2<Unifiable<Long>, Unifiable<Long>>> out = lval(Tuple.of(x, u));
+		long combos = caller1.and(caller2).solve(out, TestSchedulers.factory()).count();
+
+		assertThat(combos).isEqualTo(4L * 4L);
+	}
+
+	@Test
+	public void aBodyLocalNogoodIsExistentialPerWitness() {
+		// a body local is an EXISTENTIAL witness: answers split per labelled
+		// w, each carrying ¬(x=w) for ITS w — the w=2 branch admits {1,3,4},
+		// the w=3 branch {1,2,4}, and the projection onto x keeps the
+		// duplicates (distinct answer deltas differing only in the witness)
+		Tabled<Unifiable<Long>> notTheLocal = Tabling.define(x -> {
+			Unifiable<Long> w = lvar();
+			return dom(x, Longs.range(1, 5))
+					.and(dom(w, Longs.range(2, 4)))
+					.and(exclude(x.unifies(w)));
+		});
+		Unifiable<Long> x = lvar();
+
+		List<Long> values = notTheLocal.apply(x)
+				.solve(x, TestSchedulers.factory())
+				.map(Term::get)
+				.sorted()
+				.collect(Collectors.toList());
+
+		assertThat(values).containsExactly(1L, 1L, 2L, 3L, 4L, 4L);
+	}
+
+	@Test
+	public void differingFromEveryWitnessIsTheNegatedBox() {
+		// the UNIVERSAL reading — x differs from ALL of {2,3} — is not a
+		// witnessed nogood but ¬(x ∈ 2..3): the negated box, spelled directly
+		Tabled<Unifiable<Long>> outsideTheBox = Tabling.define(x ->
+				dom(x, Longs.range(1, 5))
+						.and(exclude(dom(x, Longs.range(2, 4)))));
+		Unifiable<Long> x = lvar();
+
+		List<Long> values = outsideTheBox.apply(x)
+				.solve(x, TestSchedulers.factory())
+				.map(Term::get)
+				.sorted()
+				.collect(Collectors.toList());
+
+		assertThat(values).containsExactly(1L, 4L);
+	}
+
+	@Test
+	public void bothViolationOrdersFail() {
+		Tabled<Unifiable<Long>> notThree =
+				Tabling.define(x -> exclude(x.unifies(3L)));
+
+		// bind before the call: the ground call's master is born violated
+		Unifiable<Long> y = lvar();
+		assertThat(y.unifies(3L).and(notThree.apply(y))
+				.solve(y, TestSchedulers.factory()).count()).isZero();
+
+		// bind after the call: the replayed nogood vetoes at the caller
+		Unifiable<Long> z = lvar();
+		assertThat(notThree.apply(z).and(z.unifies(3L))
+				.solve(z, TestSchedulers.factory()).count()).isZero();
+	}
+
+	@Test
+	public void aCallerSideNogoodFiltersTabledAnswers() {
+		Tabled<Unifiable<Long>> gen = zeroToFour();
+		Unifiable<Long> y = lvar();
+
+		List<Long> values = gen.apply(y).and(exclude(y.unifies(1L)))
+				.solve(y, TestSchedulers.factory())
+				.map(Term::get)
+				.sorted()
+				.collect(Collectors.toList());
+
+		assertThat(values).containsExactly(0L, 2L, 3L, 4L);
+	}
+
+	private Goal parent(Unifiable<String> x, Unifiable<String> y) {
+		return x.unifies("alice").and(y.unifies("bob"))
+				.or(x.unifies("bob").and(y.unifies("charlie")))
+				.or(x.unifies("charlie").and(y.unifies("david")));
+	}
+
+	private final Tabled<Tuple2<Unifiable<String>, Unifiable<String>>> ancestorButNotBob =
+			Tabling.define(args -> args.apply((x, y) ->
+					exclude(y.unifies("bob"))
+							.and(parent(x, y)
+									.or(defer(() -> {
+										Unifiable<String> z = lvar();
+										return parent(x, z)
+												.and(ancestorButNotBob(z, y));
+									})))));
+
+	private Goal ancestorButNotBob(Unifiable<String> x, Unifiable<String> y) {
+		return ancestorButNotBob.apply(Tuple.of(x, y));
+	}
+
+	@Test
+	public void recursionCarriesTheNogoodThroughEveryEntry() {
+		// the exclusion rides the recursive calls' keys and every answer's
+		// delta: alice's descendants minus bob
+		Unifiable<String> who = lvar();
+
+		List<String> values = ancestorButNotBob(lval("alice"), who)
+				.solve(who, TestSchedulers.factory())
+				.map(Term::get)
+				.sorted()
+				.collect(Collectors.toList());
+
+		assertThat(values).containsExactly("charlie", "david");
+	}
+}

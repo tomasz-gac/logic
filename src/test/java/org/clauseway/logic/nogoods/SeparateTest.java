@@ -1,0 +1,334 @@
+package org.clauseway.logic.nogoods;
+
+import org.clauseway.logic.TestSchedulers;
+import static org.clauseway.logic.LogicTest.runStream;
+import static org.clauseway.logic.goals.Goal.defer;
+import static org.clauseway.logic.goals.Logic.rembero;
+import static org.clauseway.logic.goals.Logic.distincto;
+import static org.clauseway.logic.nogoods.Exclusion.exclude;
+import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.LVar.lvar;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.clauseway.logic.LogicTest;
+import org.clauseway.logic.Utils;
+import org.clauseway.logic.constraints.Constraints;
+import org.clauseway.logic.goals.Goal;
+import org.clauseway.logic.goals.Logic;
+import org.clauseway.logic.unification.LList;
+import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.Unifiable;
+import io.vavr.Tuple;
+import io.vavr.Tuple2;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import org.assertj.core.api.Assertions;
+import org.junit.Test;
+
+@SuppressWarnings("unchecked")
+public class SeparateTest {
+
+	@Test
+	public void shouldUnifyWithConstraints() {
+		Unifiable<Integer> out = lvar();
+		List<Integer> result = LogicTest.runStream(out,
+						exclude(out.unifies(lval(2))),
+						Constraints.unify(out, lval(3)))
+				.map(Term::get)
+				.collect(Collectors.toList());
+		assertThat(result).containsExactly(3);
+	}
+
+	@Test
+	public void shouldNotUnifyWithConstraints() {
+		Unifiable<Integer> out = lvar();
+		Assertions.assertThat(LogicTest.runStream(out,
+						exclude(out.unifies(lval(2))),
+						Constraints.unify(out, lval(2))))
+				.isEmpty();
+	}
+
+	@Test
+	public void shouldNotUnifyWhenConstraintsAlreadyViolated() {
+		Unifiable<Integer> out = lvar();
+		Assertions.assertThat(LogicTest.runStream(out,
+						Constraints.unify(out, lval(2)),
+						exclude(out.unifies(lval(2)))))
+				.isEmpty();
+	}
+
+	@Test
+	public void shouldUnifyWithSimultaneousConstraints() {
+		Unifiable<Integer> out = lvar();
+		Assertions.assertThat(LogicTest.runStream(out, Logic.<Integer, Integer, Tuple2<Unifiable<Integer>, Unifiable<Integer>>> exist((x, y, p) ->
+								p.unifies(Tuple.of(x, out))
+										.and(exclude(p.unifies(lval(Tuple.of(lval(3), lval(2))))))
+										.and(x.unifies(3))
+										.and(out.unifies(3))))
+						.map(Term::get))
+				.containsExactly(3);
+	}
+
+	@Test
+	public void shouldNotUnifyWithSimultaneousConstraints() {
+		Unifiable<Integer> out = lvar();
+		Assertions.assertThat(
+						LogicTest.runStream(out,
+								Logic.<Integer, Integer, Tuple2<Unifiable<Integer>, Unifiable<Integer>>> exist((x, y, p) ->
+										p.unifies(Tuple.of(x, out))
+												.and(exclude(p.unifies(lval(Tuple.of(lval(3), lval(2))))))
+												.and(x.unifies(3))
+												.and(out.unifies(2)))))
+				.isEmpty();
+	}
+
+	public static <T> Goal brokenRembero(Unifiable<LList<T>> ls, Unifiable<T> x, Unifiable<LList<T>> out) {
+		return ls.unifies(LList.empty()).and(out.unifies(LList.empty()))
+				.or(Logic.<T, LList<T>> exist((a, d) ->
+						ls.unifies(LList.of(a, d))
+								.and(x.unifies(a))
+								.and(out.unifies(d))))
+				.or(Logic.<T, LList<T>, LList<T>> exist((a, d, res) ->
+						ls.unifies(LList.of(a, d))
+								.and(out.unifies(LList.of(a, res)))
+								.and(defer(() -> brokenRembero(d, x, res)))));
+	}
+
+	@Test
+	public void shouldRemoveAllMembers() {
+		Unifiable<LList<Integer>> out = lvar();
+		List<List<Integer>> result = LogicTest.runStream(out,
+						Logic.<LList<Integer>> exist(l ->
+								l.unifies(LList.ofAll(3, 2, 3, 2))
+										.and(brokenRembero(l, lval(2), out))))
+				.map(Term::get)
+				.map(l -> l.toValueStream().collect(Collectors.toList()))
+				.collect(Collectors.toList());
+		assertThat(result)
+				.containsExactlyInAnyOrder(
+						Arrays.asList(3, 3, 2),
+						Arrays.asList(3, 2, 3),
+						Arrays.asList(3, 2, 3, 2));
+	}
+
+	@Test
+	public void shouldReturnConstraints() {
+		Unifiable<LList<Tuple2<Unifiable<Integer>, Unifiable<Integer>>>> u = lvar();
+		String result = LogicTest.runStream(u,
+						Logic.<Tuple2<Unifiable<Integer>, Unifiable<Integer>>,
+								LList<Tuple2<Unifiable<Integer>, Unifiable<Integer>>>,
+								Integer, Integer, Integer> exist((a, d, dummy, x, y) ->
+								u.unifies(LList.of(a, LList.of(lval(Tuple.of(y, x)), d)))
+										.and(Constraints.unify(a, lval(Tuple.of(x, y))))
+										.and(exclude(x.unifies(lval(3))))
+										.and(exclude(y.unifies(lval(2))))
+										.and(exclude(a.unifies(lval(Tuple.of(lval(7), lval(8))))))
+										.and(exclude(dummy.unifies(lval(5))))))
+				.map(Object::toString)
+				.collect(Collectors.joining("\n"));
+		// {({(_.0, _.1)}, {(_.1, _.0)} . _.2)} : ¬(_.0 ≡ {3}) ∧ ¬(_.1 ≡ {2}) ∧ ¬(_.1 ≡ {8} ∧ _.0 ≡ {7})
+		// pair order inside the joint literal follows the prefix map, not a canon
+		assertThat(result)
+				.contains("{({(_.0, _.1)}, {(_.1, _.0)} . _.2)}")
+				.contains("¬(_.0 ≡ {3})")
+				.contains("¬(_.1 ≡ {2})")
+				.contains("_.1 ≡ {8}")
+				.contains("_.0 ≡ {7}");
+	}
+
+	@Test
+	public void shouldNotIncludeUnrelatedConstraints() {
+		Unifiable<Integer> u = lvar();
+		String result = LogicTest.runStream(u,
+						Logic.<Integer, Integer, Integer> exist((x, y, z) ->
+								exclude(u.unifies(lval(3)))
+										.and(exclude(x.unifies(lval(2))))
+										.and(exclude(y.unifies(lval(2))))
+										.and(exclude(z.unifies(lval(2))))))
+				.map(Object::toString)
+				.collect(Collectors.joining("\n"));
+		assertThat(result)
+				.isEqualTo("_.0 : ¬(_.0 ≡ {3})");
+	}
+
+	@Test
+	public void shouldNotIncludeSubsumedConstraints() {
+		Unifiable<Tuple2<Unifiable<Integer>, Unifiable<Integer>>> u = lvar();
+		String result = LogicTest.runStream(u,
+						Logic.<Tuple2<Unifiable<Integer>, Unifiable<Integer>>, Integer, Integer> exist((p, y, z) ->
+								// p cannot be (3, 2)
+								exclude(p.unifies(lval(Tuple.of(lval(3), lval(2)))))
+										// p is y, z so y ≠ 3 && z ≠ 2
+										.and(p.unifies(Tuple.of(y, z)))
+										.and(u.unifies(p))
+										// y ≠ 3 is more general than (y ≠ 3 && z ≠ 2)
+										.and(exclude(y.unifies(lval(3))))))
+				.map(Object::toString)
+				.collect(Collectors.joining("\n"));
+		assertThat(result)
+				.isEqualTo("{(_.0, _.1)} : ¬(_.0 ≡ {3})");
+	}
+
+	static <A> Goal removo(Unifiable<LList<A>> with, Unifiable<LList<A>> without, Unifiable<A> item) {
+		return with.unifies(LList.empty()).and(without.unifies(LList.empty()))
+				.or(Logic.<A, LList<A>> exist((a, d) ->
+						with.unifies(LList.of(a, d))
+								.and(a.unifies(item))
+								.and(defer(() -> removo(d, without, item)))))
+				.or(Logic.<A, LList<A>, LList<A>> exist((a, d, res) ->
+						with.unifies(LList.of(a, d))
+								.and(exclude(a.unifies(item)))
+								.and(without.unifies(LList.of(a, res)))
+								.and(defer(() -> removo(d, res, item)))));
+	}
+
+	@Test
+	public void shouldRemovo() {
+		Unifiable<LList<Integer>> r = lvar();
+		assertThat(LogicTest.runStream(r,
+						Logic.<LList<Integer>> exist(l ->
+								l.unifies(LList.ofAll(1, 2, 1, 3))
+										.and(removo(l, r, lval(1)))))
+				.limit(4)
+				.map(x -> x.get().toValueStream().collect(Collectors.toList()))
+				.collect(Collectors.toList()))
+				.containsExactly(Arrays.asList(2, 3));
+	}
+
+	@Test
+	public void shouldRemoveSingleMember() {
+		Unifiable<LList<Integer>> out = lvar();
+		List<List<Integer>> result = runStream(out,
+				rembero(LList.ofAll(3, 2, 3, 2), lval(2), out))
+				.map(Term::get)
+				.map(l -> l.toValueStream().collect(Collectors.toList()))
+				.collect(Collectors.toList());
+		assertThat(result)
+				.containsExactlyInAnyOrder(
+						Arrays.asList(3, 3, 2));
+	}
+
+	@Test
+	public void shouldAddSingleMember() {
+		Unifiable<LList<Integer>> out = lvar();
+		List<List<Integer>> result = LogicTest.runStream(out,
+						Logic.<LList<Integer>> exist(l ->
+								l.unifies(LList.ofAll(3, 2, 3, 2))
+										.and(rembero(out, lval(2), l))))
+				.map(Term::get)
+				.map(l -> l.toValueStream().collect(Collectors.toList()))
+				.limit(10)
+				.collect(Collectors.toList());
+		assertThat(result)
+				.containsExactlyInAnyOrder(
+						Arrays.asList(2, 3, 2, 3, 2),
+						Arrays.asList(3, 2, 2, 3, 2));
+	}
+
+	static <A> Goal removeAllo(Unifiable<LList<A>> with, Unifiable<LList<A>> without, Unifiable<A> item) {
+		return with.unifies(LList.empty()).and(without.unifies(LList.empty()))
+				.or(Logic.<LList<A>> exist(res ->
+						rembero(with, item, res)
+								.and(with.unifies(res).and(res.unifies(without))
+										.or(exclude(with.unifies(res))
+												.and(defer(() -> removeAllo(res, without, item)))))));
+	}
+
+	@Test
+	public void shouldRemoveAll() {
+		Unifiable<LList<Integer>> r = lvar();
+		assertThat(LogicTest.runStream(r,
+						Logic.<LList<Integer>> exist(l ->
+								l.unifies(LList.ofAll(1, 2, 1, 3, 1, 4, 1))
+										.and(removeAllo(l, r, lval(1)))))
+				.limit(4)
+				.map(x -> x.get().toValueStream().collect(Collectors.toList()))
+				.collect(Collectors.toList()))
+				.containsExactly(Arrays.asList(2, 3, 4));
+	}
+
+	@Test
+	public void shouldSeparate() {
+		Unifiable<Integer> x = lvar();
+		Unifiable<Integer> y = lvar();
+		Unifiable<Integer> z = lvar();
+
+		List<?> result = LogicTest.runStream(
+						LList.ofAll(x, y, z),
+						exclude(x.unifies(y)),
+						exclude(x.unifies(z)),
+
+						exclude(y.unifies(z)),
+						x.unifies(1))
+				.collect(Collectors.toList());
+		// one solution: x = 1, with y and z still open under the disequalities
+		assertThat(result).hasSize(1);
+		assertThat(result.toString()).contains("{1}").contains("¬");
+	}
+
+	@Test
+	public void shouldMakeDistinct() {
+		Unifiable<LList<Integer>> r = lvar();
+		// distincto generates lists of pairwise-distinct fresh variables, growing in length
+		assertThat(LogicTest.runStream(r,
+						Logic.<LList<Integer>> exist(l ->
+								l.unifies(LList.ofAll(1, 2))
+										.and(distincto(r))))
+				.limit(5)
+				.map(Objects::toString)
+				.collect(Collectors.toList()))
+				.containsExactly(
+						"{()}",
+						"{(_.0)}",
+						"{(_.0, _.1)} : ¬(_.0 ≡ _.1)",
+						"{(_.0, _.1, _.2)} : ¬(_.0 ≡ _.1) ∧ ¬(_.0 ≡ _.2) ∧ ¬(_.1 ≡ _.2)",
+						"{(_.0, _.1, _.2, _.3)} : ¬(_.0 ≡ _.1) ∧ ¬(_.0 ≡ _.2) ∧ ¬(_.0 ≡ _.3) ∧ ¬(_.2 ≡ _.3) ∧ ¬(_.1 ≡ _.2) ∧ ¬(_.1 ≡ _.3)");
+	}
+
+	@Test
+	public void shouldReturnFromSingleGoalThatSucceeds() {
+		Unifiable<Integer> x = lvar();
+		List<Integer> results = Utils.collect(Goal.condu(
+						exclude(x.unifies(x)),
+						x.unifies(1).or(x.unifies(2)),
+						x.unifies(3))
+				.solve(x, TestSchedulers.factory())
+				.map(Term::get));
+
+		Assertions.assertThat(results)
+				.containsExactlyInAnyOrder(1, 2);
+	}
+
+	@Test
+	public void shouldReturnFromSingleBranch() {
+		Unifiable<Integer> x = lvar();
+		List<Integer> results =
+				Goal.condu(
+								x.unifies(2).or(x.unifies(3)),
+								x.unifies(1),
+								x.unifies(3))
+						.solve(x, TestSchedulers.factory())
+						.map(Term::get)
+						.collect(Collectors.toList());
+
+		Assertions.assertThat(results)
+				.containsExactlyInAnyOrder(2, 3);
+	}
+
+	@Test
+	public void shouldReturnSingleElementFromSingleGoalThatSucceeds() {
+		Unifiable<Integer> x = lvar();
+		List<Integer> results = Goal.conda(
+						exclude(x.unifies(x)),
+						x.unifies(1).or(x.unifies(2)),
+						x.unifies(3))
+				.solve(x, TestSchedulers.factory())
+				.map(Term::get)
+				.collect(Collectors.toList());
+
+		Assertions.assertThat(results)
+				.containsExactly(1);
+	}
+}
