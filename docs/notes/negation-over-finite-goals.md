@@ -58,7 +58,7 @@ decides at ground.
 
 Every stage exists: closed solve (the closed-aggregate frame, birth
 watermark guarding capture), await the seal, transcribe (the posting
-rows' own `rename`), post the nogoods.
+answers' own `rename`), post the nogoods.
 
 The postings can even STREAM: each answer's nogood is sound the moment
 the answer arrives — the complement only strengthens as the set grows —

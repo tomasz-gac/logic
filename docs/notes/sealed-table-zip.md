@@ -3,7 +3,7 @@
 - **status**: argued — the human's design (August 2026), no code
 - **evidence held**: derivation; the pieces rest on shipped machinery
   (Closed mode already waits for the seal; answers already cross as
-  deltas through the posting rows' own rename; the trial's straight
+  deltas through the posting answers' own rename; the trial's straight
   verdict reading is the sibling's, per nogood-store §6)
 - **imports**: none new; "zip" is the human's conversational name for
   folding a sealed answer set into one Disjunct — glossary

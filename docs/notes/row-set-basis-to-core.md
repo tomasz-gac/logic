@@ -10,7 +10,7 @@
 - **imports**: none new; leans on the co-store (lattice-store.md §4)
   and the level-set delivery (weighted-tclp.md §5), both already ratified
 - **obligations**: (1) the extraction receipt — core store + a
-  materialized-rows candidate source, pldb re-seated on the same store
+  materialized-answers candidate source, pldb re-seated on the same store
   with its index-backed source, both suites green; (2) a neutral row
   type in core (pldb's `Fact` stays home); (3) the naming session
   entry — "table constraint" next to tabling's "table" in core is a
@@ -33,7 +33,7 @@ singleton collapse to bindings, min-domain labelling, fail-first
 row-wise enforce — are source-agnostic today; only the candidate
 source (pldb: re-query the live index per wake) and the posting front
 door know about `Database`. Extracting along that seam gives core a
-row-set store fed by materialized rows, and pldb keeps its index-backed
+row-set store fed by materialized answers, and pldb keeps its index-backed
 source on the same store, losing nothing.
 
 Two consumers want the core form, both as positive membership
@@ -53,9 +53,9 @@ the same composition.
 
 ## The one real design decision: residence
 
-pldb's rows deliberately live OUTSIDE the package — the data-boundary
+pldb's answers deliberately live OUTSIDE the package — the data-boundary
 doctrine, cold solves over pinned sources. All three new consumers
-need rows INSIDE the package: a sealed answer set, a level set, and a
+need answers INSIDE the package: a sealed answer set, a level set, and a
 nogood set are answer content, and must survive transcription, replay,
 and persistence — which the index-backed form structurally cannot.
 Same algebra, two residence models: the seam covers propagation;

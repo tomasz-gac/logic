@@ -332,7 +332,7 @@ enumeration; tabling IS the substitution store's residue materialized
 per call. The general form is the row-set store (pldb's table
 constraint / GAC): branches held as whole tuples, propagated WITHOUT
 enumeration — push what all surviving branches agree on (per variable:
-the projection of surviving rows, narrowing domains; for whole
+the projection of surviving answers, narrowing domains; for whole
 substitutions: the lgg — ANTI-UNIFICATION, the join the substitution
 lattice already owns), delete branches killed by incoming bindings,
 fail at zero. A domain generalized from values to substitutions;

@@ -186,12 +186,12 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **the asker is not the question** — the probe rule, both kinds: the call key is minted WITHOUT the asker's own family — self-transcription rings the producer, and per-wake supports fragment the coverage ledger; FD/nogood context stays. *(table-as-the-source)*
 - [x] **self-consumption ring** — a consumer awaiting a seal its own production holds open. Under the one shared residence it is a QUIESCENT cyclic wait the substrate refuses by name (the unstratified-negation receipt); under private tables it was a silent fresh-world livelock with nothing to refuse — the receipt that killed owned tables. The probe rule cuts the transcription route at the mint. *(table-as-the-source)*
 - [x] **CachingAnswerSource** — the SQL sync tier's coverage cache: pool + probes recorded as calls, Call.subsumes proving coverage, exact covered pricing; soundness precondition = §5.1 stability (the isolation() witness). *(sql/)*
-- [x] **landing design** — fetched rows become pldb Facts in the solve-local Database; lookups over them post as table constraints: propagation over external data, GAC-style in-memory joins. *(domain-layer §4.1)*
+- [x] **landing design** — fetched answers become pldb Facts in the solve-local Database; lookups over them post as table constraints: propagation over external data, GAC-style in-memory joins. *(domain-layer §4.1)*
 - [?] **fetch-coverage ledger** — records which probe regions were COMPLETELY enumerated; facts answer matches, coverage answers completeness. SHIPPED as CachingAnswerSource's ledger. *(domain-layer §4.1, sql/)*
 - [x] **pin() / snapshot** — the source-owned token for a consistent solve-scoped view; the freeze half of freeze-and-certify. SHIPPED as `Pin` (§11); the certify half shipped as the serialization kinds. *(domain-layer §5, transaction)*
 - [x] **snapshot vector** — {source → token} attached to results; descriptive; no universal ≥ across token types. *(domain-layer §5.3)*
 - [~] **epoch carrier hypothesis** — EpochRequirement → Footprint → EpochCondition (mirroring factor → Residues → Condition); an EXPERIMENT gated on a receipt; buys per-derivation admissibility, never table completeness. *(domain-layer §5.3)*
-- [x] **table constraint / row-set store** — returned rows as a narrowing domain (Support lattice, GAC propagator, labelo); shipped in pldb. *(pldb table-constraints)*
+- [x] **table constraint / row-set store** — returned answers as a narrowing domain (Support lattice, GAC propagator, labelo); shipped in pldb. *(pldb table-constraints)*
 - [~] **conditional answer** — (term, Condition, snapshot): the domain-facing result; check by restating, list with policy, compare by containment. *(domain-layer §6)*
 - [~] **caveated authorization** — the driving vertical slice: recursive grants with conditions over real data. *(domain-layer §7)*
 - [~] **wave execution** — poll → materialize → pin → cold solve → commit outputs; correctness = observational equivalence to a fresh cold solve at that snapshot. *(domain-layer §9)*
@@ -217,6 +217,7 @@ rating pass can stop at any section boundary and still be useful.
 - [x] **SharedDatabase** — the in-memory one history: a cell of persistent Database values plus per-relation generations; the value IS the snapshot, the monitor is the commit lock, absence is exact knowledge. *(inmemory/)*
 - [x] **Conflict** — the commit's refusal: the world moved past this snapshot; the caller re-solves against a fresh transaction, where the anomaly reappears as a named denial. *(transaction)*
 - [x] **write skew** ⋯import — the snapshot-isolation anomaly: two transactions each write what the other READ, no row collides, the combined state violates a guard both checked; demonstrated by the deterministic double-checkout receipts, refused by both serialization kinds. *(transaction; Berenson et al.)*
+- [x] **premise** — a client's earlier pinned reads carried into a later commit: regions the deciding solve read in ANOTHER request, certified beside the committing transaction's own footprint — either world moving refuses the write. *(transaction; Simulated.requiring)*
 
 ## 12. Method
 

@@ -101,8 +101,8 @@ By cost tier; each entry: why wanted, what it costs, its hazard.
   relation algebra is an optional later lattice.
 
 **The extraction driver:**
-- **Row-set store (#61)** — L = powerset-of-rows, meet = intersection,
-  contains = membership, stream = rows, propagators = per-column
+- **Row-set store (#61)** — L = powerset-of-answers, meet = intersection,
+  contains = membership, stream = answers, propagators = per-column
   projections (GAC, affordable for extensional constraints — §6). The
   SECOND INSTANCE that forces the abstraction honestly; FD re-seats as
   the first.
