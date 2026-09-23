@@ -56,13 +56,13 @@ public class OrderingOptimizer extends CascadingOptimizer {
 
 	private Fiber<Priced> price(Goal g) {
 		if (g instanceof Conjunction) {
-			return priceAll(((Conjunction) g).getClauses())
+			return visitAll(((Conjunction) g).getClauses(), this::price)
 					.map(ps -> new Priced(
 							Conjunction.of(sortSegments(ps).toArray(new Goal[0])),
 							productOf(ps)));
 		}
 		if (g instanceof Conde) {
-			return priceAll(((Conde) g).getClauses())
+			return visitAll(((Conde) g).getClauses(), this::price)
 					.map(ps -> {
 						List<Goal> alternatives = new ArrayList<>();
 						ps.forEach(p -> alternatives.add(p.getGoal()));
@@ -86,18 +86,6 @@ public class OrderingOptimizer extends CascadingOptimizer {
 			return Fiber.done(new Priced(g, declared));
 		}
 		return Fiber.done(new Priced(g, Long.MAX_VALUE));
-	}
-
-	private Fiber<List<Priced>> priceAll(List<Goal> clauses) {
-		Fiber<List<Priced>> acc = Fiber.done(new ArrayList<>());
-		for (Goal g : clauses) {
-			Fiber<Priced> priced = Fiber.defer(() -> price(g));
-			acc = Fiber.zip(acc, priced).map(t -> {
-				t._1.add(t._2);
-				return t._1;
-			});
-		}
-		return acc;
 	}
 
 	/** Barriers (∞) hold position; each maximal finite run sorts ascending, stably. */

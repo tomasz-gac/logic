@@ -10,6 +10,9 @@ import org.clauseway.logic.goals.Conde;
 import org.clauseway.logic.goals.Conjunction;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.NamedGoal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -64,5 +67,18 @@ public class CascadingOptimizer implements Optimizer {
 	@Override
 	public Fiber<Goal> visit(Barrier barrier) {
 		return done(barrier);
+	}
+
+	/** Visits every clause in order, collecting the per-clause results. */
+	protected static <T> Fiber<List<T>> visitAll(List<Goal> clauses, Function<Goal, Fiber<T>> visit) {
+		Fiber<List<T>> acc = done(new ArrayList<>());
+		for (Goal g : clauses) {
+			Fiber<T> visited = Fiber.defer(() -> visit.apply(g));
+			acc = Fiber.zip(acc, visited).map(t -> {
+				t._1.add(t._2);
+				return t._1;
+			});
+		}
+		return acc;
 	}
 }
