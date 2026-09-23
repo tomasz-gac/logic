@@ -50,6 +50,8 @@ public class BoundedSweepTest {
 		assertThat(order(FiniteDomain.dom(x, Longs.range(0, 9)))).isEqualTo(1);
 		assertThat(order(Longs.leq(x, y))).isEqualTo(1);
 		assertThat(order(exclude(x.unifies(y)))).isEqualTo(1);
+		// even a ground-false unification: refutation is doom's, not the count's
+		assertThat(order(lval(1L).unifies(lval(2L)))).isEqualTo(1);
 		assertThat(order(Goal.success())).isEqualTo(1);
 		assertThat(order(Goal.failure())).isEqualTo(0);
 	}
@@ -87,8 +89,10 @@ public class BoundedSweepTest {
 	}
 
 	@Test
-	public void groundFalseUnificationPricesZeroAndKillsItsSegment() {
-		// the dead filter is written LAST; dynamic pricing sorts it first
+	public void groundFalseUnificationSortsFirstAndFailsBeforeGeneration() {
+		// the dead filter is written LAST; constrain-first sorts it (order 1)
+		// ahead of the generator, where the clash fails at apply — the
+		// rewrite-time kill is DoomPruner's, receipted in DoomPrunerTest
 		Unifiable<Long> x = lvar();
 		AtomicLong plain = new AtomicLong();
 		assertThat(oneOf(x, plain).and(lval(1L).unifies(lval(2L))).solve(x, TestSchedulers.factory()).count()).isZero();

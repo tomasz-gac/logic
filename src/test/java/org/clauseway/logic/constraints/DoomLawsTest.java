@@ -102,12 +102,11 @@ public class DoomLawsTest {
 	}
 
 	@Test
-	public void doomNeverPricesTheAnswerBound() {
-		// a count and a verdict are different trust surfaces: a posting's
-		// price may come from its own arithmetic against the substitution
-		// (a ground clash counts 0 honestly), but store knowledge — doom's
-		// diet — never moves it; the kill is the pruning pass's (DoomPruner),
-		// never the sort key's
+	public void everyPostingPricesOne() {
+		// a count and a verdict are different trust surfaces: a posting
+		// prices exactly 1, always — refutation, even a substitution-level
+		// clash, is doom's business and the kill is the pruning pass's
+		// (DoomPruner), never the sort key's
 		int exercised = 0;
 		for (long seed = 0; seed < SEEDS; seed++) {
 			World w = new World(seed);
@@ -117,8 +116,9 @@ public class DoomLawsTest {
 				exercised++;
 			}
 			assertThat(literal.answers(p))
-					.describedAs("seed %d: store knowledge moved the price", seed)
-					.isEqualTo(literal.answers(p.substitution()));
+					.describedAs("seed %d: the price flinched", seed).isEqualTo(1);
+			assertThat(literal.answers(p.substitution()))
+					.describedAs("seed %d: the blind price flinched", seed).isEqualTo(1);
 		}
 		assertThat(exercised).describedAs("the law must not pass vacuously")
 				.isGreaterThan(5);

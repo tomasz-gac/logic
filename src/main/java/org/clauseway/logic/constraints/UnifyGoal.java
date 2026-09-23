@@ -11,7 +11,6 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.NamedGoal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.Term;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
@@ -34,16 +33,15 @@ public class UnifyGoal<T> implements Posting {
 	}
 
 	/**
-	 * Dynamic order: RUN the unification against the pricing substitutions —
-	 * one pass, and it prices partially-ground contradictions the groundness
-	 * gate would miss. Sound as a bound because unification failure is
-	 * monotone under binding growth: a 0 priced now stays 0 at any later
-	 * execution state; a success prices 1, an upper bound regardless of what
-	 * stores or later bindings veto at runtime.
+	 * RUN the unification against the state's substitution — one pass, and
+	 * it sees partially-ground contradictions a groundness gate would miss.
+	 * Sound as doom because unification failure is monotone under binding
+	 * growth: a clash found now stays a clash at any later execution state.
+	 * O(walk), no trial — the price stays 1 either way.
 	 */
 	@Override
-	public long answers(Substitutions s) {
-		return MiniKanren.unifyPrefix(s, u, v).ground().isDefined() ? 1 : 0;
+	public boolean doomed(Package p) {
+		return !MiniKanren.unifyPrefix(p.substitution(), u, v).ground().isDefined();
 	}
 
 	@Override

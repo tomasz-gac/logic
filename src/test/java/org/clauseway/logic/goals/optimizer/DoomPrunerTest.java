@@ -17,6 +17,7 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.Unifiable;
+import io.vavr.Tuple;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.Value;
@@ -51,7 +52,9 @@ public class DoomPrunerTest {
 				FiniteDomain.dom(lval(5L), Longs.range(0, 3)),
 				Longs.leq(lval(5L), lval(2L)),
 				Longs.separate(lval(1L), lval(1L)),
-				exclude(lval(1L).unifies(lval(1L)))};
+				exclude(lval(1L).unifies(lval(1L))),
+				lval(1L).unifies(lval(2L)),
+				lval(Tuple.of(lvar(), 1L)).unifies(lval(Tuple.of(lvar(), 2L)))};
 		for (Goal deadPost : dead) {
 			Unifiable<Long> x = lvar();
 			AtomicLong spawns = new AtomicLong();
