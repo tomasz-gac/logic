@@ -151,8 +151,6 @@ arguments show their current (deep-walked) values. See `debug/Trace.java`, `debu
 
 ## Backlog (what's left, with risk)
 
-- **Cut / `once` / `ifte`** — a real cut, subsuming `conda`/`condu`. Feature work, medium
-  risk. (Only `conde`/`conda`/`condu` exist today.)
 - **Public-API docs** — e.g. `FiniteDomain` has 13 public methods and no javadoc. Low risk.
 - **Dependency modernization** — assertj 3.4.1 and junit 4 are old; `logic` and `functional`
   are `-SNAPSHOT` and never released. Low-medium risk; do it as its own change.

@@ -532,8 +532,8 @@ reverted); real parallelism is STORE-INTERNAL (a cascade forking its
 propagators via Folds.forkAll) — and once stores have it, a sequential
 outer chain actively fights it, so the outer strategy must be chosen
 WITH the inner one. Revisit when a store forks its cascade; the
-primitives (forkAll, foldChained, Worklist monotone) are ready; cut/`once`/`ifte` (wants its own design
-conversation); domainify as a pass (manual idiom only); quantales;
+primitives (forkAll, foldChained, Worklist monotone) are ready;
+domainify as a pass (manual idiom only); quantales;
 bilattices/negation (re-parked per §6 — the stratified door is
 condition.md §8.5); virtual-threads engine (separate module,
 `virtual-threads-engine.md`); representation swaps (benchmark-gated,

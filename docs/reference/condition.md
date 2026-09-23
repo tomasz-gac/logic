@@ -661,9 +661,10 @@ Stratification comes free from completion detection — a negated call must
 seal before its negation is read (a sleeper edge); a cycle THROUGH
 negation surfaces as a seal waiting on itself — refuse loudly, honestly
 marking the non-stratified fragment (well-founded semantics is a research
-bridge, not an accident to stumble across). This also gives the
-cut/once/ifte backlog item a sound core for the tabled fragment:
-if-then-else = consume the condition or its complement.
+bridge, not an accident to stumble across). It would also give a
+committed-choice construct a sound core for the tabled fragment —
+if-then-else = consume the condition or its complement — should one
+ever be wanted.
 
 Caveats: CNF→DNF distribution is worst-case exponential (absorption
 mitigates; an NNF tree that never materializes the DNF is the escape
