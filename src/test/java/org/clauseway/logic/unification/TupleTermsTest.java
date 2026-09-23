@@ -8,7 +8,7 @@ import static org.clauseway.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.tuples.Tuple;
-import org.clauseway.functional.tuples.Tuples;
+
 import org.clauseway.logic.TestSchedulers;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -47,8 +47,8 @@ public class TupleTermsTest {
 		// the contract lives on the type: the flat TupleN needs no gate change
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> nine = lval(9L);
-		Object left = Tuples.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, x);
-		Object right = Tuples.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, nine);
+		Object left = Tuple.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, x);
+		Object right = Tuple.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, nine);
 		List<Long> answers = lval(left).unifies(lval(right))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());
