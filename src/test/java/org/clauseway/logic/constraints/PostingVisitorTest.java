@@ -19,7 +19,7 @@ public class PostingVisitorTest {
 
 	private static class RowName implements Posting.Visitor<String> {
 		@Override
-		public String visit(UnifyGoal<?> unification) {
+		public String visit(Unification<?> unification) {
 			return "unification";
 		}
 
@@ -67,7 +67,7 @@ public class PostingVisitorTest {
 		// a BARE unification wrapped once — x.unifies(3) itself is already
 		// Named (the ≡ trace label), which the row test above sees through
 		Unifiable<Integer> x = lvar();
-		Posting labelled = UnifyGoal.of(x, lval(3), false).named("the bind");
+		Posting labelled = Unification.of(x, lval(3), false).named("the bind");
 
 		assertThat(labelled.accept(new RowName())).isEqualTo("unification");
 

@@ -22,11 +22,11 @@ final class Renamer implements Posting.Visitor<Fiber<Posting>> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Fiber<Posting> visit(UnifyGoal<?> unification) {
-		UnifyGoal<Object> bind = (UnifyGoal<Object>) unification;
+	public Fiber<Posting> visit(Unification<?> unification) {
+		Unification<Object> bind = (Unification<Object>) unification;
 		return renaming.apply(bind.getU())
 				.flatMap(u -> renaming.apply(bind.getV())
-						.map(v -> UnifyGoal.of((Term<Object>) u, (Term<Object>) v, bind.isNoCheck())));
+						.map(v -> Unification.of((Term<Object>) u, (Term<Object>) v, bind.isNoCheck())));
 	}
 
 	/**
@@ -42,7 +42,7 @@ final class Renamer implements Posting.Visitor<Fiber<Posting>> {
 						(acc, binding) -> acc.flatMap(binds ->
 								renaming.apply((Term<?>) binding._1)
 										.flatMap(lhs -> renaming.apply(binding._2)
-												.map(rhs -> binds.append(UnifyGoal.of(
+												.map(rhs -> binds.append(Unification.of(
 														(Term<Object>) lhs, (Term<Object>) rhs, false))))))
 				.map(binds -> binds.size() == 1
 						? binds.head()

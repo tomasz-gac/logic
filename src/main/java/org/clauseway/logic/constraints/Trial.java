@@ -5,7 +5,6 @@ package org.clauseway.logic.constraints;
 
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.constraints.store.Constraint;
-import org.clauseway.logic.constraints.store.Factor;
 import org.clauseway.logic.goals.Exhaustion;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
@@ -54,7 +53,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	/** Steps at the substitution level — no package trial will be needed. */
 	private static final Posting.Visitor<Boolean> BINDING_SHAPED = new Posting.Visitor<Boolean>() {
 		@Override
-		public Boolean visit(UnifyGoal<?> unification) {
+		public Boolean visit(Unification<?> unification) {
 			return true;
 		}
 
@@ -136,7 +135,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 	}
 
 	@Override
-	public Fiber<Outcome> visit(UnifyGoal<?> unification) {
+	public Fiber<Outcome> visit(Unification<?> unification) {
 		return Fiber.done(new Now(scratch).visit(unification));
 	}
 
@@ -165,8 +164,8 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public Outcome visit(UnifyGoal<?> unification) {
-			UnifyGoal<Object> bind = (UnifyGoal<Object>) unification;
+		public Outcome visit(Unification<?> unification) {
+			Unification<Object> bind = (Unification<Object>) unification;
 			Option<Prefix> minted = (bind.isNoCheck() ?
 					MiniKanren.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
 					MiniKanren.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV()))

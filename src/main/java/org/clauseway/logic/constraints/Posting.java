@@ -6,7 +6,6 @@ package org.clauseway.logic.constraints;
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.monad.Cont;
-import org.clauseway.logic.constraints.store.Factor;
 import org.clauseway.logic.constraints.store.Renaming;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.goals.Goal;
@@ -42,10 +41,11 @@ import lombok.Value;
  * most one success, chokepoint-only); the laws kit checks constructors, not
  * calls.
  *
- * <p>The 0-or-1 taxonomy lands here as {@link Bounded}: a posting succeeds
- * at most once, so its order is never computed — it is 1 by construction,
- * with {@link #doomed} as the optional eager 0 under partial knowledge
- * (failure found at pricing is failure forever — monotone).
+ * <p>The taxonomy lands here as {@link Bounded}: a posting succeeds at
+ * most once, so its order is never computed — it is 1 by construction —
+ * and {@link #doomed} is the refutation verdict under partial knowledge
+ * (doom found now is doom forever — monotone), consumed by the doom
+ * pruning pass, never by pricing.
  */
 public interface Posting extends Goal, Bounded, Postable {
 
@@ -83,7 +83,7 @@ public interface Posting extends Goal, Bounded, Postable {
 	 */
 	interface Visitor<R> {
 
-		R visit(UnifyGoal<?> unification);
+		R visit(Unification<?> unification);
 
 		R visit(Resolution resolution);
 
@@ -226,8 +226,8 @@ public interface Posting extends Goal, Bounded, Postable {
 
 	/**
 	 * A resolved prefix held directly — the bulk binding load through the
-	 * chokepoint ({@code UnifyGoal} is its single-unification face: mint the
-	 * prefix, resolve it). Equality is the prefix's own.
+	 * chokepoint ({@code Unification} is its single-unification face: mint
+	 * the prefix, resolve it). Equality is the prefix's own.
 	 */
 	@Getter
 	@EqualsAndHashCode(of = "prefix")

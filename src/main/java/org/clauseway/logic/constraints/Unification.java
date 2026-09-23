@@ -7,7 +7,6 @@ import static org.clauseway.functional.category.Nothing.nothing;
 
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.monad.Cont;
-import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.NamedGoal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.MiniKanren;
@@ -18,7 +17,7 @@ import lombok.Value;
 
 @Value
 @RequiredArgsConstructor(staticName = "of")
-public class UnifyGoal<T> implements Posting {
+public class Unification<T> implements Posting {
 	Term<T> u;
 	Term<T> v;
 	boolean noCheck;

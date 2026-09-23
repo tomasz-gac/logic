@@ -6,9 +6,8 @@ package org.clauseway.logic.nogoods;
 import org.clauseway.functional.algebra.Semilattice;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.constraints.Posting;
-import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.constraints.Trial;
-import org.clauseway.logic.constraints.UnifyGoal;
+import org.clauseway.logic.constraints.Unification;
 import org.clauseway.logic.constraints.store.Atom;
 import org.clauseway.logic.constraints.store.Doomed;
 import org.clauseway.logic.constraints.store.Renaming;
@@ -24,7 +23,6 @@ import java.util.stream.Collectors;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.Value;
 
 /**
@@ -84,7 +82,7 @@ public class Nogood implements Atom<NogoodConstraints>, Doomed, Semilattice<Nogo
 	private static final Posting.Visitor<List<Posting>> FLATTEN =
 			new Posting.Visitor<List<Posting>>() {
 				@Override
-				public List<Posting> visit(UnifyGoal<?> unification) {
+				public List<Posting> visit(Unification<?> unification) {
 					return List.of(unification);
 				}
 
