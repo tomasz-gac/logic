@@ -28,7 +28,8 @@ public class PostingDoomTest {
 				Package.empty().substitution(), (LVar<Integer>) x.asVar().get(), lval(1)).get());
 
 		assertThat(resolution.doomed(bound(x, 2))).isTrue();
-		assertThat(resolution.answers(bound(x, 2))).isZero();
+		// the verdict never leaks into the count
+		assertThat(resolution.answers(bound(x, 2))).isEqualTo(1L);
 	}
 
 	@Test

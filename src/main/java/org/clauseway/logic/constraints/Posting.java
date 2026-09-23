@@ -105,6 +105,8 @@ public interface Posting extends Goal, Bounded, Postable {
 	 * "store lookups, never store trials": a store-shaped trial is not Done
 	 * and claims nothing. Doors refine with their own cheap checks
 	 * (registration-time store lookups, the exclusion's entailed dual).
+	 * Consumed by the doom pruning pass, never by pricing — a verdict and a
+	 * count are different trust surfaces.
 	 */
 	default boolean doomed(Package p) {
 		return Trial.doomed(this, p);
@@ -113,11 +115,6 @@ public interface Posting extends Goal, Bounded, Postable {
 	@Override
 	default long answers(Substitutions s) {
 		return 1;
-	}
-
-	@Override
-	default long answers(Package p) {
-		return doomed(p) ? 0 : 1;
 	}
 
 	/**

@@ -1,7 +1,7 @@
 package org.clauseway.logic.constraints;
 
 // ABOUTME: Posting is the chokepoint vocabulary lifted to Goal: apply IS the
-// ABOUTME: imposition, and Bounded's order is the 0-or-1 taxonomy with the doom bit.
+// ABOUTME: imposition, and Bounded's order is a count — doom never prices.
 
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.finitedomain.FiniteDomain.dom;
@@ -50,9 +50,10 @@ public class PostingTest {
 	}
 
 	@Test
-	public void aDoomedPostingPricesAtZero() {
-		// the eager 0 under partial knowledge: the live domain is disjoint
-		// with the post — failure found at pricing is failure forever
+	public void doomNeverPrices() {
+		// a count and a verdict are different trust surfaces: the live domain
+		// is disjoint with the post — doomed says so, and the price stays 1;
+		// the kill is the pruning pass's business (DoomPruner)
 		Unifiable<Long> x = lvar();
 		Package live = Exhaustion.collected(
 						dom(x, Longs.range(0, 5)).apply(Package.empty()))
@@ -61,7 +62,8 @@ public class PostingTest {
 		Posting doomed = FiniteDomain.dom(x, Longs.range(6, 9));
 		Posting alive = FiniteDomain.dom(x, Longs.range(3, 9));
 
-		assertThat(doomed.answers(live)).isZero();
+		assertThat(doomed.doomed(live)).isTrue();
+		assertThat(doomed.answers(live)).isEqualTo(1L);
 		assertThat(alive.answers(live)).isEqualTo(1L);
 	}
 }

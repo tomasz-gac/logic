@@ -1,7 +1,7 @@
 package org.clauseway.logic.constraints;
 
-// ABOUTME: The doom law as seeded properties: doomed-at-pricing implies failure
-// ABOUTME: at every extension; the doors' refinements obey the same contract.
+// ABOUTME: The doom law as seeded properties: doom claimed now implies failure
+// ABOUTME: at every extension, and the verdict never leaks into the count.
 
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
@@ -22,8 +22,8 @@ import org.junit.Test;
 /**
  * Doom is a TRUST SURFACE: a posting that claims doom must fail on
  * imposition, at the claiming state and every extension of it — the
- * refuted-permanent law read at the pricing seat. Checked over the whole
- * vocabulary: unifications, conjunctions, FD doors, exclusions, disjuncts.
+ * refuted-permanent law. Checked over the whole vocabulary:
+ * unifications, conjunctions, FD doors, exclusions, disjuncts.
  */
 public class DoomLawsTest {
 
@@ -102,21 +102,23 @@ public class DoomLawsTest {
 	}
 
 	@Test
-	public void doomZeroesTheAnswerBound() {
-		// answers(p) = doomed ? 0 : 1 — the pricing contract: a doomed
-		// posting prices 0, an undoomed one prices exactly 1
+	public void doomNeverPricesTheAnswerBound() {
+		// a count and a verdict are different trust surfaces: a posting's
+		// price may come from its own arithmetic against the substitution
+		// (a ground clash counts 0 honestly), but store knowledge — doom's
+		// diet — never moves it; the kill is the pruning pass's (DoomPruner),
+		// never the sort key's
 		int exercised = 0;
 		for (long seed = 0; seed < SEEDS; seed++) {
 			World w = new World(seed);
 			Package p = w.state(Package.empty(), 2);
 			Posting literal = w.literal();
-			long declared = literal.answers(p);
 			if (literal.doomed(p)) {
 				exercised++;
-				assertThat(declared).describedAs("seed %d: doomed but priced", seed).isZero();
-			} else {
-				assertThat(declared).describedAs("seed %d: undoomed price", seed).isEqualTo(1);
 			}
+			assertThat(literal.answers(p))
+					.describedAs("seed %d: store knowledge moved the price", seed)
+					.isEqualTo(literal.answers(p.substitution()));
 		}
 		assertThat(exercised).describedAs("the law must not pass vacuously")
 				.isGreaterThan(5);

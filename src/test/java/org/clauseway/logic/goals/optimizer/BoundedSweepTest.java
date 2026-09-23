@@ -115,7 +115,11 @@ public class BoundedSweepTest {
 	}
 
 	@Test
-	public void deadPostsPriceZeroAndKillTheirSegments() {
+	public void deadPostsSortFirstAndFailBeforeGeneration() {
+		// doom never prices: each dead post ranks 1 like any post, which
+		// constrain-first sorts ahead of the generator — the kill here is
+		// the post failing at apply, not a zero in the sort key (the
+		// rewrite-time kill is DoomPruner's, receipted in DoomPrunerTest)
 		Goal[] dead = {
 				FiniteDomain.dom(lval(5L), Longs.range(0, 3)),
 				Longs.leq(lval(5L), lval(2L)),

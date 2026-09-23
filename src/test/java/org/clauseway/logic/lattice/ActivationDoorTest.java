@@ -57,15 +57,16 @@ public class ActivationDoorTest {
 
 	@Test
 	public void doomIsReadThroughTheDeclaredCapability() {
-		// Imposition declares Doomed: a ground target the value refuses prices 0
-		assertThat(Propagation.activate(on(lval(5), 1, 2)).answers(Package.empty()))
-				.isEqualTo(0);
-		assertThat(Propagation.activate(on(lval(1), 1, 2)).answers(Package.empty()))
-				.isEqualTo(1);
+		// Imposition declares Doomed: the door wires the atom's own check
+		// into the statement — a ground target the value refuses is doomed
+		assertThat(Propagation.activate(on(lval(5), 1, 2)).doomed(Package.empty()))
+				.isTrue();
+		assertThat(Propagation.activate(on(lval(1), 1, 2)).doomed(Package.empty()))
+				.isFalse();
 	}
 
 	@Test
-	public void anAtomWithoutTheCapabilityPricesAsUnknown() {
+	public void anAtomWithoutTheCapabilityClaimsNothing() {
 		Atom<FlatConstraints> plain = new Atom<FlatConstraints>() {
 			@Override
 			public FlatConstraints empty() {
@@ -93,6 +94,6 @@ public class ActivationDoorTest {
 			}
 		};
 
-		assertThat(Propagation.activate(plain).answers(Package.empty())).isEqualTo(1);
+		assertThat(Propagation.activate(plain).doomed(Package.empty())).isFalse();
 	}
 }
