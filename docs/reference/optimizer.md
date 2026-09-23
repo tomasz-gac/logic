@@ -20,23 +20,32 @@ benchmark). This doc is the engine-side theory and catalog.**
   The combinators are a CLOSED set → visitor overloads. Leaf capabilities
   are an OPEN set → capability interfaces + `instanceof` in the fallback
   (§4). Two mechanisms for two axes of extension.
-- **`CascadingOptimizer`** — the base pass: one bottom-up structural
-  recursion that flattens nested conjunctions and disjunctions. No fixpoint
-  anywhere: pass-level iteration is only needed when a rewrite creates
-  redexes it cannot see in its own traversal, and flatten cannot. (The old
-  parameterless `Goal.optimize()` was a dangling seam — never called from
-  the solve path — and its dead `Conde` override had an or→and flattening
-  bug. Both died with the seam.)
+- **`CascadingOptimizer`** — the normalization pass: one bottom-up
+  structural recursion that flattens nested conjunctions and disjunctions.
+  No fixpoint anywhere: pass-level iteration is only needed when a rewrite
+  creates redexes it cannot see in its own traversal, and flatten cannot.
+  (The old parameterless `Goal.optimize()` was a dangling seam — never
+  called from the solve path — and its dead `Conde` override had an
+  or→and flattening bug. Both died with the seam.)
+- **`DoomPruner`** — the refutation pass: `Posting.doomed` consumed at
+  rewrite. A doomed leaf folds to failure and death propagates
+  structurally — a dead conjunct kills its whole conjunction, a dead
+  alternative drops from its conde (all dead = failure) — so the kill
+  needs no ordering and fires before `Conde` materializes the branch.
+  The ambient hook sharpens kills as knowledge arrives.
 - **`Barrier`** — the one explicit leaf (Guard and Optimized both
   converged into it once delivery went ambient): optimize outside and
   inside, never across. NamedGoal is transparent (tracing must not disable
   optimization), so wrapping alone protects nothing; Barrier says "this
   order is deliberate" and makes the contract testable.
-- **Composition is sequencing, never merging**: `Optimizer.pipeline(a, b)`
-  — every visit = `n.accept(a).flatMap(g -> g.accept(b))`; entry is always
-  at the root, each pass runs its full traversal. Subclassing is ONLY for
-  borrowing the recursion scheme (same pass, different leaf behavior) —
-  normalize-then-sort is sequencing, so it is a pipeline, not an override.
+- **Composition is sequencing, never merging**: `Optimizer.pipeline(a, b, …)`
+  — every visit folds the goal through the passes in order (accept, then
+  accept the result); entry is always at the root, each pass runs its
+  full traversal. The neutral walk lives
+  on `Optimizer` as the default visits (children visited, structure
+  preserved, leaves held in place), so a pass overrides only the nodes it
+  acts on and inherits no other pass's behavior — normalize-then-sort and
+  prune-then-order are pipelines, never subclasses.
 
 ## 2. The contract (correctness, not politeness)
 
@@ -133,6 +142,22 @@ Properties that make it sound and cheap:
   free vars PARKS and prunes incrementally as generators bind — "narrowing
   first" installs the watchers before the branching starts.
 
+**Doom never prices.** A posting's order is exactly 1, always — it can
+only prune or pass, never branch. Refutation from ANY source — a store
+contradiction or a substitution-level clash — is a VERDICT: `doomed`, a
+different trust surface with its own consumer (`DoomPruner`), and it
+never touches the count. DoomLawsTest pins `answers = 1` across the
+seeded posting vocabulary, doomed or not; `Unification` runs its
+unification only under `doomed`, never under `answers`. Store lookups
+may still inform counts as magnitudes for goals that branch —
+labelling's live width, completed-table sizes — what they may not do is
+smuggle refutation into the sort key. Ordering loses nothing by this:
+posts price 1 and constrain-first sorts them ahead of generators anyway,
+where a dead post fails at apply; the rewrite-time kill — before `Conde`
+materializes the branch, before the scheduler spends a step — is the
+pruner's. It also keeps pricing trivial: the ordering pass runs no
+unifications and no trials.
+
 ## 4. The capability interface
 
 ```java
@@ -227,6 +252,15 @@ Discipline:
 
 ## 5. Pass catalog (beyond normalize + order)
 
+Shipped:
+- **DoomPruner** (Sep 2026): the refutation pass — doomed postings fold
+  to failure, death propagates structurally (dead conjunct → dead
+  conjunction; dead alternatives drop, all-dead conde → failure). The
+  doom half of the success/failure algebra below, driven by verdicts
+  instead of literal `failure()` recognition — and it subsumes static
+  failure folding for postings: `Unification.doomed` runs the unification
+  at rewrite, so ground AND partially-ground clashes fold.
+
 Buildable today:
 - **Success/failure algebra**: `failure()∧g → failure()`, `success()∧g →
   g`, `g∨failure() → g`, singleton collapse, empty conde → failure.
@@ -236,9 +270,8 @@ Buildable today:
 - **Pure dedup** `g∧g → g` (reference-identical): sound under set
   semantics; dies when weighted inference lands (multiplicity).
 
-Gated on unify-as-data (a `UnifyGoal` type — same move as LookupGoal):
-- **Static failure folding**: ground-ground unification decided at rewrite
-  time, then the algebra pass kills the conjunction.
+Unify-as-data exists (`Unification` — same move as LookupGoal); static
+failure folding shipped with DoomPruner above. Still gated:
 - **Clause indexing**: a Conde whose clauses open with `unify(x, cᵢ)` and
   a ground x → dispatch instead of fork (Prolog first-argument indexing;
   the Matche accelerator). Needs the dynamic tier.

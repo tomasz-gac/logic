@@ -66,7 +66,7 @@ VOCABULARY — Propagation's three doors are the constructors, each row
 holding its content DIRECTLY, equality the content's own:
 
     Propagation.resolve(prefix)      // the bulk binding load (Resolution);
-                                     // UnifyGoal is its single-unification
+                                     // Unification is its single-unification
                                      // face — mint the prefix, resolve it
     Propagation.activate(item)       // a stated item (Activation); overload
                                      // adds the owning store's registration
@@ -84,12 +84,13 @@ the label stays OUTSIDE identity so literal comparison sees through
 presentation), `Posting.bind` as the delegating alias for
 `Constraints.unify`.
 
-The 0-or-1 taxonomy lands here as `Bounded`: a posting succeeds at
-most once, so its order is never computed — 1 by construction, with
-`doomed(Package)` as the optional eager 0 under partial knowledge (a
-trust surface: store lookups, never trials; never claim doom later
-knowledge could lift — `UnifyGoal` derives its doom from the dynamic
-trial it already priced with). Doors stop writing order functions;
+The taxonomy lands here as `Bounded`: a posting succeeds at most
+once, so its order is never computed — 1 by construction — and
+`doomed(Package)` is the refutation verdict under partial knowledge,
+consumed by the doom pruning pass, never by pricing (a trust surface:
+store lookups, never trials; never claim doom later knowledge could
+lift — `Unification` derives its doom by running its own unification
+against the substitution). Doors stop writing order functions;
 branchers keep pricing themselves. Implementing the interface is
 claiming the imposition law (§4) — the laws kit checks constructors,
 not calls. The declared surface is `terms()` — an item answers with

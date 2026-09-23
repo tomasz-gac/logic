@@ -678,7 +678,8 @@ unbudgeted cost (shaving is width × propagation); and the sandbox boundary
 IS the data/search boundary — an excursion that would fire a suspension has
 left the pure fragment and must stop. Shipped instances of the refutation
 half, unnamed until now: Disequality's trial unification (why raw `unify`
-is legal there and nowhere else) and `UnifyGoal`'s {0,1} pricing probe.
+is legal there and nowhere else) and `Unification`'s doom probe (its own
+unification run against the substitution, consumed by the pruning pass).
 Persistent packages make sandboxes free — no trail, no undo, drop the
 scratch world. The join half is a fourth converter — a disjunction's data
 shadow extracted without forking — and `Domain implements JoinSemilattice`

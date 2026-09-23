@@ -395,7 +395,7 @@ interesting rules to feed.
 
 **Phase 0 — land the platform (SHIPPED July 2026)**
 1. Merge branch `optimizer` (12 commits: seam, ambient delivery, Barrier,
-   ordering layer, UnifyGoal, spawn-count benchmark, design corpus).
+   ordering layer, Unification, spawn-count benchmark, design corpus).
 2. pldb `LookupGoal implements Goal, Bounded` + `estimate()` — the second
    Bounded citizen, first real index estimates; pldb Phase 2 benchmark
    (probe-yield counts). The pldb planner collapses to one data type.

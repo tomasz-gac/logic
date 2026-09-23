@@ -65,9 +65,10 @@ Propagation.suspend(watched, ripe, body)       // run body once ripe
 line: a raw `Goal` can do anything to a `Package`; a `Posting` can only
 talk to the chokepoint. The same value is a conjunct in a program, a
 literal in a nogood, and a store front door's return type (`dom`, `leq`,
-`addo`, `x.unifies` — `UnifyGoal` is `resolve`'s single-unification face:
+`addo`, `x.unifies` — `Unification` is `resolve`'s single-unification face:
 mint the prefix, resolve it). Postings are `Bounded` by taxonomy —
-order 1 by construction, `doomed(Package)` the optional eager 0 — compose
+order 1 by construction, `doomed(Package)` the refutation verdict
+consumed by the doom pruning pass — compose
 under ∧ (`Posting.all`), and survive naming (`named` keeps the face,
 labels outside identity).
 
