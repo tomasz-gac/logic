@@ -8,6 +8,7 @@ import static org.clauseway.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.logic.unification.Any;
 import org.clauseway.logic.unification.LVar;
 import org.clauseway.logic.unification.MiniKanren;
@@ -15,7 +16,6 @@ import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.Term;
 import org.clauseway.logic.unification.Unifiable;
 import org.clauseway.logic.unification.Name;
-import io.vavr.collection.List;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,7 +35,7 @@ public class RenamingTest {
 
 	@Test
 	public void aNameFreeTermPassesUnchanged() {
-		Term<?> ground = lval(List.of(lval(1), lval(2)));
+		Term<?> ground = lval(Tuple.ofAll(lval(1), lval(2)));
 		assertThat(Renaming.of(Collections.<Name<?>, Term<?>> emptyMap()).apply(ground).ground())
 				.isSameAs(ground);
 	}
@@ -58,23 +58,23 @@ public class RenamingTest {
 		seed.put(nameOf(x), lval(9));
 
 		Term<?> applied = Renaming.of(seed)
-				.apply(lval(List.of(x, lval(2), y)).getObjectTerm()).ground();
+				.apply(lval(Tuple.ofAll(x, lval(2), y)).getObjectTerm()).ground();
 
-		assertThat(sameAs(applied, lval(List.of(lval(9), lval(2), y)).getObjectTerm())).isTrue();
-		assertThat(sameAs(applied, lval(List.of(lval(8), lval(2), y)).getObjectTerm())).isFalse();
+		assertThat(sameAs(applied, lval(Tuple.ofAll(lval(9), lval(2), y)).getObjectTerm())).isTrue();
+		assertThat(sameAs(applied, lval(Tuple.ofAll(lval(8), lval(2), y)).getObjectTerm())).isFalse();
 	}
 
 	@Test
 	public void compoundSlotNamesInstantiate() {
 		// the slot path: anys in a compound term land on their targets
-		Term<?> withHoles = lval(List.of(Any.of(0), lval(2), Any.of(1)));
+		Term<?> withHoles = lval(Tuple.ofAll(Any.of(0), lval(2), Any.of(1)));
 		Map<Any<?>, Term<?>> slotTargets = new HashMap<>();
 		slotTargets.put(Any.of(0), lval(7));
 		slotTargets.put(Any.of(1), lval(8));
 		Term<?> applied = Renaming.restating(slotTargets)
 				.apply(withHoles).ground();
 
-		assertThat(sameAs(applied, lval(List.of(lval(7), lval(2), lval(8)))))
+		assertThat(sameAs(applied, lval(Tuple.ofAll(lval(7), lval(2), lval(8)))))
 				.isTrue();
 	}
 
@@ -88,9 +88,9 @@ public class RenamingTest {
 		seed.put(Any.of(0), lval(7));
 
 		Term<?> applied = Renaming.minting(seed)
-				.apply(lval(List.of(Any.of(0), x, lval(2))).getObjectTerm()).ground();
+				.apply(lval(Tuple.ofAll(Any.of(0), x, lval(2))).getObjectTerm()).ground();
 
-		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
+		assertThat(sameAs(applied, lval(Tuple.ofAll(lval(7), lval(9), lval(2)))))
 				.isTrue();
 	}
 
@@ -104,9 +104,9 @@ public class RenamingTest {
 		seed.put(Any.of(0), lval(7));
 
 		Term<?> applied = Renaming.of(seed)
-				.apply(lval(List.of(Any.of(0), x, lval(2))).getObjectTerm()).ground();
+				.apply(lval(Tuple.ofAll(Any.of(0), x, lval(2))).getObjectTerm()).ground();
 
-		assertThat(sameAs(applied, lval(List.of(lval(7), lval(9), lval(2)))))
+		assertThat(sameAs(applied, lval(Tuple.ofAll(lval(7), lval(9), lval(2)))))
 				.isTrue();
 	}
 
@@ -128,7 +128,7 @@ public class RenamingTest {
 		// occurrences become the SAME fresh variable (the existential)
 		Unifiable<Integer> local = lvar();
 		Term<?> applied = Renaming.minting(Collections.<Name<?>, Term<?>> emptyMap())
-				.apply(lval(List.of(local, local)).getObjectTerm()).ground();
+				.apply(lval(Tuple.ofAll(local, local)).getObjectTerm()).ground();
 
 		java.util.List<Term<?>> members = new java.util.ArrayList<>();
 		MiniKanren.members(applied.asVal().isDefined() ? applied : applied)
@@ -146,7 +146,7 @@ public class RenamingTest {
 		Unifiable<Integer> x = lvar();
 		Term<?> deep = x.getObjectTerm();
 		for (int i = 0; i < 10_000; i++) {
-			deep = lval(List.of(deep));
+			deep = lval(Tuple.ofAll(deep));
 		}
 		Map<Name<?>, Term<?>> seed = new HashMap<>();
 		seed.put(nameOf(x), lval(1));

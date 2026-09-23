@@ -119,13 +119,28 @@ public class Tabling {
 	 * inside the body's frames and inherits it, and its park leaves the
 	 * blocked record completion detection reads.
 	 */
+
+	private static Object structural(Object args) {
+		if (args instanceof Term) {
+			return Tuple.of(args);
+		}
+		if (args instanceof Tuple) {
+			return args;
+		}
+		throw new IllegalArgumentException(
+				"tabled call args must be structural — a Term or a Tuple, got "
+						+ args.getClass().getName());
+	}
+
 	static <T> Goal tabled(Object relation, T args, Supplier<Goal> body) {
 		// a bare Unifiable is an equality ATOM to decompose (no wrapped-Term
 		// kind: tuple MEMBERS decompose via wrapTerm, a bare wrapping does
 		// not), which would collapse every answer into one. Wrap it in a
 		// Tuple1 internally — keys, answers and consumption all take the
-		// structural path; the body still receives the bare argument
-		Unifiable<?> argsTerm = lval(args instanceof Term ? Tuple.of(args) : args);
+		// structural path; the body still receives the bare argument.
+		// Anything else must already be a Tuple: a non-structural args value
+		// silently degenerates every key to one atom, so it refuses loudly
+		Unifiable<?> argsTerm = lval(structural(args));
 		// keyed widening: the call pattern is the table key, so no optimizer may
 		// move binders across it — the contract as a type, not an accident of opacity
 		return Barrier.priced(p -> tabledOrder(p, relation, argsTerm), callerPkg -> k ->

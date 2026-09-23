@@ -9,24 +9,13 @@ import static org.clauseway.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
 import org.clauseway.functional.Exceptions;
-import org.clauseway.functional.Reference;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.MFiber;
 import org.clauseway.functional.reflection.Types;
 import org.clauseway.functional.tuples.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;
-import io.vavr.collection.LinkedHashSet;
-import io.vavr.collection.List;
-import io.vavr.collection.PriorityQueue;
-import io.vavr.collection.Queue;
-import io.vavr.collection.Tree;
-import io.vavr.collection.TreeMap;
-import io.vavr.collection.TreeSet;
-import io.vavr.collection.Vector;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
 import java.util.ArrayList;
@@ -35,10 +24,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Spliterators;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collector;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
@@ -51,32 +38,6 @@ import lombok.Value;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class MiniKanren {
-
-	private static final AtomicReference<List<Tuple2<Class<?>, Collector<?, ?, ?>>>> COLLECTORS =
-			new AtomicReference<>(
-					List.of(
-							new Tuple2<>(Array.class, Array.collector()),
-							new Tuple2<>(List.class, List.collector()),
-							new Tuple2<>(PriorityQueue.class, PriorityQueue.collector()),
-							new Tuple2<>(Queue.class, Queue.collector()),
-							new Tuple2<>(io.vavr.collection.Stream.class, io.vavr.collection.Stream.collector()),
-							new Tuple2<>(Vector.class, Vector.collector()),
-							new Tuple2<>(HashSet.class, HashSet.collector()),
-							new Tuple2<>(LinkedHashSet.class, LinkedHashSet.collector()),
-							new Tuple2<>(TreeSet.class, TreeSet.collector()),
-							new Tuple2<>(HashMap.class, HashMap.collector()),
-							new Tuple2<>(LinkedHashMap.class, LinkedHashMap.collector()),
-							new Tuple2<>(TreeMap.class, TreeMap.collector()),
-							new Tuple2<>(Tree.class, Tree.collector()),
-							new Tuple2<>(Option.class, optionCollector())));
-
-	@SuppressWarnings("unchecked")
-	private static Option<Collector<Object, ?, ?>> getCollector(Iterable<Object> v) {
-		return COLLECTORS.get()
-				.find(t -> t._1.isInstance(v))
-				.map(Tuple2::_2)
-				.map(c -> (Collector<Object, ?, ?>) c);
-	}
 
 	private static <T> Option<Substitutions> extendNoCheck(Substitutions s, LVar<T> lhs, Term<T> rhs) {
 		return Option.some(s.extend(lhs, rhs));
@@ -210,13 +171,6 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Option<Iterable<T>> asIterable(Object v) {
-		return v instanceof Iterable ?
-				Try.of(() -> (Iterable<T>) v).toOption() :
-				Option.none();
-	}
-
-	@SuppressWarnings("unchecked")
 	public static <T> Option<LList<T>> asLList(Object v) {
 		return v instanceof LList ?
 				Try.of(() -> (LList<T>) v).toOption() :
@@ -277,7 +231,7 @@ public class MiniKanren {
 	@RequiredArgsConstructor
 	public static class Decomposition {
 		public enum Kind {
-			ITERABLE, TUPLE, LLIST, LTREE
+			TUPLE, LLIST, LTREE
 		}
 		Kind kind;
 		Iterable<Term<?>> members;
@@ -287,8 +241,9 @@ public class MiniKanren {
 	 * The ONE place that knows what structure is: a term's kind and members, one
 	 * level deep, held lazily — no rebuild, no collector. Empty when the term is
 	 * not structural (variables, plain values, empty LList/LTree — the empties
-	 * are equality atoms). The kinds are deliberately coarse: any iterable
-	 * matches any iterable; tuples are their own class, arity-checked by count.
+	 * are equality atoms). Structure is carried by the engine's own types —
+	 * tuples through their structural contract, LList and LTree natively —
+	 * and every foreign value, collections included, is an equality atom.
 	 */
 	static Option<Decomposition> decompose(Term<?> v) {
 		if (!v.asVal().isDefined()) {
@@ -299,20 +254,8 @@ public class MiniKanren {
 			// a null payload is an equality atom, never structure
 			return Option.none();
 		}
-		return MiniKanren.<Object> asIterable(w)
-				// ONE GATE: a value is structural iff its class can also be
-				// REBUILT — decompose and rebuild read the same table, so
-				// half-support (unifies, then crashes at walk) is
-				// unrepresentable; unregistered iterables are atoms
-				.filter(it -> getCollector(it).isDefined())
-				.map(it -> new Decomposition(Decomposition.Kind.ITERABLE, wrapAll(it)))
-				.orElse(() -> tupleAsIterable(w)
-						.map(it -> new Decomposition(Decomposition.Kind.TUPLE, wrapAll(it))))
-				// vavr collections are structural values, and their entries are
-				// vavr pairs — kept structural so a map's VALUES unify through them
-				.orElse(() -> Types.cast(w, Tuple2.class)
-						.map(e -> new Decomposition(Decomposition.Kind.TUPLE,
-								wrapAll(Arrays.asList(e._1, e._2)))))
+		return tupleAsIterable(w)
+				.map(it -> new Decomposition(Decomposition.Kind.TUPLE, wrapAll(it)))
 				.orElse(() -> Types.cast(w, LList.class)
 						.filter(x -> !x.isEmpty())
 						.map(x -> new Decomposition(Decomposition.Kind.LLIST,
@@ -358,8 +301,8 @@ public class MiniKanren {
 			Term<T> v,
 			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
 		return v.asVal()
-				.flatMap(MiniKanren::asIterable)
-				.map(t -> MiniKanren.<T> mapIterable(t, mapper))
+				.flatMap(w -> Types.<Tuple> cast(w, Tuple.class))
+				.map(t -> MiniKanren.<T> mapTuple(t, mapper))
 				.orElse(() -> v.asVal()
 						.flatMap(MiniKanren::<T>asLList)
 						.filter(not(LList::isEmpty))
@@ -379,51 +322,7 @@ public class MiniKanren {
 								.map(vc -> LTree.of(vc._1, MiniKanren.<LList<LTree<Object>>> castTerm(vc._2)).get())
 								.map(w -> Types.<T> castAs(w, Object.class).get())
 								.map(LVal::lval)
-								.map(MiniKanren::<T>castTerm)))
-				.orElse(() -> v.asVal()
-						.flatMap(w -> Types.<Tuple> cast(w, Tuple.class))
-						.map(t -> MiniKanren.<T> mapTuple(t, mapper)))
-				.orElse(() -> v.asVal()
-						.flatMap(w -> Types.cast(w, Tuple2.class))
-						.map(e -> MiniKanren.<T> mapEntry(e, mapper)));
-	}
-
-	/** The vavr-pair mirror of {@link #mapTuple}: a map entry rebuilt as an entry. */
-	private static <T> Fiber<Term<T>> mapEntry(
-			Tuple2<?, ?> entry,
-			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
-		return Fiber.zip(
-						mapper.apply(wrapTerm(entry._1))
-								.map(u -> entry._1 instanceof Term ? u : u.asVal().get()),
-						mapper.apply(wrapTerm(entry._2))
-								.map(u -> entry._2 instanceof Term ? u : u.asVal().get()))
-				.map(lr -> new Tuple2<>(lr._1, lr._2))
-				.map(LVal::lval)
-				.map(MiniKanren::castTerm);
-	}
-
-	private static <T> Fiber<Term<T>> mapIterable(
-			Iterable<Object> iterable,
-			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
-		Collector<Object, ?, ?> collector = MiniKanren.getCollector(iterable)
-				.getOrElseThrow(Exceptions.format(RuntimeException::new,
-						"Unsupported iterable type: %s", iterable));
-
-		return toJavaStream(iterable)
-				// the mapper recurses into the element's own structure: DEFER
-				// it, or nesting depth becomes construction-time stack depth
-				.map(u -> defer(() -> mapper.apply(wrapTerm(u)))
-						.map(w -> (u instanceof Term) ?
-								w : w.asVal().get()))
-				.reduce(done(new ArrayList<>()),
-						(Fiber<ArrayList<Object>> acc, Fiber<Object> item) -> Fiber.zip(acc, item)
-								.map(lr -> {
-									lr._1.add(lr._2);
-									return lr._1;
-								}),
-						Exceptions.throwingBiOp(UnsupportedOperationException::new))
-				.map(r -> r.stream().collect(collector))
-				.map(MiniKanren::<T>wrapTerm);
+								.map(MiniKanren::<T>castTerm)));
 	}
 
 	private static <T> Fiber<Term<T>> mapTuple(
@@ -607,13 +506,6 @@ public class MiniKanren {
 		return members;
 	}
 
-	private static <T> Collector<T, ?, Option<T>> optionCollector() {
-		return Collector.of(
-				Reference::<T>empty,
-				Reference::set,
-				Exceptions.throwingBiOp(IllegalArgumentException::new),
-				r -> Option.of(r.get()));
-	}
 
 	@SuppressWarnings("unchecked")
 	private static <T> Term<T> castTerm(Object v) {

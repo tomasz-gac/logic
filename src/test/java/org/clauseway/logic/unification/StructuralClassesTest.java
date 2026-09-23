@@ -1,7 +1,7 @@
 package org.clauseway.logic.unification;
 
-// ABOUTME: Pins the coarse structural equivalence classes of unification — the
-// ABOUTME: behavior decompose (migration step C) must preserve exactly.
+// ABOUTME: Pins the structural equivalence classes of unification: tuples, LList
+// ABOUTME: and LTree decompose; every foreign value — vavr collections included — is an atom.
 
 import static org.clauseway.logic.unification.LVal.lval;
 import static org.clauseway.logic.unification.LVar.lvar;
@@ -22,11 +22,10 @@ public class StructuralClassesTest {
 	}
 
 	@Test
-	public void anIterableWithoutARebuildRecipeIsAnAtom() {
-		// vavr's Value hierarchy makes Either iterable, but no collector is
-		// registered for it: structurality is ONE gate - a value decomposes
-		// iff its class can also be rebuilt. Unregistered iterables unify as
-		// atomic values, by equals
+	public void anIterableWithoutTheContractIsAnAtom() {
+		// vavr's Value hierarchy makes Either iterable, but structure is
+		// carried by the structural contract, never by Iterable: foreign
+		// values unify as atoms, by equals
 		assertThat(unifies(
 				lval(Either.right(1)).getObjectUnifiable(),
 				lval(List.of(1)).getObjectUnifiable()))
@@ -44,7 +43,7 @@ public class StructuralClassesTest {
 	@Test
 	public void aUserIterableIsAnAtomNotAStructure() {
 		// implementing Iterable must not opt a domain type into element-wise
-		// unification - structure is granted by the registry, never inherited
+		// unification - structure is granted by the structural contract
 		final class Pair implements Iterable<Object> {
 			final Object a, b;
 
@@ -79,14 +78,23 @@ public class StructuralClassesTest {
 	}
 
 	@Test
-	public void anyIterableUnifiesWithAnyIterable() {
-		// the ITERABLE class is container-agnostic: only elements matter
+	public void vavrCollectionsAreAtoms() {
+		// collections are values, not structure: a variable inside one is
+		// invisible to unification, and only equals decides
 		Unifiable<Integer> x = lvar();
-		Substitutions s = MiniKanren.unify(Substitutions.empty(),
-						lval(List.of(lval(1), x)).getObjectUnifiable(),
-						lval(Vector.of(lval(1), lval(2))).getObjectUnifiable())
-				.ground().get();
-		assertThat(s.walk(x)).isEqualTo(lval(2));
+		Unifiable<Integer> y = lvar();
+		assertThat(unifies(
+				lval(List.of(lval(1), x)).getObjectUnifiable(),
+				lval(List.of(lval(1), y)).getObjectUnifiable()))
+				.isFalse();
+		assertThat(unifies(
+				lval(List.of(1, 2)).getObjectUnifiable(),
+				lval(List.of(1, 2)).getObjectUnifiable()))
+				.isTrue();
+		assertThat(unifies(
+				lval(Vector.of(1, 2)).getObjectUnifiable(),
+				lval(Vector.of(1, 2)).getObjectUnifiable()))
+				.isTrue();
 	}
 
 	@Test
@@ -106,7 +114,7 @@ public class StructuralClassesTest {
 	}
 
 	@Test
-	public void iterablesOfDifferentLengthDoNotUnify() {
+	public void unequalCollectionsDoNotUnify() {
 		assertThat(unifies(
 				lval(List.of(1, 2, 3)).getObjectUnifiable(),
 				lval(List.of(1, 2)).getObjectUnifiable()))

@@ -189,7 +189,8 @@ public class MiniKanrenTest {
 				.collect(List.collector());
 
 		Substitutions s = MiniKanren.unify(Substitutions.empty(),
-				lval(xs), lval(ys.map(LVal::lval))).ground().get();
+				lval(Tuple.ofAll(xs.toJavaArray())),
+				lval(Tuple.ofAll(ys.map(LVal::lval).toJavaArray()))).ground().get();
 
 		assertThat(xs.toStream()
 				.map(x -> s.walk(x))
@@ -199,27 +200,27 @@ public class MiniKanrenTest {
 	}
 
 	@Test
-	public void shouldUnifyVarWithList() {
-		Unifiable<List<Unifiable<Integer>>> x = lvar();
-		Unifiable<List<Unifiable<Integer>>> y = lvar();
+	public void shouldUnifyVarWithWideTuple() {
+		Unifiable<Tuple> x = lvar();
+		Unifiable<Tuple> y = lvar();
 		int n = 1_000_000;
-		List<Unifiable<Integer>> vals = IntStream.range(0, n)
+		Object[] vals = IntStream.range(0, n)
 				.boxed()
 				.map(LVal::lval)
-				.collect(List.collector());
+				.toArray();
 
-		List<Unifiable<Integer>> vs = IntStream.range(0, n)
+		Object[] vs = IntStream.range(0, n)
 				.boxed()
 				.map(i -> LVar.<Integer> lvar("_." + i))
-				.collect(List.collector());
-		// unifying a variable with a million-element list must not blow the stack
+				.toArray();
+		// unifying a variable with a million-wide tuple must not blow the stack
 		Substitutions s = Substitutions.empty();
 		s = MiniKanren.unify(s, x, y).ground().get();
-		s = MiniKanren.unify(s, y, lval(vals)).ground().get();
-		s = MiniKanren.unify(s, y, lval(vs)).ground().get();
+		s = MiniKanren.unify(s, y, lval(Tuple.ofAll(vals))).ground().get();
+		s = MiniKanren.unify(s, y, lval(Tuple.ofAll(vs))).ground().get();
 
-		List<Unifiable<Integer>> unifiables = MiniKanren.walkAll(s, x).ground().get();
-		assertThat(unifiables).hasSize(n);
+		Tuple unifiables = MiniKanren.walkAll(s, x).ground().get();
+		assertThat(unifiables.arity()).isEqualTo(n);
 	}
 
 	@Test
@@ -252,93 +253,79 @@ public class MiniKanrenTest {
 	}
 
 	@Test
-	public void shouldUnifyMaps() {
-		Unifiable<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x = lvar();
-		Map<String, Tuple2<Integer, Unifiable<Integer>>> m1 = HashMap.of(
-				"v1", Tuple.of(3, lvar("v1")),
-				"v2", Tuple.of(4, lval(2)));
+	public void shouldTreatMapsAsAtoms() {
+		// a map is a value, not structure: equal maps unify by equals, and a
+		// variable inside a map is invisible to unification
+		Map<String, Integer> m1 = HashMap.of("v1", 1, "v2", 2);
+		Map<String, Integer> m2 = HashMap.of("v1", 1, "v2", 2);
+		assertThat(MiniKanren.unify(Substitutions.empty(), lval(m1), lval(m2))
+				.ground().isDefined()).isTrue();
 
-		Map<String, Tuple2<Integer, Unifiable<Integer>>> m2 = HashMap.of(
-				"v1", Tuple.of(3, lval(1)),
-				"v2", Tuple.of(4, lvar("v2")));
-
-		Substitutions s = Substitutions.empty();
-		s = MiniKanren.unify(s, x, lval(m1)).ground().get();
-		s = MiniKanren.unify(s, lval(m1), lval(m2)).ground().get();
-
-		Term<Map<String, Tuple2<Integer, Unifiable<Integer>>>> x1 = MiniKanren.walkAll(s, x).ground();
-		assertThat(s.walk(x).get())
-				.isEqualTo(m1);
-		assertThat(s.walk(x).get())
-				.isEqualTo(m1);
-		assertThat(s.walk(m1.get("v1").get()._2).get())
-				.isEqualTo(1);
-		assertThat(s.walk(m2.get("v2").get()._2).get())
-				.isEqualTo(2);
+		Map<String, Unifiable<Integer>> withVar = HashMap.of("v1", lvar("v1"));
+		Map<String, Unifiable<Integer>> withVal = HashMap.of("v1", lval(1));
+		assertThat(MiniKanren.unify(Substitutions.empty(), lval(withVar), lval(withVal))
+				.ground().isDefined()).isFalse();
 	}
 
-	Unifiable<List<? extends Unifiable<Integer>>> buildUni(int i, int delta) {
+	Unifiable<Object> buildUni(int i, int delta) {
 		if (i % 2 == delta) {
-			return lval(IntStream.range(10, 20)
+			return lval(Tuple.ofAll(IntStream.range(10, 20)
 					.boxed()
 					.map(LVal::lval)
-					.collect(List.collector()));
+					.toArray()));
 		} else if (i % 2 == 1 + delta) {
 			return lvar("_." + i);
 		} else {
-			return lval(IntStream.range(10, 20)
+			return lval(Tuple.ofAll(IntStream.range(10, 20)
 					.boxed()
 					.map(j -> LVar.<Integer> lvar("_." + i + j))
-					.collect(List.collector()));
+					.toArray()));
 		}
 	}
 
 	@Test
 	public void shouldUnifyCompoundTypes() {
-		List<Unifiable<? extends List<? extends Unifiable<Integer>>>> ints = IntStream.range(0, 60)
+		Object[] ints = IntStream.range(0, 60)
 				.boxed()
 				.map(i -> buildUni(i, 0))
-				.collect(List.collector());
+				.toArray();
 
-		List<Unifiable<? extends List<? extends Unifiable<Integer>>>> ints2 = IntStream.range(0, 60)
+		Object[] ints2 = IntStream.range(0, 60)
 				.boxed()
 				.map(i -> buildUni(i, 1))
-				.collect(List.collector());
+				.toArray();
 
-		Substitutions s = Substitutions.empty();
-		s = MiniKanren.unify(s, lval(ints), lval(ints2)).ground().get();
-		val listUnifiable = s.walk(lval(ints)).get();
-		assertThat(
-				listUnifiable
-						.get(2).get()
-						.get(3).get())
+		Substitutions s = MiniKanren.unify(Substitutions.empty(),
+				lval(Tuple.ofAll(ints)), lval(Tuple.ofAll(ints2))).ground().get();
+		Tuple walked = (Tuple) s.walk(lval(Tuple.ofAll(ints))).get();
+		assertThat(((Unifiable<?>)
+				((Tuple) ((Unifiable<?>) walked.get(3)).get()).get(4)).get())
 				.isEqualTo(13);
-		assertThat(listUnifiable
-				.get(1).asVar().toJavaOptional()
+		assertThat(((Unifiable<?>) walked.get(2)).asVar().toJavaOptional()
 				.map(LVar::getName))
 				.hasValue("_.1");
 	}
 
 	@Test
 	public void shouldUnifyCompoundTypes2() {
-		Unifiable<List<Unifiable<? extends List<? extends Unifiable<Integer>>>>> x = lvar();
+		Unifiable<Tuple> x = lvar();
 
-		List<Unifiable<? extends List<? extends Unifiable<Integer>>>> ints = IntStream.range(0, 60)
+		Object[] ints = IntStream.range(0, 60)
 				.boxed()
 				.map(i -> buildUni(i, 0))
-				.collect(List.collector());
+				.toArray();
 
-		List<Unifiable<? extends List<? extends Unifiable<Integer>>>> ints2 = IntStream.range(0, 60)
+		Object[] ints2 = IntStream.range(0, 60)
 				.boxed()
 				.map(i -> buildUni(i, 1))
-				.collect(List.collector());
+				.toArray();
 
 		Substitutions s = Substitutions.empty();
-		s = MiniKanren.unify(s, lval(ints), lval(ints2)).ground().get();
-		s = MiniKanren.unify(s, x, lval(ints)).ground().get();
+		s = MiniKanren.unify(s, lval(Tuple.ofAll(ints)), lval(Tuple.ofAll(ints2))).ground().get();
+		s = MiniKanren.unify(s, x, lval(Tuple.ofAll(ints))).ground().get();
 
-		val x1 = MiniKanren.walkAll(s, x).ground();
-		assertThat(x1.get().get(3)
+		Tuple x1 = MiniKanren.walkAll(s, x).ground().get();
+		assertThat(((Term<?>) x1.get(4))
 				.asVal().toJavaOptional())
 				.isNotEmpty();
 	}
@@ -353,17 +340,17 @@ public class MiniKanrenTest {
 		s = MiniKanren.unify(s, x, y).ground().get();
 		s = MiniKanren.unify(s, z, lval(3)).ground().get();
 
-		assertThat(MiniKanren.walkAll(s, lval(List.of(x, y, z)))
+		assertThat(MiniKanren.walkAll(s, lval(Tuple.of(x, y, z)))
 				.ground())
-				.isEqualTo(lval(List.of(y, y, lval(3))));
-		List<Term<Integer>> x1 =
-				MiniKanren.reify(s, lval(List.<Term<Integer>> of(x, y, z))).ground()
-						.get();
-		assertThat(x1.get(0))
+				.isEqualTo(lval(Tuple.of(y, y, lval(3))));
+		Tuple3<Term<Integer>, Term<Integer>, Term<Integer>> x1 =
+				MiniKanren.reify(s, lval(Tuple.<Term<Integer>, Term<Integer>, Term<Integer>> of(x, y, z)))
+						.ground().get();
+		assertThat(x1._1())
 				.matches(v -> v.asReified().isDefined())
-				.isEqualTo(x1.get(1));
+				.isEqualTo(x1._2());
 
-		assertThat(x1.get(2))
+		assertThat(x1._3())
 				.matches(v -> v.asVal().isDefined());
 	}
 
@@ -405,8 +392,9 @@ public class MiniKanrenTest {
 	}
 
 	@Test
-	public void shouldWalkOption() {
-		Package s = Package.empty();
+	public void shouldTreatOptionsAsAtoms() {
+		// an Option is a value, not structure: a variable inside one is
+		// invisible to unification — the coupling below never closes
 		Unifiable<Option<Unifiable<Integer>>> u = lvar();
 		Unifiable<Option<Unifiable<Integer>>> v = lvar();
 		Unifiable<Integer> val = lvar();
@@ -417,7 +405,7 @@ public class MiniKanrenTest {
 						.and(unify(val, 123))
 						.solve(val2, TestSchedulers.factory())
 						.map(Term::get)))
-				.containsExactly(123);
+				.isEmpty();
 	}
 
 	@Test
@@ -552,12 +540,13 @@ public class MiniKanrenTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 
-		List<Term<Integer>> reified =
-				MiniKanren.reify(Substitutions.empty(), lval(List.<Term<Integer>> of(x, y, x))).ground().get();
+		Tuple3<Term<Integer>, Term<Integer>, Term<Integer>> reified =
+				MiniKanren.reify(Substitutions.empty(),
+						lval(Tuple.<Term<Integer>, Term<Integer>, Term<Integer>> of(x, y, x))).ground().get();
 
-		assertThat(reified.get(0).asReified().get().getNumber()).isEqualTo(0);
-		assertThat(reified.get(1).asReified().get().getNumber()).isEqualTo(1);
-		assertThat(reified.get(2)).isSameAs(reified.get(0));
+		assertThat(reified._1().asReified().get().getNumber()).isEqualTo(0);
+		assertThat(reified._2().asReified().get().getNumber()).isEqualTo(1);
+		assertThat(reified._3()).isSameAs(reified._1());
 	}
 
 	@Test
@@ -592,10 +581,10 @@ public class MiniKanrenTest {
 		Unifiable<Integer> y = lvar();
 
 		// (x, x) shares one variable; (x, y) has two distinct ones
-		Term<List<Unifiable<Integer>>> shared =
-				MiniKanren.reify(Substitutions.empty(), lval(List.of(x, x))).ground();
-		Term<List<Unifiable<Integer>>> distinct =
-				MiniKanren.reify(Substitutions.empty(), lval(List.of(x, y))).ground();
+		Term<?> shared =
+				MiniKanren.reify(Substitutions.empty(), lval(Tuple.of(x, x))).ground();
+		Term<?> distinct =
+				MiniKanren.reify(Substitutions.empty(), lval(Tuple.of(x, y))).ground();
 
 		assertThat(shared).isNotEqualTo(distinct);
 		assertThat(shared).isEqualTo(shared);
@@ -607,15 +596,16 @@ public class MiniKanrenTest {
 		Unifiable<Integer> b = lvar();
 		// (a, b, a) reifies to (_.0, _.1, _.0); shared anys share the fresh variable
 		Reified<?> template = MiniKanren.reify(Substitutions.empty(),
-				lval(List.<Term<Integer>> of(a, b, a))).ground();
+				lval(Tuple.<Term<Integer>, Term<Integer>, Term<Integer>> of(a, b, a))).ground();
 
 		Unifiable<?> instantiated = MiniKanren.instantiate(template).ground();
 
-		List<Term<Integer>> items = (List<Term<Integer>>) instantiated.get();
-		assertThat(items.get(0).asVar().isDefined()).isTrue();
-		assertThat(items.get(1).asVar().isDefined()).isTrue();
-		assertThat(items.get(0)).isSameAs(items.get(2));
-		assertThat(items.get(0)).isNotEqualTo(items.get(1));
+		Tuple3<Term<Integer>, Term<Integer>, Term<Integer>> items =
+				(Tuple3<Term<Integer>, Term<Integer>, Term<Integer>>) instantiated.get();
+		assertThat(items._1().asVar().isDefined()).isTrue();
+		assertThat(items._2().asVar().isDefined()).isTrue();
+		assertThat(items._1()).isSameAs(items._3());
+		assertThat(items._1()).isNotEqualTo(items._2());
 	}
 
 	@Test
@@ -660,8 +650,8 @@ public class MiniKanrenTest {
 				.isTrue();
 
 		assertThat(runFiber(MiniKanren.alphaEquiv(
-				lval(List.of(x, x)).getObjectUnifiable(),
-				lval(List.of(x, y)).getObjectUnifiable(),
+				lval(Tuple.of(x, x)).getObjectUnifiable(),
+				lval(Tuple.of(x, y)).getObjectUnifiable(),
 				Substitutions.empty())))
 				.isFalse();
 	}
