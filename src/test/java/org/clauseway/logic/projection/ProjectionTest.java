@@ -6,7 +6,7 @@ import static org.clauseway.logic.unification.LVar.lvar;
 import org.clauseway.logic.unification.LVal;
 import org.clauseway.logic.unification.Term;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;

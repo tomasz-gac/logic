@@ -11,7 +11,7 @@ import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.lattice.Verdict;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Term;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import java.util.Collections;

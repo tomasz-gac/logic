@@ -24,7 +24,7 @@ import org.clauseway.logic.unification.Prefix;
 import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.Term;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple2;
 import io.vavr.collection.LinkedHashSet;
 import java.util.Collections;
 import java.util.List;

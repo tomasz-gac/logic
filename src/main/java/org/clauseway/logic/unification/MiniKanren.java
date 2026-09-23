@@ -13,15 +13,8 @@ import org.clauseway.functional.Reference;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.MFiber;
 import org.clauseway.functional.reflection.Types;
-import io.vavr.Tuple;
-import io.vavr.Tuple1;
+import org.clauseway.functional.tuples.Tuple;
 import io.vavr.Tuple2;
-import io.vavr.Tuple3;
-import io.vavr.Tuple4;
-import io.vavr.Tuple5;
-import io.vavr.Tuple6;
-import io.vavr.Tuple7;
-import io.vavr.Tuple8;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.HashSet;
@@ -62,20 +55,20 @@ public class MiniKanren {
 	private static final AtomicReference<List<Tuple2<Class<?>, Collector<?, ?, ?>>>> COLLECTORS =
 			new AtomicReference<>(
 					List.of(
-							Tuple.of(Array.class, Array.collector()),
-							Tuple.of(List.class, List.collector()),
-							Tuple.of(PriorityQueue.class, PriorityQueue.collector()),
-							Tuple.of(Queue.class, Queue.collector()),
-							Tuple.of(io.vavr.collection.Stream.class, io.vavr.collection.Stream.collector()),
-							Tuple.of(Vector.class, Vector.collector()),
-							Tuple.of(HashSet.class, HashSet.collector()),
-							Tuple.of(LinkedHashSet.class, LinkedHashSet.collector()),
-							Tuple.of(TreeSet.class, TreeSet.collector()),
-							Tuple.of(HashMap.class, HashMap.collector()),
-							Tuple.of(LinkedHashMap.class, LinkedHashMap.collector()),
-							Tuple.of(TreeMap.class, TreeMap.collector()),
-							Tuple.of(Tree.class, Tree.collector()),
-							Tuple.of(Option.class, optionCollector())));
+							new Tuple2<>(Array.class, Array.collector()),
+							new Tuple2<>(List.class, List.collector()),
+							new Tuple2<>(PriorityQueue.class, PriorityQueue.collector()),
+							new Tuple2<>(Queue.class, Queue.collector()),
+							new Tuple2<>(io.vavr.collection.Stream.class, io.vavr.collection.Stream.collector()),
+							new Tuple2<>(Vector.class, Vector.collector()),
+							new Tuple2<>(HashSet.class, HashSet.collector()),
+							new Tuple2<>(LinkedHashSet.class, LinkedHashSet.collector()),
+							new Tuple2<>(TreeSet.class, TreeSet.collector()),
+							new Tuple2<>(HashMap.class, HashMap.collector()),
+							new Tuple2<>(LinkedHashMap.class, LinkedHashMap.collector()),
+							new Tuple2<>(TreeMap.class, TreeMap.collector()),
+							new Tuple2<>(Tree.class, Tree.collector()),
+							new Tuple2<>(Option.class, optionCollector())));
 
 	@SuppressWarnings("unchecked")
 	private static Option<Collector<Object, ?, ?>> getCollector(Iterable<Object> v) {
@@ -262,7 +255,7 @@ public class MiniKanren {
 			public <U> Option<Substitutions> apply(Substitutions p, LVar<U> l, Term<U> r) {
 				return extend.apply(p, l, r)
 						.map(extended -> {
-							collected.add(Tuple.of(l, r));
+							collected.add(new Tuple2<>(l, r));
 							return extended;
 						});
 			}
@@ -315,6 +308,11 @@ public class MiniKanren {
 				.map(it -> new Decomposition(Decomposition.Kind.ITERABLE, wrapAll(it)))
 				.orElse(() -> tupleAsIterable(w)
 						.map(it -> new Decomposition(Decomposition.Kind.TUPLE, wrapAll(it))))
+				// vavr collections are structural values, and their entries are
+				// vavr pairs — kept structural so a map's VALUES unify through them
+				.orElse(() -> Types.cast(w, Tuple2.class)
+						.map(e -> new Decomposition(Decomposition.Kind.TUPLE,
+								wrapAll(Arrays.asList(e._1, e._2)))))
 				.orElse(() -> Types.cast(w, LList.class)
 						.filter(x -> !x.isEmpty())
 						.map(x -> new Decomposition(Decomposition.Kind.LLIST,
@@ -383,8 +381,25 @@ public class MiniKanren {
 								.map(LVal::lval)
 								.map(MiniKanren::<T>castTerm)))
 				.orElse(() -> v.asVal()
-						.flatMap(MiniKanren::tupleAsIterable)
-						.map(t -> MiniKanren.<T> mapTuple(t, mapper)));
+						.flatMap(w -> Types.<Tuple> cast(w, Tuple.class))
+						.map(t -> MiniKanren.<T> mapTuple(t, mapper)))
+				.orElse(() -> v.asVal()
+						.flatMap(w -> Types.cast(w, Tuple2.class))
+						.map(e -> MiniKanren.<T> mapEntry(e, mapper)));
+	}
+
+	/** The vavr-pair mirror of {@link #mapTuple}: a map entry rebuilt as an entry. */
+	private static <T> Fiber<Term<T>> mapEntry(
+			Tuple2<?, ?> entry,
+			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
+		return Fiber.zip(
+						mapper.apply(wrapTerm(entry._1))
+								.map(u -> entry._1 instanceof Term ? u : u.asVal().get()),
+						mapper.apply(wrapTerm(entry._2))
+								.map(u -> entry._2 instanceof Term ? u : u.asVal().get()))
+				.map(lr -> new Tuple2<>(lr._1, lr._2))
+				.map(LVal::lval)
+				.map(MiniKanren::castTerm);
 	}
 
 	private static <T> Fiber<Term<T>> mapIterable(
@@ -412,9 +427,9 @@ public class MiniKanren {
 	}
 
 	private static <T> Fiber<Term<T>> mapTuple(
-			Iterable<Object> tuple,
+			Tuple tuple,
 			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
-		return toJavaStream(tuple)
+		return toJavaStream(tupleMembers(tuple))
 				// the mapper accepts Term,
 				// but some elements may be regular types.
 				// We're wrapping those types in a Val
@@ -433,7 +448,7 @@ public class MiniKanren {
 								}),
 						Exceptions.throwingBiOp(UnsupportedOperationException::new))
 				.map(ArrayList::toArray)
-				.map(MiniKanren::tupleFromArray)
+				.map(tuple::withMembers)
 				.map(LVal::lval)
 				.map(MiniKanren::castTerm);
 	}
@@ -453,7 +468,7 @@ public class MiniKanren {
 				.<Any<?>> flatMap(name -> name.asReified().toJavaStream())
 				.forEach(any -> fresh.computeIfAbsent(any, miss -> (LVar<?>) LVar.lvar()));
 		return walkAll(Substitutions.of(HashMap.ofAll(fresh)), term)
-				.map(t -> Tuple.of(t, fresh));
+				.map(t -> new Tuple2<>(t, fresh));
 	}
 
 	/**
@@ -500,7 +515,7 @@ public class MiniKanren {
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Substitutions.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)
-								.map(reified -> Tuple.of((Reified<T>) reified, varsToAnys(rp)))));
+								.map(reified -> new Tuple2<>((Reified<T>) reified, varsToAnys(rp)))));
 	}
 
 	/**
@@ -510,7 +525,7 @@ public class MiniKanren {
 	 * slot-named knowledge (residues) onto the instantiation.
 	 */
 	public static <T> Fiber<Tuple2<Unifiable<T>, Map<Any<?>, LVar<?>>>> instantiateWithAnys(Reified<T> term) {
-		return MiniKanren.instantiated(term).map(t -> Tuple.of((Unifiable<T>) t._1, t._2));
+		return MiniKanren.instantiated(term).map(t -> new Tuple2<>((Unifiable<T>) t._1, t._2));
 	}
 
 	/** Invert the rename substitution into slot order: the var named {@code _.i} ↦ {@code _.i}. */
@@ -563,73 +578,33 @@ public class MiniKanren {
 				reify(s, y).map(xReified::equals));
 	}
 
-	public static <A, B> BiFunction<A, A, Tuple2<B, B>> applyOnBoth(Function<A, B> f) {
+	// the term-facing pair utilities speak the tuple family; the plumbing
+	// Tuple2 above is vavr's (map entries) — a genuine simple-name clash
+	public static <A, B> BiFunction<A, A, org.clauseway.functional.tuples.Tuple2<B, B>> applyOnBoth(
+			Function<A, B> f) {
 		return (a, b) -> Tuple.of(f.apply(a), f.apply(b));
 	}
 
-	public static <A, B> Option<Tuple2<A, B>> zip(Option<A> a, Option<B> b) {
+	public static <A, B> Option<org.clauseway.functional.tuples.Tuple2<A, B>> zip(
+			Option<A> a, Option<B> b) {
 		return a.flatMap(av -> b.map(bv -> Tuple.of(av, bv)));
 	}
 
+	/**
+	 * The tuple half of the structural gate, read through the structural
+	 * contract: one row for every arity — decompose via {@code get}, rebuild
+	 * via {@code withMembers} — so a new arity cannot be half-supported.
+	 */
 	public static Option<Iterable<Object>> tupleAsIterable(Object tuple) {
-		Iterable<Object> result = asIterable(tuple, Tuple1.class, t -> Collections.singletonList(t._1));
-		if (result != null) {
-			return Option.of(result);
-		}
-		result = asIterable(tuple, Tuple2.class, t -> Arrays.asList(t._1, t._2));
-		if (result != null) {
-			return Option.of(result);
-		}
-		result = asIterable(tuple, Tuple3.class, t -> Arrays.asList(t._1, t._2, t._3));
-		if (result != null) {
-			return Option.of(result);
-		}
-		result = asIterable(tuple, Tuple4.class, t -> Arrays.asList(t._1, t._2, t._3, t._4));
-		if (result != null) {
-			return Option.of(result);
-		}
-		result = asIterable(tuple, Tuple5.class, t -> Arrays.asList(t._1, t._2, t._3, t._4, t._5));
-		if (result != null) {
-			return Option.of(result);
-		}
-		result = asIterable(tuple, Tuple6.class, t -> Arrays.asList(t._1, t._2, t._3, t._4, t._5, t._6));
-		if (result != null) {
-			return Option.of(result);
-		}
-		result = asIterable(tuple, Tuple7.class, t -> Arrays.asList(t._1, t._2, t._3, t._4, t._5, t._6, t._7));
-		if (result != null) {
-			return Option.of(result);
-		}
-		result = asIterable(tuple, Tuple8.class, t -> Arrays.asList(t._1, t._2, t._3, t._4, t._5, t._6, t._7, t._8));
-		if (result != null) {
-			return Option.of(result);
-		} else {
-			return Option.none();
-		}
+		return Types.cast(tuple, Tuple.class).map(MiniKanren::tupleMembers);
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> T tupleFromArray(Object... args) {
-		switch (args.length) {
-			case 1:
-				return (T) Tuple.of(args[0]);
-			case 2:
-				return (T) Tuple.of(args[0], args[1]);
-			case 3:
-				return (T) Tuple.of(args[0], args[1], args[2]);
-			case 4:
-				return (T) Tuple.of(args[0], args[1], args[2], args[3]);
-			case 5:
-				return (T) Tuple.of(args[0], args[1], args[2], args[3], args[4]);
-			case 6:
-				return (T) Tuple.of(args[0], args[1], args[2], args[3], args[4], args[5]);
-			case 7:
-				return (T) Tuple.of(args[0], args[1], args[2], args[3], args[4], args[5], args[6]);
-			case 8:
-				return (T) Tuple.of(args[0], args[1], args[2], args[3], args[4], args[5], args[5], args[7]);
-			default:
-				throw new IllegalArgumentException("Tuple too long: " + Arrays.toString(args));
+	private static Iterable<Object> tupleMembers(Tuple t) {
+		ArrayList<Object> members = new ArrayList<>(t.arity());
+		for (int i = 1; i <= t.arity(); i++) {
+			members.add(t.get(i));
 		}
+		return members;
 	}
 
 	private static <T> Collector<T, ?, Option<T>> optionCollector() {
@@ -647,12 +622,5 @@ public class MiniKanren {
 
 	private static Stream<Object> toJavaStream(Iterable<Object> it) {
 		return StreamSupport.stream(Spliterators.spliteratorUnknownSize(it.iterator(), 0), false);
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <T> Iterable<Object> asIterable(Object item, Class<T> cls, Function<T, Iterable<?>> sequencer) {
-		return cls.isInstance(item) ?
-				(Iterable<Object>) sequencer.apply((T) item) :
-				null;
 	}
 }

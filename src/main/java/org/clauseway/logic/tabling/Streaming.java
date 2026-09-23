@@ -12,8 +12,8 @@ import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.Reified;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 

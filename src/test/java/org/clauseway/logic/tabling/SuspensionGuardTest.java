@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;

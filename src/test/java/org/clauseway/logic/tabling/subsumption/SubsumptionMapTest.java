@@ -11,7 +11,7 @@ import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Reified;
 import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import org.junit.Test;
 
 public class SubsumptionMapTest {

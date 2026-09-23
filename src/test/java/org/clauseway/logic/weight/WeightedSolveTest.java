@@ -18,7 +18,7 @@ import org.clauseway.logic.projection.Projection;
 import org.clauseway.logic.unification.LList;
 import org.clauseway.logic.unification.Reified;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple2;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;

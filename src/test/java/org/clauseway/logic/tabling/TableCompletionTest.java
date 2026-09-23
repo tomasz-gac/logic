@@ -14,9 +14,9 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.optimizer.Bounded;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
-import io.vavr.Tuple1;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple1;
+import org.clauseway.functional.tuples.Tuple2;
 import org.junit.Test;
 
 /**

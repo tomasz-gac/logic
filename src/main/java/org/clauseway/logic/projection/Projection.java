@@ -10,7 +10,7 @@ import org.clauseway.logic.goals.optimizer.Bounded;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Unifiable;
 import io.vavr.Function2;
-import io.vavr.Function3;
+import org.clauseway.functional.tuples.Function3;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.function.Function;

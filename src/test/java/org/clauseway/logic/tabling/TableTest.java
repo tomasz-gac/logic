@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.unification.Any;
 import org.clauseway.logic.unification.Reified;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import org.junit.Test;
 
 public class TableTest {

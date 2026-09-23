@@ -6,6 +6,7 @@ package org.clauseway.logic.tabling;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.algebra.Semirings;
+import org.clauseway.functional.tuples.Tuple;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.Test;
 
@@ -74,8 +75,8 @@ public class JoinMapTest {
 		// two ascents of one key: one order slot, two log events
 		assertThat(after.size()).isEqualTo(1);
 		assertThat(after.logSize()).isEqualTo(2);
-		assertThat(after.logAt(0)).isEqualTo(io.vavr.Tuple.of("d", 6L));
-		assertThat(after.logAt(1)).isEqualTo(io.vavr.Tuple.of("d", 4L));
+		assertThat(after.logAt(0)).isEqualTo(Tuple.of("d", 6L));
+		assertThat(after.logAt(1)).isEqualTo(Tuple.of("d", 4L));
 	}
 
 	@Test

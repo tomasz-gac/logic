@@ -18,14 +18,14 @@ import org.clauseway.logic.unification.Term;
 import org.clauseway.logic.unification.Unifiable;
 import io.vavr.Function1;
 import io.vavr.Function2;
-import io.vavr.Function3;
-import io.vavr.Function4;
-import io.vavr.Function5;
-import io.vavr.Function6;
-import io.vavr.Function7;
-import io.vavr.Function8;
-import io.vavr.Tuple;
-import io.vavr.Tuple3;
+import org.clauseway.functional.tuples.Function3;
+import org.clauseway.functional.tuples.Function4;
+import org.clauseway.functional.tuples.Function5;
+import org.clauseway.functional.tuples.Function6;
+import org.clauseway.functional.tuples.Function7;
+import org.clauseway.functional.tuples.Function8;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple3;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
 import io.vavr.control.Option;
@@ -104,10 +104,8 @@ public class Logic {
 	public static Goal booleanGoal(
 			Unifiable<Boolean> l, Unifiable<Boolean> r, Unifiable<Boolean> out,
 			Array<Tuple3<Boolean, Boolean, Boolean>> table) {
-		return table.map(b -> b
-						.map(l::unifies, r::unifies, out::unifies).toSeq()
-						.map(Goal.class::cast)
-						.reduce(Goal::and))
+		return table.map(b -> b.apply((bl, br, bo) ->
+						(Goal) l.unifies(bl).and(r.unifies(br)).and(out.unifies(bo))))
 				.reduce(Goal::or);
 	}
 

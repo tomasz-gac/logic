@@ -8,7 +8,7 @@ import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.Reified;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple2;
 
 /**
  * The algorithm plugged into the shared tabling skeleton — anonymous master /

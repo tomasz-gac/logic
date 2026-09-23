@@ -11,7 +11,7 @@ import static org.clauseway.logic.unification.LVar.lvar;
 import org.clauseway.functional.algebra.Monoid;
 import org.clauseway.functional.algebra.Monoids;
 import org.clauseway.functional.fibers.Fiber;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.logic.constraints.Constraints;
 import org.clauseway.logic.goals.Exhaustion;
 import org.clauseway.logic.goals.Goal;

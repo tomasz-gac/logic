@@ -13,7 +13,7 @@ import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.unification.Any;
 import org.clauseway.logic.unification.Reified;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

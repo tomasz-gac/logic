@@ -17,7 +17,7 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.Value;

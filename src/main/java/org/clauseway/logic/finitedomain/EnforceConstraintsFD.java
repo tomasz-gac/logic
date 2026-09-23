@@ -13,7 +13,7 @@ import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Term;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import io.vavr.control.Option;
 import java.util.Collection;
 import java.util.List;

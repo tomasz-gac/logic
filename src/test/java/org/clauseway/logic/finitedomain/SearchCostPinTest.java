@@ -13,7 +13,7 @@ import org.clauseway.functional.fibers.interpreter.Scope;
 import org.clauseway.functional.fibers.interpreter.StepListener;
 import org.clauseway.functional.fibers.schedulers.UnfairBreadthFirstScheduler;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Test;
 

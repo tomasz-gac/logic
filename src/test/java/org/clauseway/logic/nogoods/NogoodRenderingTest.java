@@ -16,8 +16,9 @@ import org.clauseway.logic.tabling.Tabled;
 import org.clauseway.logic.tabling.Tabling;
 import org.clauseway.logic.unification.Reified;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
+import org.clauseway.functional.tuples.Tuple3;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
@@ -111,8 +112,8 @@ public class NogoodRenderingTest {
 		Unifiable<Integer> x = lvar();
 		Unifiable<Integer> y = lvar();
 		Unifiable<Integer> z = lvar();
-		Unifiable<io.vavr.Tuple3<Unifiable<Integer>, Unifiable<Integer>, Unifiable<Integer>>> out =
-				lval(io.vavr.Tuple.of(x, y, z));
+		Unifiable<Tuple3<Unifiable<Integer>, Unifiable<Integer>, Unifiable<Integer>>> out =
+				lval(Tuple.of(x, y, z));
 
 		List<String> answers = rendered(exclude(x.unifies(y), x.unifies(z)), out);
 

@@ -7,7 +7,7 @@ import static org.clauseway.logic.unification.LVal.lval;
 import static org.clauseway.logic.unification.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import io.vavr.collection.List;
 import io.vavr.control.Either;
 import java.util.Arrays;

@@ -12,7 +12,7 @@ import org.clauseway.logic.TestSchedulers;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.unification.Term;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;

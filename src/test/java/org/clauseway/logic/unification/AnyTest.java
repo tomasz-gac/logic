@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.clauseway.logic.goals.Package;
-import io.vavr.Tuple;
+import org.clauseway.functional.tuples.Tuple;
 import io.vavr.collection.HashMap;
 import org.junit.Test;
 

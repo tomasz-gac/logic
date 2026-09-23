@@ -17,9 +17,9 @@ import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Reified;
 import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.Unifiable;
-import io.vavr.Tuple;
-import io.vavr.Tuple1;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple1;
+import org.clauseway.functional.tuples.Tuple2;
 import java.util.stream.Collectors;
 import org.junit.Test;
 

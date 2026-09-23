@@ -11,7 +11,7 @@ import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
 import org.clauseway.logic.tabling.subsumption.SubsumptionMap;
 import org.clauseway.logic.unification.Reified;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple2;
 import io.vavr.collection.List;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;

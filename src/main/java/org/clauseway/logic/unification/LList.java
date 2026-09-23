@@ -8,7 +8,7 @@ import static io.vavr.Predicates.not;
 
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Logic;
-import io.vavr.Function3;
+import org.clauseway.functional.tuples.Function3;
 import io.vavr.collection.Array;
 import io.vavr.collection.IndexedSeq;
 import io.vavr.control.Either;

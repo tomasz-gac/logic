@@ -5,8 +5,8 @@ package org.clauseway.logic.tabling;
 
 import org.clauseway.functional.algebra.IdempotentSemiring;
 import org.clauseway.functional.algebra.Semilattice;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.Vector;
 import io.vavr.control.Option;
