@@ -4,6 +4,7 @@ package org.clauseway.logic.goals.optimizer;
 // ABOUTME: The generic visit(Goal) overload is the extension hook for foreign goal types.
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import org.clauseway.functional.Exceptions;
@@ -86,40 +87,45 @@ public interface Optimizer {
 	}
 
 	/** Sequential composition — passes compose as a pipeline, never by merging. */
-	static Optimizer pipeline(Optimizer first, Optimizer second) {
+	static Optimizer pipeline(Optimizer... optimizers) {
 		return new Optimizer() {
-			private Fiber<Goal> both(Goal g) {
-				return g.accept(first).flatMap(r -> r.accept(second));
+			private Fiber<Goal> all(Goal g) {
+				return Arrays.stream(optimizers)
+						.reduce(Fiber.done(g),
+								(acc, o) -> acc.flatMap(g1 -> g1.accept(o)),
+								Exceptions.throwingBiOp(UnsupportedOperationException::new));
 			}
 
 			@Override
 			public Fiber<Goal> visit(Goal goal) {
-				return both(goal);
+				return all(goal);
 			}
 
 			@Override
 			public Fiber<Goal> visit(Conjunction conjunction) {
-				return both(conjunction);
+				return all(conjunction);
 			}
 
 			@Override
 			public Fiber<Goal> visit(Conde conde) {
-				return both(conde);
+				return all(conde);
 			}
 
 			@Override
 			public Fiber<Goal> visit(NamedGoal named) {
-				return both(named);
+				return all(named);
 			}
 
 			@Override
 			public Fiber<Goal> visit(Barrier barrier) {
-				return both(barrier);
+				return all(barrier);
 			}
 
 			@Override
 			public Optimizer with(Package p) {
-				return pipeline(first.with(p), second.with(p));
+				return pipeline(Arrays.stream(optimizers)
+						.map(o -> o.with(p))
+						.toArray(Optimizer[]::new));
 			}
 		};
 	}
