@@ -47,8 +47,8 @@ public class TupleTermsTest {
 		// the contract lives on the type: the flat TupleN needs no gate change
 		Unifiable<Long> x = lvar();
 		Unifiable<Long> nine = lval(9L);
-		Object left = Tuple.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, x);
-		Object right = Tuple.of(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, nine);
+		Object left = Tuple.ofAll(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, x);
+		Object right = Tuple.ofAll(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, nine);
 		List<Long> answers = lval(left).unifies(lval(right))
 				.solve(x, TestSchedulers.factory())
 				.map(Term::get).collect(Collectors.toList());
