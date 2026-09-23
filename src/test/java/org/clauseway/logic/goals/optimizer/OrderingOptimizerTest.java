@@ -14,6 +14,7 @@ import org.clauseway.functional.algebra.Semirings;
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.monad.Cont;
 import org.clauseway.logic.aggregate.Aggregate;
+import org.clauseway.logic.goals.Conde;
 import org.clauseway.logic.goals.Conjunction;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
@@ -93,6 +94,17 @@ public class OrderingOptimizerTest {
 				.accept(new OrderingOptimizer()).ground();
 		assertThat(((Conjunction) sorted).getClauses())
 				.containsExactly(b1, b5, barrier, b2, b3);
+	}
+
+	@Test
+	public void ordersWithoutNormalizing() {
+		// normalization is CascadingOptimizer's job, reached via the pipeline:
+		// the ordering pass alone leaves nested disjunctions un-flattened
+		Goal a = new FixedOrder(1), b = new FixedOrder(2), c = new FixedOrder(3);
+		Goal nested = b.or(c);
+		Goal rewritten = a.or(nested).accept(new OrderingOptimizer()).ground();
+		assertThat(((Conde) rewritten).getClauses())
+				.containsExactly(a, nested);
 	}
 
 	@Test

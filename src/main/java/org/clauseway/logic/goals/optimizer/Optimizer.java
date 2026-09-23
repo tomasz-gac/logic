@@ -3,6 +3,10 @@ package org.clauseway.logic.goals.optimizer;
 // ABOUTME: A visitor over the goal combinators — the seam for goal-tree rewriting.
 // ABOUTME: The generic visit(Goal) overload is the extension hook for foreign goal types.
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Function;
+import org.clauseway.functional.Exceptions;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Conde;
 import org.clauseway.logic.goals.Conjunction;
@@ -26,19 +30,51 @@ import org.clauseway.logic.goals.Package;
  * <p>Optimizers compose as an ordered pipeline of passes, never by merging
  * visitors. No pass needs fixpoint iteration: normalization is a single
  * bottom-up traversal.
+ *
+ * <p>The default visits are the neutral walk: children visited, structure
+ * preserved, leaves held in place. A pass overrides only the nodes it acts
+ * on; an Optimizer overriding nothing rewrites nothing.
  */
 public interface Optimizer {
 
 	/** The fallback and extension hook: anything unrecognised is a barrier. */
-	Fiber<Goal> visit(Goal goal);
+	default Fiber<Goal> visit(Goal goal) {
+		return Fiber.done(goal);
+	}
 
-	Fiber<Goal> visit(Conjunction conjunction);
+	default Fiber<Goal> visit(Conjunction conjunction) {
+		return visitAll(conjunction.getClauses(), g -> g.accept(this))
+				.map(gs -> (Goal) Conjunction.of(gs.toArray(new Goal[0])));
+	}
 
-	Fiber<Goal> visit(Conde conde);
+	default Fiber<Goal> visit(Conde conde) {
+		return visitAll(conde.getClauses(), g -> g.accept(this))
+				.map(gs -> (Goal) Conde.of(gs));
+	}
 
-	Fiber<Goal> visit(NamedGoal named);
+	/** Transparent: tracing must not disable optimization. */
+	default Fiber<Goal> visit(NamedGoal named) {
+		return named.getGoal().accept(this)
+				.map(g -> NamedGoal.of(named.getLabel(), g, named.getName()));
+	}
 
-	Fiber<Goal> visit(Barrier barrier);
+	default Fiber<Goal> visit(Barrier barrier) {
+		return Fiber.done(barrier);
+	}
+
+	/** Visits every clause in order, collecting the per-clause results. */
+	static <T> Fiber<List<T>> visitAll(List<Goal> clauses, Function<Goal, Fiber<T>> visit) {
+		return clauses.stream()
+				// defer keeps the descent on the fiber trampoline, not the Java stack
+				.map(g -> Fiber.defer(() -> visit.apply(g)))
+				.reduce(Fiber.done(new ArrayList<>()),
+						(acc, r) -> Fiber.zip(acc, r)
+								.map(t -> {
+									t._1.add(t._2);
+									return t._1;
+								}),
+						Exceptions.throwingBiOp(UnsupportedOperationException::new));
+	}
 
 	/**
 	 * Pass-state injection: a state-aware pass returns a copy carrying

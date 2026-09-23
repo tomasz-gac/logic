@@ -26,7 +26,7 @@ import lombok.Value;
  * defer hook — so the pass is half-blind: sighted at layer boundaries, blind
  * to midway bindings within a layer.
  */
-public class OrderingOptimizer extends CascadingOptimizer {
+public class OrderingOptimizer implements Optimizer {
 
 	private final Package bound;
 
@@ -56,13 +56,13 @@ public class OrderingOptimizer extends CascadingOptimizer {
 
 	private Fiber<Priced> price(Goal g) {
 		if (g instanceof Conjunction) {
-			return visitAll(((Conjunction) g).getClauses(), this::price)
+			return Optimizer.visitAll(((Conjunction) g).getClauses(), this::price)
 					.map(ps -> new Priced(
 							Conjunction.of(sortSegments(ps).toArray(new Goal[0])),
 							productOf(ps)));
 		}
 		if (g instanceof Conde) {
-			return visitAll(((Conde) g).getClauses(), this::price)
+			return Optimizer.visitAll(((Conde) g).getClauses(), this::price)
 					.map(ps -> {
 						List<Goal> alternatives = new ArrayList<>();
 						ps.forEach(p -> alternatives.add(p.getGoal()));

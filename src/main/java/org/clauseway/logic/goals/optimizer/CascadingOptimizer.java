@@ -1,34 +1,25 @@
 package org.clauseway.logic.goals.optimizer;
 
-// ABOUTME: The base optimizer: bottom-up structural recursion that flattens nested
-// ABOUTME: conjunctions and disjunctions; NamedGoal is transparent, everything else a leaf.
+// ABOUTME: The normalization pass: nested conjunctions splice into their parent
+// ABOUTME: and nested condes become sibling alternatives, in one bottom-up traversal.
 
 import static org.clauseway.functional.fibers.Fiber.done;
 
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Conde;
 import org.clauseway.logic.goals.Conjunction;
 import org.clauseway.logic.goals.Goal;
-import org.clauseway.logic.goals.NamedGoal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Stream;
 
 /**
  * Normalizes a goal tree in one bottom-up pass: children first, then nested
  * {@link Conjunction}s splice into their parent and nested {@link Conde}s
  * become sibling alternatives. Nothing nested survives a single traversal, so
  * no fixpoint iteration is needed — the recursion is the termination argument.
- * Subclasses hook per-node work (e.g. reordering owned goals) by overriding a
- * visit method and delegating here for the structural part.
+ * Everything else is the neutral walk inherited from {@link Optimizer}.
  */
 public class CascadingOptimizer implements Optimizer {
-
-	@Override
-	public Fiber<Goal> visit(Goal goal) {
-		return done(goal);
-	}
 
 	@Override
 	public Fiber<Goal> visit(Conjunction conjunction) {
@@ -53,32 +44,7 @@ public class CascadingOptimizer implements Optimizer {
 						Stream.of(g)))
 				.reduce((l, r) -> Fiber.zip(l, r)
 						.map(t -> t.apply(Stream::concat)))
-				.map(f -> f.map(s -> (Goal) Conde.of(s.collect(java.util.stream.Collectors.toList()))))
+				.map(f -> f.map(s -> (Goal) Conde.of(s.collect(Collectors.toList()))))
 				.orElseGet(() -> done(Goal.failure()));
-	}
-
-	@Override
-	public Fiber<Goal> visit(NamedGoal named) {
-		// transparent: tracing must not disable optimization
-		return named.getGoal().accept(this)
-				.map(g -> NamedGoal.of(named.getLabel(), g, named.getName()));
-	}
-
-	@Override
-	public Fiber<Goal> visit(Barrier barrier) {
-		return done(barrier);
-	}
-
-	/** Visits every clause in order, collecting the per-clause results. */
-	protected static <T> Fiber<List<T>> visitAll(List<Goal> clauses, Function<Goal, Fiber<T>> visit) {
-		Fiber<List<T>> acc = done(new ArrayList<>());
-		for (Goal g : clauses) {
-			Fiber<T> visited = Fiber.defer(() -> visit.apply(g));
-			acc = Fiber.zip(acc, visited).map(t -> {
-				t._1.add(t._2);
-				return t._1;
-			});
-		}
-		return acc;
 	}
 }

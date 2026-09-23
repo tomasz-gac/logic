@@ -25,7 +25,7 @@ import lombok.Value;
  * {@link Optimizer#pipeline}. The package is pass state — empty at the root
  * rewrite, live at the defer hook — so kills sharpen as knowledge arrives.
  */
-public class DoomPruner extends CascadingOptimizer {
+public class DoomPruner implements Optimizer {
 
 	private final Package bound;
 
@@ -70,7 +70,7 @@ public class DoomPruner extends CascadingOptimizer {
 
 	private Fiber<Pruned> prune(Goal g) {
 		if (g instanceof Conjunction) {
-			return visitAll(((Conjunction) g).getClauses(), this::prune)
+			return Optimizer.visitAll(((Conjunction) g).getClauses(), this::prune)
 					.map(ps -> ps.stream().anyMatch(Pruned::isDead) ?
 							new Pruned(Goal.failure(), true) :
 							new Pruned(Conjunction.of(ps.stream()
@@ -78,7 +78,7 @@ public class DoomPruner extends CascadingOptimizer {
 									.toArray(Goal[]::new)), false));
 		}
 		if (g instanceof Conde) {
-			return visitAll(((Conde) g).getClauses(), this::prune)
+			return Optimizer.visitAll(((Conde) g).getClauses(), this::prune)
 					.map(ps -> {
 						List<Goal> live = ps.stream()
 								.filter(p -> !p.isDead())
