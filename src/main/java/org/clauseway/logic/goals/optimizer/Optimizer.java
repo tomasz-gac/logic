@@ -44,12 +44,12 @@ public interface Optimizer {
 
 	default Fiber<Goal> visit(Conjunction conjunction) {
 		return visitAll(conjunction.getClauses(), g -> g.accept(this))
-				.map(gs -> (Goal) Conjunction.of(gs.toArray(new Goal[0])));
+				.map(gs -> Conjunction.of(gs.toArray(new Goal[0])));
 	}
 
 	default Fiber<Goal> visit(Conde conde) {
 		return visitAll(conde.getClauses(), g -> g.accept(this))
-				.map(gs -> (Goal) Conde.of(gs));
+				.map(Conde::of);
 	}
 
 	/** Transparent: tracing must not disable optimization. */
