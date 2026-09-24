@@ -8,6 +8,7 @@ import static org.clauseway.functional.fibers.MFiber.none;
 import static org.clauseway.logic.unification.LVal.lval;
 import static io.vavr.Predicates.not;
 
+import java.util.stream.IntStream;
 import org.clauseway.functional.Exceptions;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.MFiber;
@@ -499,11 +500,9 @@ public class MiniKanren {
 	}
 
 	private static Iterable<Object> tupleMembers(Tuple t) {
-		ArrayList<Object> members = new ArrayList<>(t.arity());
-		for (int i = 1; i <= t.arity(); i++) {
-			members.add(t.get(i));
-		}
-		return members;
+		return () -> IntStream.rangeClosed(1, t.arity())
+				.mapToObj(t::get)
+				.iterator();
 	}
 
 
