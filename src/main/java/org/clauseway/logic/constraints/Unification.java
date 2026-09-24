@@ -6,7 +6,7 @@ package org.clauseway.logic.constraints;
 import static org.clauseway.functional.category.Nothing.nothing;
 
 import org.clauseway.functional.category.Nothing;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.NamedGoal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.MiniKanren;

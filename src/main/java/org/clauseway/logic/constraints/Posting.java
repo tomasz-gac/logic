@@ -5,7 +5,7 @@ package org.clauseway.logic.constraints;
 
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.constraints.store.Renaming;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.goals.Goal;

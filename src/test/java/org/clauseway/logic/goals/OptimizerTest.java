@@ -9,7 +9,7 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.optimizer.Barrier;
 import org.clauseway.logic.goals.optimizer.CascadingOptimizer;
 import org.clauseway.logic.unification.terms.Unifiable;

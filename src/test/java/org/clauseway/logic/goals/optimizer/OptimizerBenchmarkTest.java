@@ -10,7 +10,7 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.category.Nothing;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.Substitutions;

@@ -6,7 +6,7 @@ package org.clauseway.logic.tabling.conditions;
 import org.clauseway.functional.algebra.PartialOrder;
 import org.clauseway.functional.algebra.Semilattice;
 import org.clauseway.functional.fibers.Fiber;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.constraints.Constraints;
 import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.constraints.store.Constraint;

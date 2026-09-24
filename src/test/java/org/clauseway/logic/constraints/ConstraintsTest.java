@@ -4,7 +4,7 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.Utils;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.terms.LVar;

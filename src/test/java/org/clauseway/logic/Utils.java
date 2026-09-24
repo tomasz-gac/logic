@@ -3,7 +3,7 @@ package org.clauseway.logic;
 import org.clauseway.functional.category.Monad;
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;

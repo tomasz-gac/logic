@@ -10,7 +10,7 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import org.clauseway.functional.Streams;
 import org.clauseway.logic.Utils;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.constraints.Constraints;
 import org.clauseway.logic.constraints.Posting;
 import org.clauseway.logic.goals.Package;

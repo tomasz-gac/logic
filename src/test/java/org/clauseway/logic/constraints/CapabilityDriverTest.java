@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.constraints.store.Factor;
 import org.clauseway.logic.constraints.store.Renaming;
 import org.clauseway.logic.constraints.store.Theory;

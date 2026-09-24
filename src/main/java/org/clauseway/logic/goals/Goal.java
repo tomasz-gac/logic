@@ -9,7 +9,7 @@ import org.clauseway.functional.fibers.Scheduler;
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import org.clauseway.functional.fibers.schedulers.DepthFirstScheduler;
 import org.clauseway.functional.fibers.schedulers.ForkJoinScheduler;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.constraints.Constraints;
 import org.clauseway.functional.fibers.interpreter.ScopeProfiler;
 import org.clauseway.logic.debug.DebugStore;

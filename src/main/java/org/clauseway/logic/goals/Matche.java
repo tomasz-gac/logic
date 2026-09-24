@@ -2,7 +2,7 @@ package org.clauseway.logic.goals;
 
 import static org.clauseway.logic.constraints.Constraints.unify;
 
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.MiniKanren;

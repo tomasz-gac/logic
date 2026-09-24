@@ -4,7 +4,7 @@ package org.clauseway.logic.goals.optimizer;
 // ABOUTME: the ordering pass reads the price.
 
 import org.clauseway.functional.category.Nothing;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.Substitutions;

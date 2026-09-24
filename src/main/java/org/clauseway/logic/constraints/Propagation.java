@@ -7,7 +7,7 @@ import org.clauseway.functional.Exceptions;
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.MFiber;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.constraints.store.Atom;
 import org.clauseway.logic.constraints.store.Constraint;
 import org.clauseway.logic.constraints.store.Doomed;

@@ -2,7 +2,7 @@ package org.clauseway.logic.goals;
 
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.functional.fibers.interpreter.OriginCapture;
 import org.clauseway.logic.debug.DebugStore;
 import org.clauseway.logic.debug.ProfilerStore;

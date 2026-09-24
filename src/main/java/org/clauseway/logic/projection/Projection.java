@@ -3,7 +3,7 @@ package org.clauseway.logic.projection;
 // ABOUTME: Projection goals: park a kernel suspension until deep-groundness, then
 // ABOUTME: run the body with the walked value. Suspensions are Propagation's own.
 
-import org.clauseway.functional.monad.Cont;
+import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.optimizer.Bounded;
