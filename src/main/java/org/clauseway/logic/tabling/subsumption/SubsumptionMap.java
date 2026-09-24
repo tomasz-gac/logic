@@ -3,12 +3,10 @@ package org.clauseway.logic.tabling.subsumption;
 // ABOUTME: Term-indexed retrieval of stored patterns that GENERALIZE a query:
 // ABOUTME: a discrimination trie prunes candidates, Subsumption.subsumes decides.
 
-import org.clauseway.functional.index.ImmutableIndex;
 import org.clauseway.logic.unification.terms.Any;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.terms.Term;
 import io.vavr.Tuple2;
-import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -26,7 +24,7 @@ import lombok.Value;
  * sealed-subsumer lookup today, the optimizer's plan reuse later.
  *
  * <p>A stored pattern serializes to its preorder {@link Edge} path over one
- * persistent trie ({@link ImmutableIndex}); alpha-equal patterns are one key
+ * persistent trie ({@link Trie}); alpha-equal patterns are one key
  * (reified equality — last put wins). The QUERY is never serialized: the walk
  * carries a worklist of query subterms, so a stored {@link Edge.Any}
  * swallows one whole subterm by popping it, an {@link Edge.Atom} matches the
@@ -40,12 +38,12 @@ import lombok.Value;
  */
 public final class SubsumptionMap<V> {
 
-	private final AtomicReference<ImmutableIndex<Edge, HashMap<Term<?>, V>>> root =
-			new AtomicReference<>(ImmutableIndex.of(HashMap.empty()));
+	private final AtomicReference<Trie<Edge, HashMap<Term<?>, V>>> root =
+			new AtomicReference<>(Trie.of(HashMap.empty()));
 
 	public void put(Term<?> pattern, V value) {
-		Array<Edge> path = flatten(pattern);
-		root.updateAndGet(trie -> trie.withIndexAt(path, HashMap::empty,
+		java.util.List<Edge> path = flatten(pattern);
+		root.updateAndGet(trie -> trie.update(path, HashMap::empty,
 				node -> node.updateValue(entries -> entries.put(pattern, value))));
 	}
 
@@ -55,7 +53,7 @@ public final class SubsumptionMap<V> {
 	 */
 	@Value
 	private static class State<V> {
-		ImmutableIndex<Edge, HashMap<Term<?>, V>> node;
+		Trie<Edge, HashMap<Term<?>, V>> node;
 		List<Term<?>> remaining;
 	}
 
@@ -84,7 +82,7 @@ public final class SubsumptionMap<V> {
 	}
 
 	/** An exhausted path is a complete stored serialization covering the query — harvest it. */
-	private static <V> void collectSubsumers(ImmutableIndex<Edge, HashMap<Term<?>, V>> node,
+	private static <V> void collectSubsumers(Trie<Edge, HashMap<Term<?>, V>> node,
 			Term<?> query, java.util.List<V> result) {
 		for (Tuple2<Term<?>, V> entry : node.getValue()) {
 			if (Subsumption.subsumes(entry._1, query)) {
@@ -94,29 +92,29 @@ public final class SubsumptionMap<V> {
 	}
 
 	/** A stored hole covers the head wholesale — pop it. */
-	private static <V> void followHoleEdge(ImmutableIndex<Edge, HashMap<Term<?>, V>> node,
+	private static <V> void followHoleEdge(Trie<Edge, HashMap<Term<?>, V>> node,
 			List<Term<?>> rest, ArrayDeque<State<V>> pending) {
-		node.getLookup().get(Edge.Any.ANY)
+		node.getChildren().get(Edge.Any.ANY)
 				.forEach(child -> pending.push(new State<>(child, rest)));
 	}
 
 	/** The head's structural edge: an atom matches by equality, a composite unfolds. */
-	private static <V> void followExactEdge(ImmutableIndex<Edge, HashMap<Term<?>, V>> node,
+	private static <V> void followExactEdge(Trie<Edge, HashMap<Term<?>, V>> node,
 			Term<?> head, List<Term<?>> rest, ArrayDeque<State<V>> pending) {
 		Option<Iterable<Term<?>>> members = MiniKanren.members(head);
 		if (members.isEmpty()) {
-			node.getLookup().get(new Edge.Atom(head))
+			node.getChildren().get(new Edge.Atom(head))
 					.forEach(child -> pending.push(new State<>(child, rest)));
 		} else {
 			ArrayList<Term<?>> children = childrenOf(members.get());
 			List<Term<?>> unfolded = rest.prependAll(children);
-			node.getLookup().get(new Edge.Branch(children.size()))
+			node.getChildren().get(new Edge.Branch(children.size()))
 					.forEach(child -> pending.push(new State<>(child, unfolded)));
 		}
 	}
 
 	/** A stored pattern's preorder edge path — the only side that serializes. */
-	private static Array<Edge> flatten(Term<?> pattern) {
+	private static java.util.List<Edge> flatten(Term<?> pattern) {
 		ArrayList<Edge> out = new ArrayList<>();
 		List<Term<?>> pending = List.of(pattern);
 		while (!pending.isEmpty()) {
@@ -135,7 +133,7 @@ public final class SubsumptionMap<V> {
 			out.add(new Edge.Branch(children.size()));
 			pending = pending.prependAll(children);
 		}
-		return Array.ofAll(out);
+		return out;
 	}
 
 	/** One pass over the lazy members into a local buffer — size and order in one go. */
