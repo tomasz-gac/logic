@@ -5,8 +5,8 @@ package org.clauseway.logic.finitedomain.relations;
 
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.laws.LawChecker;
+import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.PartialOrderLaws;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.logic.constraints.store.Theory;
@@ -26,13 +26,14 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.clauseway.functional.algebra.CheckedBy;
 
 @LawsFor({Leq.class, Lss.class, Add.class, Mul.class, Separate.class})
 public class FiniteDomainConstraintsLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(FiniteDomainConstraintsLawsTest.class);
+		LawChecker.of(CheckedBy.class).verifyClaimsExercised(FiniteDomainConstraintsLawsTest.class);
 	}
 
 	private static final LVar<?> X = (LVar<?>) lvar().asVar().get();

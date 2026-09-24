@@ -11,8 +11,8 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.algebra.laws.IdempotentSemiringLaws;
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.laws.LawChecker;
+import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemiringLaws;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.GoalSemirings;
@@ -26,13 +26,14 @@ import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.clauseway.functional.algebra.CheckedBy;
 
 @LawsFor(GoalSemirings.class)
 public class GoalSemiringLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(GoalSemiringLawsTest.class);
+		LawChecker.of(CheckedBy.class).verifyClaimsExercised(GoalSemiringLawsTest.class);
 	}
 
 	private static final Unifiable<Integer> X = lvar();

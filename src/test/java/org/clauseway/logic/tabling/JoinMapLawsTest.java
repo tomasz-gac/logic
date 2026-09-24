@@ -6,8 +6,8 @@ package org.clauseway.logic.tabling;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.algebra.Semirings;
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.laws.LawChecker;
+import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
@@ -15,13 +15,14 @@ import java.util.Arrays;
 import org.clauseway.logic.tabling.conditions.Condition;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.clauseway.functional.algebra.CheckedBy;
 
 @LawsFor(JoinMap.class)
 public class JoinMapLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(JoinMapLawsTest.class);
+		LawChecker.of(CheckedBy.class).verifyClaimsExercised(JoinMapLawsTest.class);
 	}
 
 	@SafeVarargs

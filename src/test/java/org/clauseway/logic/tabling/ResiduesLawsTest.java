@@ -3,21 +3,22 @@ package org.clauseway.logic.tabling;
 // ABOUTME: Lattice laws for Residues - the ⊗-monoid of the constraint ring: meet
 // ABOUTME: is ACI with leq reversing accumulation, the store convention lifted.
 
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.laws.LawChecker;
+import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import java.util.Arrays;
 import java.util.List;
 import org.clauseway.logic.tabling.conditions.Residues;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.clauseway.functional.algebra.CheckedBy;
 
 @LawsFor(Residues.class)
 public class ResiduesLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(ResiduesLawsTest.class);
+		LawChecker.of(CheckedBy.class).verifyClaimsExercised(ResiduesLawsTest.class);
 	}
 
 	private static List<Residues> samples() {

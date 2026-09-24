@@ -9,21 +9,22 @@ import org.clauseway.functional.algebra.Semiring;
 import org.clauseway.functional.algebra.Semirings;
 import org.clauseway.functional.algebra.laws.BoundedSemiringLaws;
 import org.clauseway.functional.algebra.laws.IdempotentSemiringLaws;
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.laws.LawChecker;
+import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemiringLaws;
 import org.clauseway.functional.algebra.laws.StarLaws;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.clauseway.functional.algebra.CheckedBy;
 
 @LawsFor(SemiringStore.class)
 public class SemiringStoreLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(SemiringStoreLawsTest.class);
+		LawChecker.of(CheckedBy.class).verifyClaimsExercised(SemiringStoreLawsTest.class);
 	}
 
 	private static final Semiring<SemiringStore> PRODUCT =

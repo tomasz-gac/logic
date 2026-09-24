@@ -4,8 +4,8 @@ package org.clauseway.logic.algebra;
 // ABOUTME: own samples — claimed via @LawsFor for the coverage gate.
 
 import org.clauseway.functional.algebra.laws.AbsorbingLaws;
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.laws.LawChecker;
+import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.logic.finitedomain.Domain;
 import org.clauseway.logic.finitedomain.Longs;
@@ -18,13 +18,14 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.clauseway.functional.algebra.CheckedBy;
 
 @LawsFor({EnumeratedDomain.class, Interval.class, Singleton.class, Union.class, Empty.class})
 public class DomainLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(DomainLawsTest.class);
+		LawChecker.of(CheckedBy.class).verifyClaimsExercised(DomainLawsTest.class);
 	}
 
 	private static void laws(List<Domain<Long>> featured) {

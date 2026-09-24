@@ -7,8 +7,8 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.laws.LawChecker;
+import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.AbsorbingLaws;
 import org.clauseway.functional.algebra.laws.PartialOrderLaws;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
@@ -19,13 +19,14 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.clauseway.functional.algebra.CheckedBy;
 
 @LawsFor(Imposition.class)
 public class ImpositionLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(ImpositionLawsTest.class);
+		LawChecker.of(CheckedBy.class).verifyClaimsExercised(ImpositionLawsTest.class);
 	}
 
 	private static final Unifiable<Integer> X = lvar();

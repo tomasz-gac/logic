@@ -6,8 +6,8 @@ package org.clauseway.logic.unification;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
+import org.clauseway.functional.laws.LawChecker;
+import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import io.vavr.collection.HashSet;
 import java.util.Arrays;
@@ -17,13 +17,14 @@ import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.terms.Name;
 import org.junit.AfterClass;
 import org.junit.Test;
+import org.clauseway.functional.algebra.CheckedBy;
 
 @LawsFor(Substitutions.class)
 public class SubstitutionLatticeLawsTest {
 
 	@AfterClass
 	public static void lawClaimsExercised() {
-		LawCoverage.verifyClaimsExercised(SubstitutionLatticeLawsTest.class);
+		LawChecker.of(CheckedBy.class).verifyClaimsExercised(SubstitutionLatticeLawsTest.class);
 	}
 
 	/**

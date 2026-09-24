@@ -22,6 +22,12 @@
 		</dependency>
 		<dependency>
 			<groupId>org.clauseway</groupId>
+			<artifactId>functional-laws</artifactId>
+			<version>0.1.0-SNAPSHOT</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.clauseway</groupId>
 			<artifactId>functional-algebra-laws</artifactId>
 			<version>0.1.0-SNAPSHOT</version>
 			<scope>test</scope>
