@@ -1,6 +1,5 @@
 package org.clauseway.logic.finitedomain;
 
-import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.finitedomain.FiniteDomain.dom;
 import static org.clauseway.logic.goals.Goal.defer;
 import static org.clauseway.logic.goals.Goal.success;
@@ -8,24 +7,30 @@ import static org.clauseway.logic.goals.Matche.llist;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
-import org.clauseway.functional.Streams;
-import org.clauseway.logic.Utils;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+import lombok.var;
+import org.assertj.core.api.Assertions;
 import org.clauseway.functional.fibers.Cont;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
+import org.clauseway.logic.TestSchedulers;
+import org.clauseway.logic.Utils;
 import org.clauseway.logic.constraints.Constraints;
 import org.clauseway.logic.constraints.Posting;
-import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Matche;
+import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
-import org.clauseway.functional.tuples.Tuple;
-import org.clauseway.functional.tuples.Tuple2;
-import java.util.HashSet;
-import java.util.List;
-import java.util.stream.Collectors;
-import lombok.var;
-import org.assertj.core.api.Assertions;
 import org.junit.Test;
 
 public class OrderConstraintsTest {
@@ -135,7 +140,7 @@ public class OrderConstraintsTest {
 		Assertions.assertThat(result)
 				.hasSameElementsAs(unique)
 				.allMatch(l ->
-						Streams.zip(l.stream(), l.stream().skip(1), Tuple::of)
+						zip(l.stream(), l.stream().skip(1), Tuple::of)
 								.allMatch(lr -> lr.apply((lv, rv) -> lv < rv)));
 	}
 
@@ -234,4 +239,28 @@ public class OrderConstraintsTest {
 		Assertions.assertThat(xs).containsExactly(401L, 402L);
 	}
 
+	public static <A, B, C> Stream<C> zip(Stream<? extends A> a, Stream<? extends B> b, BiFunction<? super A, ? super B, ? extends C> f) {
+		Spliterator<? extends A> spliteratorA = a.spliterator();
+		Spliterator<? extends B> spliteratorB = b.spliterator();
+
+		int characteristics = spliteratorA.characteristics() & spliteratorB.characteristics();
+
+		Iterator<A> iteratorA = Spliterators.iterator(spliteratorA);
+		Iterator<B> iteratorB = Spliterators.iterator(spliteratorB);
+
+		return StreamSupport.stream(
+				Spliterators.spliteratorUnknownSize(
+						new Iterator<C>() {
+							@Override
+							public boolean hasNext() {
+								return iteratorA.hasNext() && iteratorB.hasNext();
+							}
+
+							@Override
+							public C next() {
+								return f.apply(iteratorA.next(), iteratorB.next());
+							}
+						}, characteristics),
+				false);
+	}
 }

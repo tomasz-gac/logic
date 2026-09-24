@@ -1,9 +1,9 @@
 package org.clauseway.logic.goals;
 
-import static org.clauseway.functional.category.Nothing.nothing;
+import static org.clauseway.functional.Nothing.nothing;
 import static org.clauseway.functional.fibers.Fiber.done;
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.Scheduler;
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;

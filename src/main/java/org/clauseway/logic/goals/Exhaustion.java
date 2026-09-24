@@ -3,7 +3,7 @@ package org.clauseway.logic.goals;
 // ABOUTME: Runs a sub-search as its own workforce and completes at its seal —
 // ABOUTME: the exhaustion certificate committed choice, folds and tracing consume.
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.interpreter.Scope;
 import org.clauseway.functional.fibers.Cont;

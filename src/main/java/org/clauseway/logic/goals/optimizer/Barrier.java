@@ -3,7 +3,7 @@ package org.clauseway.logic.goals.optimizer;
 // ABOUTME: The one explicit boundary: optimize outside and inside, never across.
 // ABOUTME: A leaf to every pass; interior structure still optimizes as it unfolds.
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.Goal;

@@ -3,7 +3,7 @@ package org.clauseway.logic.finitedomain;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.logic.constraints.store.Constraint;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.Utils;

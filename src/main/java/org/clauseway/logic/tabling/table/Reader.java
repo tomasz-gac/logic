@@ -3,7 +3,7 @@ package org.clauseway.logic.tabling.table;
 // ABOUTME: One consumer's reading state: continuation, call-site package, args
 // ABOUTME: and log cursor - carried by the live consuming frame, never stored.
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.terms.Unifiable;

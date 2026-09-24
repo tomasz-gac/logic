@@ -3,7 +3,7 @@ package org.clauseway.logic.aggregate;
 // ABOUTME: Reflects a sub-search's solutions into a value — findall and its count/sum/max/min folds.
 // ABOUTME: Runs the goal to exhaustion, copies each answer, and yields one result to the continuation.
 
-import static org.clauseway.functional.category.Nothing.nothing;
+import static org.clauseway.functional.Nothing.nothing;
 import static org.clauseway.functional.fibers.Fiber.done;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;

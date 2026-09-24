@@ -4,12 +4,12 @@ package org.clauseway.logic.weight;
 // ABOUTME: edge capture into the DependencyGraph), solve each sealed closure jointly,
 // ABOUTME: emit by replaying each entry's reader chains against its solved values.
 
-import static org.clauseway.functional.category.Nothing.nothing;
+import static org.clauseway.functional.Nothing.nothing;
 import static org.clauseway.functional.fibers.Fiber.done;
 
 import org.clauseway.functional.algebra.ClosedSemiring;
 import org.clauseway.functional.algebra.IdempotentSemiring;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.tabling.conditions.Condition;

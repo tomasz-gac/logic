@@ -3,12 +3,12 @@ package org.clauseway.logic.weight;
 // ABOUTME: The weighted-inference front door: factor injects a per-choice weight
 // ABOUTME: (⊗ into the running store), solve ⊕-folds the per-answer stores to a total.
 
-import static org.clauseway.functional.category.Nothing.nothing;
+import static org.clauseway.functional.Nothing.nothing;
 
 import org.clauseway.functional.algebra.BoundedSemiring;
 import org.clauseway.functional.algebra.ClosedSemiring;
 import org.clauseway.functional.algebra.Semiring;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.Scheduler;
 import org.clauseway.functional.fibers.Cont;

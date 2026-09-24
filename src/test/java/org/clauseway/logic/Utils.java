@@ -1,7 +1,6 @@
 package org.clauseway.logic;
 
-import org.clauseway.functional.category.Monad;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import org.clauseway.functional.fibers.Cont;
 import java.util.ArrayList;
@@ -13,11 +12,11 @@ import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Utils {
-	public static <T, C extends Monad<Cont<?, Nothing>, T>> List<T> collect(C cnt) {
+	public static <T> List<T> collect(Cont<T, Nothing> cnt) {
 		List<T> results = new ArrayList<>();
 		// a HOST: the collected computation may itself use the ground() door,
 		// so this harness builds its engine explicitly instead of grounding
-		new BreadthFirstScheduler<>(cnt.<Cont<T, Nothing>> cast()
+		new BreadthFirstScheduler<>(cnt
 				.run(v -> {
 					results.add(v);
 					return Nothing.nothing();

@@ -3,7 +3,7 @@ package org.clauseway.logic.constraints;
 // ABOUTME: Knowledge injection as a Goal — the chokepoint's posting vocabulary:
 // ABOUTME: apply IS the imposition; a binding, a stated item, or an absorbed factor.
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.constraints.store.Renaming;

@@ -3,7 +3,7 @@ package org.clauseway.logic;
 // ABOUTME: The one solve seam for tests: every unpinned solve drives a seeded
 // ABOUTME: RandomizedScheduler — chaos every run, recorded and replayable.
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.Scheduler;
 import org.clauseway.functional.fibers.schedulers.RandomizedScheduler;

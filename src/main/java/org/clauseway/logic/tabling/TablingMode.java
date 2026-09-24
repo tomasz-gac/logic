@@ -4,7 +4,7 @@ package org.clauseway.logic.tabling;
 // ABOUTME: out by finality) from closed/star tabling (capture structure, solve at seal).
 
 import org.clauseway.functional.algebra.IdempotentSemiring;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.tabling.conditions.Condition;

@@ -3,9 +3,9 @@ package org.clauseway.logic.constraints;
 // ABOUTME: Factor-aware unification as a data goal: order 1 — it can only
 // ABOUTME: prune or pass, never branch — so ordering passes sort it first.
 
-import static org.clauseway.functional.category.Nothing.nothing;
+import static org.clauseway.functional.Nothing.nothing;
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.NamedGoal;
 import org.clauseway.logic.goals.Package;

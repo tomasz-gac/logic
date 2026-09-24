@@ -4,7 +4,7 @@ package org.clauseway.logic.tabling.table;
 // ABOUTME: Rides the package's store map and delegates per-step decisions to its mode.
 
 import org.clauseway.functional.algebra.BoundedSemiring;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;

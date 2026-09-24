@@ -4,7 +4,7 @@ package org.clauseway.logic.constraints;
 // ABOUTME: worklist that makes the fixpoint explicit, and verdict administration.
 
 import org.clauseway.functional.Exceptions;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.MFiber;
 import org.clauseway.functional.fibers.Cont;

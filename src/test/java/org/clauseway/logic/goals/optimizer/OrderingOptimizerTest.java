@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.clauseway.functional.algebra.Semirings;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.aggregate.Aggregate;
 import org.clauseway.logic.goals.Conde;

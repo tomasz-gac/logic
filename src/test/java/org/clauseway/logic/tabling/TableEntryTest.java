@@ -7,7 +7,7 @@ import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.AwaitResult;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Goal;

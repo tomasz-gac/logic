@@ -28,7 +28,7 @@ import lombok.Value;
 import org.clauseway.functional.Exceptions;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.MFiber;
-import org.clauseway.functional.reflection.Types;
+import org.clauseway.functional.Types;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.unification.structures.LList;

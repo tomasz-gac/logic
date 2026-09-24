@@ -3,7 +3,7 @@ package org.clauseway.logic.goals.optimizer;
 // ABOUTME: A goal with a declared constant order — execution delegates unchanged,
 // ABOUTME: the ordering pass reads the price.
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;

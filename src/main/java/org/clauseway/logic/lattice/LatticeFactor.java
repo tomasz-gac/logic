@@ -5,10 +5,10 @@ package org.clauseway.logic.lattice;
 
 import static org.clauseway.logic.unification.terms.LVal.lval;
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.Cont;
-import org.clauseway.functional.reflection.Types;
+import org.clauseway.functional.Types;
 import org.clauseway.logic.constraints.Posting;
 import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.constraints.store.Atom;

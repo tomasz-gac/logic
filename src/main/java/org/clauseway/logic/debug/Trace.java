@@ -3,7 +3,7 @@ package org.clauseway.logic.debug;
 // ABOUTME: Box-model tracing of goals — Call when entered, Exit per solution, Fail when exhausted with none.
 // ABOUTME: Wraps the goal's continuation, so success and failure are ordinary continuation events.
 
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.Goal;

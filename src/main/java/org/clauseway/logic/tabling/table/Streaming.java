@@ -3,12 +3,12 @@ package org.clauseway.logic.tabling.table;
 // ABOUTME: Streaming tabling: fold each answer's value into the cell by ⊕ and hand
 // ABOUTME: it out by finality. Plain (conditions) and bounded-weighted are instances.
 
-import static org.clauseway.functional.category.Nothing.nothing;
+import static org.clauseway.functional.Nothing.nothing;
 import static org.clauseway.functional.fibers.Fiber.done;
 
 import org.clauseway.functional.algebra.BoundedSemiring;
 import org.clauseway.functional.algebra.IdempotentSemiring;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.tabling.TablingMode;

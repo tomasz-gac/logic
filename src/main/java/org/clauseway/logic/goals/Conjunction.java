@@ -3,7 +3,7 @@ package org.clauseway.logic.goals;
 import static org.clauseway.functional.fibers.Cont.suspend;
 
 import org.clauseway.functional.Exceptions;
-import org.clauseway.functional.category.Nothing;
+import org.clauseway.functional.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.optimizer.Optimizer;

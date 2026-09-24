@@ -3,7 +3,7 @@ package org.clauseway.logic.finitedomain;
 // ABOUTME: The finite-domain store: a LatticeStore over Domain values whose capability
 // ABOUTME: record is membership, singleton collapse and the equal-domain guard.
 
-import org.clauseway.functional.reflection.Types;
+import org.clauseway.functional.Types;
 import org.clauseway.logic.constraints.store.Constraint;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.finitedomain.domains.Singleton;
