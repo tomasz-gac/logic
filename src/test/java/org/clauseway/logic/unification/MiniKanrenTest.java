@@ -638,24 +638,6 @@ public class MiniKanrenTest {
 		assertThat(tuple._2).isSameAs(consTail);
 	}
 
-	@Test
-	public void shouldAlphaEquateNonGroundTerms() {
-		Unifiable<Integer> x = lvar();
-		Unifiable<Integer> y = lvar();
-
-		assertThat(runFiber(MiniKanren.alphaEquiv(
-				lval(Tuple.of(x, 1)),
-				lval(Tuple.of(y, 1)),
-				Substitutions.empty())))
-				.isTrue();
-
-		assertThat(runFiber(MiniKanren.alphaEquiv(
-				lval(Tuple.of(x, x)).getObjectUnifiable(),
-				lval(Tuple.of(x, y)).getObjectUnifiable(),
-				Substitutions.empty())))
-				.isFalse();
-	}
-
 	/**
 	 * Helper to run a Fiber synchronously and get its result.
 	 */

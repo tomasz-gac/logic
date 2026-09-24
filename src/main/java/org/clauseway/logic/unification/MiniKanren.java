@@ -1,38 +1,36 @@
 package org.clauseway.logic.unification;
 
+import static io.vavr.Predicates.not;
 import static org.clauseway.functional.fibers.Fiber.defer;
 import static org.clauseway.functional.fibers.Fiber.done;
 import static org.clauseway.functional.fibers.MFiber.mdefer;
 import static org.clauseway.functional.fibers.MFiber.mdone;
 import static org.clauseway.functional.fibers.MFiber.none;
 import static org.clauseway.logic.unification.LVal.lval;
-import static io.vavr.Predicates.not;
 
-import java.util.stream.IntStream;
-import org.clauseway.functional.Exceptions;
-import org.clauseway.functional.fibers.Fiber;
-import org.clauseway.functional.fibers.MFiber;
-import org.clauseway.functional.reflection.Types;
-import org.clauseway.functional.tuples.Tuple;
-import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
-import io.vavr.collection.LinkedHashMap;
 import io.vavr.control.Option;
-import io.vavr.control.Try;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Spliterators;
-import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import org.clauseway.functional.Exceptions;
+import org.clauseway.functional.fibers.Fiber;
+import org.clauseway.functional.fibers.MFiber;
+import org.clauseway.functional.reflection.Types;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
 
 /**
  * @author TGa
@@ -112,7 +110,7 @@ public class MiniKanren {
 						// route through the extender even though two distinct walked
 						// vars cannot fail the occurs check — prefix collection
 						// observes every extension
-						.map(rVar -> extend.apply(s, lVar, (Term<T>) rVar))
+						.map(rVar -> extend.apply(s, lVar, rVar))
 						.getOrElse(() -> extend.apply(s, lVar, r))
 						.map(MFiber::mdone)
 						.getOrElse(MFiber::none))
@@ -173,16 +171,16 @@ public class MiniKanren {
 
 	@SuppressWarnings("unchecked")
 	public static <T> Option<LList<T>> asLList(Object v) {
-		return v instanceof LList ?
-				Try.of(() -> (LList<T>) v).toOption() :
-				Option.none();
+		return Option.of(v)
+				.filter(LList.class::isInstance)
+				.map(LList.class::cast);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> Option<LTree<T>> asLTree(Object v) {
-		return v instanceof LTree ?
-				Try.of(() -> (LTree<T>) v).toOption() :
-				Option.none();
+		return Option.of(v)
+				.filter(LTree.class::isInstance)
+				.map(LTree.class::cast);
 	}
 
 	public static <T> MFiber<Substitutions> unify(Substitutions s, Term<T> lhs, Term<T> rhs) {
@@ -204,13 +202,13 @@ public class MiniKanren {
 	}
 
 	private static <T> MFiber<Prefix> unifyPrefix(Extender extend, Substitutions s, Term<T> lhs, Term<T> rhs) {
-		ArrayList<Tuple2<LVar<?>, Term<?>>> collected = new ArrayList<>();
+		ArrayList<io.vavr.Tuple2<LVar<?>, Term<?>>> collected = new ArrayList<>();
 		Extender collecting = new Extender() {
 			@Override
 			public <U> Option<Substitutions> apply(Substitutions p, LVar<U> l, Term<U> r) {
 				return extend.apply(p, l, r)
 						.map(extended -> {
-							collected.add(new Tuple2<>(l, r));
+							collected.add(new io.vavr.Tuple2<>(l, r));
 							return extended;
 						});
 			}
@@ -222,8 +220,8 @@ public class MiniKanren {
 	public static <T> Fiber<Term<T>> walkAll(Substitutions s, Term<T> u) {
 		return done(s.walk(u))
 				.flatMap(v -> v.asVar()
-						.map(w -> Fiber.<Term<T>> done(w))
-						.orElse(() -> MiniKanren.<T> mapStructure(v, e -> walkAll(s, e)))
+						.map(Fiber::<Term<T>>done)
+						.orElse(() -> MiniKanren.mapStructure(v, e -> walkAll(s, e)))
 						.getOrElse(done(v)));
 	}
 
@@ -302,7 +300,7 @@ public class MiniKanren {
 			Term<T> v,
 			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
 		return v.asVal()
-				.flatMap(w -> Types.<Tuple> cast(w, Tuple.class))
+				.flatMap(Types.cast(Tuple.class))
 				.map(t -> MiniKanren.<T> mapTuple(t, mapper))
 				.orElse(() -> v.asVal()
 						.flatMap(MiniKanren::<T>asLList)
@@ -310,7 +308,7 @@ public class MiniKanren {
 						.map(c -> Fiber.zip(
 										defer(() -> mapper.apply(c.getHead().getObjectTerm())),
 										defer(() -> mapper.apply(c.getTail().getObjectTerm())))
-								.map(ht -> LList.of(ht._1, MiniKanren.<LList<Object>> castTerm(ht._2)).get())
+								.map(ht -> LList.of(ht._1, MiniKanren.castTerm(ht._2)).get())
 								.map(w -> Types.<T> castAs(w, Object.class).get())
 								.map(LVal::lval)
 								.map(MiniKanren::<T>castTerm)))
@@ -320,7 +318,7 @@ public class MiniKanren {
 						.map(c -> Fiber.zip(
 										defer(() -> mapper.apply(c.getValue().getObjectTerm())),
 										defer(() -> mapper.apply(c.getChildren().getObjectTerm())))
-								.map(vc -> LTree.of(vc._1, MiniKanren.<LList<LTree<Object>>> castTerm(vc._2)).get())
+								.map(vc -> LTree.of(vc._1, MiniKanren.castTerm(vc._2)).get())
 								.map(w -> Types.<T> castAs(w, Object.class).get())
 								.map(LVal::lval)
 								.map(MiniKanren::<T>castTerm)));
@@ -363,12 +361,12 @@ public class MiniKanren {
 	}
 
 	private static <T> Fiber<Tuple2<Term<T>, Map<Any<?>, LVar<?>>>> instantiated(Reified<T> term) {
-		Map<Any<?>, LVar<?>> fresh = new java.util.LinkedHashMap<>();
+		Map<Any<?>, LVar<?>> fresh = new LinkedHashMap<>();
 		namesIn(term)
 				.<Any<?>> flatMap(name -> name.asReified().toJavaStream())
 				.forEach(any -> fresh.computeIfAbsent(any, miss -> (LVar<?>) LVar.lvar()));
 		return walkAll(Substitutions.of(HashMap.ofAll(fresh)), term)
-				.map(t -> new Tuple2<>(t, fresh));
+				.map(t -> Tuple.of(t, fresh));
 	}
 
 	/**
@@ -415,7 +413,7 @@ public class MiniKanren {
 		return walkAll(s, item)
 				.flatMap(v -> reifyS(Substitutions.empty(), v)
 						.flatMap(rp -> walkAll(rp, v)
-								.map(reified -> new Tuple2<>((Reified<T>) reified, varsToAnys(rp)))));
+								.map(reified -> Tuple.of((Reified<T>) reified, varsToAnys(rp)))));
 	}
 
 	/**
@@ -425,24 +423,23 @@ public class MiniKanren {
 	 * slot-named knowledge (residues) onto the instantiation.
 	 */
 	public static <T> Fiber<Tuple2<Unifiable<T>, Map<Any<?>, LVar<?>>>> instantiateWithAnys(Reified<T> term) {
-		return MiniKanren.instantiated(term).map(t -> new Tuple2<>((Unifiable<T>) t._1, t._2));
+		return MiniKanren.instantiated(term).map(t -> t.map1(Types.cast()));
 	}
 
 	/** Invert the rename substitution into slot order: the var named {@code _.i} ↦ {@code _.i}. */
 	private static Map<LVar<?>, Any<?>> varsToAnys(Substitutions renames) {
 		LVar<?>[] slots = new LVar<?>[(int) renames.size()];
-		for (Tuple2<Name<?>, Term<?>> entry : renames.map()) {
+		for (io.vavr.Tuple2<Name<?>, Term<?>> entry : renames.map()) {
 			// the rename pass binds live vars only, so the keys are LVars
 			slots[((Any<?>) entry._2).getNumber()] = (LVar<?>) entry._1;
 		}
-		Map<LVar<?>, Any<?>> vars = new java.util.LinkedHashMap<>();
+		Map<LVar<?>, Any<?>> vars = new LinkedHashMap<>();
 		for (int i = 0; i < slots.length; i++) {
 			vars.put(slots[i], Any.of(i));
 		}
 		return vars;
 	}
 
-	@SuppressWarnings("unchecked")
 	public static Fiber<Substitutions> reifyS(Substitutions s, Term<?> val) {
 		// shallow walk only: a deep walk would rebuild structures with rename
 		// vars substituted in, and nested calls would rename the rename vars
@@ -451,7 +448,7 @@ public class MiniKanren {
 						// a var that walked to something else is already renamed
 						.map(u -> u == val ?
 								// a Any is an atom: no occurs check to fail here
-								s.extend((LVar<Object>) u, Any.of((int) s.size())) :
+								s.extend(u, Any.of((int) s.size())) :
 								s)
 						.map(Fiber::done)
 						.orElse(() -> members(v)
@@ -468,24 +465,7 @@ public class MiniKanren {
 				.flatMap(s1 -> reifyMembers(s1, members));
 	}
 
-	/**
-	 * Check if two terms are alpha-equivalent (equivalent modulo variable renaming).
-	 * Reification numbers anys canonically and reified vars carry value
-	 * equality by name, so plain equality on the reified forms decides it.
-	 */
-	public static <T> Fiber<Boolean> alphaEquiv(Term<T> x, Term<T> y, Substitutions s) {
-		return reify(s, x).flatMap(xReified ->
-				reify(s, y).map(xReified::equals));
-	}
-
-	// the term-facing pair utilities speak the tuple family; the plumbing
-	// Tuple2 above is vavr's (map entries) — a genuine simple-name clash
-	public static <A, B> BiFunction<A, A, org.clauseway.functional.tuples.Tuple2<B, B>> applyOnBoth(
-			Function<A, B> f) {
-		return (a, b) -> Tuple.of(f.apply(a), f.apply(b));
-	}
-
-	public static <A, B> Option<org.clauseway.functional.tuples.Tuple2<A, B>> zip(
+	public static <A, B> Option<Tuple2<A, B>> zip(
 			Option<A> a, Option<B> b) {
 		return a.flatMap(av -> b.map(bv -> Tuple.of(av, bv)));
 	}
@@ -504,7 +484,6 @@ public class MiniKanren {
 				.mapToObj(t::get)
 				.iterator();
 	}
-
 
 	@SuppressWarnings("unchecked")
 	private static <T> Term<T> castTerm(Object v) {

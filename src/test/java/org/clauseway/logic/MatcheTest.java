@@ -2,20 +2,19 @@ package org.clauseway.logic;
 
 import static org.clauseway.logic.unification.LVal.lval;
 
-import org.clauseway.logic.goals.Logic;
-import org.clauseway.logic.goals.Matche;
-import org.clauseway.logic.unification.LList;
-import org.clauseway.logic.unification.LVar;
-import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
-import org.clauseway.functional.tuples.Tuple;
-import org.clauseway.functional.tuples.Tuple2;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
+import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
+import org.clauseway.logic.goals.Logic;
+import org.clauseway.logic.goals.Matche;
+import org.clauseway.logic.unification.LList;
+import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.Unifiable;
 import org.junit.Test;
 
 @SuppressWarnings("unchecked")
@@ -82,7 +81,7 @@ public class MatcheTest {
 						Matche.tuple((a, b) -> i.unifies(Tuple.of(a, b))))
 				.solve(i, TestSchedulers.factory())
 				.map(Term::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get))));
+				.map(t -> t.map(LogicTest.applyOnBoth(Term::get))));
 		Assertions.assertThat(result)
 				.containsExactlyInAnyOrder(Tuple.of(1, 2));
 	}

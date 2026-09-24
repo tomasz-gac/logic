@@ -257,7 +257,7 @@ public class SortingTest {
 		List<Tuple2<Integer, Integer>> result = LogicTest.runStream(miMa, Matche.matche(miMa, Matche.tuple((min, max) ->
 						minMax(LList.ofAll(1, 2, 3, 4, 5), min, max, Integer::compareTo))))
 				.map(Term::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
+				.map(t -> t.map(LogicTest.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
 		assertThat(result)
 				.containsExactly(Tuple.of(1, 5));
@@ -269,7 +269,7 @@ public class SortingTest {
 		List<Tuple2<Integer, Integer>> result = LogicTest.runStream(miMa, Matche.matche(miMa, Matche.tuple((min, max) ->
 						minMax(LList.ofAll(5, 3, 1, 2, 4), min, max, Integer::compareTo))))
 				.map(Term::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
+				.map(t -> t.map(LogicTest.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
 		assertThat(result)
 				.containsExactly(Tuple.of(1, 5));
@@ -281,7 +281,7 @@ public class SortingTest {
 		List<Tuple2<Integer, Integer>> result = LogicTest.runStream(miMa, Matche.matche(miMa, Matche.tuple((min, max) ->
 						minMax(LList.ofAll(1), min, max, Integer::compareTo))))
 				.map(Term::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
+				.map(t -> t.map(LogicTest.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
 		assertThat(result)
 				.containsExactly(Tuple.of(1, 1));
@@ -293,7 +293,7 @@ public class SortingTest {
 		List<Tuple2<Integer, Integer>> result = LogicTest.runStream(miMa, Matche.matche(miMa, Matche.tuple((min, max) ->
 						minMax(LList.empty(), min, max, Integer::compareTo))))
 				.map(Term::get)
-				.map(t -> t.map(MiniKanren.applyOnBoth(Term::get)))
+				.map(t -> t.map(LogicTest.applyOnBoth(Term::get)))
 				.collect(Collectors.toList());
 		assertThat(result)
 				.isEmpty();

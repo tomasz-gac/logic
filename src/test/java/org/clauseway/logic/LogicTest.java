@@ -17,6 +17,7 @@ import org.clauseway.logic.unification.Reified;
 import org.clauseway.logic.unification.Term;
 import org.clauseway.logic.unification.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
+import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.functional.tuples.Tuple3;
 import io.vavr.collection.Stream;
 import io.vavr.control.Either;
@@ -25,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.val;
@@ -131,6 +134,11 @@ public class LogicTest {
 	public static <T> java.util.stream.Stream<Reified<T>> runStream(Unifiable<T> x, Goal... goals) {
 		return Goal.success().and(goals)
 				.solve(x, TestSchedulers.factory());
+	}
+
+	public static <A, B> BiFunction<A, A, Tuple2<B, B>> applyOnBoth(
+			Function<A, B> f) {
+		return (a, b) -> Tuple.of(f.apply(a), f.apply(b));
 	}
 
 	@Test
