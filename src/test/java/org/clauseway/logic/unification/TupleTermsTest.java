@@ -3,8 +3,8 @@ package org.clauseway.logic.unification;
 // ABOUTME: Pins tuples as structural terms: members unify positionally through
 // ABOUTME: the structural contract, one generic row for every arity.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.tuples.Tuple;
@@ -12,6 +12,8 @@ import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.logic.TestSchedulers;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 public class TupleTermsTest {

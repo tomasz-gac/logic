@@ -3,20 +3,18 @@ package org.clauseway.logic.constraints.store;
 // ABOUTME: Pins Renaming.apply's paths: name-free terms, bare names, compound
 // ABOUTME: var replacement, slot instantiation, minting — and deep-term safety.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.clauseway.functional.tuples.Tuple;
-import org.clauseway.logic.unification.Any;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.terms.Any;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
-import org.clauseway.logic.unification.Name;
-import java.util.Arrays;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
+import org.clauseway.logic.unification.terms.Name;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;

@@ -12,6 +12,7 @@ import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import java.util.Arrays;
+import org.clauseway.logic.tabling.conditions.Condition;
 import org.junit.AfterClass;
 import org.junit.Test;
 

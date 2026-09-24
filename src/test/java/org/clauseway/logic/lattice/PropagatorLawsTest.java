@@ -3,14 +3,14 @@ package org.clauseway.logic.lattice;
 // ABOUTME: Partial-order laws for Propagator's atom leq — the structural
 // ABOUTME: default over (store, name, watched) identity, body excluded.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import org.clauseway.functional.algebra.laws.LawCoverage;
 import org.clauseway.functional.algebra.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.PartialOrderLaws;
 import org.clauseway.logic.constraints.store.Atom;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.AfterClass;

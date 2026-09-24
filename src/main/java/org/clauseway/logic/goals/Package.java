@@ -1,9 +1,9 @@
 package org.clauseway.logic.goals;
 
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Name;
+import org.clauseway.logic.unification.terms.Name;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.LinkedHashMap;
 import java.util.function.UnaryOperator;

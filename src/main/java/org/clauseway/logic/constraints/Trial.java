@@ -12,11 +12,12 @@ import io.vavr.collection.LinkedHashMap;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Prefix;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.Tuple2;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.Value;
+import org.clauseway.logic.unification.terms.LVar;
 
 /**
  * One owner for per-literal trial semantics. The UNIFICATION rows answer at
@@ -191,7 +192,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		public Outcome visit(Posting.Resolution resolution) {
 			Substitutions current = scratch.substitution();
 			List<Posting> residuals = List.empty();
-			for (Tuple2<org.clauseway.logic.unification.LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
+			for (Tuple2<LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
 				@SuppressWarnings("unchecked")
 				Option<Prefix> minted = MiniKanren.unifyPrefix(current,
 						(Term<Object>) pair._1, (Term<Object>) pair._2).ground();

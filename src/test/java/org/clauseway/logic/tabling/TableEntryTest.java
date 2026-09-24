@@ -3,7 +3,7 @@ package org.clauseway.logic.tabling;
 // ABOUTME: One entry's cache semantics under produce/emit: master selection is
 // ABOUTME: the claim CAS, deltas dedup by the cell's fold, duplicates are inert.
 
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -11,8 +11,11 @@ import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.AwaitResult;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Goal;
-import org.clauseway.logic.unification.Any;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.tabling.conditions.Condition;
+import org.clauseway.logic.tabling.table.Call;
+import org.clauseway.logic.tabling.table.TableEntry;
+import org.clauseway.logic.unification.terms.Any;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.functional.tuples.Tuple;
 import java.util.ArrayList;
 import java.util.Arrays;

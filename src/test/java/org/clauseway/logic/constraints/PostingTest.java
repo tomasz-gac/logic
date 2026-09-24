@@ -5,7 +5,7 @@ package org.clauseway.logic.constraints;
 
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.finitedomain.FiniteDomain.dom;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.finitedomain.FiniteDomain;
@@ -13,8 +13,8 @@ import org.clauseway.logic.finitedomain.Longs;
 import org.clauseway.logic.goals.Exhaustion;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;

@@ -3,7 +3,7 @@ package org.clauseway.logic.lattice;
 // ABOUTME: The covering door guard: absorbing content the resident already
 // ABOUTME: entails is a no-op — no meet, no re-normalization queued.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.Utils;
@@ -11,8 +11,8 @@ import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.List;
 import org.junit.Test;
 

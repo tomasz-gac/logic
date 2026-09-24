@@ -3,16 +3,16 @@ package org.clauseway.logic.constraints;
 // ABOUTME: The visitor seam over the closed rows: each row dispatches to its
 // ABOUTME: visit overload, and Named unwraps by default — labels are presentation.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.finitedomain.FiniteDomain;
 import org.clauseway.logic.finitedomain.Longs;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 public class PostingVisitorTest {

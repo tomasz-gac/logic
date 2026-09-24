@@ -1,6 +1,6 @@
 package org.clauseway.logic.finitedomain;
 
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.category.Nothing;
@@ -12,10 +12,10 @@ import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.lattice.Verdict;
 import org.clauseway.logic.lattice.TestPropagators;
-import org.clauseway.logic.unification.LVar;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.TestAccess;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import io.vavr.collection.HashMap;
@@ -35,7 +35,7 @@ public class ParametersTest {
 		HashMap<LVar<?>, Term<?>> empty = HashMap.empty();
 
 		HashMap<LVar<?>, Term<?>> prefix = Stream.range(0, 10)
-				.map(i -> Tuple.of(TestAccess.lvarUnsafe(), lval(i)))
+				.map(i -> Tuple.of(LVar.lvar().asVar().get(), lval(i)))
 				.foldLeft(empty,
 						(m, t) -> m.put(t._1, t._2));
 

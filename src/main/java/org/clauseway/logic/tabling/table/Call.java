@@ -1,10 +1,12 @@
-package org.clauseway.logic.tabling;
+package org.clauseway.logic.tabling.table;
 
 // ABOUTME: The cache key of a tabled call: relation identity, reified arguments,
 // ABOUTME: and per-store residues — the call's REGION, not just its pattern.
 
+import org.clauseway.logic.tabling.Tabled;
+import org.clauseway.logic.tabling.conditions.Residues;
 import org.clauseway.logic.tabling.subsumption.Subsumption;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.unification.terms.Reified;
 import lombok.Value;
 
 /**

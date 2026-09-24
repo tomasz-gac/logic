@@ -3,12 +3,11 @@ package org.clauseway.logic.unification;
 import org.clauseway.logic.goals.Package;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 
 public class TestAccess {
-	public static <T> LVar<T> lvarUnsafe() {
-		return new LVar<>();
-	}
-
 	public static <T> Package put(Package s, LVar<T> key, Unifiable<T> value) {
 		return s.withSubstitutions(s.substitution().extend(key, value));
 	}

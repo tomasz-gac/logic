@@ -5,7 +5,7 @@ package org.clauseway.logic.constraints.store;
 
 import org.clauseway.functional.algebra.PartialOrder;
 import org.clauseway.functional.fibers.Fiber;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.collection.Traversable;
 
 /**

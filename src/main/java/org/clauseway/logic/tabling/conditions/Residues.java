@@ -1,4 +1,4 @@
-package org.clauseway.logic.tabling;
+package org.clauseway.logic.tabling.conditions;
 
 // ABOUTME: One conjunct of constraint knowledge: per-store factors keyed by store
 // ABOUTME: class - the ⊗-monoid of the constraint ring, with its namespace crossings.
@@ -16,14 +16,14 @@ import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.goals.Conjunction;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Any;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.terms.Any;
+import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
-import org.clauseway.logic.unification.Name;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
+import org.clauseway.logic.unification.terms.Name;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;

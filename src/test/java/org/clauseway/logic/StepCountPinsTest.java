@@ -5,8 +5,8 @@ package org.clauseway.logic;
 
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.Fiber;
@@ -20,8 +20,8 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Logic;
 import org.clauseway.logic.tabling.Tabled;
 import org.clauseway.logic.tabling.Tabling;
-import org.clauseway.logic.unification.LList;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple1;
 import java.util.Arrays;

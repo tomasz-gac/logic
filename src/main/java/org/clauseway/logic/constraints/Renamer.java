@@ -5,7 +5,7 @@ package org.clauseway.logic.constraints;
 
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.constraints.store.Renaming;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.collection.List;
 import lombok.RequiredArgsConstructor;
 

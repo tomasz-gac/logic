@@ -1,10 +1,9 @@
-package org.clauseway.logic.unification;
+package org.clauseway.logic.unification.terms;
 
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 
 import org.clauseway.logic.constraints.Constraints;
 import org.clauseway.logic.constraints.Posting;
-import org.clauseway.logic.goals.Goal;
 
 /**
  * A term that may enter a solver: goals are built by unifying these.

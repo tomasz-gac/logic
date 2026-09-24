@@ -1,8 +1,7 @@
-package org.clauseway.logic.unification;
+package org.clauseway.logic.unification.terms;
 
 import io.vavr.control.Option;
 import lombok.AccessLevel;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 

@@ -3,7 +3,7 @@ package org.clauseway.logic.lattice;
 // ABOUTME: The wholesale absorb door over Theory: seeding from the atoms' own
 // ABOUTME: empty, one meet + one normalize, the covering guard, unit = success.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
@@ -15,8 +15,8 @@ import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Arrays;
 import java.util.Collections;
 import org.junit.Test;

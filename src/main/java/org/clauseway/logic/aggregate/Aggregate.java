@@ -5,8 +5,8 @@ package org.clauseway.logic.aggregate;
 
 import static org.clauseway.functional.category.Nothing.nothing;
 import static org.clauseway.functional.fibers.Fiber.done;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import org.clauseway.functional.algebra.Monoid;
 import org.clauseway.functional.algebra.Monoids;
@@ -17,11 +17,11 @@ import org.clauseway.logic.goals.Exhaustion;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Watermark;
 import org.clauseway.logic.goals.optimizer.Barrier;
-import org.clauseway.logic.unification.LList;
+import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Reified;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;

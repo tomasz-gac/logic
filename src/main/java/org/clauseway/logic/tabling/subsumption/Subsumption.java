@@ -3,9 +3,9 @@ package org.clauseway.logic.tabling.subsumption;
 // ABOUTME: Herbrand pattern subsumption over reified terms: one-way instance
 // ABOUTME: matching, anys binding consistently — the retrieval's precision layer.
 
-import org.clauseway.logic.unification.Any;
+import org.clauseway.logic.unification.terms.Any;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import io.vavr.control.Option;

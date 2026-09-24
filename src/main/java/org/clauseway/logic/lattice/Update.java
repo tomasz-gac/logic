@@ -6,7 +6,7 @@ package org.clauseway.logic.lattice;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

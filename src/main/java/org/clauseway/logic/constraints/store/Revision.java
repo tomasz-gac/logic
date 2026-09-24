@@ -4,7 +4,7 @@ package org.clauseway.logic.constraints.store;
 // ABOUTME: cross-store consequences (bindings, suspensions); never a whole package.
 
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

@@ -4,8 +4,8 @@ package org.clauseway.logic.weight;
 // ABOUTME: the graph into one matrix over all its answers, run the Kleene star.
 
 import org.clauseway.functional.algebra.ClosedSemiring;
-import org.clauseway.logic.tabling.TableEntry;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.tabling.table.TableEntry;
+import org.clauseway.logic.unification.terms.Reified;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;

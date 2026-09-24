@@ -3,8 +3,8 @@ package org.clauseway.logic.constraints;
 // ABOUTME: Trial.now — the binding-shaped partition's synchronous face: answers
 // ABOUTME: now or claims nothing, agrees with the fiber lane, budget-invariant.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.interpreter.EngineGuard;
@@ -12,7 +12,7 @@ import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import org.clauseway.logic.finitedomain.FiniteDomain;
 import org.clauseway.logic.finitedomain.Longs;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.List;
 import java.util.ArrayList;
 import java.util.Random;

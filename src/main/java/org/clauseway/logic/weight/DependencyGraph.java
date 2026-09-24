@@ -4,7 +4,7 @@ package org.clauseway.logic.weight;
 // ABOUTME: seed and each edge's coefficient, both ⊕-folded over the derivations.
 
 import org.clauseway.functional.algebra.ClosedSemiring;
-import org.clauseway.logic.tabling.TableEntry;
+import org.clauseway.logic.tabling.table.TableEntry;
 import java.util.ArrayDeque;
 import java.util.LinkedHashSet;
 import java.util.Map;

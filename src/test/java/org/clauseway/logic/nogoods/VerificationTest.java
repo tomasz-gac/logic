@@ -11,8 +11,8 @@ import org.clauseway.logic.constraints.Trial;
 import org.clauseway.logic.constraints.Posting;
 
 import static org.clauseway.functional.fibers.Fiber.done;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -22,8 +22,8 @@ import org.clauseway.logic.finitedomain.Longs;
 import java.util.stream.Stream;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.TestPropagators;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.Array;
 import io.vavr.collection.List;
 import io.vavr.control.Option;

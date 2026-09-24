@@ -3,7 +3,7 @@ package org.clauseway.logic.finitedomain.relations;
 // ABOUTME: Pins the toolkit coupling that terminates the unchecked cascade:
 // ABOUTME: re-examination only with strict narrowing, collapse infers only.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.constraints.store.Theory;
@@ -12,7 +12,7 @@ import org.clauseway.logic.finitedomain.FiniteDomainConstraints;
 import org.clauseway.logic.finitedomain.Longs;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.Update;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.terms.LVar;
 import org.junit.Test;
 
 public class DomainUpdateContractTest {

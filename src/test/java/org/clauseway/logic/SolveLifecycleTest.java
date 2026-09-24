@@ -3,14 +3,14 @@ package org.clauseway.logic;
 // ABOUTME: Pins the solve stream's lifecycle contract: closing the stream closes
 // ABOUTME: the engine — the walk-away pattern is try-with-resources on the stream.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Scheduler;
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
-import org.clauseway.logic.unification.Reified;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;

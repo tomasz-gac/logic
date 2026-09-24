@@ -5,7 +5,7 @@ package org.clauseway.logic.constraints.store;
 
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import java.util.ArrayDeque;
 
 /**

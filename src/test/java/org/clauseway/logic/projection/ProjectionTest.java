@@ -1,11 +1,11 @@
 package org.clauseway.logic.projection;
 
 import org.clauseway.logic.TestSchedulers;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 
-import org.clauseway.logic.unification.LVal;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.LVal;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import java.util.List;
 import java.util.stream.Collectors;

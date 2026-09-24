@@ -1,4 +1,4 @@
-package org.clauseway.logic.tabling;
+package org.clauseway.logic.tabling.conditions;
 
 // ABOUTME: A cell value in the constraint semiring: an answer's proven regions as a
 // ABOUTME: DNF of residue conjuncts kept maximal by absorption; ground truth is 1.

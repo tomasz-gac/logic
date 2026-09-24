@@ -6,7 +6,7 @@ package org.clauseway.logic.debug;
 import org.clauseway.logic.debug.Trace.Tracer;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
-import org.clauseway.logic.tabling.Table;
+import org.clauseway.logic.tabling.table.Table;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;

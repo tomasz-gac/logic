@@ -14,6 +14,9 @@ import java.util.Spliterators;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Name;
+import org.clauseway.logic.unification.terms.Term;
 
 /**
  * A read-only view of the substitution — the shared factor of the package

@@ -4,8 +4,8 @@ package org.clauseway.logic.finitedomain;
 // ABOUTME: propagators, lossless split, renaming across namespaces, absorbed replay.
 
 import org.clauseway.logic.TestSchedulers;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.constraints.Constraints;
@@ -21,11 +21,11 @@ import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.lattice.Verdict;
 import org.clauseway.logic.lattice.TestPropagators;
-import org.clauseway.logic.unification.Any;
-import org.clauseway.logic.unification.LVar;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
-import org.clauseway.logic.unification.Name;
+import org.clauseway.logic.unification.terms.Any;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
+import org.clauseway.logic.unification.terms.Name;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import java.util.Arrays;

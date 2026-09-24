@@ -5,13 +5,13 @@ package org.clauseway.logic.tabling;
 
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.projection.Projection.project;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.clauseway.logic.goals.Goal;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import java.util.List;
 import java.util.stream.Collectors;

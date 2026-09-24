@@ -13,6 +13,7 @@ import org.clauseway.functional.algebra.laws.SemiringLaws;
 import org.clauseway.functional.algebra.laws.StarLaws;
 import java.util.Arrays;
 import java.util.List;
+import org.clauseway.logic.tabling.conditions.Condition;
 import org.junit.AfterClass;
 import org.junit.Test;
 

@@ -3,14 +3,14 @@ package org.clauseway.logic.tabling.subsumption;
 // ABOUTME: Pins the subsumption map: term-indexed retrieval of stored patterns that
 // ABOUTME: generalize the query, with nonlinear-any precision.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.junit.Test;
 

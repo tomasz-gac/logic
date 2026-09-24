@@ -3,7 +3,7 @@ package org.clauseway.logic.unification;
 // ABOUTME: Substitutions form a join-semilattice with join = unification, checked
 // ABOUTME: up to solved form — the engine's core state under the same algebra.
 
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.algebra.laws.LawCoverage;
@@ -13,6 +13,8 @@ import io.vavr.collection.HashSet;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiPredicate;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Name;
 import org.junit.AfterClass;
 import org.junit.Test;
 

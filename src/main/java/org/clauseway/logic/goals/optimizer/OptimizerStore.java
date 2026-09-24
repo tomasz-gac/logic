@@ -10,10 +10,11 @@ import org.clauseway.logic.goals.Packaged;
 import io.vavr.control.Option;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import org.clauseway.logic.unification.terms.Unifiable;
 
 /**
  * Carries the optimizer pipeline with the solver state
- * (docs/design/ambient-optimizer.md). Seeded by {@link Goal#solve(org.clauseway.logic.unification.Unifiable, Optimizer)};
+ * (docs/design/ambient-optimizer.md). Seeded by {@link Goal#solve(Unifiable, Optimizer)};
  * consulted at exactly one hook — {@link Goal#defer} forcing — so freshly
  * materialized recursion layers are rewritten against live bindings.
  */

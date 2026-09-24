@@ -9,7 +9,7 @@ import org.clauseway.logic.finitedomain.capabilities.Discrete;
 import org.clauseway.logic.finitedomain.domains.EnumeratedDomain;
 import org.clauseway.logic.finitedomain.domains.Interval;
 import org.clauseway.logic.finitedomain.domains.Singleton;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;
 import java.time.Duration;

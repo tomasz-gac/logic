@@ -1,4 +1,4 @@
-package org.clauseway.logic.unification;
+package org.clauseway.logic.unification.terms;
 
 // ABOUTME: The any-value position in a reified answer: the output counterpart of LVar.
 // ABOUTME: Equal by number — reification numbers anys canonically, so equality is alpha-equivalence.

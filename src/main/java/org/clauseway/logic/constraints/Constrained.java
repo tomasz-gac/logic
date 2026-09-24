@@ -4,10 +4,10 @@ package org.clauseway.logic.constraints;
 // ABOUTME: residual items its stores could not finish — expressed, never dropped.
 
 import org.clauseway.logic.constraints.store.Atom;
-import org.clauseway.logic.unification.Any;
-import org.clauseway.logic.unification.LVar;
-import org.clauseway.logic.unification.Reified;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Any;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.Value;

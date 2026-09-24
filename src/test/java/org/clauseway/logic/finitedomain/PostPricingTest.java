@@ -3,13 +3,13 @@ package org.clauseway.logic.finitedomain;
 // ABOUTME: Pins that post pricing is a count, never a verdict: a post prices 1
 // ABOUTME: with or without a store, even when the live domain refutes it.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.optimizer.Bounded;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 public class PostPricingTest {

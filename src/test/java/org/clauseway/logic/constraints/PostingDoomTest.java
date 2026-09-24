@@ -3,14 +3,14 @@ package org.clauseway.logic.constraints;
 // ABOUTME: The vocabulary's default doom is the trial's oracle: refuted-if-Done
 // ABOUTME: claims doom, everything the trial cannot decide synchronously claims nothing.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 public class PostingDoomTest {

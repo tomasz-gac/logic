@@ -6,6 +6,8 @@ package org.clauseway.logic.unification;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Term;
 
 /**
  * A delta of variable bindings (docs/reference/constraint-kernel.md).

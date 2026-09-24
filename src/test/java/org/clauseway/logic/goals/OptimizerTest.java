@@ -5,14 +5,14 @@ package org.clauseway.logic.goals;
 
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.monad.Cont;
 import org.clauseway.logic.goals.optimizer.Barrier;
 import org.clauseway.logic.goals.optimizer.CascadingOptimizer;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.Test;

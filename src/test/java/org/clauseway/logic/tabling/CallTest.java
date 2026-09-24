@@ -1,11 +1,14 @@
 package org.clauseway.logic.tabling;
 
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.goals.Goal;
-import org.clauseway.logic.unification.Any;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.tabling.table.Call;
+import org.clauseway.logic.tabling.table.Table;
+import org.clauseway.logic.tabling.table.TableEntry;
+import org.clauseway.logic.unification.terms.Any;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.functional.tuples.Tuple;
 import java.util.Arrays;
 import org.junit.Test;

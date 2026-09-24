@@ -5,8 +5,8 @@ package org.clauseway.logic.goals.optimizer;
 
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -20,11 +20,12 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.tabling.Tabling;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple1;
 import java.util.stream.Collectors;
 import lombok.Value;
+import org.clauseway.logic.unification.terms.Term;
 import org.junit.Test;
 
 public class OrderingOptimizerTest {
@@ -140,7 +141,7 @@ public class OrderingOptimizerTest {
 		java.util.List<Integer> counts = x.unifies(1).or(x.unifies(2))
 				.and(Aggregate.count(t -> unify(x, lval(5)), n))
 				.solve(n, new OrderingOptimizer())
-				.map(org.clauseway.logic.unification.Term::get)
+				.map(Term::get)
 				.collect(Collectors.toList());
 
 		assertThat(counts).containsExactly(0, 0);

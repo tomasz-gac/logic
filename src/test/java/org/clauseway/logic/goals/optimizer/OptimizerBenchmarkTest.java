@@ -5,8 +5,8 @@ package org.clauseway.logic.goals.optimizer;
 
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.category.Nothing;
@@ -14,7 +14,7 @@ import org.clauseway.functional.monad.Cont;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.Value;

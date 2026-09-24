@@ -12,7 +12,7 @@ import org.clauseway.logic.constraints.store.Atom;
 import org.clauseway.logic.constraints.store.Doomed;
 import org.clauseway.logic.constraints.store.Renaming;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashSet;
 import io.vavr.collection.List;

@@ -5,12 +5,12 @@ package org.clauseway.logic.nogoods;
 
 import static org.clauseway.logic.finitedomain.FiniteDomain.dom;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.TestSchedulers;
 import org.clauseway.logic.finitedomain.Longs;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 /**

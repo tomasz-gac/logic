@@ -4,9 +4,9 @@ package org.clauseway.logic.tabling.subsumption;
 // ABOUTME: a discrimination trie prunes candidates, Subsumption.subsumes decides.
 
 import org.clauseway.functional.index.ImmutableIndex;
-import org.clauseway.logic.unification.Any;
+import org.clauseway.logic.unification.terms.Any;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.collection.HashMap;

@@ -6,7 +6,7 @@ import io.vavr.collection.LinkedHashSet;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 
 /**
  * A family's execution behavior: the interpreter half of a {@link Constraint}

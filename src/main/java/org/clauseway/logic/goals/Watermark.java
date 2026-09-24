@@ -3,11 +3,11 @@ package org.clauseway.logic.goals;
 // ABOUTME: The birth watermark a closed sub-solve carries: a variable born before
 // ABOUTME: the mark may not surface unbound inside — the closed-aggregate age check.
 
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Name;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Name;
 import io.vavr.Tuple2;
 import io.vavr.control.Option;
 import java.util.LinkedHashSet;

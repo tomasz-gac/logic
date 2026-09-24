@@ -10,7 +10,7 @@ import org.clauseway.logic.finitedomain.relations.Operators.VarWithDomain;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.Update;
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import java.util.ArrayList;
 import java.util.List;
 

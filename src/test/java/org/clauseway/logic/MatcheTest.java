@@ -1,6 +1,6 @@
 package org.clauseway.logic;
 
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -11,10 +11,10 @@ import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.goals.Logic;
 import org.clauseway.logic.goals.Matche;
-import org.clauseway.logic.unification.LList;
-import org.clauseway.logic.unification.LVar;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 @SuppressWarnings("unchecked")

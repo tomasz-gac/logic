@@ -10,7 +10,7 @@ import org.clauseway.functional.monad.Cont;
 import org.clauseway.logic.goals.NamedGoal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;

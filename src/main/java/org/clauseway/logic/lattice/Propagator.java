@@ -4,15 +4,13 @@ package org.clauseway.logic.lattice;
 // ABOUTME: terms, the identity contract, matching, rename and the statement.
 
 import org.clauseway.functional.fibers.Fiber;
-import org.clauseway.logic.constraints.Posting;
-import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.constraints.store.Atom;
 import org.clauseway.logic.constraints.store.Doomed;
 import org.clauseway.logic.constraints.store.Factor;
 import org.clauseway.logic.constraints.store.Renaming;
 import org.clauseway.logic.constraints.store.Watches;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.collection.Array;
 import io.vavr.collection.List;
 import io.vavr.collection.Traversable;

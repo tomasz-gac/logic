@@ -4,18 +4,15 @@ package org.clauseway.logic.nogoods;
 // ABOUTME: nogoods = lower — claimed for the coverage gate.
 
 import org.clauseway.logic.constraints.Posting;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.logic.constraints.store.Theory;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.LinkedHashSet;
 import java.util.Arrays;
-import org.junit.AfterClass;
 import org.junit.Test;
 
 public class NogoodConstraintsLawsTest {

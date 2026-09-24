@@ -10,7 +10,7 @@ import org.clauseway.logic.finitedomain.relations.Operators.VarWithDomain;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.lattice.Verdict;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.Comparator;

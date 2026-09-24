@@ -5,16 +5,16 @@ package org.clauseway.logic.finitedomain;
 
 import static org.clauseway.logic.finitedomain.FiniteDomain.dom;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.TestSchedulers;
 import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.goals.Goal;
-import org.clauseway.logic.unification.LVar;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;

@@ -3,8 +3,8 @@ package org.clauseway.logic.unification;
 // ABOUTME: Pins the structural equivalence classes of unification: tuples, LList
 // ABOUTME: and LTree decompose; every foreign value — vavr collections included — is an atom.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.tuples.Tuple;
@@ -13,6 +13,10 @@ import io.vavr.control.Either;
 import java.util.Arrays;
 import java.util.Iterator;
 import io.vavr.collection.Vector;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.structures.LTree;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 public class StructuralClassesTest {

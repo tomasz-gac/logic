@@ -3,7 +3,7 @@ package org.clauseway.logic.lattice;
 // ABOUTME: Laws for Imposition — the atom leq sharp over same-target domains,
 // ABOUTME: and the declared Semilattice: same-target combine is the domain meet.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -15,7 +15,7 @@ import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.logic.constraints.store.Atom;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;

@@ -3,7 +3,7 @@ package org.clauseway.logic.lattice;
 // ABOUTME: The generic constraint behavior over a component lattice: normalize, stated
 // ABOUTME: and the cascade drain a theory of impositions and propagators; instances supply their capability record.
 
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
@@ -20,9 +20,9 @@ import org.clauseway.logic.constraints.store.Suspension;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.Predicates;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;

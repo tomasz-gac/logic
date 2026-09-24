@@ -1,13 +1,13 @@
 package org.clauseway.logic.debug;
 
 import org.clauseway.logic.TestSchedulers;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.debug.Trace.Tracer;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

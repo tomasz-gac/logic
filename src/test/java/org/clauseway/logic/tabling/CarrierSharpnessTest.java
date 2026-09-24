@@ -3,13 +3,13 @@ package org.clauseway.logic.tabling;
 // ABOUTME: F1's sharpness receipt, settled by F3: Residues compares by theory
 // ABOUTME: covering BY CONSTRUCTION — this pins the covering order itself.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.constraints.Posting;
 import org.clauseway.logic.nogoods.NogoodTestAccess;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 public class CarrierSharpnessTest {

@@ -3,8 +3,8 @@ package org.clauseway.logic.lattice;
 // ABOUTME: The one activation door: registration seeds from the atom's own
 // ABOUTME: empty; doom is read as a declared capability, absent means price 1.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.Fiber;
@@ -18,8 +18,8 @@ import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.Traversable;
 import org.junit.Test;

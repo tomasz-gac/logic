@@ -3,11 +3,12 @@ package org.clauseway.logic.unification;
 // ABOUTME: A null payload is a VALUE: lval(null) equals itself, unifies with
 // ABOUTME: nothing else, binds free variables, and reifies — never reads as unbound.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.stream.Collectors;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 public class NullPayloadTest {

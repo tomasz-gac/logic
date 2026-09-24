@@ -1,9 +1,9 @@
-package org.clauseway.logic.unification;
+package org.clauseway.logic.unification.structures;
 
 import static org.clauseway.logic.constraints.Constraints.unify;
 import static org.clauseway.logic.goals.Matche.llist;
 import static org.clauseway.logic.goals.Matche.matche;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static io.vavr.Predicates.not;
 
 import org.clauseway.logic.goals.Goal;
@@ -29,6 +29,9 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import org.clauseway.logic.unification.terms.LVal;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 
 /**
  * @author TGa
@@ -159,15 +162,6 @@ public class LList<A> {
 				llist((current, tail) ->
 						reducer.apply(next, init, current)
 								.and(Goal.defer(() -> foldLeft(tail, next, reduced, reducer)))));
-	}
-
-	public static <A> Goal lasto(
-			Unifiable<LList<A>> lst,
-			Unifiable<A> last) {
-		return matche(lst,
-				llist((a) -> last.unifies(a)),
-				llist((a, b, d) ->
-						Goal.defer(() -> lasto(LList.of(b, d), last))));
 	}
 
 	@Override

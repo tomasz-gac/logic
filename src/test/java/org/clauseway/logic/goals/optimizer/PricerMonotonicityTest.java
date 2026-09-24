@@ -4,8 +4,8 @@ package org.clauseway.logic.goals.optimizer;
 // ABOUTME: must never rise as knowledge grows — stale prices stay sound.
 
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.algebra.laws.MonotoneLaws;
@@ -15,10 +15,10 @@ import org.clauseway.logic.finitedomain.FiniteDomainTestSupport;
 import org.clauseway.logic.finitedomain.Longs;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.tabling.Table;
+import org.clauseway.logic.tabling.table.Table;
 import org.clauseway.logic.tabling.Tabled;
 import org.clauseway.logic.tabling.Tabling;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple1;
 import java.util.Arrays;

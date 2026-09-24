@@ -4,12 +4,12 @@ package org.clauseway.logic.nogoods;
 // ABOUTME: Postings pass through as themselves, mixes form one forbidden conjunction.
 
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.constraints.Postable;
 import org.clauseway.logic.goals.Goal;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;

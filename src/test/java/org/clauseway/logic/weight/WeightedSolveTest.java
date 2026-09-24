@@ -4,8 +4,8 @@ package org.clauseway.logic.weight;
 // ABOUTME: solve ⊕-folds them, and one pass computes count and probability together.
 
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
@@ -15,9 +15,9 @@ import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Logic;
 import org.clauseway.logic.projection.Projection;
-import org.clauseway.logic.unification.LList;
-import org.clauseway.logic.unification.Reified;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple2;
 import java.util.ArrayList;
 import java.util.Comparator;

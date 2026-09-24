@@ -3,8 +3,8 @@ package org.clauseway.logic.weight;
 // ABOUTME: A vertex of the star equation graph — one answer of one tabled call.
 // ABOUTME: Entry AND answer, because two calls can reify to the same answer term.
 
-import org.clauseway.logic.tabling.TableEntry;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.tabling.table.TableEntry;
+import org.clauseway.logic.unification.terms.Reified;
 import lombok.Value;
 
 /**

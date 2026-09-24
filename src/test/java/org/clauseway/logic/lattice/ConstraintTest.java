@@ -3,14 +3,14 @@ package org.clauseway.logic.lattice;
 // ABOUTME: The package's constraint entry: Constraint{Theory, Factor} — knowledge
 // ABOUTME: outside, behavior beside it; identity is the Theory half alone.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.constraints.store.Constraint;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Collections;
 import org.junit.Test;
 

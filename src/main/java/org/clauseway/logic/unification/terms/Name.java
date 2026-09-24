@@ -1,4 +1,4 @@
-package org.clauseway.logic.unification;
+package org.clauseway.logic.unification.terms;
 
 // ABOUTME: A NAME for something not yet determined — live (LVar, identity-named)
 // ABOUTME: or canonical (Any, number-named). The substitution's key type.

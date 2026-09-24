@@ -4,19 +4,22 @@ package org.clauseway.logic.tabling;
 // ABOUTME: calls as a read-only relation — no new master, answers filtered.
 
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.optimizer.Bounded;
-import org.clauseway.logic.unification.LList;
+import org.clauseway.logic.tabling.table.Call;
+import org.clauseway.logic.tabling.table.Table;
+import org.clauseway.logic.tabling.table.TableEntry;
+import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple1;
 import org.clauseway.functional.tuples.Tuple2;

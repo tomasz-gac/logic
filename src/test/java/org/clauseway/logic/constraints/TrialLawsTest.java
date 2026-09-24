@@ -4,14 +4,14 @@ package org.clauseway.logic.constraints;
 // ABOUTME: is exact, the remainder preserves denotation, flattening is idempotent.
 
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.nogoods.Nogood;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.List;
 import java.util.ArrayList;
 import java.util.Random;

@@ -1,4 +1,4 @@
-package org.clauseway.logic.unification;
+package org.clauseway.logic.unification.terms;
 
 // ABOUTME: Structural root of all logic terms — values, input variables and reified variables.
 // ABOUTME: Walk, unification and reification machinery operate at this level.

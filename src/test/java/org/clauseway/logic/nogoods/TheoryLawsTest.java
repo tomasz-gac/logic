@@ -3,20 +3,16 @@ package org.clauseway.logic.nogoods;
 // ABOUTME: Lattice laws for Theory — the plan-space value: meet is atom union,
 // ABOUTME: leq the covering order, sharp exactly as far as atom leq reaches.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.clauseway.functional.algebra.laws.LawCoverage;
-import org.clauseway.functional.algebra.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.logic.constraints.Posting;
 import org.clauseway.logic.constraints.store.Theory;
-import org.clauseway.logic.lattice.Imposition;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Arrays;
 import java.util.Collections;
-import org.junit.AfterClass;
 import org.junit.Test;
 
 public class TheoryLawsTest {

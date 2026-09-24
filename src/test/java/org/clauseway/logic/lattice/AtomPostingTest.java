@@ -3,8 +3,8 @@ package org.clauseway.logic.lattice;
 // ABOUTME: The statement capability: an atom knows how to state itself as a
 // ABOUTME: Posting — registration and doom travel with it, not with call sites.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.logic.TestSchedulers;
@@ -13,8 +13,8 @@ import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
 import org.clauseway.logic.nogoods.Nogood;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Collections;
 import org.junit.Test;
 

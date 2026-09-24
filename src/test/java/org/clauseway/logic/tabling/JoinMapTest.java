@@ -8,6 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.clauseway.functional.algebra.Semirings;
 import org.clauseway.functional.tuples.Tuple;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.clauseway.logic.tabling.conditions.Condition;
 import org.junit.Test;
 
 public class JoinMapTest {

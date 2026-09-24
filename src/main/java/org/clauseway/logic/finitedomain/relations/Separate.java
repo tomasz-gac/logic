@@ -10,7 +10,7 @@ import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.lattice.Verdict;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.functional.tuples.Tuple2;
 import io.vavr.collection.Array;
 import io.vavr.control.Option;

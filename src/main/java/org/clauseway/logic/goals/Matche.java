@@ -3,10 +3,10 @@ package org.clauseway.logic.goals;
 import static org.clauseway.logic.constraints.Constraints.unify;
 
 import org.clauseway.functional.monad.Cont;
-import org.clauseway.logic.unification.LList;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.Function1;
 import io.vavr.Function2;
 import org.clauseway.functional.tuples.Function3;

@@ -1,7 +1,9 @@
-package org.clauseway.logic.unification;
+package org.clauseway.logic.unification.terms;
 
 // ABOUTME: Capability of terms that a solver emits — answers are data, not goals.
 // ABOUTME: Ground values carry it alongside Unifiable; reified variables carry only this.
+
+import org.clauseway.logic.unification.MiniKanren;
 
 /**
  * A term that comes out of a solver. Reified terms carry no goal-building

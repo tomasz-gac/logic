@@ -7,7 +7,11 @@ import org.clauseway.functional.algebra.IdempotentSemiring;
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.tabling.conditions.Condition;
+import org.clauseway.logic.tabling.conditions.Residues;
+import org.clauseway.logic.tabling.table.Reader;
+import org.clauseway.logic.tabling.table.TableEntry;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.functional.tuples.Tuple2;
 
 /**

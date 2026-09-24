@@ -1,6 +1,6 @@
 package org.clauseway.logic.finitedomain;
 
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 
 import org.clauseway.functional.Exceptions;
 import org.clauseway.functional.category.Nothing;
@@ -11,8 +11,8 @@ import org.clauseway.logic.goals.Conde;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import io.vavr.control.Option;
 import java.util.Collection;

@@ -2,8 +2,8 @@ package org.clauseway.logic.constraints;
 
 import org.clauseway.logic.constraints.store.Atom;
 import org.clauseway.logic.constraints.store.Constraint;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -18,16 +18,13 @@ import org.clauseway.logic.constraints.store.Suspension;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
-import org.clauseway.logic.tabling.Table;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.tabling.table.Table;
+import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.Prefix;
-import org.clauseway.logic.unification.Substitutions;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
-import org.clauseway.functional.tuples.Tuple2;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.LinkedHashSet;
 import java.util.Collections;
-import java.util.List;
 import java.util.function.BiFunction;
 import org.junit.Test;
 

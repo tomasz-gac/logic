@@ -3,7 +3,7 @@ package org.clauseway.logic.lattice;
 // ABOUTME: The parking propagator's schema contract: identity by (family, name,
 // ABOUTME: watched terms), kind-distinct from the sync Propagator, watch matching.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.Fiber;
@@ -14,8 +14,8 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.Array;
 import java.util.Arrays;
 import java.util.Collections;

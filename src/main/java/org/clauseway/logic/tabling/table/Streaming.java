@@ -1,4 +1,4 @@
-package org.clauseway.logic.tabling;
+package org.clauseway.logic.tabling.table;
 
 // ABOUTME: Streaming tabling: fold each answer's value into the cell by ⊕ and hand
 // ABOUTME: it out by finality. Plain (conditions) and bounded-weighted are instances.
@@ -11,7 +11,10 @@ import org.clauseway.functional.algebra.IdempotentSemiring;
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.tabling.TablingMode;
+import org.clauseway.logic.tabling.conditions.Condition;
+import org.clauseway.logic.tabling.conditions.Residues;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import java.util.function.BiFunction;

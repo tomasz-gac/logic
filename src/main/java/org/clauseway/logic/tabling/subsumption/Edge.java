@@ -3,7 +3,7 @@ package org.clauseway.logic.tabling.subsumption;
 // ABOUTME: The closed vocabulary of trie edge labels a stored call pattern
 // ABOUTME: serializes to: an equality atom, a composite of n children, or an any.
 
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import lombok.Value;
 
 /**

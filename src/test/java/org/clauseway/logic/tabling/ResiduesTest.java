@@ -5,6 +5,7 @@ package org.clauseway.logic.tabling;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.clauseway.logic.tabling.conditions.Residues;
 import org.junit.Test;
 
 public class ResiduesTest {

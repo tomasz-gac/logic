@@ -3,7 +3,7 @@ package org.clauseway.logic.lattice;
 // ABOUTME: The capability meet: slot-mate atoms (same name, same watched
 // ABOUTME: surface) that declare Semilattice combine; everything else unions.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.algebra.laws.AbsorbingLaws;
@@ -15,7 +15,7 @@ import org.clauseway.logic.constraints.store.Atom;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.HashSet;
 import java.util.Arrays;
 import java.util.stream.Collectors;

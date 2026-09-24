@@ -1,13 +1,16 @@
 package org.clauseway.logic.unification;
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.clauseway.logic.goals.Package;
 import org.clauseway.functional.tuples.Tuple;
 import io.vavr.collection.HashMap;
+import org.clauseway.logic.unification.terms.Any;
+import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 public class AnyTest {

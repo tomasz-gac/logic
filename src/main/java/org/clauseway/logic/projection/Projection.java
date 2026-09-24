@@ -8,7 +8,7 @@ import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.optimizer.Bounded;
 import org.clauseway.logic.unification.MiniKanren;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.Function2;
 import org.clauseway.functional.tuples.Function3;
 import java.util.Arrays;

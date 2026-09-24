@@ -4,15 +4,15 @@ package org.clauseway.logic.finitedomain;
 // ABOUTME: driver ordering changes that explode exploration fail here, wall-free.
 
 import static org.clauseway.logic.finitedomain.FiniteDomain.dom;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.interpreter.Scope;
 import org.clauseway.functional.fibers.interpreter.StepListener;
 import org.clauseway.functional.fibers.schedulers.UnfairBreadthFirstScheduler;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.Test;

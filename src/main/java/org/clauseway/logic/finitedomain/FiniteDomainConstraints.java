@@ -11,7 +11,7 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.LatticeFactor;
 import org.clauseway.logic.lattice.Propagator;
-import org.clauseway.logic.unification.Term;
+import org.clauseway.logic.unification.terms.Term;
 import io.vavr.Tuple;
 import io.vavr.collection.HashSet;
 import io.vavr.collection.LinkedHashMap;

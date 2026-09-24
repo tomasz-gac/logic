@@ -1,4 +1,4 @@
-package org.clauseway.logic.tabling;
+package org.clauseway.logic.tabling.table;
 
 // ABOUTME: Maps tabled goal calls to their table entries for the duration of one solve.
 // ABOUTME: Rides the package's store map and delegates per-step decisions to its mode.
@@ -9,10 +9,13 @@ import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
+import org.clauseway.logic.tabling.Tabling;
+import org.clauseway.logic.tabling.TablingMode;
+import org.clauseway.logic.tabling.conditions.Condition;
+import org.clauseway.logic.tabling.conditions.Residues;
 import org.clauseway.logic.tabling.subsumption.SubsumptionMap;
-import org.clauseway.logic.unification.Reified;
+import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.functional.tuples.Tuple2;
-import io.vavr.collection.List;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
@@ -107,22 +110,22 @@ public class Table implements Packaged {
 
 	// ---- the mode's per-step hooks (see TablingMode) ----
 
-	Package bodyState(Package callerPkg) {
+	public Package bodyState(Package callerPkg) {
 		// the delivery-boundary bit: every body package says so (InBody)
 		return mode.bodyState(callerPkg).putStore(InBody.MARKER);
 	}
 
-	Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
+	public Package absorb(Package unifiedPkg, TableEntry<Object> entry, Reified<?> consumedAnswer,
 			Object cellValue) {
 		return mode.absorb(unifiedPkg, entry, consumedAnswer, cellValue);
 	}
 
-	Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm,
+	public Tuple2<Reified<?>, Object> capture(TableEntry<Object> entry, Package answerPkg, Reified<?> answerTerm,
 			Residues residues) {
 		return mode.capture(entry, answerPkg, answerTerm, residues);
 	}
 
-	Fiber<Nothing> caughtUp(TableEntry<Object> entry, Reader reader) {
+	public Fiber<Nothing> caughtUp(TableEntry<Object> entry, Reader reader) {
 		return mode.caughtUp(entry, reader);
 	}
 

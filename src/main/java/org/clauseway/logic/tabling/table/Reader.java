@@ -1,4 +1,4 @@
-package org.clauseway.logic.tabling;
+package org.clauseway.logic.tabling.table;
 
 // ABOUTME: One consumer's reading state: continuation, call-site package, args
 // ABOUTME: and log cursor - carried by the live consuming frame, never stored.
@@ -6,7 +6,7 @@ package org.clauseway.logic.tabling;
 import org.clauseway.functional.category.Nothing;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import lombok.Value;
 
 /**
@@ -46,12 +46,12 @@ public class Reader {
 	}
 
 	/** The reader at the call site: cursor at the start of the log. */
-	static Reader of(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
+	public static Reader of(Fiber.Fn<Package, Nothing> continuation, Package pkg, Unifiable<?> argsTerm) {
 		return new Reader(continuation, pkg, argsTerm, 0);
 	}
 
 	/** The same reader, {@code ascents} further along the log. */
-	Reader advanced(int ascents) {
+	public Reader advanced(int ascents) {
 		return new Reader(continuation, pkg, argsTerm, cursor + ascents);
 	}
 }

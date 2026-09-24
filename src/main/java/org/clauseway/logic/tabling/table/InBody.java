@@ -1,4 +1,4 @@
-package org.clauseway.logic.tabling;
+package org.clauseway.logic.tabling.table;
 
 // ABOUTME: One bit on a body package: this code runs inside some tabled call's body.
 // ABOUTME: The delivery boundary - constrained answers stream inside it, seal-gate outside.

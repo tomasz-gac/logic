@@ -3,8 +3,8 @@ package org.clauseway.logic.unification;
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.LogicTest.runStream;
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.Fiber;
@@ -20,11 +20,17 @@ import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.val;
 import org.assertj.core.api.Assertions;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.structures.LTree;
+import org.clauseway.logic.unification.terms.LVal;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
 /**

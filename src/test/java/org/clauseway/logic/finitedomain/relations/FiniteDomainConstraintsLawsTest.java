@@ -3,7 +3,7 @@ package org.clauseway.logic.finitedomain.relations;
 // ABOUTME: Lattice laws for the FD store: pointwise domain meet × propagator-set
 // ABOUTME: intersection with a canonical bottom — claimed for the coverage gate.
 
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import org.clauseway.functional.algebra.laws.LawCoverage;
 import org.clauseway.functional.algebra.laws.LawsFor;
@@ -18,7 +18,7 @@ import org.clauseway.logic.finitedomain.capabilities.Multiplicative;
 import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.lattice.Verdict;
 import org.clauseway.logic.lattice.TestPropagators;
-import org.clauseway.logic.unification.LVar;
+import org.clauseway.logic.unification.terms.LVar;
 import io.vavr.control.Option;
 import java.util.Arrays;
 import java.util.Comparator;

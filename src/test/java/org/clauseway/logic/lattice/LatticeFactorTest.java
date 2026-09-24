@@ -4,8 +4,8 @@ package org.clauseway.logic.lattice;
 // ABOUTME: verification, narrowing, collapse, propagators, split and rename for free.
 
 import org.clauseway.logic.TestSchedulers;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
@@ -13,12 +13,12 @@ import org.clauseway.logic.constraints.Propagation;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.constraints.store.Renaming;
 import org.clauseway.logic.constraints.store.Theory;
-import org.clauseway.logic.unification.Any;
+import org.clauseway.logic.unification.terms.Any;
 import org.clauseway.logic.goals.Goal;
-import org.clauseway.logic.unification.LVar;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Name;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Name;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.Tuple2;
 import io.vavr.collection.HashSet;
 import io.vavr.control.Option;

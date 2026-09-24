@@ -8,6 +8,7 @@ import org.clauseway.functional.algebra.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import java.util.Arrays;
 import java.util.List;
+import org.clauseway.logic.tabling.conditions.Residues;
 import org.junit.AfterClass;
 import org.junit.Test;
 

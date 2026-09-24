@@ -3,8 +3,8 @@ package org.clauseway.logic.nogoods;
 // ABOUTME: Partial-order laws for Nogood's atom leq — subsumption: ¬(A)
 // ABOUTME: entails ¬(A ∧ B), literal-subset over the flattened conjunct.
 
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -14,7 +14,7 @@ import org.clauseway.functional.algebra.laws.PartialOrderLaws;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.logic.constraints.Posting;
 import org.clauseway.logic.constraints.store.Atom;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.Arrays;
 import org.junit.AfterClass;
 import org.junit.Test;

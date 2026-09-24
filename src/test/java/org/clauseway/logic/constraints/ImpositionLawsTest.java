@@ -5,8 +5,8 @@ package org.clauseway.logic.constraints;
 
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.Fiber;
@@ -18,7 +18,7 @@ import org.clauseway.logic.finitedomain.FiniteDomain;
 import org.clauseway.logic.finitedomain.Domain;
 import org.clauseway.logic.finitedomain.Longs;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.collection.List;
 import java.util.ArrayList;
 import java.util.Random;

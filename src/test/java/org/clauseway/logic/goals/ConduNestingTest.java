@@ -5,12 +5,13 @@ package org.clauseway.logic.goals;
 
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.clauseway.logic.unification.Reified;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
@@ -47,9 +48,9 @@ public class ConduNestingTest {
 	@Test
 	public void filterCommitsPerElement() {
 		// SortingTest.filter, shrunk: keep elements != 1 of [1, 2]
-		org.clauseway.logic.unification.Unifiable<org.clauseway.logic.unification.LList<Integer>> out =
+		Unifiable<LList<Integer>> out =
 				lvar();
-		List<String> got = filter(org.clauseway.logic.unification.LList.ofAll(1, 2, 1, 3, 1, 4), out,
+		List<String> got = filter(LList.ofAll(1, 2, 1, 3, 1, 4), out,
 				a -> Logic.project(a, v -> v != 1 ? Goal.success() : Goal.failure()))
 				.solve(out, TestSchedulers.factory()).map(Reified::toString).collect(Collectors.toList());
 
@@ -57,11 +58,11 @@ public class ConduNestingTest {
 	}
 
 	private static <A> Goal filter(
-			org.clauseway.logic.unification.Unifiable<org.clauseway.logic.unification.LList<A>> with,
-			org.clauseway.logic.unification.Unifiable<org.clauseway.logic.unification.LList<A>> without,
+			Unifiable<LList<A>> with,
+			Unifiable<LList<A>> without,
 			java.util.function.Function<Unifiable<A>, Goal> pred) {
 		return org.clauseway.logic.goals.Matche.matche(with,
-				org.clauseway.logic.goals.Matche.llist(() -> without.unifies(org.clauseway.logic.unification.LList.empty())),
+				org.clauseway.logic.goals.Matche.llist(() -> without.unifies(LList.empty())),
 				org.clauseway.logic.goals.Matche.llist((a, d) -> Goal.condu(
 						Goal.defer(() -> pred.apply(a)
 								.and(org.clauseway.logic.goals.Matche.matche(without,

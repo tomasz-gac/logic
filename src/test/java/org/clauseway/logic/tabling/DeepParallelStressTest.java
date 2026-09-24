@@ -4,14 +4,16 @@ package org.clauseway.logic.tabling;
 // ABOUTME: premature seal loses answers. Caught the group-seal admission race.
 
 import static org.clauseway.logic.goals.Goal.defer;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.junit.Assert.fail;
 
 import org.clauseway.functional.fibers.schedulers.ForkJoinScheduler;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.tabling.table.Table;
+import org.clauseway.logic.tabling.table.TableEntry;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import java.util.List;

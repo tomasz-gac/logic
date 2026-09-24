@@ -13,7 +13,7 @@ import org.clauseway.logic.finitedomain.relations.Leq;
 import org.clauseway.logic.finitedomain.relations.Lss;
 import org.clauseway.logic.finitedomain.relations.Mul;
 import org.clauseway.logic.finitedomain.relations.Separate;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.terms.Unifiable;
 import io.vavr.control.Option;
 import java.util.Comparator;
 import lombok.AccessLevel;

@@ -6,7 +6,7 @@ import static org.clauseway.functional.fibers.Fiber.done;
 import static org.clauseway.functional.fibers.MFiber.mdefer;
 import static org.clauseway.functional.fibers.MFiber.mdone;
 import static org.clauseway.functional.fibers.MFiber.none;
-import static org.clauseway.logic.unification.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVal.lval;
 
 import io.vavr.collection.HashMap;
 import io.vavr.control.Option;
@@ -31,6 +31,15 @@ import org.clauseway.functional.fibers.MFiber;
 import org.clauseway.functional.reflection.Types;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.structures.LTree;
+import org.clauseway.logic.unification.terms.Any;
+import org.clauseway.logic.unification.terms.LVal;
+import org.clauseway.logic.unification.terms.LVar;
+import org.clauseway.logic.unification.terms.Name;
+import org.clauseway.logic.unification.terms.Reified;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 
 /**
  * @author TGa

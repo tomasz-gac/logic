@@ -2,14 +2,14 @@ package org.clauseway.logic.finitedomain;
 
 import org.clauseway.logic.TestSchedulers;
 import static org.clauseway.logic.finitedomain.FiniteDomain.dom;
-import static org.clauseway.logic.unification.LVal.lval;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVal.lval;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 
 import org.clauseway.logic.Utils;
 import org.clauseway.logic.goals.Goal;
-import org.clauseway.logic.unification.LList;
-import org.clauseway.logic.unification.Term;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.terms.Term;
+import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple3;
 import java.math.BigInteger;

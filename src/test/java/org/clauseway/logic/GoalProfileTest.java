@@ -4,15 +4,14 @@ package org.clauseway.logic;
 // ABOUTME: relation, labels rendered from the goals' own .named() labels.
 
 import static org.clauseway.logic.constraints.Constraints.unify;
-import static org.clauseway.logic.unification.LVar.lvar;
+import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.fibers.interpreter.OriginCapture;
-import org.clauseway.functional.fibers.interpreter.OriginCapture;
 import org.clauseway.functional.fibers.interpreter.ScopeProfiler;
 import org.clauseway.logic.goals.Logic;
-import org.clauseway.logic.unification.LList;
-import org.clauseway.logic.unification.Unifiable;
+import org.clauseway.logic.unification.structures.LList;
+import org.clauseway.logic.unification.terms.Unifiable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
