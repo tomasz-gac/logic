@@ -17,7 +17,6 @@ import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
-import io.vavr.control.Either;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -402,7 +401,7 @@ public class SortingTest {
 
 	static <A> Goal sorto(Unifiable<LList<A>> unsorted, Unifiable<LList<A>> sorted, Comparator<A> cmp) {
 		return project(unsorted, l ->
-				l.stream().allMatch(Either::isRight) ?
+				!l.openTail().isPresent() ?
 						sorted.unifies(l.toValueStream().sorted(cmp).map(LVal::lval).collect(LList.collector())) :
 						Goal.failure());
 	}

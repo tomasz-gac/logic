@@ -20,7 +20,6 @@ import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.functional.tuples.Tuple3;
 import io.vavr.collection.Stream;
-import io.vavr.control.Either;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -192,8 +191,7 @@ public class LogicTest {
 				Logic.appendo(lst, x, res))
 				.collect(Collectors.toList());
 		assertThat(result.get(0).get()
-				.stream()
-				.map(Either::get)
+				.elements()
 				.map(Term::get)
 				.collect(Collectors.toList()))
 				.containsExactlyElementsOf(Arrays.asList(4, 5, 6));
@@ -239,8 +237,8 @@ public class LogicTest {
 				.limit(10)
 				.collect(Collectors.toList());
 		results.forEach(t ->
-				assertThat(t.get()._1.get().stream().count())
-						.isEqualTo(t.get()._2.get().stream().count()));
+				assertThat(t.get()._1.get().elements().count())
+						.isEqualTo(t.get()._2.get().elements().count()));
 	}
 
 	public <A> Goal reversoAcc(
@@ -384,8 +382,7 @@ public class LogicTest {
 					.findFirst()
 					.get()
 					.get()
-					.stream()
-					.map(Either::get)
+					.elements()
 					.collect(Collectors.toList());
 			for (int i = 0; i < n / 2; ++i) {
 				assertThat(collected.get(i))

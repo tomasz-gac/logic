@@ -10,15 +10,13 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Logic;
 import org.clauseway.functional.tuples.Function3;
 import io.vavr.collection.Array;
-import io.vavr.control.Either;
 import io.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Objects;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.IntFunction;
@@ -26,7 +24,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.clauseway.logic.unification.terms.LVal;
@@ -88,15 +85,28 @@ public class LList<A> {
 		return LVal.lval(this);
 	}
 
-	public Stream<Either<Term<LList<A>>, Term<A>>> stream() {
-		return StreamSupport.stream(
-				Spliterators.spliteratorUnknownSize(iterator(), Spliterator.ORDERED),
-				false);
+	/** The proper prefix: elements in order, stopping at the first non-value tail. */
+	public Stream<Term<A>> elements() {
+		ArrayList<Term<A>> out = new ArrayList<>();
+		Term<LList<A>> tail = this.asVal();
+		while (tail.isVal() && !tail.get().isEmpty()) {
+			out.add(tail.get().getHead());
+			tail = tail.get().getTail();
+		}
+		return out.stream();
+	}
+
+	/** The dangling hole ending an improper list; empty when the list closes with (). */
+	public Optional<Term<LList<A>>> openTail() {
+		Term<LList<A>> tail = this.asVal();
+		while (tail.isVal() && !tail.get().isEmpty()) {
+			tail = tail.get().getTail();
+		}
+		return tail.isVal() ? Optional.<Term<LList<A>>> empty() : Optional.of(tail);
 	}
 
 	public Stream<A> toValueStream() {
-		return stream()
-				.map(Either::get)
+		return elements()
 				.map(Term::get);
 	}
 
@@ -162,49 +172,14 @@ public class LList<A> {
 
 	@Override
 	public String toString() {
-		List<Either<Term<LList<A>>, Term<A>>> items =
-				stream()
-						.collect(Collectors.toList());
-		String delimitedItems = IntStream.range(0, items.size() - 1)
-				.mapToObj(items::get)
-				.map(Either::get)
+		String items = elements()
 				.map(Objects::toString)
 				.collect(Collectors.joining(", "));
 		return String.format("(%s%s)",
-				delimitedItems,
-				Option.of(items)
-						.filter(not(List::isEmpty))
-						.map(i -> i.get(items.size() - 1))
-						.map(tail -> tail.fold(l -> " . " + l,
-								r -> (delimitedItems.isEmpty() ?
-										"" : ", ") + r))
-						.getOrElse(""));
+				items,
+				openTail()
+						.map(tail -> " . " + tail)
+						.orElse(""));
 	}
 
-	public Iterator<Either<Term<LList<A>>, Term<A>>> iterator() {
-		Term<LList<A>> that = this.asVal();
-		return new Iterator<Either<Term<LList<A>>, Term<A>>>() {
-			private Term<LList<A>> tail = that;
-
-			@Override
-			public boolean hasNext() {
-				return Objects.nonNull(tail) &&
-						!tail.asVal().filter(LList::isEmpty).isPresent();
-			}
-
-			@Override
-			public Either<Term<LList<A>>, Term<A>> next() {
-				// a non-val tail is a dangling hole: the list is improper
-				Either<Term<LList<A>>, Term<A>> item =
-						tail.asVal()
-								.map(LList::getHead)
-								.map(Either::<Term<LList<A>>, Term<A>>right)
-								.orElseGet(() -> Either.left(tail));
-				tail = tail.asVal()
-						.map(LList::getTail)
-						.orElse(null);
-				return item;
-			}
-		};
-	}
 }
