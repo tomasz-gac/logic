@@ -8,8 +8,8 @@ import org.clauseway.logic.unification.terms.Any;
 import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Term;
-import io.vavr.collection.List;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.List;
+import org.clauseway.vavr.control.Option;
 import lombok.Value;
 import java.util.Optional;
 

@@ -11,9 +11,9 @@ import org.clauseway.logic.constraints.store.Renaming;
 import org.clauseway.logic.constraints.store.Watches;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.terms.Term;
-import io.vavr.collection.Array;
-import io.vavr.collection.List;
-import io.vavr.collection.Traversable;
+import org.clauseway.vavr.collection.Array;
+import org.clauseway.vavr.collection.List;
+import org.clauseway.vavr.collection.Traversable;
 import java.util.Objects;
 
 /**

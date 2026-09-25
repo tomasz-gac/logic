@@ -6,7 +6,7 @@ package org.clauseway.logic.finitedomain.domains;
 import org.clauseway.logic.finitedomain.Bound;
 import org.clauseway.logic.finitedomain.Domain;
 import org.clauseway.logic.finitedomain.capabilities.Discrete;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import java.util.Comparator;
 import java.util.stream.Stream;
 import lombok.AccessLevel;

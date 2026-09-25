@@ -5,7 +5,7 @@ package org.clauseway.logic.nogoods;
 
 import org.clauseway.logic.constraints.Posting;
 import org.clauseway.logic.constraints.store.Theory;
-import io.vavr.collection.LinkedHashSet;
+import org.clauseway.vavr.collection.LinkedHashSet;
 
 public final class NogoodTestAccess {
 	private NogoodTestAccess() {

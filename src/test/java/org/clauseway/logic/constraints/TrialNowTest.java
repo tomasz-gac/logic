@@ -13,7 +13,7 @@ import org.clauseway.logic.finitedomain.FiniteDomain;
 import org.clauseway.logic.finitedomain.Longs;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.collection.List;
+import org.clauseway.vavr.collection.List;
 import java.util.ArrayList;
 import java.util.Random;
 import org.junit.Test;

@@ -10,7 +10,7 @@ import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Name;
-import io.vavr.collection.HashMap;
+import org.clauseway.vavr.collection.HashMap;
 import java.util.Map;
 
 /**

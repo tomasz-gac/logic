@@ -20,8 +20,8 @@ import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.collection.HashSet;
-import io.vavr.collection.Traversable;
+import org.clauseway.vavr.collection.HashSet;
+import org.clauseway.vavr.collection.Traversable;
 import org.junit.Test;
 
 public class ActivationDoorTest {

@@ -1,6 +1,6 @@
 package org.clauseway.logic.unification;
 
-import static io.vavr.Predicates.not;
+import static org.clauseway.vavr.Predicates.not;
 import static org.clauseway.functional.fibers.Fiber.defer;
 import static org.clauseway.functional.fibers.Fiber.done;
 import static org.clauseway.functional.fibers.MFiber.mdefer;
@@ -8,8 +8,8 @@ import static org.clauseway.functional.fibers.MFiber.mdone;
 import static org.clauseway.functional.fibers.MFiber.none;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 
-import io.vavr.collection.HashMap;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.HashMap;
+import org.clauseway.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -214,13 +214,13 @@ public class MiniKanren {
 	}
 
 	private static <T> MFiber<Prefix> unifyPrefix(Extender extend, Substitutions s, Term<T> lhs, Term<T> rhs) {
-		ArrayList<io.vavr.Tuple2<LVar<?>, Term<?>>> collected = new ArrayList<>();
+		ArrayList<org.clauseway.vavr.Tuple2<LVar<?>, Term<?>>> collected = new ArrayList<>();
 		Extender collecting = new Extender() {
 			@Override
 			public <U> Option<Substitutions> apply(Substitutions p, LVar<U> l, Term<U> r) {
 				return extend.apply(p, l, r)
 						.map(extended -> {
-							collected.add(new io.vavr.Tuple2<>(l, r));
+							collected.add(new org.clauseway.vavr.Tuple2<>(l, r));
 							return extended;
 						});
 			}

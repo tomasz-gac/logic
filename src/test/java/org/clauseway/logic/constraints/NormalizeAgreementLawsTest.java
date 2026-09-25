@@ -8,9 +8,9 @@ import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
 
-import io.vavr.collection.LinkedHashSet;
-import io.vavr.collection.List;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.LinkedHashSet;
+import org.clauseway.vavr.collection.List;
+import org.clauseway.vavr.control.Option;
 import java.util.Collections;
 import java.util.Random;
 import org.clauseway.functional.fibers.Fiber;

@@ -24,9 +24,9 @@ import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.TestPropagators;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.collection.Array;
-import io.vavr.collection.List;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.Array;
+import org.clauseway.vavr.collection.List;
+import org.clauseway.vavr.control.Option;
 import org.junit.Test;
 
 public class VerificationTest {
@@ -140,8 +140,8 @@ public class VerificationTest {
 			}
 
 			@Override
-			public io.vavr.collection.Traversable<Term<?>> watched() {
-				return io.vavr.collection.HashSet.empty();
+			public org.clauseway.vavr.collection.Traversable<Term<?>> watched() {
+				return org.clauseway.vavr.collection.HashSet.empty();
 			}
 		};
 

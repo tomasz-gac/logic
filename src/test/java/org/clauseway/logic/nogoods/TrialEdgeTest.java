@@ -39,7 +39,7 @@ public class TrialEdgeTest {
 								.apply(Package.empty()))
 				.ground().get(0);
 
-		io.vavr.collection.List<Package> worlds = Trial.imposed(y.unifies(5), state).ground();
+		org.clauseway.vavr.collection.List<Package> worlds = Trial.imposed(y.unifies(5), state).ground();
 		assertThat(worlds).hasSize(2);
 	}
 

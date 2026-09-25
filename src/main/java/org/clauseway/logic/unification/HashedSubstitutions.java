@@ -5,7 +5,7 @@ package org.clauseway.logic.unification;
 
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
-import io.vavr.collection.HashMap;
+import org.clauseway.vavr.collection.HashMap;
 import java.util.Map;
 import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.terms.Name;

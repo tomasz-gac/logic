@@ -19,7 +19,7 @@ import org.clauseway.logic.unification.Prefix;
 import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.collection.List;
+import org.clauseway.vavr.collection.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;

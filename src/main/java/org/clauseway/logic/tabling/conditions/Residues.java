@@ -24,10 +24,10 @@ import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.logic.unification.terms.Name;
-import io.vavr.Tuple;
-import io.vavr.Tuple2;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.Map;
+import org.clauseway.vavr.Tuple;
+import org.clauseway.vavr.Tuple2;
+import org.clauseway.vavr.collection.HashMap;
+import org.clauseway.vavr.collection.Map;
 import lombok.Value;
 
 /**

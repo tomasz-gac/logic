@@ -19,7 +19,7 @@ import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.lattice.Verdict;
 import org.clauseway.logic.lattice.TestPropagators;
 import org.clauseway.logic.unification.terms.LVar;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Collections;

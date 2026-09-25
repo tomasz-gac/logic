@@ -6,7 +6,7 @@ package org.clauseway.logic.lattice;
 import org.clauseway.functional.algebra.Absorbing;
 import org.clauseway.functional.algebra.PartialOrder;
 import org.clauseway.functional.algebra.Semilattice;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 
 /**
  * What a {@link LatticeFactor} requires of its per-name values — the capability

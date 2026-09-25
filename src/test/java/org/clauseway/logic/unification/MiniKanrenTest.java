@@ -14,10 +14,10 @@ import org.clauseway.logic.goals.Package;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.functional.tuples.Tuple3;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.List;
-import io.vavr.collection.Map;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.HashMap;
+import org.clauseway.vavr.collection.List;
+import org.clauseway.vavr.collection.Map;
+import org.clauseway.vavr.control.Option;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
@@ -200,7 +200,7 @@ public class MiniKanrenTest {
 
 		assertThat(xs.toStream()
 				.map(x -> s.walk(x))
-				.flatMap(v -> v.asVal().map(io.vavr.collection.List::of).orElseGet(io.vavr.collection.List::empty))
+				.flatMap(v -> v.asVal().map(org.clauseway.vavr.collection.List::of).orElseGet(org.clauseway.vavr.collection.List::empty))
 				.collect(List.collector()))
 				.isEqualTo(ys);
 	}

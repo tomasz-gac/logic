@@ -7,7 +7,7 @@ import org.clauseway.logic.finitedomain.capabilities.Discrete;
 import org.clauseway.logic.finitedomain.domains.DomainVisitor;
 import org.clauseway.logic.finitedomain.domains.Interval;
 import org.clauseway.logic.finitedomain.domains.Singleton;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import java.util.Comparator;
 import java.util.stream.Stream;
 import lombok.EqualsAndHashCode;

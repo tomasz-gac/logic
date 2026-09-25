@@ -2,7 +2,7 @@ package org.clauseway.logic.constraints.store;
 
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Goal;
-import io.vavr.collection.LinkedHashSet;
+import org.clauseway.vavr.collection.LinkedHashSet;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
 import org.clauseway.logic.unification.Prefix;

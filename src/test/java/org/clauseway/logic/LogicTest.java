@@ -19,7 +19,7 @@ import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.functional.tuples.Tuple3;
-import io.vavr.collection.Stream;
+import org.clauseway.vavr.collection.Stream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;

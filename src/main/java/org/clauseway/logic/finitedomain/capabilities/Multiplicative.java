@@ -3,7 +3,7 @@ package org.clauseway.logic.finitedomain.capabilities;
 // ABOUTME: The multiplicative seat, homogeneous: times and the exact-or-refuse
 // ABOUTME: inverse — division is a decision, never an approximation.
 
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 

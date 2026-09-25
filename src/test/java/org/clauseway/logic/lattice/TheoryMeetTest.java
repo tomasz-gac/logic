@@ -16,7 +16,7 @@ import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatConstraints;
 import org.clauseway.logic.lattice.LatticeFactorTest.FlatSet;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.collection.HashSet;
+import org.clauseway.vavr.collection.HashSet;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.Collections;

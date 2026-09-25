@@ -8,8 +8,8 @@ import org.clauseway.functional.algebra.ClosedSemiring;
 import org.clauseway.functional.algebra.IdempotentSemiring;
 import org.clauseway.functional.algebra.Semiring;
 import org.clauseway.logic.goals.Packaged;
-import io.vavr.collection.Array;
-import io.vavr.collection.LinkedHashMap;
+import org.clauseway.vavr.collection.Array;
+import org.clauseway.vavr.collection.LinkedHashMap;
 import lombok.EqualsAndHashCode;
 import lombok.RequiredArgsConstructor;
 

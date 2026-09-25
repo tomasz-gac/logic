@@ -3,7 +3,7 @@ package org.clauseway.logic.tabling.subsumption;
 // ABOUTME: A persistent path-trie node: a value and a map of children, rebuilt
 // ABOUTME: along a key path on update; SubsumptionMap's discrimination carrier.
 
-import io.vavr.collection.HashMap;
+import org.clauseway.vavr.collection.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;

@@ -7,7 +7,7 @@ import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.clauseway.logic.unification.terms.Unifiable;

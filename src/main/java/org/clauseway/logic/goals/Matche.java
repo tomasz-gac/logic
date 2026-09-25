@@ -22,7 +22,7 @@ import org.clauseway.functional.tuples.Tuple5;
 import org.clauseway.functional.tuples.Tuple6;
 import org.clauseway.functional.tuples.Tuple7;
 import org.clauseway.functional.tuples.Tuple8;
-import io.vavr.collection.List;
+import org.clauseway.vavr.collection.List;
 import java.util.Arrays;
 import java.util.function.Function;
 import java.util.function.Supplier;

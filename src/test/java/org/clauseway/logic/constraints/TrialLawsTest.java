@@ -12,7 +12,7 @@ import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.nogoods.Nogood;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.collection.List;
+import org.clauseway.vavr.collection.List;
 import java.util.ArrayList;
 import java.util.Random;
 import org.junit.Test;
@@ -65,7 +65,7 @@ public class TrialLawsTest {
 		Package state(Package from, int bindings) {
 			Package p = from;
 			for (int i = 0; i < bindings; i++) {
-				Fiber<io.vavr.collection.List<Package>> imposed =
+				Fiber<org.clauseway.vavr.collection.List<Package>> imposed =
 						Trial.imposed(Posting.bind(var(), lval(r.nextInt(4))), p);
 				List<Package> worlds = new BreadthFirstScheduler<>(imposed).get();
 				if (!worlds.isEmpty()) {
@@ -77,7 +77,7 @@ public class TrialLawsTest {
 	}
 
 	private static Trial.Outcome outcomeOf(Posting literal, Package p) {
-		io.vavr.control.Option<Trial.Outcome> now = Trial.now(literal, p);
+		org.clauseway.vavr.control.Option<Trial.Outcome> now = Trial.now(literal, p);
 		assertThat(now.isDefined())
 				.describedAs("binding-shaped literals answer now")
 				.isTrue();

@@ -4,13 +4,13 @@ import static org.clauseway.logic.constraints.Constraints.unify;
 import static org.clauseway.logic.goals.Matche.llist;
 import static org.clauseway.logic.goals.Matche.matche;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static io.vavr.Predicates.not;
+import static org.clauseway.vavr.Predicates.not;
 
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Logic;
 import org.clauseway.functional.tuples.Function3;
-import io.vavr.collection.Array;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.Array;
+import org.clauseway.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Arrays;

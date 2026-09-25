@@ -7,9 +7,9 @@ import org.clauseway.functional.algebra.IdempotentSemiring;
 import org.clauseway.functional.algebra.Semilattice;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.Vector;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.HashMap;
+import org.clauseway.vavr.collection.Vector;
+import org.clauseway.vavr.control.Option;
 
 /**
  * The free join-semilattice over keyed semiring values: each key's arrivals

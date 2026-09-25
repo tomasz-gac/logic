@@ -9,7 +9,7 @@ import org.clauseway.functional.fibers.Cont;
 import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.Substitutions;
-import io.vavr.collection.LinkedHashMap;
+import org.clauseway.vavr.collection.LinkedHashMap;
 import java.util.function.ToLongFunction;
 import lombok.Value;
 

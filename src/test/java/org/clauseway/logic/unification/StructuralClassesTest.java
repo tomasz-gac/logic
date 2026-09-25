@@ -8,11 +8,11 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.clauseway.functional.tuples.Tuple;
-import io.vavr.collection.List;
-import io.vavr.control.Either;
+import org.clauseway.vavr.collection.List;
+import org.clauseway.vavr.control.Either;
 import java.util.Arrays;
 import java.util.Iterator;
-import io.vavr.collection.Vector;
+import org.clauseway.vavr.collection.Vector;
 import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.structures.LTree;
 import org.clauseway.logic.unification.terms.Term;

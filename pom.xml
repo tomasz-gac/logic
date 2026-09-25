@@ -16,8 +16,8 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>io.vavr</groupId>
-			<artifactId>vavr</artifactId>
+			<groupId>org.clauseway</groupId>
+			<artifactId>clauseway-vavr</artifactId>
 			<version>1.0.1</version>
 		</dependency>
 		<dependency>
@@ -72,4 +72,6 @@
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
+
+
 </project>

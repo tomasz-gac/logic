@@ -12,9 +12,9 @@ import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.tabling.conditions.Condition;
 import org.clauseway.logic.tabling.conditions.Residues;
 import org.clauseway.logic.unification.terms.Term;
-import io.vavr.collection.HashMap;
-import io.vavr.collection.HashSet;
-import io.vavr.collection.Traversable;
+import org.clauseway.vavr.collection.HashMap;
+import org.clauseway.vavr.collection.HashSet;
+import org.clauseway.vavr.collection.Traversable;
 import java.util.Collections;
 import lombok.Value;
 

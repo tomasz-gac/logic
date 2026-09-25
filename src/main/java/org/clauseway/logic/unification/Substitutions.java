@@ -7,7 +7,7 @@ import java.util.Optional;
 import org.clauseway.functional.algebra.Semilattice;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
 import java.util.Map;

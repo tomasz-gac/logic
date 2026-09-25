@@ -5,7 +5,7 @@ package org.clauseway.logic.constraints.store;
 
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;

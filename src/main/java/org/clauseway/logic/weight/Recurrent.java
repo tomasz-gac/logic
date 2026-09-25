@@ -4,7 +4,7 @@ package org.clauseway.logic.weight;
 // ABOUTME: absorb, read at capture to route the value to base / edge / nonlinear.
 
 import org.clauseway.logic.goals.Packaged;
-import io.vavr.collection.List;
+import org.clauseway.vavr.collection.List;
 
 /**
  * Records the still-open (looping) {@link Node}s a derivation consumed, in CLOSED

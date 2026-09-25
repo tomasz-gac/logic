@@ -8,7 +8,7 @@ import org.clauseway.functional.fibers.interpreter.Channel;
 import org.clauseway.logic.tabling.JoinMap;
 import org.clauseway.logic.tabling.conditions.Condition;
 import org.clauseway.logic.unification.terms.Reified;
-import io.vavr.collection.Vector;
+import org.clauseway.vavr.collection.Vector;
 import lombok.Getter;
 
 /**

@@ -23,7 +23,7 @@ import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.Prefix;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.collection.LinkedHashSet;
+import org.clauseway.vavr.collection.LinkedHashSet;
 import java.util.Collections;
 import java.util.function.BiFunction;
 import org.junit.Test;

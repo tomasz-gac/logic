@@ -14,7 +14,7 @@ import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.functional.tuples.Tuple;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;

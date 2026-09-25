@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.collection.LinkedHashSet;
+import org.clauseway.vavr.collection.LinkedHashSet;
 import java.util.Arrays;
 import org.junit.Test;
 

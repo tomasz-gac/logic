@@ -1,0 +1,4 @@
+clauseway-vavr
+Contains io.vavr:vavr 1.0.1 (https://vavr.io), licensed under the
+Apache License, Version 2.0. Modifications are limited to relocating
+the io.vavr packages to org.clauseway.vavr; no source changes.

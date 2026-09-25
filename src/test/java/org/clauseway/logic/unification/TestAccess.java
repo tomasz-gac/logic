@@ -1,8 +1,8 @@
 package org.clauseway.logic.unification;
 
 import org.clauseway.logic.goals.Package;
-import io.vavr.collection.HashMap;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.HashMap;
+import org.clauseway.vavr.control.Option;
 import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
@@ -14,7 +14,7 @@ public class TestAccess {
 
 	@SuppressWarnings("unchecked")
 	public static <T> Option<Unifiable<T>> get(Package s, LVar<T> v) {
-		return io.vavr.control.Option.of(s.substitution().binding(v)).map(w -> (Unifiable<T>) w);
+		return org.clauseway.vavr.control.Option.of(s.substitution().binding(v)).map(w -> (Unifiable<T>) w);
 	}
 
 	/** White-box prefix mint — production code gets prefixes only from unification. */

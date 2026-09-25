@@ -38,3 +38,6 @@ build/
 # accidental build-output dumps
 test-output.txt
 test-tabling.txt
+
+# maven-shade residue (clauseway-vavr)
+dependency-reduced-pom.xml

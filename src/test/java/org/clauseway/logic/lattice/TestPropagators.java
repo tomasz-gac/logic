@@ -7,7 +7,7 @@ import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.constraints.store.Factor;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.unification.terms.Term;
-import io.vavr.collection.Array;
+import org.clauseway.vavr.collection.Array;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 

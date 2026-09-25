@@ -20,7 +20,7 @@ import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.clauseway.logic.unification.terms.Name;
-import io.vavr.collection.LinkedHashSet;
+import org.clauseway.vavr.collection.LinkedHashSet;
 import java.util.Collections;
 import java.util.stream.Collectors;
 import org.clauseway.logic.unification.terms.LVal;
@@ -51,7 +51,7 @@ public class NogoodProjectionTest {
 		Nogood aboutXY = over(x.unifies(1), y.unifies(2));
 		Theory<NogoodConstraints> whole = store(aboutX, aboutXY);
 
-		io.vavr.Tuple2<Theory<NogoodConstraints>, Theory<NogoodConstraints>> parts = whole.split(
+		org.clauseway.vavr.Tuple2<Theory<NogoodConstraints>, Theory<NogoodConstraints>> parts = whole.split(
 				Collections.<LVar<?>> singletonList((LVar<?>) x.asVar().get()));
 
 		assertThat(parts._1.atoms()).containsExactly(aboutX);

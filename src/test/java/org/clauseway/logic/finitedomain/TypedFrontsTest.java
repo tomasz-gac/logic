@@ -512,13 +512,13 @@ public class TypedFrontsTest {
 	}
 
 	private static Package imposed(Posting posting, Package p) {
-		io.vavr.collection.List<Package> worlds = worlds(posting, p);
+		org.clauseway.vavr.collection.List<Package> worlds = worlds(posting, p);
 		Assertions.assertThat(worlds).hasSize(1);
 		return worlds.head();
 	}
 
-	// io.vavr.collection.List: genuine simple-name clash with java.util.List
-	private static io.vavr.collection.List<Package> worlds(Posting posting, Package p) {
+	// org.clauseway.vavr.collection.List: genuine simple-name clash with java.util.List
+	private static org.clauseway.vavr.collection.List<Package> worlds(Posting posting, Package p) {
 		return new BreadthFirstScheduler<>(Trial.imposed(posting, p)).get();
 	}
 

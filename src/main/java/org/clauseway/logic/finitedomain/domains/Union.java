@@ -3,13 +3,13 @@ package org.clauseway.logic.finitedomain.domains;
 // ABOUTME: The gapped domain: disjoint members kept sorted and merged where they
 // ABOUTME: touch — adjacency needs the members' step seat, overlap only their order.
 
-import static io.vavr.Predicates.not;
+import static org.clauseway.vavr.Predicates.not;
 
 import org.clauseway.logic.finitedomain.Bound;
 import org.clauseway.logic.finitedomain.Domain;
 import org.clauseway.logic.finitedomain.capabilities.Discrete;
-import io.vavr.collection.Array;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.Array;
+import org.clauseway.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;

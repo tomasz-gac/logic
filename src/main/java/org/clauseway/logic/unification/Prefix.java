@@ -3,9 +3,9 @@ package org.clauseway.logic.unification;
 // ABOUTME: The newly added bindings of one unification — mintable only by the unifier
 // ABOUTME: and the checked single-binding constructor, so a prefix is born valid.
 
-import io.vavr.Tuple2;
-import io.vavr.collection.HashMap;
-import io.vavr.control.Option;
+import org.clauseway.vavr.Tuple2;
+import org.clauseway.vavr.collection.HashMap;
+import org.clauseway.vavr.control.Option;
 import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.terms.Term;
 

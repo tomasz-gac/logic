@@ -6,7 +6,7 @@ package org.clauseway.logic.constraints.store;
 import org.clauseway.functional.algebra.PartialOrder;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.logic.unification.terms.Term;
-import io.vavr.collection.Traversable;
+import org.clauseway.vavr.collection.Traversable;
 
 /**
  * One constraint item: the unit a family accumulates by meet and decomposes

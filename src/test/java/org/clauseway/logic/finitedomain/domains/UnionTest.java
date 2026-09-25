@@ -7,7 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.clauseway.logic.finitedomain.Domain;
 import org.clauseway.logic.finitedomain.Ints;
-import io.vavr.collection.Array;
+import org.clauseway.vavr.collection.Array;
 import org.assertj.core.api.Assertions;
 import org.junit.Test;
 

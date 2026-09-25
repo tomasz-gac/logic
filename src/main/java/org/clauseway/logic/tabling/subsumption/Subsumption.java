@@ -8,7 +8,7 @@ import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Iterator;

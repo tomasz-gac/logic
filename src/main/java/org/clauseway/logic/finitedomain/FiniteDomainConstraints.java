@@ -13,10 +13,10 @@ import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.LatticeFactor;
 import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.unification.terms.Term;
-import io.vavr.Tuple;
-import io.vavr.collection.HashSet;
-import io.vavr.collection.LinkedHashMap;
-import io.vavr.control.Option;
+import org.clauseway.vavr.Tuple;
+import org.clauseway.vavr.collection.HashSet;
+import org.clauseway.vavr.collection.LinkedHashMap;
+import org.clauseway.vavr.control.Option;
 import java.util.stream.Collectors;
 
 /**

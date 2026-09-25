@@ -8,7 +8,7 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.NamedGoal;
 import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.goals.Packaged;
-import io.vavr.control.Option;
+import org.clauseway.vavr.control.Option;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -69,7 +69,7 @@ public final class ProfilerStore implements Packaged {
 	private static boolean minting(String className) {
 		return className.startsWith("java.")
 				|| className.startsWith("sun.")
-				|| className.startsWith("io.vavr.")
+				|| className.startsWith("org.clauseway.vavr.")
 				|| className.startsWith("org.clauseway.functional.")
 				|| className.startsWith(NamedGoal.class.getName())
 				|| className.startsWith(Goal.class.getName())

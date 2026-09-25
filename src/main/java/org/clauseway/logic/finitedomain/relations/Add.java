@@ -18,8 +18,8 @@ import org.clauseway.logic.goals.Package;
 import org.clauseway.logic.lattice.Propagator;
 import org.clauseway.logic.lattice.Verdict;
 import org.clauseway.logic.unification.terms.Term;
-import io.vavr.collection.Array;
-import io.vavr.control.Option;
+import org.clauseway.vavr.collection.Array;
+import org.clauseway.vavr.control.Option;
 import java.util.Arrays;
 import java.util.Comparator;
 

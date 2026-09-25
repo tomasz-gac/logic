@@ -6,8 +6,8 @@ package org.clauseway.logic.tabling.conditions;
 import org.clauseway.functional.algebra.BoundedSemiring;
 import org.clauseway.functional.algebra.Semilattice;
 import org.clauseway.logic.constraints.store.Factor;
-import io.vavr.collection.HashSet;
-import io.vavr.collection.Vector;
+import org.clauseway.vavr.collection.HashSet;
+import org.clauseway.vavr.collection.Vector;
 
 /**
  * How much of a term's space an entry has PROVEN, as a value: a disjunction

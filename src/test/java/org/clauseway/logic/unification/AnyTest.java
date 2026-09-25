@@ -7,7 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.clauseway.logic.goals.Package;
 import org.clauseway.functional.tuples.Tuple;
-import io.vavr.collection.HashMap;
+import org.clauseway.vavr.collection.HashMap;
 import org.clauseway.logic.unification.terms.Any;
 import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
