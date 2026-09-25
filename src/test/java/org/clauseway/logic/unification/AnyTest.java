@@ -12,6 +12,7 @@ import org.clauseway.logic.unification.terms.Any;
 import org.clauseway.logic.unification.terms.Reified;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
+import java.util.Collections;
 
 public class AnyTest {
 
@@ -58,7 +59,7 @@ public class AnyTest {
 		Unifiable<Integer> x = lvar();
 		Any<Integer> any = Any.of(0);
 		Package s = Package.empty()
-				.withSubstitutions(Substitutions.of(HashMap.of(x.getVar(), any)));
+				.withSubstitutions(Substitutions.of(Collections.singletonMap(x.getVar(), any)));
 
 		assertThat(s.walk(x)).isSameAs(any);
 	}

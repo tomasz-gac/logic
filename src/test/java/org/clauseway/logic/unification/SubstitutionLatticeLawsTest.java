@@ -9,7 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.clauseway.functional.laws.LawChecker;
 import org.clauseway.functional.laws.LawsFor;
 import org.clauseway.functional.algebra.laws.SemilatticeLaws;
-import io.vavr.collection.HashSet;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiPredicate;
@@ -19,7 +18,7 @@ import org.junit.AfterClass;
 import org.junit.Test;
 import org.clauseway.functional.algebra.CheckedBy;
 
-@LawsFor(Substitutions.class)
+@LawsFor(HashedSubstitutions.class)
 public class SubstitutionLatticeLawsTest {
 
 	@AfterClass
@@ -33,9 +32,9 @@ public class SubstitutionLatticeLawsTest {
 	 * are structurally distinct maps but the same substitution.
 	 */
 	private static final BiPredicate<Substitutions, Substitutions> BY_SOLVED_FORM = (s1, s2) -> {
-		HashSet<Name<?>> vars = HashSet.ofAll(s1.map().keySet())
-				.addAll(s2.map().keySet());
-		return vars.forAll(v -> MiniKanren.format(s1, v).equals(MiniKanren.format(s2, v)));
+		java.util.Set<Name<?>> vars = new java.util.HashSet<>(s1.toMap().keySet());
+		vars.addAll(s2.toMap().keySet());
+		return vars.stream().allMatch(v -> MiniKanren.format(s1, v).equals(MiniKanren.format(s2, v)));
 	};
 
 	private static <T> LVar<T> var() {

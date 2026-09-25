@@ -25,7 +25,7 @@ public class Package {
 
 	public static Package of(HashMap<Name<?>, Term<?>> substitutions,
 			LinkedHashMap<Class<? extends Packaged>, Packaged> stores) {
-		return Package.of(Substitutions.of(substitutions), stores);
+		return Package.of(Substitutions.of(substitutions.toJavaMap()), stores);
 	}
 
 	public Package withSubstitutions(Substitutions s) {

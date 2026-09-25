@@ -221,14 +221,16 @@ public class Residues implements Semilattice<Residues>, PartialOrder<Residues> {
 	 * is a dumb map and never sees a {@link Substitutions}.
 	 */
 	private static Fiber<Renaming> resolution(Substitutions home) {
-		return home.bindings().foldLeft(
-						Fiber.<java.util.Map<Name<?>, Term<?>>> done(new java.util.HashMap<>()),
-						(acc, binding) -> acc.flatMap(walked ->
-								MiniKanren.walkAll(home, binding._1).map(meaning -> {
-									walked.put(binding._1, meaning);
-									return walked;
-								})))
-				.map(Renaming::of);
+		Fiber<java.util.Map<Name<?>, Term<?>>> walkedAll =
+				Fiber.done(new java.util.HashMap<>());
+		for (org.clauseway.functional.tuples.Tuple2<Name<?>, Term<?>> binding : home.bindings()) {
+			walkedAll = walkedAll.flatMap(walked ->
+					MiniKanren.walkAll(home, binding._1).map(meaning -> {
+						walked.put(binding._1, meaning);
+						return walked;
+					}));
+		}
+		return walkedAll.map(Renaming::of);
 	}
 
 	/**

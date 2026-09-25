@@ -46,7 +46,7 @@ public final class Renaming {
 
 	/** The costume off: a rename substitution read as the dictionary it is. */
 	public static Renaming of(Substitutions renameSubstitutions) {
-		return of(renameSubstitutions.bindings().toJavaMap());
+		return of(renameSubstitutions.toMap());
 	}
 
 	/**
@@ -101,10 +101,7 @@ public final class Renaming {
 		// walkAll rebuilds structure wholesale — an untouched term must pass by identity
 		return targets.isEmpty() || MiniKanren.namesIn(term).noneMatch(targets::containsKey)
 				? Fiber.done(term)
-				: MiniKanren.walkAll(Substitutions.of(seed()), term).map(t -> t);
+				: MiniKanren.walkAll(Substitutions.of(targets), term).map(t -> t);
 	}
 
-	private HashMap<Name<?>, Term<?>> seed() {
-		return HashMap.ofAll(targets);
-	}
 }
