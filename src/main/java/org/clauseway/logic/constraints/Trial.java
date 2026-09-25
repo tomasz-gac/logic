@@ -18,6 +18,7 @@ import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.Value;
 import org.clauseway.logic.unification.terms.LVar;
+import java.util.Optional;
 
 /**
  * One owner for per-literal trial semantics. The UNIFICATION rows answer at
@@ -167,7 +168,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 		@SuppressWarnings("unchecked")
 		public Outcome visit(Unification<?> unification) {
 			Unification<Object> bind = (Unification<Object>) unification;
-			Option<Prefix> minted = (bind.isNoCheck() ?
+			Optional<Prefix> minted = (bind.isNoCheck() ?
 					MiniKanren.unifyPrefixUnsafe(scratch.substitution(), bind.getU(), bind.getV()) :
 					MiniKanren.unifyPrefix(scratch.substitution(), bind.getU(), bind.getV()))
 					.ground();
@@ -175,7 +176,7 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 			// binding growth (a structural clash stays a clash in every extension
 			// of these substitutions), so the forbidden conjunction is refuted
 			// FOREVER, not just for this state — the nogood discharges
-			if (!minted.isDefined()) {
+			if (!minted.isPresent()) {
 				return Outcome.refuted();
 			}
 			// an EMPTY residual is not the trial passing — the literal is
@@ -194,9 +195,9 @@ public final class Trial implements Posting.Visitor<Fiber<Trial.Outcome>> {
 			List<Posting> residuals = List.empty();
 			for (Tuple2<LVar<?>, Term<?>> pair : resolution.getPrefix().bindings()) {
 				@SuppressWarnings("unchecked")
-				Option<Prefix> minted = MiniKanren.unifyPrefix(current,
+				Optional<Prefix> minted = MiniKanren.unifyPrefix(current,
 						(Term<Object>) pair._1, (Term<Object>) pair._2).ground();
-				if (!minted.isDefined()) {
+				if (!minted.isPresent()) {
 					return Outcome.refuted();
 				}
 				Prefix residual = minted.get();

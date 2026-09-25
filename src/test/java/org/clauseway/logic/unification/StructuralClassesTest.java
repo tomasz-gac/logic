@@ -22,7 +22,7 @@ import org.junit.Test;
 public class StructuralClassesTest {
 
 	private static <T> boolean unifies(Term<T> l, Term<T> r) {
-		return MiniKanren.unify(Substitutions.empty(), l, r).ground().isDefined();
+		return MiniKanren.unify(Substitutions.empty(), l, r).ground().isPresent();
 	}
 
 	@Test

@@ -3,6 +3,7 @@ package org.clauseway.logic.finitedomain;
 // ABOUTME: The finite-domain store: a LatticeStore over Domain values whose capability
 // ABOUTME: record is membership, singleton collapse and the equal-domain guard.
 
+import java.util.Optional;
 import org.clauseway.functional.Types;
 import org.clauseway.logic.constraints.store.Constraint;
 import org.clauseway.logic.constraints.store.Theory;
@@ -74,10 +75,11 @@ public class FiniteDomainConstraints extends LatticeFactor<Domain<Object>, Finit
 		return EMPTY.withValue(theory, x, (Domain<Object>) xd);
 	}
 
+	@SuppressWarnings("unchecked")
 	public static <T> Option<Domain<T>> getDom(Package p, Term<T> x) {
 		return Constraint.in(p, FiniteDomainConstraints.class)
 				.flatMap(pair -> EMPTY.getValue(pair.getTheory(), x))
-				.flatMap(Types.castAs(Domain.class));
+				.map(d -> (Domain<T>) d);
 	}
 
 	@Override

@@ -268,11 +268,11 @@ public class MiniKanren {
 		return Optionals.firstPresent(
 				() -> tupleAsIterable(w)
 						.map(it -> new Decomposition(Decomposition.Kind.TUPLE, wrapAll(it))),
-				() -> Types.cast(w, LList.class).toJavaOptional()
+				() -> Types.cast(w, LList.class)
 						.filter(x -> !x.isEmpty())
 						.map(x -> new Decomposition(Decomposition.Kind.LLIST,
 								Arrays.<Term<?>> asList(x.getHead(), x.getTail()))),
-				() -> Types.cast(w, LTree.class).toJavaOptional()
+				() -> Types.cast(w, LTree.class)
 						.filter(t -> !t.isEmpty())
 						.map(t -> new Decomposition(Decomposition.Kind.LTREE,
 								Arrays.<Term<?>> asList(t.getValue(), t.getChildren()))));
@@ -309,6 +309,7 @@ public class MiniKanren {
 	 * with each component passed through the mapper. Empty when the term
 	 * is not structural.
 	 */
+	@SuppressWarnings("unchecked")
 	private static <T> Optional<Fiber<Term<T>>> mapStructure(
 			Term<T> v,
 			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
@@ -323,7 +324,7 @@ public class MiniKanren {
 										defer(() -> mapper.apply(c.getHead().getObjectTerm())),
 										defer(() -> mapper.apply(c.getTail().getObjectTerm())))
 								.map(ht -> LList.of(ht._1, MiniKanren.castTerm(ht._2)).get())
-								.map(w -> Types.<T> castAs(w, Object.class).get())
+								.map(w -> (T) w)
 								.map(LVal::lval)
 								.map(MiniKanren::<T>castTerm)),
 				() -> v.asVal()
@@ -333,7 +334,7 @@ public class MiniKanren {
 										defer(() -> mapper.apply(c.getValue().getObjectTerm())),
 										defer(() -> mapper.apply(c.getChildren().getObjectTerm())))
 								.map(vc -> LTree.of(vc._1, MiniKanren.castTerm(vc._2)).get())
-								.map(w -> Types.<T> castAs(w, Object.class).get())
+								.map(w -> (T) w)
 								.map(LVal::lval)
 								.map(MiniKanren::<T>castTerm)));
 	}
@@ -464,7 +465,7 @@ public class MiniKanren {
 						// a var that walked to something else is already renamed
 						.map(u -> u == val ?
 								// a Any is an atom: no occurs check to fail here
-								s.extend(u, Any.of((int) s.size())) :
+								s.extend(u, Any.of(s.size())) :
 								s)
 						.map(Fiber::done)
 						.orElseGet(() -> members(v)
@@ -481,8 +482,8 @@ public class MiniKanren {
 				.flatMap(s1 -> reifyMembers(s1, members));
 	}
 
-	public static <A, B> Optional<Tuple2<A, B>> zip(
-			Optional<A> a, Optional<B> b) {
+	@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+	public static <A, B> Optional<Tuple2<A, B>> zip(Optional<A> a, Optional<B> b) {
 		return a.flatMap(av -> b.map(bv -> Tuple.of(av, bv)));
 	}
 
@@ -492,7 +493,7 @@ public class MiniKanren {
 	 * via {@code withMembers} — so a new arity cannot be half-supported.
 	 */
 	public static Optional<Iterable<Object>> tupleAsIterable(Object tuple) {
-		return Types.cast(tuple, Tuple.class).toJavaOptional().map(MiniKanren::tupleMembers);
+		return Types.cast(tuple, Tuple.class).map(MiniKanren::tupleMembers);
 	}
 
 	private static Iterable<Object> tupleMembers(Tuple t) {

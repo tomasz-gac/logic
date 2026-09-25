@@ -3,7 +3,9 @@ package org.clauseway.logic.unification;
 // ABOUTME: The substitution factor as a first-class read-only view — what code scoped
 // ABOUTME: to shared knowledge may see; an interface so the representation can swap.
 
+import java.util.Optional;
 import org.clauseway.functional.algebra.Semilattice;
+import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple2;
 import io.vavr.control.Option;
 import java.util.ArrayDeque;
@@ -63,7 +65,7 @@ public interface Substitutions extends Semilattice<Substitutions> {
 	Substitutions extend(LVar<?> v, Term<?> t);
 
 	/** The number of bindings. Reified variable numbering derives from it. */
-	long size();
+	int size();
 
 	/** The bindings as pairs, in the representation's iteration order. */
 	Iterable<Tuple2<Name<?>, Term<?>>> bindings();
@@ -74,10 +76,8 @@ public interface Substitutions extends Semilattice<Substitutions> {
 
 	/** The bindings copied into a plain map, in iteration order. */
 	default Map<Name<?>, Term<?>> toMap() {
-		Map<Name<?>, Term<?>> out = new LinkedHashMap<>();
-		for (Tuple2<Name<?>, Term<?>> binding : bindings()) {
-			out.put(binding._1, binding._2);
-		}
+		Map<Name<?>, Term<?>> out = new LinkedHashMap<>(size());
+		bindings().forEach(t -> t.apply(out::put));
 		return out;
 	}
 
@@ -158,7 +158,7 @@ public interface Substitutions extends Semilattice<Substitutions> {
 	}
 
 	default Substitutions join(Substitutions other) {
-		return tryJoin(other).getOrElseThrow(() -> new IllegalStateException(
+		return tryJoin(other).orElseThrow(() -> new IllegalStateException(
 				"join of incompatible substitutions"));
 	}
 
@@ -168,17 +168,17 @@ public interface Substitutions extends Semilattice<Substitutions> {
 	 * This is the ⊤-aware form; {@code none} is the top singleton.
 	 */
 	@SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
-	default Option<Substitutions> tryJoin(Substitutions other) {
+	default Optional<Substitutions> tryJoin(Substitutions other) {
 		Substitutions acc = this;
 		for (Tuple2<Name<?>, Term<?>> binding : other.bindings()) {
-			Option<Substitutions> step =
+			Optional<Substitutions> step =
 					MiniKanren.unify(acc, (Term) binding._1, (Term) binding._2).ground();
-			if (step.isEmpty()) {
-				return Option.none();
+			if (!step.isPresent()) {
+				return Optional.empty();
 			}
 			acc = step.get();
 		}
-		return Option.some(acc);
+		return Optional.of(acc);
 	}
 
 	/**
@@ -190,8 +190,8 @@ public interface Substitutions extends Semilattice<Substitutions> {
 	 * factor and the KEPT delta the driver fans out to the other stores
 	 * (empty kept = nothing new, a no-op arrival).
 	 */
-	default Option<io.vavr.Tuple2<Substitutions, Prefix>> extended(Prefix delta) {
+	default Option<Tuple2<Substitutions, Prefix>> extended(Prefix delta) {
 		return delta.revalidate(this)
-				.map(kept -> io.vavr.Tuple.of(kept.isEmpty() ? this : kept.appliedTo(this), kept));
+				.map(kept -> Tuple.of(kept.isEmpty() ? this : kept.appliedTo(this), kept));
 	}
 }

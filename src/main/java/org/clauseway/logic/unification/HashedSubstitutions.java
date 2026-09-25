@@ -38,7 +38,7 @@ final class HashedSubstitutions implements Substitutions {
 	}
 
 	@Override
-	public long size() {
+	public int size() {
 		return bindings.size();
 	}
 

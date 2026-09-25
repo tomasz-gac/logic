@@ -40,7 +40,7 @@ public class Unification<T> implements Posting {
 	 */
 	@Override
 	public boolean doomed(Package p) {
-		return !MiniKanren.unifyPrefix(p.substitution(), u, v).ground().isDefined();
+		return !MiniKanren.unifyPrefix(p.substitution(), u, v).ground().isPresent();
 	}
 
 	@Override

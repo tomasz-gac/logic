@@ -181,7 +181,7 @@ public class MiniKanrenTest {
 		s = MiniKanren.unify(s, x, y).ground().get();
 		s = MiniKanren.unify(s, x, z).ground().get();
 		s = MiniKanren.unify(s, y, lval(3)).ground().get();
-		assertThat(MiniKanren.unify(s, z, lval(4)).ground().toJavaOptional()).isEmpty();
+		assertThat(MiniKanren.unify(s, z, lval(4)).ground()).isEmpty();
 	}
 
 	@Test
@@ -265,12 +265,12 @@ public class MiniKanrenTest {
 		Map<String, Integer> m1 = HashMap.of("v1", 1, "v2", 2);
 		Map<String, Integer> m2 = HashMap.of("v1", 1, "v2", 2);
 		assertThat(MiniKanren.unify(Substitutions.empty(), lval(m1), lval(m2))
-				.ground().isDefined()).isTrue();
+				.ground().isPresent()).isTrue();
 
 		Map<String, Unifiable<Integer>> withVar = HashMap.of("v1", lvar("v1"));
 		Map<String, Unifiable<Integer>> withVal = HashMap.of("v1", lval(1));
 		assertThat(MiniKanren.unify(Substitutions.empty(), lval(withVar), lval(withVal))
-				.ground().isDefined()).isFalse();
+				.ground().isPresent()).isFalse();
 	}
 
 	Unifiable<Object> buildUni(int i, int delta) {

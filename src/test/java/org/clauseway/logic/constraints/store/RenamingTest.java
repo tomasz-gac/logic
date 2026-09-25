@@ -28,7 +28,7 @@ public class RenamingTest {
 
 	private static boolean sameAs(Term<?> l, Term<?> r) {
 		return MiniKanren.unify(Substitutions.empty(),
-				l.getObjectTerm(), r.getObjectTerm()).ground().isDefined();
+				l.getObjectTerm(), r.getObjectTerm()).ground().isPresent();
 	}
 
 	@Test

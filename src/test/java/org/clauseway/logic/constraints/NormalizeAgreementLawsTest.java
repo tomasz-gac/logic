@@ -3,31 +3,30 @@ package org.clauseway.logic.constraints;
 // ABOUTME: The overload agreement law: delta normalization lands where wholesale
 // ABOUTME: normalization would — normalize(prefix, S1) == normalize(S1 + prefix).
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.clauseway.logic.nogoods.Exclusion.exclude;
 import static org.clauseway.logic.unification.terms.LVal.lval;
 import static org.clauseway.logic.unification.terms.LVar.lvar;
-import static org.assertj.core.api.Assertions.assertThat;
 
+import io.vavr.collection.LinkedHashSet;
+import io.vavr.collection.List;
+import io.vavr.control.Option;
+import java.util.Collections;
+import java.util.Random;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.schedulers.BreadthFirstScheduler;
-import org.clauseway.logic.constraints.store.Constraint;
+import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.logic.constraints.store.Atom;
+import org.clauseway.logic.constraints.store.Constraint;
 import org.clauseway.logic.constraints.store.Factor;
 import org.clauseway.logic.constraints.store.Revision;
 import org.clauseway.logic.constraints.store.Theory;
 import org.clauseway.logic.finitedomain.FiniteDomain;
 import org.clauseway.logic.finitedomain.Longs;
 import org.clauseway.logic.goals.Package;
-import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.Prefix;
 import org.clauseway.logic.unification.Substitutions;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.Tuple2;
-import io.vavr.collection.LinkedHashSet;
-import io.vavr.collection.List;
-import io.vavr.control.Option;
-import java.util.Collections;
-import java.util.Random;
 import org.junit.Test;
 
 /**
@@ -66,7 +65,7 @@ public class NormalizeAgreementLawsTest {
 			// on BOTH verdict directions
 			long v = r.nextInt(7);
 			Option<Prefix> minted = Prefix.binding(
-					p.substitution(), (LVar<?>) x.asVar().get(), lval(v));
+					p.substitution(), x.asVar().get(), lval(v));
 			if (!minted.isDefined()) {
 				continue;
 			}
@@ -85,8 +84,8 @@ public class NormalizeAgreementLawsTest {
 				exercised++;
 				Constraint<?> pair = (Constraint<?>) store;
 				Factor<?> cs = pair.getFactor();
-				Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(), kept, extended));
-				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(),
+				Revision delta = run((Fiber<Revision>) cs.normalize((Theory) pair.getTheory(), kept, extended));
+				Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(pair.getTheory(),
 						pair.getTheory().atoms(), extended));
 
 				Option<Object> deltaLanding = landing(delta, pair);
@@ -147,9 +146,9 @@ public class NormalizeAgreementLawsTest {
 			Factor<?> cs = pair.getFactor();
 
 			exercised++;
-			Revision delta = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(),
-					LinkedHashSet.of((Atom) atom), parked));
-			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize((Theory) pair.getTheory(),
+			Revision delta = run((Fiber<Revision>) cs.normalize((Theory) pair.getTheory(),
+					LinkedHashSet.of(atom), parked));
+			Revision wholesale = run((Fiber<Revision>) ((Factor) cs).normalize(pair.getTheory(),
 					pair.getTheory().atoms(), parked));
 			Option<Object> deltaLanding = landing(delta, pair);
 			Option<Object> wholesaleLanding = landing(wholesale, pair);
@@ -184,8 +183,6 @@ public class NormalizeAgreementLawsTest {
 				() -> Option.of(pair.getTheory()),
 				updated -> Option.of(updated.constraint().getTheory()));
 	}
-
-
 
 	private static Package impose(Package p, Posting literal) {
 		List<Package> worlds = new BreadthFirstScheduler<>(Trial.imposed(literal, p)).get();
