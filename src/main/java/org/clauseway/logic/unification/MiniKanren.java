@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Spliterators;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -26,6 +27,7 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.clauseway.functional.Exceptions;
+import org.clauseway.functional.Optionals;
 import org.clauseway.functional.fibers.Fiber;
 import org.clauseway.functional.fibers.MFiber;
 import org.clauseway.functional.Types;
@@ -63,7 +65,7 @@ public class MiniKanren {
 
 	private static boolean occurs(Substitutions s, LVar<?> x, Term<?> v) {
 		Term<?> walked = s.walk(v);
-		if (walked.asVar().isDefined()) {
+		if (walked.asVar().isPresent()) {
 			return walked.asVar().get() == x;
 		}
 		for (Term<?> member : members(walked).getOrElse(Collections.emptyList())) {
@@ -104,7 +106,7 @@ public class MiniKanren {
 
 		// reified terms are solver output; meeting one here is a programming error
 		// that the type system cannot catch when it is nested inside a value
-		if (l.asReified().isDefined() || r.asReified().isDefined()) {
+		if (l.asReified().isPresent() || r.asReified().isPresent()) {
 			throw new IllegalStateException(
 					"Reified terms cannot re-enter unification: " + l + " ≡ " + r);
 		}
@@ -115,21 +117,23 @@ public class MiniKanren {
 			return mdone(s);
 		}
 
-		return l.asVar().map(lVar -> r.asVar()
-						// route through the extender even though two distinct walked
-						// vars cannot fail the occurs check — prefix collection
-						// observes every extension
-						.map(rVar -> extend.apply(s, lVar, rVar))
-						.getOrElse(() -> extend.apply(s, lVar, r))
-						.map(MFiber::mdone)
-						.getOrElse(MFiber::none))
-				.orElse(() -> r.asVar()
-						.map(rVar -> extend.apply(s, rVar, l)
+		return Optionals.<MFiber<Substitutions>> firstPresent(
+						() -> l.asVar().map(lVar -> r.asVar()
+								// route through the extender even though two distinct walked
+								// vars cannot fail the occurs check — prefix collection
+								// observes every extension
+								.map(rVar -> extend.apply(s, lVar, rVar))
+								.orElseGet(() -> extend.apply(s, lVar, r))
 								.map(MFiber::mdone)
-								.getOrElse(MFiber::none)))
-				.orElse(() -> zip(decompose(l), decompose(r))
-						.map(lr -> unifyDecomposed(extend, s, lr._1, lr._2)))
-				.getOrElse(MFiber::none);
+								.getOrElse(MFiber::none)),
+						() -> r.asVar()
+								.map(rVar -> extend.apply(s, rVar, l)
+										.map(MFiber::mdone)
+										.getOrElse(MFiber::none)),
+						() -> zip(decompose(l), decompose(r))
+								.map(lr -> unifyDecomposed(extend, s, lr._1, lr._2))
+								.toJavaOptional())
+				.orElseGet(MFiber::none);
 	}
 
 	private static MFiber<Substitutions> unifyDecomposed(
@@ -179,17 +183,17 @@ public class MiniKanren {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Option<LList<T>> asLList(Object v) {
-		return Option.of(v)
+	public static <T> Optional<LList<T>> asLList(Object v) {
+		return Optional.ofNullable(v)
 				.filter(LList.class::isInstance)
-				.map(LList.class::cast);
+				.map(w -> (LList<T>) w);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Option<LTree<T>> asLTree(Object v) {
-		return Option.of(v)
+	public static <T> Optional<LTree<T>> asLTree(Object v) {
+		return Optional.ofNullable(v)
 				.filter(LTree.class::isInstance)
-				.map(LTree.class::cast);
+				.map(w -> (LTree<T>) w);
 	}
 
 	public static <T> MFiber<Substitutions> unify(Substitutions s, Term<T> lhs, Term<T> rhs) {
@@ -229,9 +233,9 @@ public class MiniKanren {
 	public static <T> Fiber<Term<T>> walkAll(Substitutions s, Term<T> u) {
 		return done(s.walk(u))
 				.flatMap(v -> v.asVar()
-						.map(Fiber::<Term<T>>done)
-						.orElse(() -> MiniKanren.mapStructure(v, e -> walkAll(s, e)))
-						.getOrElse(done(v)));
+						.<Fiber<Term<T>>> map(Fiber::done)
+						.orElseGet(() -> MiniKanren.<T> mapStructure(v, e -> walkAll(s, e))
+								.orElse(done(v))));
 	}
 
 	/** A term's one-level structural decomposition: its kind and a lazy view of its members. */
@@ -254,7 +258,7 @@ public class MiniKanren {
 	 * and every foreign value, collections included, is an equality atom.
 	 */
 	static Option<Decomposition> decompose(Term<?> v) {
-		if (!v.asVal().isDefined()) {
+		if (!v.isVal()) {
 			return Option.none();
 		}
 		Object w = v.get();
@@ -305,13 +309,14 @@ public class MiniKanren {
 	 * with each component passed through the mapper. Empty when the term
 	 * is not structural.
 	 */
-	private static <T> Option<Fiber<Term<T>>> mapStructure(
+	private static <T> Optional<Fiber<Term<T>>> mapStructure(
 			Term<T> v,
 			Function<Term<Object>, Fiber<Term<Object>>> mapper) {
-		return v.asVal()
-				.flatMap(Types.cast(Tuple.class))
-				.map(t -> MiniKanren.<T> mapTuple(t, mapper))
-				.orElse(() -> v.asVal()
+		return Optionals.firstPresent(
+				() -> v.asVal()
+						.filter(Tuple.class::isInstance)
+						.map(t -> MiniKanren.<T> mapTuple((Tuple) t, mapper)),
+				() -> v.asVal()
 						.flatMap(MiniKanren::<T>asLList)
 						.filter(not(LList::isEmpty))
 						.map(c -> Fiber.zip(
@@ -320,8 +325,8 @@ public class MiniKanren {
 								.map(ht -> LList.of(ht._1, MiniKanren.castTerm(ht._2)).get())
 								.map(w -> Types.<T> castAs(w, Object.class).get())
 								.map(LVal::lval)
-								.map(MiniKanren::<T>castTerm)))
-				.orElse(() -> v.asVal()
+								.map(MiniKanren::<T>castTerm)),
+				() -> v.asVal()
 						.flatMap(MiniKanren::<T>asLTree)
 						.filter(not(LTree::isEmpty))
 						.map(c -> Fiber.zip(
@@ -345,7 +350,7 @@ public class MiniKanren {
 						// if the original type was not Term
 						// so that we can reconstruct the original tuple
 						.map(u -> e instanceof Term ?
-								u : u.asVal().get()))
+								u : u.get()))
 				.reduce(
 						done(new ArrayList<>()),
 						(acc, item) -> Fiber.zip(acc, item)
@@ -372,7 +377,9 @@ public class MiniKanren {
 	private static <T> Fiber<Tuple2<Term<T>, Map<Any<?>, LVar<?>>>> instantiated(Reified<T> term) {
 		Map<Any<?>, LVar<?>> fresh = new LinkedHashMap<>();
 		namesIn(term)
-				.<Any<?>> flatMap(name -> name.asReified().toJavaStream())
+				.<Any<?>> flatMap(name -> name.asReified()
+						.map(any -> Stream.<Any<?>> of(any))
+						.orElseGet(Stream::empty))
 				.forEach(any -> fresh.computeIfAbsent(any, miss -> (LVar<?>) LVar.lvar()));
 		return walkAll(Substitutions.of(HashMap.ofAll(fresh)), term)
 				.map(t -> Tuple.of(t, fresh));
@@ -392,7 +399,7 @@ public class MiniKanren {
 			public boolean tryAdvance(java.util.function.Consumer<? super Name<?>> action) {
 				while (!work.isEmpty()) {
 					Term<?> current = work.pop();
-					if (current.asName().isDefined()) {
+					if (current.asName().isPresent()) {
 						action.accept(current.asName().get());
 						return true;
 					}
@@ -459,10 +466,10 @@ public class MiniKanren {
 								// a Any is an atom: no occurs check to fail here
 								s.extend(u, Any.of((int) s.size())) :
 								s)
-						.map(Fiber::done)
-						.orElse(() -> members(v)
-								.map(ms -> reifyMembers(s, ms.iterator())))
-						.getOrElse(done(s)));
+						.<Fiber<Substitutions>> map(Fiber::done)
+						.orElseGet(() -> members(v)
+								.map(ms -> reifyMembers(s, ms.iterator()))
+								.getOrElse(done(s))));
 	}
 
 	private static Fiber<Substitutions> reifyMembers(Substitutions s, Iterator<Term<?>> members) {

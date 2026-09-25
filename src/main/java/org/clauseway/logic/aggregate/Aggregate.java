@@ -260,7 +260,7 @@ public class Aggregate {
 	}
 
 	private static int requireInt(Reified<Integer> reified) {
-		if (reified.asReified().isDefined()) {
+		if (reified.asReified().isPresent()) {
 			throw new IllegalStateException("cannot aggregate over an unbound expression");
 		}
 		return reified.get();

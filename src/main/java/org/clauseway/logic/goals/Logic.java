@@ -52,14 +52,14 @@ public class Logic {
 	public static <T> String formatLList(Unifiable<LList<T>> first) {
 		return first.asVar()
 				.map(v -> "[" + v + "]")
-				.getOrElse(() -> first.get().toString());
+				.orElseGet(() -> first.get().toString());
 	}
 
 	public static <T> String formatLList(Package s, Unifiable<LList<T>> first) {
 		Term<LList<T>> walked = s.substitution().walkAll(first);
 		return walked.asVar()
 				.map(v -> "[" + v + "]")
-				.getOrElse(() -> walked.get().toString());
+				.orElseGet(() -> walked.get().toString());
 	}
 
 	public static <A, B> Goal sameLengtho(Unifiable<LList<A>> lhs, Unifiable<LList<B>> rhs) {
@@ -238,19 +238,24 @@ public class Logic {
 	public static Goal ground(Unifiable<?> v) {
 		return (Package s) -> Cont.defer(() ->
 				MiniKanren.walkAll(s.substitution(), v)
-						.map(u -> u.asVal()
-								.<Cont<Package, Nothing>> map(_lv -> Cont.just(s))
-								.getOrElse(k -> Fiber.done(Nothing.nothing()))));
+						// isVal, not asVal presence: a NULL-bound term is ground
+						.map(u -> u.isVal() ?
+								Cont.<Package, Nothing> just(s) :
+								k -> Fiber.done(Nothing.nothing())));
 	}
 
 	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
 		return s -> Cont.defer(() ->
 				MiniKanren.walkAll(s.substitution(), v1)
-						.map(v -> v.asVal()
-								.map(f)
-								.map(g -> g.named("projected(" + g + ")"))
-								.map(g -> g.apply(s))
-								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Cannot project %s. No value bound.", v))));
+						.map(v -> {
+							// isVal, not asVal presence: a NULL payload projects as null
+							if (!v.isVal()) {
+								throw Exceptions.format(IllegalArgumentException::new,
+										"Cannot project %s. No value bound.", v).get();
+							}
+							Goal g = f.apply(v.get());
+							return g.named("projected(" + g + ")").apply(s);
+						}));
 	}
 
 	public static <T1, T2> Goal project(Unifiable<T1> v1, Unifiable<T2> v2, Function2<T1, T2, Goal> f) {

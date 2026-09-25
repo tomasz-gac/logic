@@ -129,7 +129,7 @@ public class RenamingTest {
 				.apply(lval(Tuple.ofAll(local, local)).getObjectTerm()).ground();
 
 		java.util.List<Term<?>> members = new java.util.ArrayList<>();
-		MiniKanren.members(applied.asVal().isDefined() ? applied : applied)
+		MiniKanren.members(applied.isVal() ? applied : applied)
 				.forEach(ms -> ms.forEach(members::add));
 		assertThat(members).hasSize(2);
 		assertThat(members.get(0)).isEqualTo(members.get(1));

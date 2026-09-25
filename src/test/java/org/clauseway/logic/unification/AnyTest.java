@@ -41,9 +41,9 @@ public class AnyTest {
 	@Test
 	public void shouldBeNeitherVarNorVal() {
 		Any<Integer> any = Any.of(0);
-		assertThat(any.asVar().isDefined()).isFalse();
-		assertThat(any.asVal().isDefined()).isFalse();
-		assertThat(any.asReified().isDefined()).isTrue();
+		assertThat(any.asVar().isPresent()).isFalse();
+		assertThat(any.isVal()).isFalse();
+		assertThat(any.asReified().isPresent()).isTrue();
 	}
 
 	@Test

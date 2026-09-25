@@ -81,7 +81,7 @@ public final class Separate extends Propagator<FiniteDomainConstraints> {
 	public boolean doomed(Package state) {
 		Term<?> lw = state.substitution().walk(watchedTerms().get(0));
 		Term<?> rw = state.substitution().walk(watchedTerms().get(1));
-		return lw.asVal().isDefined() && rw.asVal().isDefined() && lw.get().equals(rw.get());
+		return lw.isVal() && rw.isVal() && lw.get().equals(rw.get());
 	}
 
 	@Override

@@ -218,16 +218,15 @@ public class Matche {
 				MiniKanren.walkAll(s.substitution(), u)
 						.map(v -> v.asVar()
 								.map(__ -> sup.get())
-								.getOrElse(Goal::failure)
+								.orElseGet(Goal::failure)
 								.apply(s)));
 	}
 
 	public static <T> Case<T> value(Function1<T, Goal> f) {
 		return u -> s -> Cont.defer(() ->
 				MiniKanren.walkAll(s.substitution(), u)
-						.map(v -> v.asVal()
-								.map(f)
-								.getOrElse(Goal::failure)
+						// isVal, not asVal presence: a NULL payload matches as a value
+						.map(v -> (v.isVal() ? f.apply(v.get()) : Goal.failure())
 								.apply(s)));
 	}
 }

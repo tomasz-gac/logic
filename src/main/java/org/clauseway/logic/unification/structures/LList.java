@@ -193,7 +193,7 @@ public class LList<A> {
 			@Override
 			public boolean hasNext() {
 				return Objects.nonNull(tail) &&
-						!tail.asVal().filter(LList::isEmpty).isDefined();
+						!tail.asVal().filter(LList::isEmpty).isPresent();
 			}
 
 			@Override
@@ -203,10 +203,10 @@ public class LList<A> {
 						tail.asVal()
 								.map(LList::getHead)
 								.map(Either::<Term<LList<A>>, Term<A>>right)
-								.getOrElse(() -> Either.left(tail));
+								.orElseGet(() -> Either.left(tail));
 				tail = tail.asVal()
 						.map(LList::getTail)
-						.getOrElse(() -> null);
+						.orElse(null);
 				return item;
 			}
 		};

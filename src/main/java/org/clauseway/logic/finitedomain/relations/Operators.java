@@ -49,7 +49,7 @@ public class Operators {
 	static long cmpOrder(Substitutions s, Term<?> l, Term<?> r, IntPredicate satisfied, Comparator<Object> order) {
 		Term<?> lw = s.walk(l);
 		Term<?> rw = s.walk(r);
-		if (lw.asVal().isDefined() && rw.asVal().isDefined()) {
+		if (lw.isVal() && rw.isVal()) {
 			return satisfied.test(order.compare(lw.get(), rw.get())) ? 1 : 0;
 		}
 		return 1;
@@ -119,7 +119,7 @@ public class Operators {
 		Term<T> freeVar = null;
 		for (int i = 0; i < us.size(); i++) {
 			Term<T> walked = p.walk(us.get(i));
-			if (walked.asVal().isDefined()) {
+			if (walked.isVal()) {
 				resolved.add(Option.of(VarWithDomain.of(walked,
 						Singleton.of(walked.get(), orderAt.apply(i), Option.<Discrete<T>> none()))));
 				continue;
@@ -180,7 +180,7 @@ public class Operators {
 		List<VarWithDomain<T>> resolved = new ArrayList<>(us.size());
 		for (int i = 0; i < us.size(); i++) {
 			Term<T> walked = p.walk(us.get(i));
-			if (walked.asVal().isDefined()) {
+			if (walked.isVal()) {
 				resolved.add(VarWithDomain.of(walked,
 						Singleton.of(walked.get(), orderAt.apply(i), Option.<Discrete<T>> none())));
 				continue;

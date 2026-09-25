@@ -3,7 +3,7 @@ package org.clauseway.logic.unification.terms;
 // ABOUTME: Structural root of all logic terms — values, input variables and reified variables.
 // ABOUTME: Walk, unification and reification machinery operate at this level.
 
-import io.vavr.control.Option;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
@@ -15,24 +15,24 @@ import java.util.function.Supplier;
  */
 public interface Term<T> extends Supplier<T> {
 
-	default Option<T> asVal() {
-		return Option.none();
+	default Optional<T> asVal() {
+		return Optional.empty();
 	}
 
 	default boolean isVal() {
 		return false;
 	}
 
-	default Option<Name<T>> asName() {
-		return Option.none();
+	default Optional<Name<T>> asName() {
+		return Optional.empty();
 	}
 
-	default Option<LVar<T>> asVar() {
-		return Option.none();
+	default Optional<LVar<T>> asVar() {
+		return Optional.empty();
 	}
 
-	default Option<Any<T>> asReified() {
-		return Option.none();
+	default Optional<Any<T>> asReified() {
+		return Optional.empty();
 	}
 
 	@Override

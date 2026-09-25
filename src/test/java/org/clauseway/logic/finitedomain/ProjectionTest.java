@@ -190,7 +190,7 @@ public class ProjectionTest {
 				(Propagator<FiniteDomainConstraints>) renamed.kind(Propagator.class)
 						.findFirst().get();
 		Term<?> mintedW = renamedCoupling.watchedTerms().get(1);
-		assertThat(mintedW.asVar().isDefined()).isTrue();
+		assertThat(mintedW.asVar().isPresent()).isTrue();
 		assertThat(mintedW).isNotEqualTo(w);
 		assertThat(renaming.apply(w).ground()).isSameAs(mintedW);
 		assertThat(renamedCoupling.watchedTerms().get(0)).isEqualTo(a);

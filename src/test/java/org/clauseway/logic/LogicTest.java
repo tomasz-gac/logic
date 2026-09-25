@@ -21,11 +21,11 @@ import org.clauseway.functional.tuples.Tuple2;
 import org.clauseway.functional.tuples.Tuple3;
 import io.vavr.collection.Stream;
 import io.vavr.control.Either;
-import io.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -157,7 +157,7 @@ public class LogicTest {
 		assertThat(result.get(0).get()._2.get().getHead())
 				.isEqualTo(lval(3));
 		assertThat(result.get(0).get()._2.get().getTail())
-				.matches(s -> s.asReified().isDefined());
+				.matches(s -> s.asReified().isPresent());
 	}
 
 	@Test
@@ -170,7 +170,7 @@ public class LogicTest {
 		val results = runStream(out,
 				Logic.appendo(lst, x, res))
 				.map(Term::asVal)
-				.map(Option::get)
+				.map(Optional::get)
 				.limit(3)
 				.map(Object::toString)
 				.collect(Collectors.toList());

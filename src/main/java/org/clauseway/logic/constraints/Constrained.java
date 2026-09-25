@@ -11,6 +11,7 @@ import org.clauseway.logic.unification.terms.Term;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import lombok.Value;
+import java.util.Optional;
 
 /**
  * An answer with conditions: the term plus the residual items still riding it
@@ -26,12 +27,12 @@ public class Constrained<T> implements Reified<T> {
 	List<Atom<?>> residuals;
 
 	@Override
-	public Option<T> asVal() {
+	public Optional<T> asVal() {
 		return that.asVal();
 	}
 
 	@Override
-	public Option<LVar<T>> asVar() {
+	public Optional<LVar<T>> asVar() {
 		return that.asVar();
 	}
 
@@ -46,7 +47,7 @@ public class Constrained<T> implements Reified<T> {
 	}
 
 	@Override
-	public Option<Any<T>> asReified() {
+	public Optional<Any<T>> asReified() {
 		return that.asReified();
 	}
 

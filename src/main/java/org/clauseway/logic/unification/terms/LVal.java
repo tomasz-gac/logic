@@ -1,9 +1,9 @@
 package org.clauseway.logic.unification.terms;
 
-import io.vavr.control.Option;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+import java.util.Optional;
 
 /**
  * @author TGa
@@ -25,9 +25,10 @@ public class LVal<T> implements Unifiable<T>, Reified<T> {
 	}
 
 	@Override
-	public Option<T> asVal() {
-		// some, not of: a null payload is a bound value, never an absence
-		return Option.some(value);
+	public Optional<T> asVal() {
+		// empty for a null payload — a bound NULL is still a VALUE, so
+		// bindness is isVal()/get(), never this face's presence
+		return Optional.ofNullable(value);
 	}
 
 	@Override

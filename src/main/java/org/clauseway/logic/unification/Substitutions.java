@@ -150,12 +150,12 @@ public final class Substitutions implements Semilattice<Substitutions> {
 	/** The term's walk-chain end: a value, or the representative unbound variable. */
 	@SuppressWarnings("unchecked")
 	public <T> Term<T> walk(Term<T> v) {
-		if (!v.asName().isDefined()) {
+		if (!v.asName().isPresent()) {
 			return v;
 		}
 		Term<?> result = v;
 		Term<?> next;
-		while (result.asName().isDefined()
+		while (result.asName().isPresent()
 				&& (next = bindings.getOrElse(result.asName().get(), null)) != null) {
 			result = next;
 		}
@@ -182,7 +182,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 			public boolean tryAdvance(Consumer<? super Name<?>> action) {
 				while (!work.isEmpty()) {
 					Term<?> current = walk(work.pop());
-					if (current.asName().isDefined()) {
+					if (current.asName().isPresent()) {
 						action.accept(current.asName().get());
 						return true;
 					}
@@ -203,7 +203,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 		pending.add(t);
 		while (!pending.isEmpty()) {
 			Term<?> cur = walk(pending.poll());
-			if (cur.asVar().isDefined()) {
+			if (cur.asVar().isPresent()) {
 				return false;
 			}
 			MiniKanren.members(cur)

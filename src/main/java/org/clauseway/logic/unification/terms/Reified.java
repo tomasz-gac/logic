@@ -19,7 +19,7 @@ public interface Reified<T> extends Term<T> {
 	 * infinities override this to say so.
 	 */
 	default boolean isGround() {
-		return !asReified().isDefined()
+		return !asReified().isPresent()
 				&& !MiniKanren.namesIn(this).findFirst().isPresent();
 	}
 }

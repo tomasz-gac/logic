@@ -58,7 +58,7 @@ public final class Prefix {
 		HashMap<LVar<?>, Term<?>> kept = HashMap.empty();
 		for (Tuple2<LVar<?>, Term<?>> binding : delta) {
 			Term<?> walked = s.walk(binding._1);
-			if (walked.asVar().isDefined()) {
+			if (walked.asVar().isPresent()) {
 				kept = kept.put((LVar<?>) walked.asVar().get(), binding._2);
 			} else if (!walked.equals(binding._2)) {
 				return Option.none();

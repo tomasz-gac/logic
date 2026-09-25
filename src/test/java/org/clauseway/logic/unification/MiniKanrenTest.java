@@ -200,7 +200,7 @@ public class MiniKanrenTest {
 
 		assertThat(xs.toStream()
 				.map(x -> s.walk(x))
-				.flatMap(v -> v.asVal().toList())
+				.flatMap(v -> v.asVal().map(io.vavr.collection.List::of).orElseGet(io.vavr.collection.List::empty))
 				.collect(List.collector()))
 				.isEqualTo(ys);
 	}
@@ -307,7 +307,7 @@ public class MiniKanrenTest {
 		assertThat(((Unifiable<?>)
 				((Tuple) ((Unifiable<?>) walked.get(3)).get()).get(4)).get())
 				.isEqualTo(13);
-		assertThat(((Unifiable<?>) walked.get(2)).asVar().toJavaOptional()
+		assertThat(((Unifiable<?>) walked.get(2)).asVar()
 				.map(LVar::getName))
 				.hasValue("_.1");
 	}
@@ -332,7 +332,7 @@ public class MiniKanrenTest {
 
 		Tuple x1 = MiniKanren.walkAll(s, x).ground().get();
 		assertThat(((Term<?>) x1.get(4))
-				.asVal().toJavaOptional())
+				.asVal())
 				.isNotEmpty();
 	}
 
@@ -353,11 +353,11 @@ public class MiniKanrenTest {
 				MiniKanren.reify(s, lval(Tuple.<Term<Integer>, Term<Integer>, Term<Integer>> of(x, y, z)))
 						.ground().get();
 		assertThat(x1._1())
-				.matches(v -> v.asReified().isDefined())
+				.matches(v -> v.asReified().isPresent())
 				.isEqualTo(x1._2());
 
 		assertThat(x1._3())
-				.matches(v -> v.asVal().isDefined());
+				.matches(v -> v.isVal());
 	}
 
 	@Test
@@ -608,8 +608,8 @@ public class MiniKanrenTest {
 
 		Tuple3<Term<Integer>, Term<Integer>, Term<Integer>> items =
 				(Tuple3<Term<Integer>, Term<Integer>, Term<Integer>>) instantiated.get();
-		assertThat(items._1().asVar().isDefined()).isTrue();
-		assertThat(items._2().asVar().isDefined()).isTrue();
+		assertThat(items._1().asVar().isPresent()).isTrue();
+		assertThat(items._2().asVar().isPresent()).isTrue();
 		assertThat(items._1()).isSameAs(items._3());
 		assertThat(items._1()).isNotEqualTo(items._2());
 	}
@@ -639,7 +639,7 @@ public class MiniKanrenTest {
 		Term<?> consHead = tuple._3.get().getHead();
 		Term<?> consTail = tuple._3.get().getTail();
 
-		assertThat(firstHead.asVar().isDefined()).isTrue();
+		assertThat(firstHead.asVar().isPresent()).isTrue();
 		assertThat(firstHead).isSameAs(consHead);
 		assertThat(tuple._2).isSameAs(consTail);
 	}
@@ -656,7 +656,6 @@ public class MiniKanrenTest {
 
 	private static <T> Optional<T> extractValue(Unifiable<T> variable, Substitutions subs) {
 		return subs.walk(variable)
-				.asVal()
-				.toJavaOptional();
+				.asVal();
 	}
 }

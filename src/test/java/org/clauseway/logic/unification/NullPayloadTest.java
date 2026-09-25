@@ -8,6 +8,9 @@ import static org.clauseway.logic.unification.terms.LVar.lvar;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.stream.Collectors;
+import org.clauseway.logic.goals.Goal;
+import org.clauseway.logic.goals.Logic;
+import org.clauseway.logic.goals.Matche;
 import org.clauseway.logic.unification.terms.Unifiable;
 import org.junit.Test;
 
@@ -16,10 +19,33 @@ public class NullPayloadTest {
 	@Test
 	public void aNullValueIsBoundNotFree() {
 		Unifiable<String> nul = lval((String) null);
-		assertThat(nul.isVal()).isTrue();
-		assertThat(nul.asVal().isDefined())
+		assertThat(nul.isVal())
 				.describedAs("a null payload must not read as unbound")
 				.isTrue();
+		assertThat(nul.asVal())
+				.describedAs("asVal is empty for a NULL payload — bindness is isVal, the payload is get")
+				.isEmpty();
+		assertThat(nul.get()).isNull();
+	}
+
+	@Test
+	public void matcheValueHandsTheNullPayloadToTheBody() {
+		Unifiable<String> x = lvar();
+		assertThat(x.unifies(lval((String) null))
+				.and(Matche.matche(x, Matche.value(v -> v == null ? Goal.success() : Goal.failure())))
+				.solve(x)
+				.map(Object::toString)
+				.collect(Collectors.toList())).containsExactly("{null}");
+	}
+
+	@Test
+	public void groundSucceedsOnANullBoundVariable() {
+		Unifiable<String> x = lvar();
+		assertThat(x.unifies(lval((String) null))
+				.and(Logic.ground(x))
+				.solve(x)
+				.map(Object::toString)
+				.collect(Collectors.toList())).containsExactly("{null}");
 	}
 
 	@Test

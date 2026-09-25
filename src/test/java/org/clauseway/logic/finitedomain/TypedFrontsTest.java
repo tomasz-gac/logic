@@ -475,7 +475,7 @@ public class TypedFrontsTest {
 
 		Package discharged = imposed(Ints.multo(lval(0), v, lval(0)), Package.empty());
 
-		Assertions.assertThat(discharged.walk(v).asVar().isDefined()).isTrue();
+		Assertions.assertThat(discharged.walk(v).asVar().isPresent()).isTrue();
 		Assertions.assertThat(FiniteDomainConstraints.getConstraints(discharged)).isEmpty();
 	}
 

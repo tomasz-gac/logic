@@ -3,8 +3,8 @@ package org.clauseway.logic.unification.terms;
 // ABOUTME: The any-value position in a reified answer: the output counterpart of LVar.
 // ABOUTME: Equal by number — reification numbers anys canonically, so equality is alpha-equivalence.
 
-import io.vavr.control.Option;
 import lombok.Value;
+import java.util.Optional;
 
 /**
  * A variable position in a reified answer. Where an {@link LVar} is a
@@ -21,13 +21,13 @@ public class Any<T> implements Reified<T>, Name<T> {
 	int number;
 
 	@Override
-	public Option<Name<T>> asName() {
-		return Option.of(this);
+	public Optional<Name<T>> asName() {
+		return Optional.of(this);
 	}
 
 	@Override
-	public Option<Any<T>> asReified() {
-		return Option.of(this);
+	public Optional<Any<T>> asReified() {
+		return Optional.of(this);
 	}
 
 	@Override

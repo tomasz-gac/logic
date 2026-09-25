@@ -62,7 +62,7 @@ public class Imposition<L extends Domain<L>, F extends Factor<F>> implements Ato
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	public boolean doomed(Package p) {
 		Term<?> walked = p.substitution().walk(target);
-		if (walked.asVal().isDefined()) {
+		if (walked.isVal()) {
 			return !value.admits(walked.get());
 		}
 		return Constraint.in(p, (Class) storeClass)

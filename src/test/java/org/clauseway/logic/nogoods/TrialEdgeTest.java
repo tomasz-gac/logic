@@ -34,7 +34,7 @@ public class TrialEdgeTest {
 		Package state = Exhaustion.collected(
 						Propagation.suspend(
 										Collections.singletonList(y),
-										s -> s.walk(y).asVal().isDefined(),
+										s -> s.walk(y).isVal(),
 										x.unifies(1).or(x.unifies(2)))
 								.apply(Package.empty()))
 				.ground().get(0);

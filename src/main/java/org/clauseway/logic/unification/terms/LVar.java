@@ -1,8 +1,8 @@
 package org.clauseway.logic.unification.terms;
 
-import io.vavr.control.Option;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
+import java.util.Optional;
 
 /**
  * @author TGa
@@ -38,13 +38,13 @@ public class LVar<T> implements Unifiable<T>, Name<T> {
 	}
 
 	@Override
-	public Option<Name<T>> asName() {
-		return Option.of(this);
+	public Optional<Name<T>> asName() {
+		return Optional.of(this);
 	}
 
 	@Override
-	public Option<LVar<T>> asVar() {
-		return Option.of(this);
+	public Optional<LVar<T>> asVar() {
+		return Optional.of(this);
 	}
 
 	@Override

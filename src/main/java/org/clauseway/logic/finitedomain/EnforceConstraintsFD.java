@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.clauseway.functional.Optionals;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 class EnforceConstraintsFD {
@@ -51,11 +52,12 @@ class EnforceConstraintsFD {
 
 	public static <T> Goal forceAns(Term<T> x) {
 		return s -> Cont.defer(() -> Fiber.done(s.walk(x))
-				.map(v -> v.asVar()
-						.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv))
-						.map(d -> unifyWithAllDomainValues(x, d))
-						.orElse(() -> forceAnsMembers(v))
-						.getOrElse(Goal::success))
+				.map(v -> Optionals.<Goal> firstPresent(
+						() -> v.asVar()
+								.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv).toJavaOptional())
+								.map(d -> unifyWithAllDomainValues(x, d)),
+						() -> forceAnsMembers(v).toJavaOptional())
+						.orElseGet(Goal::success))
 				.map(g -> g.apply(s)));
 	}
 
@@ -97,10 +99,10 @@ class EnforceConstraintsFD {
 	private static void verifyAllConstrainedHaveDomain(Iterable<? extends Propagator<?>> constraints, Collection<Term<?>> boundVariables) {
 		StreamSupport.stream(constraints.spliterator(), false)
 				.flatMap(c -> StreamSupport.stream(c.watchedTerms().spliterator(), false))
-				.filter(u -> u.asVal().isDefined())
+				.filter(u -> u.isVal())
 				.filter(x -> x.asVar()
 						.filter(v -> !boundVariables.contains(v))
-						.isDefined())
+						.isPresent())
 				.findAny()
 				.ifPresent(Exceptions.throwingConsumer(Exceptions.format(IllegalStateException::new, "Unbound variable")));
 	}

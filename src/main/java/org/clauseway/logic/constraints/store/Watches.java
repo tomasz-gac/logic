@@ -35,7 +35,7 @@ public final class Watches {
 			if (changed.isVal() && changedContains(changed, cur)) {
 				return true;
 			}
-			if (!cur.asVar().isDefined()) {
+			if (!cur.asVar().isPresent()) {
 				return false;
 			}
 			Term<?> next = state.binding(cur.asVar().get());
