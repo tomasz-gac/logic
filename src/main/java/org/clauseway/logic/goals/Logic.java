@@ -16,8 +16,6 @@ import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.terms.Term;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.Function1;
-import io.vavr.Function2;
 import org.clauseway.functional.tuples.Function3;
 import org.clauseway.functional.tuples.Function4;
 import org.clauseway.functional.tuples.Function5;
@@ -33,6 +31,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import java.util.function.BiFunction;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Logic {
@@ -161,11 +160,11 @@ public class Logic {
 								.and(defer(() -> allo(LList.of(c, d), out))))));
 	}
 
-	public static <T1> Goal exist(Function1<Unifiable<T1>, Goal> f) {
+	public static <T1> Goal exist(Function<Unifiable<T1>, Goal> f) {
 		return f.apply(lvar());
 	}
 
-	public static <T1, T2> Goal exist(Function2<
+	public static <T1, T2> Goal exist(BiFunction<
 			Unifiable<T1>,
 			Unifiable<T2>,
 			Goal> f) {
@@ -244,7 +243,7 @@ public class Logic {
 								k -> Fiber.done(Nothing.nothing())));
 	}
 
-	public static <T1> Goal project(Unifiable<T1> v1, Function1<T1, Goal> f) {
+	public static <T1> Goal project(Unifiable<T1> v1, Function<T1, Goal> f) {
 		return s -> Cont.defer(() ->
 				MiniKanren.walkAll(s.substitution(), v1)
 						.map(v -> {
@@ -258,7 +257,7 @@ public class Logic {
 						}));
 	}
 
-	public static <T1, T2> Goal project(Unifiable<T1> v1, Unifiable<T2> v2, Function2<T1, T2, Goal> f) {
+	public static <T1, T2> Goal project(Unifiable<T1> v1, Unifiable<T2> v2, BiFunction<T1, T2, Goal> f) {
 		return project(v1, a -> project(v2, x -> f.apply(a, x)));
 	}
 

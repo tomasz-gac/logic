@@ -7,8 +7,6 @@ import org.clauseway.logic.unification.structures.LList;
 import org.clauseway.logic.unification.terms.LVar;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.Function1;
-import io.vavr.Function2;
 import org.clauseway.functional.tuples.Function3;
 import org.clauseway.functional.tuples.Function4;
 import org.clauseway.functional.tuples.Function5;
@@ -30,6 +28,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import java.util.function.BiFunction;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Matche {
@@ -48,11 +47,11 @@ public class Matche {
 		return l -> Logic.<A> exist(a -> unify(l, LList.empty()).and(f.get()));
 	}
 
-	public static <A> Case<LList<A>> llist(Function1<Unifiable<A>, Goal> f) {
+	public static <A> Case<LList<A>> llist(Function<Unifiable<A>, Goal> f) {
 		return l -> Logic.<A> exist(a -> unify(l, LList.of(a)).and(f.apply(a)));
 	}
 
-	public static <A> Case<LList<A>> llist(Function2<Unifiable<A>, Unifiable<LList<A>>, Goal> f) {
+	public static <A> Case<LList<A>> llist(BiFunction<Unifiable<A>, Unifiable<LList<A>>, Goal> f) {
 		return l -> Logic.<A, LList<A>> exist((a, d) -> unify(l, LList.of(a, d)).and(f.apply(a, d)));
 	}
 
@@ -66,7 +65,7 @@ public class Matche {
 				.and(f.apply(a, b, c, d)));
 	}
 
-	public static <A> Case<LList<A>> llist(int n, Function2<List<Unifiable<A>>, Unifiable<LList<A>>, Goal> f) {
+	public static <A> Case<LList<A>> llist(int n, BiFunction<List<Unifiable<A>>, Unifiable<LList<A>>, Goal> f) {
 		List<Unifiable<A>> elements = List.fill(n, LVar::lvar);
 		return l -> elements.foldLeft(Tuple.of(l, Goal.success()), (lstAndGoal, a) -> {
 			Unifiable<LList<A>> d = LVar.lvar();
@@ -74,7 +73,7 @@ public class Matche {
 		}).apply((d, g) -> g.and(f.apply(elements, d)));
 	}
 
-	public static <T1> Case<Tuple1<Unifiable<T1>>> tuple(Function1<Unifiable<T1>, Goal> f) {
+	public static <T1> Case<Tuple1<Unifiable<T1>>> tuple(Function<Unifiable<T1>, Goal> f) {
 		return t -> Logic.<T1> exist(t1 ->
 				unify(t, Tuple.of(t1))
 						.and(f.apply(t1)));
@@ -84,7 +83,7 @@ public class Matche {
 			Unifiable<T1>,
 			Unifiable<T2>
 			>> tuple(
-			Function2<
+			BiFunction<
 					Unifiable<T1>,
 					Unifiable<T2>,
 					Goal> f) {
@@ -222,7 +221,7 @@ public class Matche {
 								.apply(s)));
 	}
 
-	public static <T> Case<T> value(Function1<T, Goal> f) {
+	public static <T> Case<T> value(Function<T, Goal> f) {
 		return u -> s -> Cont.defer(() ->
 				MiniKanren.walkAll(s.substitution(), u)
 						// isVal, not asVal presence: a NULL payload matches as a value

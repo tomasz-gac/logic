@@ -460,7 +460,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 		Set<LVar<?>> varsWithValues = impositions(incoming)
 				.map(Imposition::getTarget)
 				.map(p::walk)
-				.flatMap(u -> u.asVar().map(w -> Stream.<LVar<?>> of(w)).orElseGet(Stream::empty))
+				.flatMap(u -> u.asVar().map(Stream::<LVar<?>>of).orElseGet(Stream::empty))
 				.collect(Collectors.toSet());
 
 		Set<LVar<?>> constrainedVarsWithoutValues = Stream.concat(
@@ -468,7 +468,7 @@ public abstract class LatticeFactor<L extends Domain<L>, S extends LatticeFactor
 						parkingProps(incoming).map(ParkingPropagator::watchedTerms))
 				.flatMap(ts -> StreamSupport.stream(ts.spliterator(), false))
 				.map(p::walk)
-				.flatMap(u -> u.asVar().map(w -> Stream.<LVar<?>> of(w)).orElseGet(Stream::empty))
+				.flatMap(u -> u.asVar().map(Stream::<LVar<?>>of).orElseGet(Stream::empty))
 				.filter(Predicates.not(varsWithValues::contains))
 				.collect(Collectors.toSet());
 

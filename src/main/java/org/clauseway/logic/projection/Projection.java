@@ -9,13 +9,13 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.optimizer.Bounded;
 import org.clauseway.logic.unification.MiniKanren;
 import org.clauseway.logic.unification.terms.Unifiable;
-import io.vavr.Function2;
 import org.clauseway.functional.tuples.Function3;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import java.util.function.BiFunction;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Projection {
@@ -36,7 +36,7 @@ public class Projection {
 
 	/** Two-variable projection, watched jointly. */
 	public static <T1, T2> Goal project(Unifiable<T1> v1, Unifiable<T2> v2,
-			Function2<T1, T2, Goal> f) {
+			BiFunction<T1, T2, Goal> f) {
 		return Bounded.of(1, Propagation.suspend(
 				Arrays.asList(v1, v2),
 				sub -> sub.isGround(v1) && sub.isGround(v2),

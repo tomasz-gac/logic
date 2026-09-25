@@ -117,7 +117,7 @@ public class MiniKanren {
 			return mdone(s);
 		}
 
-		return Optionals.<MFiber<Substitutions>> firstPresent(
+		return Optionals.firstPresent(
 						() -> l.asVar().map(lVar -> r.asVar()
 								// route through the extender even though two distinct walked
 								// vars cannot fail the occurs check — prefix collection
@@ -234,7 +234,7 @@ public class MiniKanren {
 		return done(s.walk(u))
 				.flatMap(v -> v.asVar()
 						.<Fiber<Term<T>>> map(Fiber::done)
-						.orElseGet(() -> MiniKanren.<T> mapStructure(v, e -> walkAll(s, e))
+						.orElseGet(() -> MiniKanren.mapStructure(v, e -> walkAll(s, e))
 								.orElse(done(v))));
 	}
 
@@ -315,7 +315,7 @@ public class MiniKanren {
 		return Optionals.firstPresent(
 				() -> v.asVal()
 						.filter(Tuple.class::isInstance)
-						.map(t -> MiniKanren.<T> mapTuple((Tuple) t, mapper)),
+						.map(t -> MiniKanren.mapTuple((Tuple) t, mapper)),
 				() -> v.asVal()
 						.flatMap(MiniKanren::<T>asLList)
 						.filter(not(LList::isEmpty))
@@ -377,8 +377,8 @@ public class MiniKanren {
 	private static <T> Fiber<Tuple2<Term<T>, Map<Any<?>, LVar<?>>>> instantiated(Reified<T> term) {
 		Map<Any<?>, LVar<?>> fresh = new LinkedHashMap<>();
 		namesIn(term)
-				.<Any<?>> flatMap(name -> name.asReified()
-						.map(any -> Stream.<Any<?>> of(any))
+				.flatMap(name -> name.asReified()
+						.map(Stream::<Any<?>>of)
 						.orElseGet(Stream::empty))
 				.forEach(any -> fresh.computeIfAbsent(any, miss -> (LVar<?>) LVar.lvar()));
 		return walkAll(Substitutions.of(HashMap.ofAll(fresh)), term)
@@ -466,7 +466,7 @@ public class MiniKanren {
 								// a Any is an atom: no occurs check to fail here
 								s.extend(u, Any.of((int) s.size())) :
 								s)
-						.<Fiber<Substitutions>> map(Fiber::done)
+						.map(Fiber::done)
 						.orElseGet(() -> members(v)
 								.map(ms -> reifyMembers(s, ms.iterator()))
 								.getOrElse(done(s))));
