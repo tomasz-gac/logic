@@ -17,6 +17,7 @@ import io.vavr.control.Option;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class Separate extends Propagator<FiniteDomainConstraints> {
 
@@ -41,10 +42,10 @@ public final class Separate extends Propagator<FiniteDomainConstraints> {
 
 	@SuppressWarnings("unchecked")
 	private static <T> Verdict verdict(VarWithDomain<T> ld, VarWithDomain<T> rd) {
-		Option<Tuple2<T, T>> zip = MiniKanren.zip(
-				Operators.getSingleElement(ld.getDomain()),
-				Operators.getSingleElement(rd.getDomain()));
-		if (zip.isDefined() && zip.get().apply(Objects::equals)) {
+		Optional<Tuple2<T, T>> zip = MiniKanren.<T, T> zip(
+				Operators.<T> getSingleElement(ld.getDomain()).toJavaOptional(),
+				Operators.<T> getSingleElement(rd.getDomain()).toJavaOptional());
+		if (zip.isPresent() && zip.get().apply(Objects::equals)) {
 			return Verdict.fail();
 		}
 		if (ld.getDomain().isDisjoint(rd.getDomain())) {

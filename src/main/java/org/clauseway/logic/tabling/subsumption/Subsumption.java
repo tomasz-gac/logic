@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.Map;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import java.util.Optional;
 
 /**
  * Herbrand subsumption: does {@code general} generalize {@code specific}?
@@ -53,15 +54,15 @@ public final class Subsumption {
 				// a concrete general position cannot cover the any's instances
 				return false;
 			}
-			Option<Iterable<Term<?>>> gm = MiniKanren.members(g);
-			Option<Iterable<Term<?>>> sm = MiniKanren.members(s);
-			if (gm.isEmpty() && sm.isEmpty()) {
+			Optional<Iterable<Term<?>>> gm = MiniKanren.members(g);
+			Optional<Iterable<Term<?>>> sm = MiniKanren.members(s);
+			if (!gm.isPresent() && !sm.isPresent()) {
 				if (!g.equals(s)) {
 					return false;
 				}
 				continue;
 			}
-			if (gm.isEmpty() || sm.isEmpty()) {
+			if (!gm.isPresent() || !sm.isPresent()) {
 				return false;
 			}
 			Iterator<Term<?>> gi = gm.get().iterator();

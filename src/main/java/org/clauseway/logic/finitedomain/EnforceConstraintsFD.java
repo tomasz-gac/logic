@@ -22,6 +22,7 @@ import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.clauseway.functional.Optionals;
+import java.util.Optional;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 class EnforceConstraintsFD {
@@ -56,7 +57,7 @@ class EnforceConstraintsFD {
 						() -> v.asVar()
 								.flatMap(vv -> FiniteDomainConstraints.getDom(s, vv).toJavaOptional())
 								.map(d -> unifyWithAllDomainValues(x, d)),
-						() -> forceAnsMembers(v).toJavaOptional())
+						() -> forceAnsMembers(v))
 						.orElseGet(Goal::success))
 				.map(g -> g.apply(s)));
 	}
@@ -66,7 +67,7 @@ class EnforceConstraintsFD {
 	 * collections, tuples, LList, LTree, the unifier's own decomposition —
 	 * enforcement walks, member by member.
 	 */
-	private static <T> Option<Goal> forceAnsMembers(Term<T> v) {
+	private static <T> Optional<Goal> forceAnsMembers(Term<T> v) {
 		return MiniKanren.members(v)
 				.map(members -> StreamSupport.stream(members.spliterator(), false)
 						.map(u -> Goal.defer(() -> forceAns(u)))

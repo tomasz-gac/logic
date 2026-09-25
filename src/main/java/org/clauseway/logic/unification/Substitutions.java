@@ -186,7 +186,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 						action.accept(current.asName().get());
 						return true;
 					}
-					MiniKanren.members(current).forEach(members -> members.forEach(work::push));
+					MiniKanren.members(current).ifPresent(members -> members.forEach(work::push));
 				}
 				return false;
 			}
@@ -207,7 +207,7 @@ public final class Substitutions implements Semilattice<Substitutions> {
 				return false;
 			}
 			MiniKanren.members(cur)
-					.forEach(members -> members.forEach(pending::add));
+					.ifPresent(members -> members.forEach(pending::add));
 		}
 		return true;
 	}

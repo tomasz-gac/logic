@@ -64,20 +64,20 @@ public final class Watches {
 				return true;
 			}
 			MiniKanren.members(state.walk(cur))
-					.forEach(members -> members.forEach(pending::add));
+					.ifPresent(members -> members.forEach(pending::add));
 		}
 		return false;
 	}
 
 	private static boolean changedContains(Term<?> changed, Term<?> live) {
 		ArrayDeque<Term<?>> pending = new ArrayDeque<>();
-		MiniKanren.members(changed).forEach(members -> members.forEach(pending::add));
+		MiniKanren.members(changed).ifPresent(members -> members.forEach(pending::add));
 		while (!pending.isEmpty()) {
 			Term<?> cur = pending.poll();
 			if (cur.equals(live)) {
 				return true;
 			}
-			MiniKanren.members(cur).forEach(members -> members.forEach(pending::add));
+			MiniKanren.members(cur).ifPresent(members -> members.forEach(pending::add));
 		}
 		return false;
 	}

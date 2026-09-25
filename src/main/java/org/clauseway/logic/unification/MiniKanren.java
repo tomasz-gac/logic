@@ -68,7 +68,7 @@ public class MiniKanren {
 		if (walked.asVar().isPresent()) {
 			return walked.asVar().get() == x;
 		}
-		for (Term<?> member : members(walked).getOrElse(Collections.emptyList())) {
+		for (Term<?> member : members(walked).orElse(Collections.emptyList())) {
 			if (occurs(s, x, member)) {
 				return true;
 			}
@@ -131,8 +131,7 @@ public class MiniKanren {
 										.map(MFiber::mdone)
 										.getOrElse(MFiber::none)),
 						() -> zip(decompose(l), decompose(r))
-								.map(lr -> unifyDecomposed(extend, s, lr._1, lr._2))
-								.toJavaOptional())
+								.map(lr -> unifyDecomposed(extend, s, lr._1, lr._2)))
 				.orElseGet(MFiber::none);
 	}
 
@@ -257,22 +256,23 @@ public class MiniKanren {
 	 * tuples through their structural contract, LList and LTree natively —
 	 * and every foreign value, collections included, is an equality atom.
 	 */
-	static Option<Decomposition> decompose(Term<?> v) {
+	static Optional<Decomposition> decompose(Term<?> v) {
 		if (!v.isVal()) {
-			return Option.none();
+			return Optional.empty();
 		}
 		Object w = v.get();
 		if (w == null) {
 			// a null payload is an equality atom, never structure
-			return Option.none();
+			return Optional.empty();
 		}
-		return tupleAsIterable(w)
-				.map(it -> new Decomposition(Decomposition.Kind.TUPLE, wrapAll(it)))
-				.orElse(() -> Types.cast(w, LList.class)
+		return Optionals.firstPresent(
+				() -> tupleAsIterable(w)
+						.map(it -> new Decomposition(Decomposition.Kind.TUPLE, wrapAll(it))),
+				() -> Types.cast(w, LList.class).toJavaOptional()
 						.filter(x -> !x.isEmpty())
 						.map(x -> new Decomposition(Decomposition.Kind.LLIST,
-								Arrays.<Term<?>> asList(x.getHead(), x.getTail()))))
-				.orElse(() -> Types.cast(w, LTree.class)
+								Arrays.<Term<?>> asList(x.getHead(), x.getTail()))),
+				() -> Types.cast(w, LTree.class).toJavaOptional()
 						.filter(t -> !t.isEmpty())
 						.map(t -> new Decomposition(Decomposition.Kind.LTREE,
 								Arrays.<Term<?>> asList(t.getValue(), t.getChildren()))));
@@ -300,7 +300,7 @@ public class MiniKanren {
 	 * walkAll recognize (collections, tuples, LList, LTree) — read-only: no
 	 * rebuild, no collector needed. Empty when the term is not structural.
 	 */
-	public static Option<Iterable<Term<?>>> members(Term<?> v) {
+	public static Optional<Iterable<Term<?>>> members(Term<?> v) {
 		return decompose(v).map(Decomposition::getMembers);
 	}
 
@@ -403,7 +403,7 @@ public class MiniKanren {
 						action.accept(current.asName().get());
 						return true;
 					}
-					members(current).forEach(members -> members.forEach(work::push));
+					members(current).ifPresent(members -> members.forEach(work::push));
 				}
 				return false;
 			}
@@ -469,7 +469,7 @@ public class MiniKanren {
 						.map(Fiber::done)
 						.orElseGet(() -> members(v)
 								.map(ms -> reifyMembers(s, ms.iterator()))
-								.getOrElse(done(s))));
+								.orElse(done(s))));
 	}
 
 	private static Fiber<Substitutions> reifyMembers(Substitutions s, Iterator<Term<?>> members) {
@@ -481,8 +481,8 @@ public class MiniKanren {
 				.flatMap(s1 -> reifyMembers(s1, members));
 	}
 
-	public static <A, B> Option<Tuple2<A, B>> zip(
-			Option<A> a, Option<B> b) {
+	public static <A, B> Optional<Tuple2<A, B>> zip(
+			Optional<A> a, Optional<B> b) {
 		return a.flatMap(av -> b.map(bv -> Tuple.of(av, bv)));
 	}
 
@@ -491,8 +491,8 @@ public class MiniKanren {
 	 * contract: one row for every arity — decompose via {@code get}, rebuild
 	 * via {@code withMembers} — so a new arity cannot be half-supported.
 	 */
-	public static Option<Iterable<Object>> tupleAsIterable(Object tuple) {
-		return Types.cast(tuple, Tuple.class).map(MiniKanren::tupleMembers);
+	public static Optional<Iterable<Object>> tupleAsIterable(Object tuple) {
+		return Types.cast(tuple, Tuple.class).toJavaOptional().map(MiniKanren::tupleMembers);
 	}
 
 	private static Iterable<Object> tupleMembers(Tuple t) {

@@ -14,6 +14,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Value;
+import java.util.Optional;
 
 /**
  * Generalization retrieval over reified patterns — the dual of an index probe:
@@ -101,8 +102,8 @@ public final class SubsumptionMap<V> {
 	/** The head's structural edge: an atom matches by equality, a composite unfolds. */
 	private static <V> void followExactEdge(Trie<Edge, HashMap<Term<?>, V>> node,
 			Term<?> head, List<Term<?>> rest, ArrayDeque<State<V>> pending) {
-		Option<Iterable<Term<?>>> members = MiniKanren.members(head);
-		if (members.isEmpty()) {
+		Optional<Iterable<Term<?>>> members = MiniKanren.members(head);
+		if (!members.isPresent()) {
 			node.getChildren().get(new Edge.Atom(head))
 					.forEach(child -> pending.push(new State<>(child, rest)));
 		} else {
@@ -124,8 +125,8 @@ public final class SubsumptionMap<V> {
 				out.add(Edge.Any.ANY);
 				continue;
 			}
-			Option<Iterable<Term<?>>> members = MiniKanren.members(term);
-			if (members.isEmpty()) {
+			Optional<Iterable<Term<?>>> members = MiniKanren.members(term);
+			if (!members.isPresent()) {
 				out.add(new Edge.Atom(term));
 				continue;
 			}
