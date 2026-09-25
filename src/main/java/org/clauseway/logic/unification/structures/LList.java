@@ -10,11 +10,11 @@ import org.clauseway.logic.goals.Goal;
 import org.clauseway.logic.goals.Logic;
 import org.clauseway.functional.tuples.Function3;
 import io.vavr.collection.Array;
-import io.vavr.collection.IndexedSeq;
 import io.vavr.control.Either;
 import io.vavr.control.Option;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Spliterator;
@@ -57,11 +57,7 @@ public class LList<A> {
 
 	@SafeVarargs
 	public static <A> Unifiable<LList<A>> ofAll(A... vs) {
-		return ofAll(Array.of(vs));
-	}
-
-	public static <A> Unifiable<LList<A>> ofAll(IndexedSeq<A> items) {
-		return ofAll(items.size(), i -> LVal.lval(items.get(i)));
+		return ofAll(Arrays.asList(vs));
 	}
 
 	public static <A> Unifiable<LList<A>> ofAll(List<A> items) {

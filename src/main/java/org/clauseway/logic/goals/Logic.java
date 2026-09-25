@@ -25,13 +25,14 @@ import org.clauseway.functional.tuples.Function8;
 import org.clauseway.functional.tuples.Tuple;
 import org.clauseway.functional.tuples.Tuple3;
 import io.vavr.collection.Array;
-import io.vavr.collection.IndexedSeq;
 import io.vavr.control.Option;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import java.util.function.BiFunction;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Logic {
@@ -303,36 +304,41 @@ public class Logic {
 				(a, b, c, d, e, g, h) -> project(v8, x -> f.apply(a, b, c, d, e, g, h, x)));
 	}
 
-	public static Goal projectMultiType(IndexedSeq<Unifiable<?>> goals, Function<IndexedSeq<Term<Object>>, Goal> f) {
+	public static Goal projectMultiType(List<Unifiable<?>> goals, Function<List<Term<Object>>, Goal> f) {
 		return s -> Cont.defer(() ->
-				goals.toJavaStream()
+				goals.stream()
 						.map(v -> MiniKanren.walkAll(s.substitution(), v)
 								.map(Stream::of))
 						.reduce((l, r) -> Fiber.zip(l, r)
 								.map(lr -> lr.apply(Stream::concat)))
 						.orElseGet(() -> Fiber.done(Stream.empty()))
 						.map(u -> u.map(t -> (Term<Object>) t)
-								.collect(Array.collector()))
+								.collect(Collectors.<Term<Object>> toList()))
 						.map(f)
 						.map(g -> g.named("projected(" + g + ")"))
 						.map(g -> g.apply(s)));
 	}
 
-	public static <T> Goal project(IndexedSeq<Unifiable<T>> values, Function<IndexedSeq<T>, Goal> f) {
+	public static <T> Goal project(List<Unifiable<T>> values, Function<List<T>, Goal> f) {
 		return s -> Cont.defer(() ->
-				values.toJavaStream()
+				values.stream()
 						.map(v -> MiniKanren.walkAll(s.substitution(), v)
 								.map(Stream::of))
 						.reduce((l, r) -> Fiber.zip(l, r)
 								.map(lr -> lr.apply(Stream::concat)))
 						.orElseGet(() -> Fiber.done(Stream.empty()))
-						.map(u -> u.map(t -> (Term<Object>) t)
-								.collect(Array.collector()))
-						.map(u -> Option.of(u)
-								.filter(v -> v.toJavaStream().allMatch(Term::isVal))
-								.getOrElseThrow(Exceptions.format(IllegalArgumentException::new, "Variable unbound during projection"))
-								.map(Term::get)
-								.map(Types.<T> cast()))
+						.map(u -> {
+							java.util.List<Term<Object>> walked = u.map(t -> (Term<Object>) t)
+									.collect(Collectors.toList());
+							if (!walked.stream().allMatch(Term::isVal)) {
+								throw Exceptions.format(IllegalArgumentException::new,
+										"Variable unbound during projection").get();
+							}
+							return walked.stream()
+									.map(Term::get)
+									.map(Types.<T> cast())
+									.collect(Collectors.<T> toList());
+						})
 						.map(f)
 						.map(g -> g.named("projected(" + g + ")"))
 						.map(g -> g.apply(s)));

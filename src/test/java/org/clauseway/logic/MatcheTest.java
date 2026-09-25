@@ -28,7 +28,7 @@ public class MatcheTest {
 						Matche.llist(a -> i.unifies(LList.of(a))),
 						Matche.llist((a, d) -> i.unifies(LList.of(a, d))),
 						Matche.llist(3, (lst, d) ->
-								i.unifies(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
+								i.unifies(LList.ofAll(lst.toArray(new Unifiable[0])))))
 				.solve(i, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
@@ -46,7 +46,7 @@ public class MatcheTest {
 						Matche.llist(a -> i.unifies(LList.of(a))),
 						Matche.llist((a, d) -> i.unifies(LList.of(a, d))),
 						Matche.llist(3, (lst, d) ->
-								i.unifies(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
+								i.unifies(LList.ofAll(lst.toArray(new Unifiable[0])))))
 				.solve(i, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));
@@ -63,7 +63,7 @@ public class MatcheTest {
 						Matche.llist(a -> i.unifies(LList.of(a))),
 						Matche.llist((a, d) -> i.unifies(LList.of(a, d))),
 						Matche.llist(3, (lst, d) ->
-								i.unifies(LList.ofAll(lst.toJavaArray(Unifiable[]::new)))))
+								i.unifies(LList.ofAll(lst.toArray(new Unifiable[0])))))
 				.solve(i, TestSchedulers.factory())
 				.map(Term::get)
 				.map(l -> l.toValueStream().collect(Collectors.toList())));

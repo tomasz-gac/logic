@@ -65,12 +65,13 @@ public class Matche {
 				.and(f.apply(a, b, c, d)));
 	}
 
-	public static <A> Case<LList<A>> llist(int n, BiFunction<List<Unifiable<A>>, Unifiable<LList<A>>, Goal> f) {
+	// the callback speaks java.util.List; the vavr List above is the fold's own
+	public static <A> Case<LList<A>> llist(int n, BiFunction<java.util.List<Unifiable<A>>, Unifiable<LList<A>>, Goal> f) {
 		List<Unifiable<A>> elements = List.fill(n, LVar::lvar);
 		return l -> elements.foldLeft(Tuple.of(l, Goal.success()), (lstAndGoal, a) -> {
 			Unifiable<LList<A>> d = LVar.lvar();
 			return Tuple.of(d, lstAndGoal._2.and(unify(lstAndGoal._1, LList.of(a, d))));
-		}).apply((d, g) -> g.and(f.apply(elements, d)));
+		}).apply((d, g) -> g.and(f.apply(elements.toJavaList(), d)));
 	}
 
 	public static <T1> Case<Tuple1<Unifiable<T1>>> tuple(Function<Unifiable<T1>, Goal> f) {
